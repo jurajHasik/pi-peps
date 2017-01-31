@@ -14,11 +14,11 @@ APP=get-cluster-env
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS=ctm-cluster.h ctm-cluster-io.h ctm-cluster-global.h json.hpp
+HEADERS=cluster-ev-builder.h ctm-cluster.h ctm-cluster-io.h ctm-cluster-global.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
-CCFILES=$(APP).cc ctm-cluster.cc ctm-cluster-io.cc
+CCFILES=$(APP).cc cluster-ev-builder.cc ctm-cluster.cc ctm-cluster-io.cc su2.cc
 
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html

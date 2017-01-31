@@ -1375,8 +1375,6 @@ double CtmEnv::getNorm() const {
     }
     Norm *= C_LD;
 
-    Print(Norm);
-
     for ( int col=0; col<sizeM; col++ ) {
         Norm *= T_D[col];
 
@@ -1405,11 +1403,11 @@ double CtmEnv::getNorm() const {
         Norm *= T_U[col];
 
     }
-    Print(Norm);
 
     Norm *= C_RU;
-    for ( auto const& t : T_R ) {
-        Norm *= t;
+    for ( int row=sizeN-1; row>=0; row-- ) {
+        Norm.mapprime(2*row,1,HSLINK);
+        Norm *= T_R[row];
     }
     Norm *= C_RD;
 
@@ -1478,8 +1476,6 @@ void CtmEnv::normalizePTN() {
         nTd.push_back(norm(T_D[i]));
         nSum += nTd[i];
     }
-
-    
 
     C_LU *= std::pow(1.0/nrm, nClu/nSum);
     C_RU *= std::pow(1.0/nrm, nCru/nSum);

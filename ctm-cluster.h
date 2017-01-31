@@ -40,7 +40,7 @@ class CtmEnv
 
     // ########################################################################
     // Private data holding the environment
-    private:
+//    private:
 
     std::string m_name;
     
@@ -124,7 +124,7 @@ class CtmEnv
 
     // ########################################################################
     // member methods of CtmEnv
-    public:
+//    public:
     
     // Default constructor
     CtmEnv();

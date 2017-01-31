@@ -1,5 +1,6 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
+#include "cluster-ev-builder.h"
 
 using namespace itensor;
 
@@ -102,15 +103,15 @@ int main( int argc, char *argv[] ) {
         
         ctmEnv.insURow_DBG(iso_type);
         ctmEnv.insDRow_DBG(iso_type);
-        ctmEnv.normalizePTN();
+        //ctmEnv.normalizePTN();
 
         ctmEnv.insLCol_DBG(iso_type);
         ctmEnv.insRCol_DBG(iso_type);
-        ctmEnv.normalizePTN();
+        //ctmEnv.normalizePTN();
 
         // Normalize
         //ctmEnv.normalizeBLE();
-        //ctmEnv.normalizePTN();
+        ctmEnv.normalizePTN();
 
         if ( iter % 50 == 0 ) {
             ctmEnv.computeSVDspec();
@@ -118,7 +119,19 @@ int main( int argc, char *argv[] ) {
         }
     }
 
-    writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
+    //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
+
+    EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv);
+
+    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, 
+        cluster.sites.at(cluster.siteIds[0]), 0);
+    PrintData(mpo_id);
+
+    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, 
+        cluster.sites.at(cluster.siteIds[0]), 0);
+
+    std::cout <<"ID: "<< ev.eV_1sO(mpo_id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
     return 0;
 }

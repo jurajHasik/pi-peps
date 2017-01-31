@@ -35,6 +35,8 @@ struct Cluster {
     
     // auxiliary bond dimension
     int auxBondDim;
+    // dimension of local Hilbert space = dimension of physical index
+    int physDim;
 
     // siteIds
     std::vector< std::string > siteIds;
