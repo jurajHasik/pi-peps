@@ -28,7 +28,6 @@ class EVBuilder {
     EVBuilder(std::string in_name, Cluster const& in_cls, CtmEnv const& in_env);
 
     // Supported types of 1-site operators
-    // NOTE: They are part of global(!) namespace
     enum MPO {
         MPO_Id,     // Identity
         MPO_S_Z,    // Projection on S_z
@@ -38,12 +37,7 @@ class EVBuilder {
     };
 
     // Get on-site contracted tensor <T(bra)|MPO|T(ket)>,
-    // with prime level "l",
-    /*
-     * TODO include (arbitrary) rotation matrix on physical index of 
-     *      on-site tensor T as argument
-     *
-     */
+    // with prime level "l"
     itensor::ITensor getTOT_DBG(MPO mpo, itensor::ITensor const& T,
         int primeLvl) const;
         
@@ -57,43 +51,28 @@ class EVBuilder {
      */
     double eV_1sO(itensor::ITensor const& op, std::pair<int,int> site) const;
 
-    /*
-     * Struct holding 2-site operator as decomposition into
-     * 2 1-site (MPO) operators with additional index
-     *
-     *  _|__|      |     | 
-     * |_2OP_| == |OA|--|OB|
-     *   |  |      |     |
-     *
-     */
-    struct Mpo2S {
-        itensor::ITensor opA, opB;
-    };
-
-    enum OP2S {
+    // Supported types of 2-site operators
+    enum OP_2S {
         OP2S_Id,        // Identity
         OP2S_AKLT_S2_H, // Hamiltonian - P(rojector)^{S=4} on S=4 subspace
         OP2S_SS         // Hamiltonian - NN-Heisenberg
     };
 
-    //Mpo2S get2STOT(OP2S op2s, itensor::Index const& i_Xh, 
-   //         itensor::Index const& i_Xv);
+    // Get 2-site operator as a pair of 1-site operators with auxiliary
+    // index coming from SVD of the original 2-site op
+    std::pair< itensor::ITensor,itensor::ITensor > get2STOT_DBG(OP_2S op2s,
+        itensor::ITensor const& TA, itensor::ITensor const& TB) const;
 
     // Compute expectation value of 2-site operator O given
-    // by its decomposition into MPOs OA * OB = O
-    /*
-     *  |___|     |     |
-     * |__O__| = |OA|--|OB|
-     *  |   |     |     |  
-     *
-     * Arg opA - contracted X_opA <bra|OA|ket> with
-     *           extra auxiliary index        
-     * Arg opB - contracted X_opB <bra|OB|ket> with
-     *           extra auxiliary index
-     *
-     */
-   // std::complex<double> expVal_2sO(itensor::ITensor const& opA,
-    //        itensor::ITensor const& opB);
+    // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
+    // within the cluster surrounded by environment
+    double eV_2sO(
+        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> siteA, std::pair<int,int> siteB) const;
+
+    // compute norm (contract TN) of NxM==(N,M) copies of cluster
+    // surrounded by environment
+    double getNormSupercell_DBG(std::pair<int,int> sc) const;
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
@@ -172,17 +151,12 @@ class EVBuilder {
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
 
-    // itensor::ITensor getSpinOp(ExpValBuilder::MPO mpo, int l, 
-    //         itensor::Index const& i_braS, itensor::Index const& i_ketS,
-    //         bool isB);
+    itensor::ITensor getSpinOp(MPO mpo, itensor::Index const& s) const;
 
     std::ostream& print(std::ostream& s) const;
 };
 
 std::ostream&
 operator<<(std::ostream& s, EVBuilder const& ev);
-
-std::ostream&
-operator<<(std::ostream& s, EVBuilder::Mpo2S const& mpo2S);
 
 #endif

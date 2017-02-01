@@ -1404,12 +1404,12 @@ double CtmEnv::getNorm() const {
 
     }
 
-    Norm *= C_RU;
+    Norm *= C_RD;
     for ( int row=sizeN-1; row>=0; row-- ) {
-        Norm.mapprime(2*row,1,HSLINK);
+        Norm.mapprime(2*(sizeN-1-row),1,HSLINK);
         Norm *= T_R[row];
     }
-    Norm *= C_RD;
+    Norm *= C_RU;
 
     return norm(Norm);
 }

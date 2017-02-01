@@ -9,12 +9,9 @@ EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls,
     CtmEnv const& in_env) 
     : name(in_name), cls(in_cls), env(in_env) {}
 
-// TODO expose the indices linking site with environment from
-// CtmEnv I(X*), so one can construct TOT's without explicit need
-// of constructed environment
 /* 
- * If the on-site tensor T (ket) has been initialized, constructs
- * a contracted <bra|MPO|ket> tensor, with a given prime level "l"
+ * TODO include (arbitrary) rotation matrix on physical index of 
+ *      on-site tensor T as argument
  * 
  */
 ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
@@ -57,7 +54,6 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
      * TOT = Y(h)*Y(h')*Y(v)*Y(v')*|T*OT|
      *
      */
-    Print(T);
 
     // Get auxBond index of T
     auto auxI = noprime(findtype(T.inds(), Link));
@@ -76,83 +72,7 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
     auto C37 = prime(C04,3);
 
     // Construct MPO
-    auto Op = ITensor(prime(s,1), s);
-
-    switch(mpo) {
-        case MPO_Id: {
-            std::cout << ">>>>> Constructing T^dag*Id*T <<<<<"<<"\n";
-            for(int i=1;i<=s.m();i++)
-                Op.set(s(i), prime(s,1)(i), 1.+0._i);
-            break;
-        }
-        case MPO_S_Z: {
-            std::cout << ">>>>> Constructing T^dag*Sz*T <<<<<"<<"\n";
-            for(int i=1;i<=s.m();i++)
-                Op.set(s(i), prime(s,1)(i), 0.5*(-(s.m()-1) 
-                            + (i-1)*2) + 0._i);
-            break;
-        }
-        case MPO_S_Z2: {
-            std::cout << ">>>>> Constructing T^dag*Sz^2*T <<<<<"<<"\n";
-            for(int i=1;i<=s.m();i++)
-                Op.set(s(i), prime(s,1)(i), pow(0.5*(-(s.m()-1) 
-                            + (i-1)*2), 2.0) + 0._i);
-            break;
-        }
-        /* 
-         * The s^+ operator maps states with s^z = x to states with 
-         * s^z = x+1 . Therefore as a matrix it must act as follows
-         * on vector of basis elements of spin S representation (in 
-         * this particular order) |S M> 
-         *       
-         *     |-S  >    C_+|-S+1>           0 1 0 0 ... 0 
-         * s^+ |-S+1>  = C_+|-S+2>  => S^+ = 0 0 1 0 ... 0 x C_+
-         *      ...         ...              ...
-         *     | S-1>    C_+| S  >           0    ...  0 1
-         *     | S  >     0                  0    ...  0 0
-         *
-         * where C_+ = sqrt(S(S+1)-M(M+1))
-         *
-         */
-        case MPO_S_P: {
-            std::cout << "Op MPO_S_P" << "\n";
-            for(int i=1;i<=s.m()-1;i++)
-                Op.set(s(i+1), prime(s,1)(i), pow( 0.5*(s.m()-1)
-                    *(0.5*(s.m()-1)+1) - (-0.5*(s.m()-1)+(i-1))
-                    *(-0.5*(s.m()-1)+(i-1)+1), 0.5) + 0._i);
-            break;
-        }
-        /* 
-         * The s^- operator maps states with s^z = x to states with 
-         * s^z = x-1 . Therefore as a matrix it must act as follows
-         * on vector of basis elements of spin S representation (in 
-         * this particular order) |S M> 
-         *       
-         *     |-S  >     0                  0 0 0 0 ... 0 
-         * s^- |-S+1>  = C_-|-S  >  => S^- = 1 0 0 0 ... 0 x C_-
-         *      ...         ...              ...
-         *     | S-1>    C_-| S-2>           0   ... 1 0 0
-         *     | S  >    C_-| S-1>           0   ... 0 1 0
-         * 
-         * where C_- = sqrt(S(S+1)-M(M-1))
-         *
-         */
-        case MPO_S_M: {
-            std::cout << "Op MPO_S_M" << "\n";
-            for(int i=2;i<=s.m();i++)
-                Op.set(s(i-1), prime(s,1)(i), pow( 0.5*(s.m()-1)
-                    *(0.5*(s.m()-1)+1) - (-0.5*(s.m()-1)+(i-1))
-                    *(-0.5*(s.m()-1)+(i-1)-1), 0.5) + 0._i);
-            break;
-        }
-        default: {
-            std::cout << "Invalid MPO selection" << "\n";
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
-
-    PrintData(Op);
+    auto Op = getSpinOp(mpo, s);
 
     // if(isB) {
     //     std::cout << "site B - rotation on spin index" << "\n";
@@ -198,7 +118,6 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
  */
 double EVBuilder::eV_1sO(ITensor const& op, std::pair<int,int> site) const {
     auto ev = env.C_LU;
-
     /*
      * Suppose sizeM >= sizeN, contract say left boundary of environment 
      *
@@ -255,246 +174,387 @@ double EVBuilder::eV_1sO(ITensor const& op, std::pair<int,int> site) const {
 
     }
 
-    ev *= env.C_RU;
+    ev *= env.C_RD;
     for ( int row=env.sizeN-1; row>=0; row-- ) {
-        ev.mapprime(2*row,1,HSLINK);
+        ev.mapprime(2*(env.sizeN-1-row),1,HSLINK);
         ev *= env.T_R[row];
     }
-    ev *= env.C_RD;
+    ev *= env.C_RU;
 
     return sumels(ev)/env.getNorm();
 }
 
-// ExpValBuilder::Mpo2S ExpValBuilder::get2STOT(ExpValBuilder::OP2S op2s,
-//         Index const& i_Xh, Index const& i_Xv)
-// {
-//     /*
-//      * 2-site operator acting on 2 physical indices
-//      *   
-//      * <bra|   I(s)   I(s)''
-//      *          _|______|_   
-//      *         |____OP____|
-//      *           |      |
-//      *         I(s)'  I(s)'''  |ket>     
-//      *
-//      */
-//     auto s0 = prime(s,0);
-//     auto s1 = prime(s,1);
-//     auto s2 = prime(s,2);
-//     auto s3 = prime(s,3);
-//     auto Op = ITensor(s0, s1, s2, s3);
-//     switch(op2s) {
-//         case OP2S_Id: { // Identity operator
-//             std::cout << ">>>>> Constructing OP2S_Id <<<<<" << "\n";  
-//             for(int i=1;i<=dimS;i++) {
-//                 for(int j=1;j<=dimS;j++){
-//                     Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
-//                 }
-//             }
-//             break;
-//         }
-//         case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
-//             std::cout << ">>>>> Constructing OP2S_AKLT-S2-H <<<<<" << "\n";
-//             // Loop over <bra| indices
-//             int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
-//             int mbA, mbB, mkA, mkB;
-//             double hVal;
-//             for(int bA=1;bA<=dimS;bA++) {
-//             for(int bB=1;bB<=dimS;bB++) {
-//                 // Loop over |ket> indices
-//                 for(int kA=1;kA<=dimS;kA++) {
-//                 for(int kB=1;kB<=dimS;kB++) {
-//                     // Use Dynkin notation to specify irreps
-//                     mbA = -(rS) + 2*(bA-1);
-//                     mbB = -(rS) + 2*(bB-1);
-//                     mkA = -(rS) + 2*(kA-1);
-//                     mkB = -(rS) + 2*(kB-1);
-//                     // Loop over possible values of m given by tensor product
-//                     // of 2 spin (dimS-1) irreps (In Dynkin notation)
-//                     hVal = 0.0;
-//                     for(int m=-2*(rS);m<=2*(rS);m=m+2) {
-//                         if ((mbA+mbB == m) && (mkA+mkB == m)) {
-//     //DEBUG
-//     std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m <<"> x <"<< m <<"|"<< mkA <<","
-//     << mkB<<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) <<" x "
-//     << SU2_getCG(rS, rS, 2*rS, mkA, mkB, m) <<"\n";
+/* 
+ * TODO? include (arbitrary) rotation matrix on physical index of 
+ *      on-site tensor TA, TB as argument
+ * 
+ */
+std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
+    ITensor const& TA, ITensor const& TB) const 
+{
+    /*
+     * 2-site operator acts on 2 physical indices
+     * 
+     *           A      B
+     * <bra|     s'     s'''
+     *          _|______|_   
+     *         |____OP____|
+     *           |      |
+     *           s      s''  |ket>     
+     *
+     */
+    auto s0 = findtype(TA.inds(), Site);
+    auto s1 = prime(s0,1);
+    auto s2 = prime(findtype(TB.inds(), Site), 2);
+    auto s3 = prime(s2,1);
+    // Assume s0 is different then s2
 
-//                         hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
-//                             *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
-//                         }
-//                     }
-//                     if((bA == kA) && (bB == kB)) {
-//                         Op.set(s0(bA),s2(bB),s1(kA),s3(kB),hVal+2.);
-//                     } else {
-//                         Op.set(s0(bA),s2(bB),s1(kA),s3(kB),hVal);
-//                     }
-//                 }}
-//             }}
-//             break;
-//         }
-//         case OP2S_SS: { // S^vec_i * S^vec_i+1
-//             // s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
-//             std::cout << ">>>>> Constructing OP2S_SS <<<<<" << "\n";
+    auto Op = ITensor(s0, s1, s2, s3);
+    
+    // check dimensions of phys indices on TA and TB
+    if( s0.m() != s2.m() ) {
+        std::cout <<"On-site tensors TA and TB have different dimension of"
+            <<" phys index"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+    int dimS = s0.m();
+
+    switch(op2s) {
+        case OP2S_Id: { // Identity operator
+            std::cout <<">>>>> Constructing OP2S_Id <<<<<"<< std::endl;  
+            for(int i=1;i<=dimS;i++) {
+                for(int j=1;j<=dimS;j++){
+                    Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
+                }
+            }
+            break;
+        }
+        case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
+            std::cout <<">>>>> Constructing OP2S_AKLT-S2-H <<<<<"<< std::endl;
+            // Loop over <bra| indices
+            int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
+            int mbA, mbB, mkA, mkB;
+            double hVal;
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                    // Use Dynkin notation to specify irreps
+                    mbA = -(rS) + 2*(bA-1);
+                    mbB = -(rS) + 2*(bB-1);
+                    mkA = -(rS) + 2*(kA-1);
+                    mkB = -(rS) + 2*(kB-1);
+                    // Loop over possible values of m given by tensor product
+                    // of 2 spin (dimS-1) irreps (In Dynkin notation)
+                    hVal = 0.0;
+                    for(int m=-2*(rS);m<=2*(rS);m=m+2) {
+                        if ((mbA+mbB == m) && (mkA+mkB == m)) {
+                            
+                            //DEBUG
+                            std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
+                                <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
+                                <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
+                                <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
+                                << std::endl;
+
+                        hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
+                            *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
+                        }
+                    }
+                    if((bA == kA) && (bB == kB)) {
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+2.);
+                    } else {
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                    }
+                }}
+            }}
+            break;
+        }
+        case OP2S_SS: { 
+            // S^vec_i * S^vec_i+1 =
+            // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
+            std::cout <<">>>>> Constructing OP2S_SS <<<<<"<< std::endl;
+    
+            Index sBra = Index("sBra", dimS);
+            Index sKet = prime(sBra);
+            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
+            ITensor Sp = getSpinOp(MPO_S_P, sBra);
+            ITensor Sm = getSpinOp(MPO_S_M, sBra);
             
-//             Index sBra = Index("sBra", dimS);
-//             Index sKet = Index("sKet", dimS);
-//             ITensor Sz = getSpinOp(MPO_S_Z, 0, sBra, sKet, false);
-//             ITensor Sp = getSpinOp(MPO_S_P, 0, sBra, sKet, false);
-//             ITensor Sm = getSpinOp(MPO_S_M, 0, sBra, sKet, false);
-            
-//             double hVal;
-//             // Loop over <bra| indices
-//             for(int bA=1;bA<=dimS;bA++) {
-//             for(int bB=1;bB<=dimS;bB++) {
-//                 // Loop over |ket> indices
-//                 for(int kA=1;kA<=dimS;kA++) {
-//                 for(int kB=1;kB<=dimS;kB++) {
+            double hVal;
+            // Loop over <bra| indices
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
                 
-//                     hVal = Sz.real(sBra(bA),sKet(kA))
-//                         *Sz.real(sBra(bB),sKet(kB))+0.5*(
-//                         Sp.real(sBra(bA),sKet(kA))
-//                         *Sm.real(sBra(bB),sKet(kB))+
-//                         Sm.real(sBra(bA),sKet(kA))
-//                         *Sp.real(sBra(bB),sKet(kB)));
+                    hVal = Sz.real(sBra(bA),sKet(kA))
+                        *Sz.real(sBra(bB),sKet(kB))+0.5*(
+                        Sp.real(sBra(bA),sKet(kA))
+                        *Sm.real(sBra(bB),sKet(kB))+
+                        Sm.real(sBra(bA),sKet(kA))
+                        *Sp.real(sBra(bB),sKet(kB)));
 
-//                     Op.set(s0(bA),s2(bB),s1(kA),s3(kB),hVal);
-//                 }}
-//             }}
-//             break;
-//         }
-//         default: {
-//             std::cout << "Invalid MPO selection" << "\n";
-//             exit(EXIT_FAILURE);
-//             break;
-//         }
-//     }
+                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                }}
+            }}
+            break;
+        }
+        default: {
+            std::cout <<"Invalid OP_2S selection"<< std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
 
-//     // Perform SVD
-//     /*         __
-//      * I(s)---|  |--I(s)''    =>
-//      *        |OP|            =>
-//      * I(s)'--|__|--I(s)'''   =>
-//      *            ___                      ___  
-//      * => I(s)---|   |         _          |   |--I(s)''
-//      * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
-//      * => I(s)'--|___|                    |___|--I(s)'''
-//      *
-//      */
-//     auto OpA = ITensor(s0, s1);
-//     ITensor OpB, S;
+    // Perform SVD
+    /*         __
+     * I(s)---|  |--I(s)''    =>
+     *        |OP|            =>
+     * I(s)'--|__|--I(s)'''   =>
+     *            ___                      ___  
+     * => I(s)---|   |         _          |   |--I(s)''
+     * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
+     * => I(s)'--|___|                    |___|--I(s)'''
+     *
+     */
+    auto OpA = ITensor(s0, s1);
+    ITensor OpB, S; 
 
-//     std::cout << "Performing SVD OP2S -> OpA * S * OpB" <<"\n";
-//     svd(Op, OpA, S, OpB);
-//     Print(OpA);
-//     Print(S);
-//     Print(OpB);
-//     // Absorb singular values into, say, OpB
-//     OpB = S*OpB;
-
-//     // Contract OpA & OpB with <bra| & |ket> on-site tensors T
-//     /*
-//      * TODO write comment about this process
-//      *
-//      */
-//     auto Tdag = prime(conj(T), Link, 2);
-//     Tdag.prime(s,1);
-
-//     // Perform rotation on OpB (we can always assume B to correspond 
-//     // to "odd" site of bipartite AKLT
-//     /*
-//      * I(s)''--|OpB|--I(s)''' => 
-//      * 
-//      * I(s)--|R1|--I(s)''--|Op|--I(s)'''--|R2|--I(s)'
-//      *
-//      * where Rot is a real symmetric rotation matrix, thus R1 = R2
-//      * defined below. Then one has to set indices of rotated
-//      * Op to proper prime level
-//      *
-//      */
-//     std::cout << "Rotation on physical indices of OpB" << "\n";
-//     auto R1 = ITensor(s, s2);
-//     auto R2 = ITensor(s3,s1);
-//     for(int i=1;i<=dimS;i++) {
-//         R1.set(s(i), s2(dimS+1-i), pow(-1,i-1));
-//         R2.set(s3(dimS+1-i), s1(i), pow(-1,i-1));
-//     }
-//     OpB = R1*OpB*R2;
-//     Print(OpB);
-
-//     // Define conversion tensors Y
-//     auto Yh  = ITensor(h, prime(h,2), i_Xh);
-//     auto Yv  = ITensor(v, prime(v,2), i_Xv);
-//     auto Yhp = ITensor(hp, prime(hp,2), prime(i_Xh,1));
-//     auto Yvp = ITensor(vp, prime(vp,2), prime(i_Xv,1));
-//     Yh.fill(0.+0._i);
-//     Yv.fill(0.+0._i);
-//     Yhp.fill(0.+0._i);
-//     Yvp.fill(0.+0._i);
-//     for(int b=1; b<=dimD; b++) {
-//         for(int k=1; k<=dimD; k++) {
-//             Yh.set(h(b), prime(h,2)(k), i_Xh(dimD*(b-1)+k), 1.0+0._i);
-//             Yv.set(v(b), prime(v,2)(k), i_Xv(dimD*(b-1)+k), 1.0+0._i);
-//             Yhp.set(hp(b), prime(hp,2)(k), prime(i_Xh,1)(dimD*(b-1)+k),
-//                     1.0+0._i);
-//             Yvp.set(vp(b), prime(vp,2)(k), prime(i_Xv,1)(dimD*(b-1)+k),
-//                     1.0+0._i);
-//         }
-//     }
-
-//     OpA = Yh*Yv*Yhp*Yvp*Tdag*OpA*T;
-//     OpB = Yh*Yv*Yhp*Yvp*Tdag*OpB*T;
-
-//     ExpValBuilder::Mpo2S mpo2S = {OpA, OpB};
-//     return mpo2S;
-// }
-
-// std::complex<double> ExpValBuilder::expVal_2sO(itensor::ITensor const& opA,
-//         itensor::ITensor const& opB)
-// {
-
-//     auto X = ExpValBuilder::getTOT(MPO_Id, 0, env.i_Xh, env.i_Xv,
-//             false);
-
-//     /*
-//      * Construct the "left" part tensor L
-//      *  _    __                       __
-//      * |C|--|T |--I(T_u)'            |  |--I(T_u)'
-//      *  |    |                   ==> |  |
-//      * |T|--|OA|--I(XH)'(x)I(o)  ==> |L |--I(Xh)'(x)I(o)
-//      *  |    |                   ==> |  |
-//      * |C|--|T |--I(T_d)'            |__|--I(T_d)'
-//      *
-//      * where I(o) is an additional index connecting 2 MPOs making
-//      * up the original 2-site operator
-//      *
-//      */
-//     auto LA   = env.C_lu*env.T_l*env.C_ld*env.T_u*env.T_d*opA;
-//     auto LId = env.C_lu*env.T_l*env.C_ld*env.T_u*env.T_d*X;
+    std::cout <<"Performing SVD OP2S -> OpA * S * OpB"<< std::endl;
+    svd(Op, OpA, S, OpB);
     
-    
-//      * Construct the "right" part tensor R
-//      *                 __    _                        __
-//      *        I(T_u)--|T |--|C|              I(T_u)--|  |
-//      *                 |     |   ==>                 |  |
-//      *  I(o)(x)I(Xh)--|O2|--|T|  ==>   I(o)(x)I(Xh)--|R |
-//      *                 |     |   ==>                 |  |
-//      *        I(T_d)--|T |--|C|              I(T_d)--|__|
-//      *
-     
-//     auto RB = env.C_ru*env.T_r*env.C_rd*env.T_u*env.T_d*opB;
-//     auto RId = env.C_ru*env.T_r*env.C_rd*env.T_u*env.T_d*X;
+    Print(OpA);
+    Print(S);
+    Print(OpB);
+    // Absorb singular values into, say, OpB
+    OpB = S*OpB.prime(Site,-2);
 
-//     LA.noprime();
-//     LId.noprime();
-//     // Contract L*R
-//     auto eBare = LA*RB;
-//     auto eNorm = LId*RId;
-//     //PrintData(eBare);
-//     //PrintData(eNorm);
-//     std::complex<double> expVal = sumelsC(eBare)/sumelsC(eNorm);
-//     std::cout << "ExpVal: " << expVal <<"\n";
-//     return expVal;
-// }
+    // Contract OpA and OpB with <bra| & |ket> on-site tensors TA and TB 
+    /*
+     * TODO write comment about this process
+     *
+     */
+    //auto Tdag = prime(conj(T), Link, 2);
+    //Tdag.prime(s,1);
+
+    // Perform rotation on OpB (we can always assume B to correspond 
+    // to "odd" site of bipartite AKLT
+    /*
+     * I(s)''--|OpB|--I(s)''' => 
+     * 
+     * I(s)--|R1|--I(s)''--|Op|--I(s)'''--|R2|--I(s)'
+     *
+     * where Rot is a real symmetric rotation matrix, thus R1 = R2
+     * defined below. Then one has to set indices of rotated
+     * Op to proper prime level
+     *
+     */
+    /*td::cout << "Rotation on physical indices of OpB" << "\n";
+    auto R1 = ITensor(s, s2);
+    auto R2 = ITensor(s3,s1);
+    for(int i=1;i<=dimS;i++) {
+        R1.set(s(i), s2(dimS+1-i), pow(-1,i-1));
+        R2.set(s3(dimS+1-i), s1(i), pow(-1,i-1));
+    }
+    OpB = R1*OpB*R2;
+    Print(OpB);*/
+
+    auto auxIA = noprime(findtype(TA.inds(), Link));
+    auto auxIB = noprime(findtype(TB.inds(), Link));
+
+    // Define combiner tensors Y*
+    auto C04A = combiner(auxIA, prime(auxIA,4));
+    auto C15A = prime(C04A,1);
+    auto C26A = prime(C04A,2);
+    auto C37A = prime(C04A,3);
+    auto C04B = combiner(auxIB, prime(auxIB,4));
+    auto C15B = prime(C04B,1);
+    auto C26B = prime(C04B,2);
+    auto C37B = prime(C04B,3);
+
+    OpA = (TA*OpA*( conj(TA).prime(Link,4).prime(Site,1) ))
+        *C04A*C15A*C26A*C37A;
+    OpB = (TB*OpB*( conj(TB).prime(Link,4).prime(Site,1) ))
+        *C04B*C15B*C26B*C37B;
+
+    // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
+    auto DH0A = delta(env.I_XH, commonIndex(OpA,C04A));
+    auto DV0A = delta(env.I_XV, commonIndex(OpA,C15A));
+    auto DH1A = delta(prime(env.I_XH,1), commonIndex(OpA,C26A));
+    auto DV1A = delta(prime(env.I_XV,1), commonIndex(OpA,C37A));
+    auto DH0B = delta(env.I_XH, commonIndex(OpB,C04B));
+    auto DV0B = delta(env.I_XV, commonIndex(OpB,C15B));
+    auto DH1B = delta(prime(env.I_XH,1), commonIndex(OpB,C26B));
+    auto DV1B = delta(prime(env.I_XV,1), commonIndex(OpB,C37B));
+
+    OpA = OpA*DH0A*DV0A*DH1A*DV1A;
+    OpB = OpB*DH0B*DV0B*DH1B*DV1B;
+
+    std::cout <<"OP2S as two MPOs OpA,OpB with additional index"<< std::endl;
+    Print(OpA);
+    Print(OpB);
+
+    return std::make_pair(OpA, OpB);
+}
+
+/* 
+ * TODO implement evaluation on arbitrary large cluster
+ * 
+ */
+double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
+    std::pair<int,int> siteA, std::pair<int,int> siteB) const
+{
+    std::cout <<">>>>> eV_2sO called <<<<<"<< std::endl;
+    /*
+     * Get the size of "super"cell assuming span along "col" direction
+     * is bigger then along "row" direction
+     *
+     *   <-- col --> 
+     *  |   |_|_|_|..|_|
+     * row  |_|_|_|..|_|             _
+     *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
+     *
+     */
+    if ( std::max(siteA.second, siteB.second) < std::max(siteA.first,
+        siteB.first) ) {
+        std::cout <<"Number of columns < number of rows in supercell"
+            << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // determine number of cells=clusters in row/col direction required
+    // to form the supercell
+    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
+        ((float)env.sizeN));
+    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
+        ((float)env.sizeM));
+
+    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
+
+    // Contract TN with Op inserted
+    auto tN = env.C_LU;
+
+    for ( int row=0; row<nR*env.sizeN; row++ ) {
+        tN.prime(HSLINK,2);
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(LLINK, -env.sizeN);
+        }
+        tN *= env.T_L[row % env.sizeN];
+    }
+    tN *= env.C_LD;
+
+    for ( int col=0; col<nC*env.sizeM; col++ ) {
+        if ( (col > 0) && (col % env.sizeM == 0) ) {
+            tN.prime(DLINK, -env.sizeM);
+            tN.prime(ULINK, -env.sizeM);
+        }
+        tN *= env.T_D[col % env.sizeM];
+
+        for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+            tN.mapprime(0,1,VSLINK);
+            if ( siteA.first == row && siteA.second == col ) {
+                std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
+                    << std::endl;
+                tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
+            } else if ( siteB.first == row && siteB.second == col ) {
+                std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
+                    << std::endl;
+                tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
+            } else {
+                tN *= prime( env.sites.at(env.cToS.at(
+                    std::make_pair(row % env.sizeN,col % env.sizeM))),
+                    HSLINK, 2*(nR*env.sizeN-1-row) );
+            }
+        }
+        tN.prime(HSLINK,-1);
+        tN *= env.T_U[col % env.sizeM];
+    }
+
+    tN *= env.C_RD;
+    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(RLINK, env.sizeN);
+        }
+        tN *= env.T_R[row % env.sizeN];
+    }
+    tN *= env.C_RU;
+
+    return sumels(tN)/getNormSupercell_DBG(std::make_pair(nR,nC));
+}
+
+/* 
+ * TODO implement for NxM supercell with N(rows)>M(cols)
+ * 
+ */
+double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
+    //  N x M == sc.first x sc.second supercell
+    std::cout <<"##### getNormSupercell called for ("<< sc.first <<","
+        << sc.second <<") supercell #####"<< std::endl;
+    
+    // check N =< M condition
+    if ( sc.first > sc.second ) {
+        std::cout <<"Number of columns < number of rows in supercell"
+            << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    auto tN = env.C_LU;
+
+    for ( int row=0; row<sc.first*env.sizeN; row++ ) {
+        tN.prime(HSLINK,2);
+        // Reset index primeLevel when entering new cell=(copy of)cluster
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(LLINK, -env.sizeN);
+        }
+        tN *= env.T_L[row % env.sizeN];
+    }
+    tN *= env.C_LD;
+
+    std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+    Print(tN);
+
+    for ( int col=0; col<sc.second*env.sizeM; col++ ) {
+        if ( (col > 0) && (col % env.sizeM == 0) ) {
+            tN.prime(DLINK, -env.sizeM);
+            tN.prime(ULINK, -env.sizeM);
+        }
+        tN *= env.T_D[col % env.sizeM];
+
+        for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+            tN.mapprime(0,1,VSLINK);
+            tN *= prime( env.sites.at(env.cToS.at(
+                std::make_pair(row % env.sizeN,col % env.sizeM))),
+                HSLINK, 2*(sc.first*env.sizeN-1-row) );
+        }
+        tN.prime(HSLINK,-1);
+        tN *= env.T_U[col % env.sizeM];
+    }
+
+    std::cout <<">>>>> 2) "<< sc.second*env.sizeM-1 
+        << " cols appended <<<<<"<< std::endl;
+    Print(tN);
+
+    tN *= env.C_RD;
+    for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(RLINK, env.sizeN);
+        }
+
+        tN *= env.T_R[row % env.sizeN];
+    }
+    tN *= env.C_RU;
+
+    std::cout <<">>>>> 3) contraction with Right edge <<<<<"<< std::endl;
+    Print(tN);
+
+    return norm(tN);
+}
 
 // std::complex<double> ExpValBuilder::expVal_1sO1sO_H(int dist, 
 //         itensor::ITensor const& op1, itensor::ITensor const& op2)
@@ -820,80 +880,92 @@ double EVBuilder::eV_1sO(ITensor const& op, std::pair<int,int> site) const {
 //     return sumelsC(ccBare)/sumelsC(ccNorm);
 // }
 
-// ITensor ExpValBuilder::getSpinOp(ExpValBuilder::MPO mpo, int l, 
-//     Index const& i_braS, Index const& i_ketS, bool isB) {
+ITensor EVBuilder::getSpinOp(MPO mpo, Index const& s) const {
 
-//     if (i_braS.m() != i_ketS.m()) {
-//         std::cout << "Range of bra and ket indices is not equal" << "\n";
-//         exit(EXIT_FAILURE);
-//     }
-//     // Construct MPO
-//     auto Op = ITensor(i_braS, i_ketS);
+    auto s1 = prime(s);
+    int dimS = s.m();
 
-//     switch(mpo) {
-//         case MPO_Id: {
-//             for(int i=1;i<=dimS;i++)
-//                 Op.set(i_braS(i), i_ketS(i), 1.+0._i);
-//             break;
-//         }
-//         case MPO_S_Z: {
-//             for(int i=1;i<=dimS;i++)
-//                 Op.set(i_braS(i), i_ketS(i), 0.5*(-(dimS-1) 
-//                             + (i-1)*2) + 0._i);
-//             break;
-//         }
-//         case MPO_S_Z2: {
-//             for(int i=1;i<=dimS;i++)
-//                 Op.set(i_braS(i), i_ketS(i), pow(0.5*(-(dimS-1) 
-//                             + (i-1)*2), 2.0) + 0._i);
-//             break;
-//         }
-//         case MPO_S_P: {
-//             for(int i=1;i<=dimS-1;i++)
-//                 Op.set(i_braS(i), i_ketS(i+1), pow( 0.5*(dimS-1)
-//                     *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
-//                     *(-0.5*(dimS-1)+(i-1)+1), 0.5) + 0._i);
-//             break;
-//         }
-//         case MPO_S_M: {
-//             for(int i=2;i<=dimS;i++)
-//                 Op.set(i_braS(i), i_ketS(i-1), pow( 0.5*(dimS-1)
-//                     *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
-//                     *(-0.5*(dimS-1)+(i-1)-1), 0.5) + 0._i);
-//             break;
-//         }
-//         default: {
-//             std::cout << "Invalid MPO selection" << "\n";
-//             exit(EXIT_FAILURE);
-//             break;
-//         }
-//     }
+    // Construct MPO
+    auto Op = ITensor(s, s1);
 
-//     if(isB) {
-//         // Operator corresponds to "odd" site of bipartite AKLT
-//         // state - perform rotation on physical indices
-//         /*
-//          * I(braS)--|Op|--I(ketS) => 
-//          * 
-//          * I(braS)'--|R1|--I(braS)--|Op|--I(ketS)--|R2|--I(ketS)'
-//          *
-//          * where Rot is a real symmetric rotation matrix, thus R1 = R2
-//          * defined below. Then one has to set indices of rotated
-//          * Op to proper prime level
-//          *
-//          */
-//         auto R1 = ITensor(prime(i_braS,2), i_braS);
-//         auto R2 = ITensor(i_ketS, prime(i_ketS,2));
-//         for(int i=1;i<=dimS;i++) {
-//             R1.set(prime(i_braS,2)(i), i_braS(dimS+1-i), pow(-1,i-1));
-//             R2.set(i_ketS(dimS+1-i), prime(i_ketS,2)(i), pow(-1,i-1));
-//         }
-//         Op = R1*Op*R2;
-//         Op.prime(-2);
-//     }
+    switch(mpo) {
+        case MPO_Id: {
+            std::cout <<">>>>> Constructing 1sO: Id <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), 1.+0._i);
+            break;
+        }
+        case MPO_S_Z: {
+            std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), 0.5*(-(dimS-1) 
+                    + (i-1)*2) + 0._i);
+            break;
+        }
+        case MPO_S_Z2: {
+            std::cout <<">>>>> Constructing 1sO: Sz^2 <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), pow(0.5*(-(dimS-1) 
+                    + (i-1)*2), 2.0) + 0._i);
+            break;
+        }
+        /* 
+         * The s^+ operator maps states with s^z = x to states with 
+         * s^z = x+1 . Therefore as a matrix it must act as follows
+         * on vector of basis elements of spin S representation (in 
+         * this particular order) |S M> 
+         *       
+         *     |-S  >    C_+|-S+1>           0 1 0 0 ... 0 
+         * s^+ |-S+1>  = C_+|-S+2>  => S^+ = 0 0 1 0 ... 0 x C_+
+         *      ...         ...              ...
+         *     | S-1>    C_+| S  >           0    ...  0 1
+         *     | S  >     0                  0    ...  0 0
+         *
+         * where C_+ = sqrt(S(S+1)-M(M+1))
+         *
+         */
+        case MPO_S_P: {
+            std::cout <<">>>>> Constructing 1sO: S^+ <<<<<"<< std::endl;
+            for(int i=1;i<=dimS-1;i++)
+                Op.set(s1(i), s(i+1), pow( 0.5*(dimS-1)
+                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
+                    *(-0.5*(dimS-1)+(i-1)+1), 0.5) + 0._i);
+            break;
+        }
+        /* 
+         * The s^- operator maps states with s^z = x to states with 
+         * s^z = x-1 . Therefore as a matrix it must act as follows
+         * on vector of basis elements of spin S representation (in 
+         * this particular order) |S M> 
+         *       
+         *     |-S  >     0                  0 0 0 0 ... 0 
+         * s^- |-S+1>  = C_-|-S  >  => S^- = 1 0 0 0 ... 0 x C_-
+         *      ...         ...              ...
+         *     | S-1>    C_-| S-2>           0   ... 1 0 0
+         *     | S  >    C_-| S-1>           0   ... 0 1 0
+         * 
+         * where C_- = sqrt(S(S+1)-M(M-1))
+         *
+         */
+        case MPO_S_M: {
+            std::cout <<">>>>> Constructing 1sO: S^- <<<<<"<< std::endl;
+            for(int i=2;i<=dimS;i++)
+                Op.set(s1(i), s(i-1), pow( 0.5*(dimS-1)
+                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
+                    *(-0.5*(dimS-1)+(i-1)-1), 0.5) + 0._i);
+            break;
+        }
+        default: {
+            std::cout << "Invalid MPO selection" << std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
 
-//     return Op;
-// }
+    PrintData(Op);
+
+    return Op;
+}
 
 std::ostream& EVBuilder::print(std::ostream& s) const {
     s << "ExpValBuilder("<< name <<")";
@@ -902,10 +974,4 @@ std::ostream& EVBuilder::print(std::ostream& s) const {
 
 std::ostream& operator<<(std::ostream& s, EVBuilder const& ev) {
     return ev.print(s);
-}
-
-std::ostream& operator<<(std::ostream& s, EVBuilder::Mpo2S
-        const& mpo2S) {
-    s << "Mpo2S( "<<"OpA: "<< mpo2S.opA <<"OpB: "<< mpo2S.opB <<")";
-    return s;
 }
