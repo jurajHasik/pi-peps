@@ -330,13 +330,16 @@ void CtmEnv::initRndEnv(bool isComplex) {
 // ########################################################################
 // CTM iterative methods
 
-void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type, 
+    std::vector<double> & accT) 
+{
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
 
     // sequentialy contract upper boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
     for (int row=0; row<sizeN; row++) {
-
+        std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
         /*
          * Insert a copy of row into network to obtain following expanded TN:
          *     ____         ____                 ______          ____
@@ -392,6 +395,11 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
         std::cout <<"After contraction"<< std::endl;
         Print(C_RU);
 
+        std::chrono::steady_clock::time_point t_iso_end =
+            std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
         /*
          * compute one of the "trivial" isometries
          *
@@ -401,22 +409,23 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
          */
         std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
 
-        std::pair< ITensor, ITensor > isoPair;
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
         
         switch(iso_type) {
             case ISOMETRY_T1: {
-                isoPair = isoT1( IndexSet(I_U, I_XH), 
+                tU_tV = isoT1( IndexSet(I_U, I_XH), 
                     std::make_pair(prime(I_L,row+1),prime(I_R,row+1)),
                     C_LU, C_RU);
                 break;
             }
             case ISOMETRY_T2: {
-                isoPair = isoT2( IndexSet(I_U, I_XH),
+                tU_tV = isoT2( IndexSet(I_U, I_XH),
                     C_LU, C_LD, C_RD, C_RU);
                 break;
             }
             case ISOMETRY_T3: {
-                isoPair = isoT3(
+                tU_tV = isoT3(
                     std::make_pair(I_U, prime(I_U,sizeM)),
                     std::make_pair(I_XH, prime(I_XH,1)),
                     C_LU, C_RU);
@@ -429,9 +438,9 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
             }
         }
 
-        // references to individual isometry tensors
-        ITensor& tU = isoPair.first;
-        ITensor& tV = isoPair.second;
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[1] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /*
          * Obtain new C_LU,C_RU by contraction of C_LU,C_RU 
@@ -454,14 +463,20 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(5) ----- Construct reduced C_LU,C_RU -----"<< std::endl;
-        auto I_SVD_U = findtype(tU.inds(),SVD_LINK);
-        auto I_SVD_V = findtype(tV.inds(),SVD_LINK);
-        C_LU = ( (C_LU*tU) *delta(I_SVD_U,I_Fxd)*R )*delta(I_Tx,I_U);
-        C_RU = ( (C_RU*tV) *delta(I_SVD_V,I_Fxd)*R )
-            *delta(I_Tx,prime(I_U,sizeM));
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LU = (C_LU*tU_tV.first )*delta(I_Tx,I_U);
+        C_RU = (C_RU*tU_tV.second )*delta(I_Tx,prime(I_U,sizeM));
 
         Print(C_LU);
         Print(C_RU);
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[2] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /* 
          * Contract T_U[0..sizeM-1] with X[row,col] to obtain new T_U
@@ -497,8 +512,8 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(6) ----- T_U & X "<< std::string(54,'-') << std::endl;
-        tV.noprime();
-        tU.prime(ULINK,HSLINK);
+        tU_tV.second.noprime();
+        tU_tV.first.prime(ULINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
             std::cout <<"--- Before contraction T_U["<< col <<"] & X["<< row
                 <<","<< col <<"] ---"<< std::endl;
@@ -516,16 +531,25 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
             std::cout <<" --- Construct reduced T_U["<< col <<"] ---"
                 << std::endl;
             
-            T_U[col] = ( ( T_U[col]*tV.mapprime(ULINK,col-1,col) ) 
-                *delta(I_SVD_V,I_Fxd)*R ) *delta(I_Tx,prime(I_U,col));
+            // T_U[col] = ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
+            //     *delta(I_Tx,prime(I_U,col));
 
-            T_U[col] = ( ( T_U[col]*tU.mapprime(ULINK,col,col+1) ) 
-                *delta(I_SVD_U,I_Fxd)*R ) *delta(I_Tx,prime(I_U,col+1));
+            // T_U[col] = ( T_U[col]*tU_tV.first.mapprime(ULINK,col,col+1) ) 
+            //     *delta(I_Tx,prime(I_U,col+1));
+
+            T_U[col] = ( ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
+                *delta(I_Tx,prime(I_U,col)) )
+                *tU_tV.first.mapprime(ULINK,col,col+1) )
+                *delta(I_Tx,prime(I_U,col+1));
 
             T_U[col].noprime(VSLINK);
             std::cout << TAG_T_U <<"["<< col <<"]";
             printfln("= %s",T_U[col]);
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Row "<< row <<" done"<< std::endl;
     }
@@ -537,12 +561,80 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type) {
     std::cout <<"##### InsURow Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
+    for (int row=0; row<sizeN; row++) {
+
+        C_LU *= T_L[row];
+        C_RU *= T_R[row];
+
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
+        
+        switch(iso_type) {
+            case ISOMETRY_T1: {
+                tU_tV = isoT1( IndexSet(I_U, I_XH), 
+                    std::make_pair(prime(I_L,row+1),prime(I_R,row+1)),
+                    C_LU, C_RU);
+                break;
+            }
+            case ISOMETRY_T2: {
+                tU_tV = isoT2( IndexSet(I_U, I_XH),
+                    C_LU, C_LD, C_RD, C_RU);
+                break;
+            }
+            case ISOMETRY_T3: {
+                tU_tV = isoT3(
+                    std::make_pair(I_U, prime(I_U,sizeM)),
+                    std::make_pair(I_XH, prime(I_XH,1)),
+                    C_LU, C_RU);
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Isometry type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
+
+        // references to individual isometry tensors
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LU = ( C_LU*tU_tV.first )*delta(I_Tx,I_U);
+        C_RU = ( C_RU*tU_tV.second )*delta(I_Tx,prime(I_U,sizeM));
+
+        tU_tV.second.noprime();
+        tU_tV.first.prime(ULINK,HSLINK);
+        for (int col=0; col<sizeM; col++) {
+            T_U[col] *= sites[cToS[std::make_pair(row,col)]];
+    
+            T_U[col] = ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
+                 ) *delta(I_Tx,prime(I_U,col));
+
+            T_U[col] = ( ( T_U[col]*tU_tV.first.mapprime(ULINK,col,col+1) ) 
+                 ) *delta(I_Tx,prime(I_U,col+1));
+
+            T_U[col].noprime(VSLINK);
+        }
+
+    }
+
+    // End of cluster absorption
+    C_LU.noprime(LLINK);
+    C_RU.noprime(RLINK);
+}
+
+void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
+    std::vector<double> & accT) 
+{
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
     // sequentialy contract lower boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
     for (int row=sizeN-1; row>=0; row--) {
-
+        std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
         /*
          * Insert a copy of row into network to obtain following expanded TN:
          *
@@ -598,28 +690,34 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
         std::cout <<"After contraction"<< std::endl;
         Print(C_RD);
 
+        std::chrono::steady_clock::time_point t_iso_end =
+            std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
         /*
          * compute one of the "trivial" isometries
          *
          */
         std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
     
-        std::pair< ITensor, ITensor > isoPair;
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
         
         switch(iso_type) {
             case ISOMETRY_T1: {
-                isoPair = isoT1( IndexSet(I_D, I_XH), 
+                tU_tV = isoT1( IndexSet(I_D, I_XH), 
                     std::make_pair( prime(I_L,row),prime(I_R,row) ),
                     C_LD, C_RD);
                 break;
             }
             case ISOMETRY_T2: {
-                isoPair = isoT2( IndexSet(I_D, I_XH),
+                tU_tV = isoT2( IndexSet(I_D, I_XH),
                     C_LD, C_LU, C_RU, C_RD);
                 break;
             }
             case ISOMETRY_T3: {
-                isoPair = isoT3(
+                tU_tV = isoT3(
                     std::make_pair(I_D, prime(I_D,sizeM)),
                     std::make_pair(I_XH, prime(I_XH,1)),
                     C_LD, C_RD);
@@ -632,9 +730,9 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
             }
         }
 
-        // references to individual isometry tensors
-        ITensor& tU = isoPair.first;
-        ITensor& tV = isoPair.second;
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[1] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /*
          * Obtain new C_LD,C_RD by contraction of C_LD,C_RD 
@@ -657,14 +755,20 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(5) ----- Construct reduced C_LD,C_RD -----"<< std::endl;
-        auto I_SVD_U = findtype(tU.inds(),SVD_LINK);
-        auto I_SVD_V = findtype(tV.inds(),SVD_LINK);
-        C_LD = ( (C_LD*tU) *delta(I_SVD_U,I_Fxd)*R )*delta(I_Tx,I_D);
-        C_RD = ( (C_RD*tV) *delta(I_SVD_V,I_Fxd)*R )
-            *delta(I_Tx,prime(I_D,sizeM));
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LD = (C_LD*tU_tV.first)*delta(I_Tx,I_D);
+        C_RD = (C_RD*tU_tV.second)*delta(I_Tx,prime(I_D,sizeM));
 
         Print(C_LD);
         Print(C_RD);
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[2] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
         
         /* 
          * Contract T_D[0..sizeM-1] with X[row,col] to obtain new T_D
@@ -699,8 +803,8 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(6) ----- T_D & X "<< std::string(54,'-') << std::endl;
-        tV.noprime();
-        tU.prime(DLINK,HSLINK);
+        tU_tV.second.noprime();
+        tU_tV.first.prime(DLINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
             std::cout <<"--- Before contraction T_D["<< col <<"] & X["<< row
                 <<","<< col <<"] ---"<< std::endl;
@@ -718,16 +822,25 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
             std::cout <<" --- Construct reduced T_D["<< col <<"] ---"
                 << std::endl;
             
-            T_D[col] = ( ( T_D[col]*tV.mapprime(DLINK,col-1,col) ) 
-                *delta(I_SVD_V,I_Fxd)*R ) *delta(I_Tx,prime(I_D,col));
+            // T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
+            //     *delta(I_Tx,prime(I_D,col));
 
-            T_D[col] = ( ( T_D[col]*tU.mapprime(DLINK,col,col+1) ) 
-                *delta(I_SVD_U,I_Fxd)*R ) *delta(I_Tx,prime(I_D,col+1));
+            // T_D[col] = ( T_D[col]*tU_tV.first.mapprime(DLINK,col,col+1) )
+            //     *delta(I_Tx,prime(I_D,col+1));
+            
+            T_D[col] = ( ( ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
+                *delta(I_Tx,prime(I_D,col)) )
+                *tU_tV.first.mapprime(DLINK,col,col+1) )
+                *delta(I_Tx,prime(I_D,col+1));
 
             T_D[col].prime(VSLINK);
             std::cout << TAG_T_D <<"["<< col <<"]";
             printfln("= %s",T_D[col]);
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Row "<< row <<" done"<< std::endl;
     }
@@ -739,12 +852,80 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type) {
     std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
+    for (int row=sizeN-1; row>=0; row--) {
+
+        C_LD *= T_L[row];
+        C_RD *= T_R[row];
+
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
+
+        switch(iso_type) {
+            case ISOMETRY_T1: {
+                tU_tV = isoT1( IndexSet(I_D, I_XH), 
+                    std::make_pair( prime(I_L,row),prime(I_R,row) ),
+                    C_LD, C_RD);
+                break;
+            }
+            case ISOMETRY_T2: {
+                tU_tV = isoT2( IndexSet(I_D, I_XH),
+                    C_LD, C_LU, C_RU, C_RD);
+                break;
+            }
+            case ISOMETRY_T3: {
+                tU_tV = isoT3(
+                    std::make_pair(I_D, prime(I_D,sizeM)),
+                    std::make_pair(I_XH, prime(I_XH,1)),
+                    C_LD, C_RD);
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Isometry type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
+
+        // references to individual isometry tensors
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LD = (C_LD*tU_tV.first )*delta(I_Tx,I_D);
+        C_RD = (C_RD*tU_tV.second )*delta(I_Tx,prime(I_D,sizeM));
+
+        tU_tV.second.noprime();
+        tU_tV.first.prime(DLINK,HSLINK);
+        for (int col=0; col<sizeM; col++) {
+            T_D[col] *= sites[cToS[std::make_pair(row,col)]];
+            
+            T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) ) 
+                *delta(I_Tx,prime(I_D,col));
+
+            T_D[col] = ( T_D[col]*tU_tV.first.mapprime(DLINK,col,col+1) ) 
+                *delta(I_Tx,prime(I_D,col+1));
+
+            T_D[col].prime(VSLINK);
+        }
+
+    }
+
+    // End of cluster absorption
+    C_LD.prime(LLINK,sizeN);
+    C_RD.prime(RLINK,sizeN);
+}
+
+void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
+    std::vector<double> & accT)
+{
     std::cout <<"##### InsLCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
     for (int col=0; col<sizeM; col++) {
-        
+        std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
         /*
          * Insert a copy of column into network to obtain following expanded TN:
          *
@@ -806,28 +987,34 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
         std::cout <<"After contraction"<< std::endl;
         Print(C_LD);
 
+        std::chrono::steady_clock::time_point t_iso_end = 
+            std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
         /*
          * compute one of the "trivial" isometries
          *
          */
         std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
     
-        std::pair< ITensor, ITensor > isoPair;
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
         
         switch(iso_type) {
             case ISOMETRY_T1: {
-                isoPair = isoT1( IndexSet(I_L, I_XV), 
+                tU_tV = isoT1( IndexSet(I_L, I_XV), 
                     std::make_pair( prime(I_U,col+1),prime(I_D,col+1) ),
                     C_LU, C_LD);
                 break;
             }
             case ISOMETRY_T2: {
-                isoPair = isoT2( IndexSet(I_L, I_XV),
+                tU_tV = isoT2( IndexSet(I_L, I_XV),
                     C_LU, C_RU, C_RD, C_LD);
                 break;
             }
             case ISOMETRY_T3: {
-                isoPair = isoT3(
+                tU_tV = isoT3(
                     std::make_pair(I_L, prime(I_L,sizeN)),
                     std::make_pair(I_XV, prime(I_XV,1)),
                     C_LU, C_LD);
@@ -840,9 +1027,9 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
             }
         }
 
-        // references to individual isometry tensors
-        ITensor& tU = isoPair.first;
-        ITensor& tV = isoPair.second;
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[1] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /*
          * Obtain new C_LU,C_LD by contraction of C_LU,C_LD 
@@ -865,14 +1052,20 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(5) ----- Construct reduced C_LU,C_LD -----"<< std::endl;
-        auto I_SVD_U = findtype(tU.inds(),SVD_LINK);
-        auto I_SVD_V = findtype(tV.inds(),SVD_LINK);
-        C_LU = ( (C_LU*tU) *delta(I_SVD_U,I_Fxd)*R )*delta(I_Tx,I_L);
-        C_LD = ( (C_LD*tV) *delta(I_SVD_V,I_Fxd)*R )
-            *delta(I_Tx,prime(I_L,sizeN));
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LU = ( C_LU*tU_tV.first )*delta(I_Tx,I_L);
+        C_LD = ( C_LD*tU_tV.second )*delta(I_Tx,prime(I_L,sizeN));
 
         Print(C_LU);
         Print(C_LD);
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[2] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /* 
          * Contract T_L[0..sizeN-1] with X[row,col] to obtain new T_L
@@ -907,8 +1100,8 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(6) ----- T_L & X "<< std::string(54,'-') << std::endl;
-        tV.noprime();
-        tU.prime(LLINK,VSLINK);
+        tU_tV.second.noprime();
+        tU_tV.first.prime(LLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
             std::cout <<"--- Before contraction T_L["<< row <<"] & X["<< row
                 <<","<< col <<"] ---"<< std::endl;
@@ -926,16 +1119,25 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
             std::cout <<" --- Construct reduced T_L["<< row <<"] ---"
                 << std::endl;
             
-            T_L[row] = ( ( T_L[row]*tV.mapprime(LLINK,row-1,row) ) 
-                *delta(I_SVD_V,I_Fxd)*R ) *delta(I_Tx,prime(I_L,row));
+            // T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
+            //     *delta(I_Tx,prime(I_L,row));
 
-            T_L[row] = ( ( T_L[row]*tU.mapprime(LLINK,row,row+1) ) 
-                *delta(I_SVD_U,I_Fxd)*R ) *delta(I_Tx,prime(I_L,row+1));
+            // T_L[row] = ( T_L[row]*tU_tV.first.mapprime(LLINK,row,row+1) ) 
+            //     *delta(I_Tx,prime(I_L,row+1));
+            
+            T_L[row] = ( ( ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
+                *delta(I_Tx,prime(I_L,row)) )
+                *tU_tV.first.mapprime(LLINK,row,row+1) ) 
+                *delta(I_Tx,prime(I_L,row+1));
 
             T_L[row].noprime(HSLINK);
             std::cout << TAG_T_L <<"["<< row <<"]";
             printfln("= %s",T_L[row]);
         }
+        
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Column "<< col <<" done"<< std::endl;
     }
@@ -947,12 +1149,77 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type) {
     std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
+    for (int col=0; col<sizeM; col++) {
+        C_LU *= T_U[col];
+        C_LD *= T_D[col];
+
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
+        
+        switch(iso_type) {
+            case ISOMETRY_T1: {
+                tU_tV = isoT1( IndexSet(I_L, I_XV), 
+                    std::make_pair( prime(I_U,col+1),prime(I_D,col+1) ),
+                    C_LU, C_LD);
+                break;
+            }
+            case ISOMETRY_T2: {
+                tU_tV = isoT2( IndexSet(I_L, I_XV),
+                    C_LU, C_RU, C_RD, C_LD);
+                break;
+            }
+            case ISOMETRY_T3: {
+                tU_tV = isoT3(
+                    std::make_pair(I_L, prime(I_L,sizeN)),
+                    std::make_pair(I_XV, prime(I_XV,1)),
+                    C_LU, C_LD);
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Isometry type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
+
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_LU = (C_LU*tU_tV.first)*delta(I_Tx,I_L);
+        C_LD = (C_LD*tU_tV.second)*delta(I_Tx,prime(I_L,sizeN));
+
+        tU_tV.second.noprime();
+        tU_tV.first.prime(LLINK,VSLINK);
+        for (int row=0; row<sizeN; row++) {
+            T_L[row] *= sites[cToS[std::make_pair(row,col)]];
+
+            T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
+                *delta(I_Tx,prime(I_L,row));
+
+            T_L[row] = ( T_L[row]*tU_tV.first.mapprime(LLINK,row,row+1) ) 
+                *delta(I_Tx,prime(I_L,row+1));
+
+            T_L[row].noprime(HSLINK);
+        }
+    }
+
+    // End of cluster absorption
+    C_LU.noprime(ULINK);
+    C_LD.noprime(DLINK);
+}
+
+void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
+        std::vector<double> & accT) 
+{
     std::cout <<"##### InsRCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
     for (int col=sizeM-1; col>=0; col--) {
-        
+        std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
         /*
          * Insert a copy of column into network to obtain following expanded TN:
          *
@@ -1014,28 +1281,34 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
         std::cout <<"After contraction"<< std::endl;
         Print(C_RD);
 
+        std::chrono::steady_clock::time_point t_iso_end = 
+            std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
         /*
          * compute one of the "trivial" isometries
          *
          */
         std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
     
-        std::pair< ITensor, ITensor > isoPair;
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
         
         switch(iso_type) {
             case ISOMETRY_T1: {
-                isoPair = isoT1( IndexSet(I_R, I_XV), 
+                tU_tV = isoT1( IndexSet(I_R, I_XV), 
                     std::make_pair( prime(I_U,col),prime(I_D,col) ),
                     C_RU, C_RD);
                 break;
             }
             case ISOMETRY_T2: {
-                isoPair = isoT2( IndexSet(I_R, I_XV),
+                tU_tV = isoT2( IndexSet(I_R, I_XV),
                     C_RU, C_LU, C_LD, C_RD);
                 break;
             }
             case ISOMETRY_T3: {
-                isoPair = isoT3(
+                tU_tV = isoT3(
                     std::make_pair(I_R, prime(I_R,sizeN)),
                     std::make_pair(I_XV, prime(I_XV,1)),
                     C_RU, C_RD);
@@ -1048,9 +1321,9 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
             }
         }
 
-        // references to individual isometry tensors
-        ITensor& tU = isoPair.first;
-        ITensor& tV = isoPair.second;
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[1] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /*
          * Obtain new C_LU,C_LD by contraction of C_LU,C_LD 
@@ -1073,14 +1346,20 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(5) ----- Construct reduced C_RU,C_RD -----"<< std::endl;
-        auto I_SVD_U = findtype(tU.inds(),SVD_LINK);
-        auto I_SVD_V = findtype(tV.inds(),SVD_LINK);
-        C_RU = ( (C_RU*tU) *delta(I_SVD_U,I_Fxd)*R )*delta(I_Tx,I_R);
-        C_RD = ( (C_RD*tV) *delta(I_SVD_V,I_Fxd)*R )
-            *delta(I_Tx,prime(I_R,sizeN));
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_RU = (C_RU*tU_tV.first )*delta(I_Tx,I_R);
+        C_RD = (C_RD*tU_tV.second)*delta(I_Tx,prime(I_R,sizeN));
 
         Print(C_RU);
         Print(C_RD);
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[2] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         /* 
          * Contract T_R[0..sizeN-1] with X[row,col] to obtain new T_R
@@ -1115,8 +1394,8 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
          *
          */
         std::cout <<"(6) ----- T_R & X "<< std::string(54,'-') << std::endl;
-        tV.noprime();
-        tU.prime(RLINK,VSLINK);
+        tU_tV.second.noprime();
+        tU_tV.first.prime(RLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
             std::cout <<"--- Before contraction T_R["<< row <<"] & X["<< row
                 <<","<< col <<"] ---"<< std::endl;
@@ -1134,16 +1413,25 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
             std::cout <<" --- Construct reduced T_R["<< row <<"] ---"
                 << std::endl;
             
-            T_R[row] = ( ( T_R[row]*tV.mapprime(RLINK,row-1,row) ) 
-                *delta(I_SVD_V,I_Fxd)*R ) *delta(I_Tx,prime(I_R,row));
+            // T_R[row] = ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
+            //     *delta(I_Tx,prime(I_R,row));
 
-            T_R[row] = ( ( T_R[row]*tU.mapprime(RLINK,row,row+1) ) 
-                *delta(I_SVD_U,I_Fxd)*R ) *delta(I_Tx,prime(I_R,row+1));
+            // T_R[row] = ( T_R[row]*tU_tV.first.mapprime(RLINK,row,row+1) ) 
+            //     *delta(I_Tx,prime(I_R,row+1));
+
+            T_R[row] = ( ( ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
+                *delta(I_Tx,prime(I_R,row)) )
+                *tU_tV.first.mapprime(RLINK,row,row+1) ) 
+                *delta(I_Tx,prime(I_R,row+1));
 
             T_R[row].prime(HSLINK);
             std::cout << TAG_T_R <<"["<< row <<"]";
             printfln("= %s",T_R[row]);
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Column "<< col <<" done"<< std::endl;
     }
@@ -1153,6 +1441,68 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type) {
     C_RD.prime(DLINK,sizeM);
 
     std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
+}
+
+void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
+    for (int col=sizeM-1; col>=0; col--) {
+        C_RU *= T_U[col];
+        C_RD *= T_D[col];
+
+        // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
+        std::pair< ITensor, ITensor > tU_tV;
+        
+        switch(iso_type) {
+            case ISOMETRY_T1: {
+                tU_tV = isoT1( IndexSet(I_R, I_XV), 
+                    std::make_pair( prime(I_U,col),prime(I_D,col) ),
+                    C_RU, C_RD);
+                break;
+            }
+            case ISOMETRY_T2: {
+                tU_tV = isoT2( IndexSet(I_R, I_XV),
+                    C_RU, C_LU, C_LD, C_RD);
+                break;
+            }
+            case ISOMETRY_T3: {
+                tU_tV = isoT3(
+                    std::make_pair(I_R, prime(I_R,sizeN)),
+                    std::make_pair(I_XV, prime(I_XV,1)),
+                    C_RU, C_RD);
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Isometry type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
+
+        auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
+        auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
+        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
+
+        C_RU = ( C_RU*tU_tV.first )*delta(I_Tx,I_R);
+        C_RD = ( C_RD*tU_tV.second )*delta(I_Tx,prime(I_R,sizeN));
+
+        tU_tV.second.noprime();
+        tU_tV.first.prime(RLINK,VSLINK);
+        for (int row=0; row<sizeN; row++) {
+            T_R[row] *= sites[cToS[std::make_pair(row,col)]];
+            
+            T_R[row] = ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
+                *delta(I_Tx,prime(I_R,row));
+
+            T_R[row] = ( T_R[row]*tU_tV.first.mapprime(RLINK,row,row+1) ) 
+                *delta(I_Tx,prime(I_R,row+1));
+
+            T_R[row].prime(HSLINK);
+        }
+    }
+
+    // End of cluster absorption
+    C_RU.prime(ULINK,sizeM);
+    C_RD.prime(DLINK,sizeM);
 }
 
 // ########################################################################
@@ -1329,13 +1679,9 @@ std::pair<ITensor,ITensor> CtmEnv::isoT3(
 
     diagHermitian(T, tZ, Diag);
 
-    Print(tZ);
-    PrintData(Diag);
-
     auto tZstar = conj(tZ);
     tZstar = tZstar*delta(iS_Elink.first, iS_Elink.second)*
         delta(iS_Slink.first,iS_Slink.second);
-    Print(tZstar);
 
     auto cI = commonIndex(tZ, tZstar);
     tZ *= delta(cI, Index("dummy_diag",cI.m(),SVD_LINK));

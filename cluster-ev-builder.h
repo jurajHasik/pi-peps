@@ -63,6 +63,9 @@ class EVBuilder {
     std::pair< itensor::ITensor,itensor::ITensor > get2STOT_DBG(OP_2S op2s,
         itensor::ITensor const& TA, itensor::ITensor const& TB) const;
 
+    std::pair< itensor::ITensor,itensor::ITensor > get2STOT(OP_2S op2s,
+        itensor::ITensor const& TA, itensor::ITensor const& TB) const;
+
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment
@@ -73,6 +76,10 @@ class EVBuilder {
     // compute norm (contract TN) of NxM==(N,M) copies of cluster
     // surrounded by environment
     double getNormSupercell_DBG(std::pair<int,int> sc) const;
+
+    double getNormSupercell(std::pair<int,int> sc) const;
+
+    void linkCtmEnv(CtmEnv const& new_env);
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2

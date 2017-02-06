@@ -1,6 +1,7 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "cluster-ev-builder.h"
+#include <chrono>
 
 using namespace itensor;
 
@@ -97,31 +98,78 @@ int main( int argc, char *argv[] ) {
 
     ctmEnv.printSVDspec(); //DBG
 
-    CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T3;
+    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T3;
+
+    // holds timing for *_DBG moves
+    std::vector<double> accT(4,0.0);
+    // holding energies
+    std::vector<double> e_nnH;
+
+    // Build expectation value builder
+    EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv);
+
+    // Prepare rotated on-site tensor
+    auto RA = cluster.sites.at(cluster.siteIds[0]);
+    auto physI = findtype(RA.inds(),Site);
+    auto R = ITensor(physI, prime(physI,1));
+    for ( int i=1; i<=physI.m(); i++ ) {
+        R.set( physI(physI.m()+1-i), prime(physI,1)(i), pow(-1,i-1) );
+    }
+    RA *= R;
+    RA.prime(Site, -1);
+    PrintData(RA);
+    // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
+    auto op2s_ss = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.siteIds[0]),
+        RA);
+
+    // energy with initial environment
+    e_nnH.push_back( ev.eV_2sO(op2s_ss,
+        std::make_pair(0,0), std::make_pair(0,1)) );
+
+    // Start timing iteration loop
+    std::chrono::steady_clock::time_point t_begin = 
+        std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
-        ctmEnv.insURow_DBG(iso_type);
-        ctmEnv.insDRow_DBG(iso_type);
-        //ctmEnv.normalizePTN();
+        // ctmEnv.insURow_DBG(iso_type, accT);
+        // ctmEnv.insDRow_DBG(iso_type, accT);
+        // ctmEnv.insLCol_DBG(iso_type, accT);
+        // ctmEnv.insRCol_DBG(iso_type, accT);
 
-        ctmEnv.insLCol_DBG(iso_type);
-        ctmEnv.insRCol_DBG(iso_type);
+        ctmEnv.insURow(iso_type);
+        ctmEnv.insDRow(iso_type);
+        ctmEnv.insLCol(iso_type);
+        ctmEnv.insRCol(iso_type);
         //ctmEnv.normalizePTN();
 
         // Normalize
-        ctmEnv.normalizeBLE();
-        //ctmEnv.normalizePTN();
+        //ctmEnv.normalizeBLE();
+        ctmEnv.normalizePTN();
+
+        std::cout << "STEP " << iter << std::endl;
 
         if ( iter % 50 == 0 ) {
-            ctmEnv.computeSVDspec();
-            ctmEnv.printSVDspec(); //DBG
+            // ctmEnv.computeSVDspec();
+            // ctmEnv.printSVDspec();
+            ev.linkCtmEnv(ctmEnv);
+            e_nnH.push_back( ev.eV_2sO(op2s_ss,
+                std::make_pair(0,0), std::make_pair(0,1)) );
         }
     }
 
-    //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
+    // End timing iteration loop
+    std::chrono::steady_clock::time_point t_end =
+        std::chrono::steady_clock::now();
 
-    EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv);
+    std::cout <<"time [sec] = "<< std::chrono::duration_cast
+        <std::chrono::microseconds>(t_end - t_begin).count()/1000000.0 
+        << std::endl;
+    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+        <<" "<< accT[3] << std::endl;
+
+    //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
 
     auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, 
         cluster.sites.at(cluster.siteIds[0]), 0);
@@ -136,30 +184,18 @@ int main( int argc, char *argv[] ) {
     std::cout <<"SZ: "<< ev.eV_1sO(mpo_sz, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
-    auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
+    // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
+    auto op2s_id = ev.get2STOT(EVBuilder::OP2S_Id,
         cluster.sites.at(cluster.siteIds[0]),
         cluster.sites.at(cluster.siteIds[0]));
-
-    // Prepare rotated on-site tensor
-    auto RA = cluster.sites.at(cluster.siteIds[0]);
-    auto physI = findtype(RA.inds(),Site);
-    auto R = ITensor(physI, prime(physI,1));
-    for ( int i=1; i<=physI.m(); i++ ) {
-        R.set( physI(physI.m()+1-i), prime(physI,1)(i), pow(-1,i-1) );
-    }
-    RA *= R;
-    RA.prime(Site, -1);
-    PrintData(RA);
-
-    auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.siteIds[0]),
-        RA);
 
     std::cout <<"ID: "<< ev.eV_2sO(op2s_id,
         std::make_pair(0,1), std::make_pair(0,2)) << std::endl;
 
-    std::cout <<"SS: "<< ev.eV_2sO(op2s_ss,
-        std::make_pair(0,0), std::make_pair(0,1)) << std::endl;
+    std::cout <<"ITER: "<<" E:"<< std::endl;
+    for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
+        std::cout << i*50 <<" "<< 2.0*e_nnH[i] << std::endl;
+    }
 
     return 0;
 }

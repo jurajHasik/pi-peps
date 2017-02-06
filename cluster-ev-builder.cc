@@ -400,6 +400,171 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     return std::make_pair(OpA, OpB);
 }
 
+std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
+    ITensor const& TA, ITensor const& TB) const 
+{
+    /*
+     * 2-site operator acts on 2 physical indices
+     * 
+     *           A      B
+     * <bra|     s'     s'''
+     *          _|______|_   
+     *         |____OP____|
+     *           |      |
+     *           s      s''  |ket>     
+     *
+     */
+    auto s0 = findtype(TA.inds(), Site);
+    auto s1 = prime(s0,1);
+    auto s2 = prime(findtype(TB.inds(), Site), 2);
+    auto s3 = prime(s2,1);
+    // Assume s0 is different then s2
+
+    auto Op = ITensor(s0, s1, s2, s3);
+    
+    // check dimensions of phys indices on TA and TB
+    if( s0.m() != s2.m() ) {
+        std::cout <<"On-site tensors TA and TB have different dimension of"
+            <<" phys index"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+    int dimS = s0.m();
+
+    switch(op2s) {
+        case OP2S_Id: { // Identity operator 
+            for(int i=1;i<=dimS;i++) {
+                for(int j=1;j<=dimS;j++){
+                    Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
+                }
+            }
+            break;
+        }
+        case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
+            // Loop over <bra| indices
+            int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
+            int mbA, mbB, mkA, mkB;
+            double hVal;
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                    // Use Dynkin notation to specify irreps
+                    mbA = -(rS) + 2*(bA-1);
+                    mbB = -(rS) + 2*(bB-1);
+                    mkA = -(rS) + 2*(kA-1);
+                    mkB = -(rS) + 2*(kB-1);
+                    // Loop over possible values of m given by tensor product
+                    // of 2 spin (dimS-1) irreps (In Dynkin notation)
+                    hVal = 0.0;
+                    for(int m=-2*(rS);m<=2*(rS);m=m+2) {
+                        if ((mbA+mbB == m) && (mkA+mkB == m)) {
+
+                        hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
+                            *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
+                        }
+                    }
+                    if((bA == kA) && (bB == kB)) {
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+2.);
+                    } else {
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                    }
+                }}
+            }}
+            break;
+        }
+        case OP2S_SS: { 
+            // S^vec_i * S^vec_i+1 =
+            // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
+    
+            Index sBra = Index("sBra", dimS);
+            Index sKet = prime(sBra);
+            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
+            ITensor Sp = getSpinOp(MPO_S_P, sBra);
+            ITensor Sm = getSpinOp(MPO_S_M, sBra);
+            
+            double hVal;
+            // Loop over <bra| indices
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                
+                    hVal = Sz.real(sBra(bA),sKet(kA))
+                        *Sz.real(sBra(bB),sKet(kB))+0.5*(
+                        Sp.real(sBra(bA),sKet(kA))
+                        *Sm.real(sBra(bB),sKet(kB))+
+                        Sm.real(sBra(bA),sKet(kA))
+                        *Sp.real(sBra(bB),sKet(kB)));
+
+                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                }}
+            }}
+            break;
+        }
+        default: {
+            std::cout <<"Invalid OP_2S selection"<< std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+
+    // Perform SVD
+    /*         __
+     * I(s)---|  |--I(s)''    =>
+     *        |OP|            =>
+     * I(s)'--|__|--I(s)'''   =>
+     *            ___                      ___  
+     * => I(s)---|   |         _          |   |--I(s)''
+     * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
+     * => I(s)'--|___|                    |___|--I(s)'''
+     *
+     */
+    auto OpA = ITensor(s0, s1);
+    ITensor OpB, S; 
+
+    svd(Op, OpA, S, OpB);
+    
+    // Absorb singular values into, say, OpB
+    OpB = S*OpB.prime(Site,-2);
+
+    auto auxIA = noprime(findtype(TA.inds(), Link));
+    auto auxIB = noprime(findtype(TB.inds(), Link));
+
+    // Define combiner tensors Y*
+    auto C04A = combiner(auxIA, prime(auxIA,4));
+    auto C15A = prime(C04A,1);
+    auto C26A = prime(C04A,2);
+    auto C37A = prime(C04A,3);
+    auto C04B = combiner(auxIB, prime(auxIB,4));
+    auto C15B = prime(C04B,1);
+    auto C26B = prime(C04B,2);
+    auto C37B = prime(C04B,3);
+
+    OpA = (TA*OpA*( conj(TA).prime(Link,4).prime(Site,1) ))
+        *C04A*C15A*C26A*C37A;
+    OpB = (TB*OpB*( conj(TB).prime(Link,4).prime(Site,1) ))
+        *C04B*C15B*C26B*C37B;
+
+    // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
+    auto DH0A = delta(env.I_XH, commonIndex(OpA,C04A));
+    auto DV0A = delta(env.I_XV, commonIndex(OpA,C15A));
+    auto DH1A = delta(prime(env.I_XH,1), commonIndex(OpA,C26A));
+    auto DV1A = delta(prime(env.I_XV,1), commonIndex(OpA,C37A));
+    auto DH0B = delta(env.I_XH, commonIndex(OpB,C04B));
+    auto DV0B = delta(env.I_XV, commonIndex(OpB,C15B));
+    auto DH1B = delta(prime(env.I_XH,1), commonIndex(OpB,C26B));
+    auto DV1B = delta(prime(env.I_XV,1), commonIndex(OpB,C37B));
+
+    OpA = OpA*DH0A*DV0A*DH1A*DV1A;
+    OpB = OpB*DH0B*DV0B*DH1B*DV1B;
+
+    std::cout <<"OP2S as two MPOs OpA,OpB with additional index"<< std::endl;
+
+    return std::make_pair(OpA, OpB);
+}
+
 /* 
  * TODO implement evaluation on arbitrary large cluster
  * 
@@ -483,7 +648,7 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     }
     tN *= env.C_RU;
 
-    return sumels(tN)/getNormSupercell_DBG(std::make_pair(nR,nC));
+    return sumels(tN)/getNormSupercell(std::make_pair(nR,nC));
 }
 
 /* 
@@ -554,6 +719,62 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
     Print(tN);
 
     return norm(tN);
+}
+
+double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
+    // check N =< M condition
+    if ( sc.first > sc.second ) {
+        std::cout <<"Number of columns < number of rows in supercell"
+            << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    auto tN = env.C_LU;
+
+    for ( int row=0; row<sc.first*env.sizeN; row++ ) {
+        tN.prime(HSLINK,2);
+        // Reset index primeLevel when entering new cell=(copy of)cluster
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(LLINK, -env.sizeN);
+        }
+        tN *= env.T_L[row % env.sizeN];
+    }
+    tN *= env.C_LD;
+
+    for ( int col=0; col<sc.second*env.sizeM; col++ ) {
+        if ( (col > 0) && (col % env.sizeM == 0) ) {
+            tN.prime(DLINK, -env.sizeM);
+            tN.prime(ULINK, -env.sizeM);
+        }
+        tN *= env.T_D[col % env.sizeM];
+
+        for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+            tN.mapprime(0,1,VSLINK);
+            tN *= prime( env.sites.at(env.cToS.at(
+                std::make_pair(row % env.sizeN,col % env.sizeM))),
+                HSLINK, 2*(sc.first*env.sizeN-1-row) );
+        }
+        tN.prime(HSLINK,-1);
+        tN *= env.T_U[col % env.sizeM];
+    }
+
+    tN *= env.C_RD;
+    for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(RLINK, env.sizeN);
+        }
+
+        tN *= env.T_R[row % env.sizeN];
+    }
+    tN *= env.C_RU;
+
+    return norm(tN);
+}
+
+void EVBuilder::linkCtmEnv(CtmEnv const& new_env) {
+    env = new_env;
 }
 
 // std::complex<double> ExpValBuilder::expVal_1sO1sO_H(int dist, 

@@ -8,6 +8,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <chrono>
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-global.h"
 #include "itensor/all.h"
@@ -159,17 +160,17 @@ class CtmEnv
     // CTM iterative methods
 
     // Insert, Absorb & Renormalize U(p) row 
-    void insURow_DBG(ISOMETRY iso_type);
-//    void insURow();
+    void insURow_DBG(ISOMETRY iso_type, std::vector<double> & accT);
+    void insURow(ISOMETRY iso_type);
     // -||- D(own) row
-    void insDRow_DBG(ISOMETRY iso_type);
-//    void insDRow();
+    void insDRow_DBG(ISOMETRY iso_type, std::vector<double> & accT);
+    void insDRow(ISOMETRY iso_type);
     // Insert, Absorb & Renormalize R(ight) column
-    void insLCol_DBG(ISOMETRY iso_type);
-//    void insLCol();
+    void insLCol_DBG(ISOMETRY iso_type, std::vector<double> & accT);
+    void insLCol(ISOMETRY iso_type);
     // -||- L(eft) column
-    void insRCol_DBG(ISOMETRY iso_type);
-//    void insRCol();
+    void insRCol_DBG(ISOMETRY iso_type, std::vector<double> & accT);
+    void insRCol(ISOMETRY iso_type);
 
     // ########################################################################
     // isometries
