@@ -569,6 +569,99 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
  * TODO implement evaluation on arbitrary large cluster
  * 
  */
+double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
+    std::pair<int,int> siteA, std::pair<int,int> siteB) const
+{
+    std::cout <<">>>>> eV_2sO called <<<<<"<< std::endl;
+    /*
+     * Get the size of "super"cell assuming span along "col" direction
+     * is bigger then along "row" direction
+     *
+     *   <-- col --> 
+     *  |   |_|_|_|..|_|
+     * row  |_|_|_|..|_|             _
+     *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
+     *
+     */
+    if ( std::max(siteA.second, siteB.second) < std::max(siteA.first,
+        siteB.first) ) {
+        std::cout <<"Number of columns < number of rows in supercell"
+            << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // determine number of cells=clusters in row/col direction required
+    // to form the supercell
+    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
+        ((float)env.sizeN));
+    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
+        ((float)env.sizeM));
+
+    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
+
+    // Contract TN with Op inserted
+    auto tN = env.C_LU;
+
+    for ( int row=0; row<nR*env.sizeN; row++ ) {
+        tN.prime(HSLINK,2);
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(LLINK, -env.sizeN);
+        }
+        tN *= env.T_L[row % env.sizeN];
+    }
+    tN *= env.C_LD;
+
+    for ( int col=0; col<nC*env.sizeM; col++ ) {
+        if ( (col > 0) && (col % env.sizeM == 0) ) {
+            tN.prime(DLINK, -env.sizeM);
+            tN.prime(ULINK, -env.sizeM);
+        }
+        tN *= env.T_D[col % env.sizeM];
+
+        for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+            tN.mapprime(0,1,VSLINK);
+            if ( siteA.first == row && siteA.second == col ) {
+                std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
+                    << std::endl;
+                tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
+            } else if ( siteB.first == row && siteB.second == col ) {
+                std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
+                    << std::endl;
+                tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
+            } else {
+                tN *= prime( env.sites.at(env.cToS.at(
+                    std::make_pair(row % env.sizeN,col % env.sizeM))),
+                    HSLINK, 2*(nR*env.sizeN-1-row) );
+            }
+        }
+        tN.prime(HSLINK,-1);
+        tN *= env.T_U[col % env.sizeM];
+    }
+
+    Print(tN);
+
+    tN *= env.C_RD;
+    Print(tN);
+    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+        std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row) <<"->1 "<< std::endl;
+        
+        Print(env.T_R[row % env.sizeN]);
+        tN *= env.T_R[row % env.sizeN];
+
+        if ( (row > 0) && (row % env.sizeN == 0) ) {
+            tN.prime(RLINK, env.sizeN);
+            std::cout <<"RLINK RESET +"<< env.sizeN <<" prime"<< std::endl;
+        }
+        Print(tN);
+    }
+    tN *= env.C_RU;
+
+    Print(tN);
+
+    return sumels(tN)/getNormSupercell_DBG(std::make_pair(nR,nC));
+}
+
 double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     std::pair<int,int> siteA, std::pair<int,int> siteB) const
 {
@@ -641,10 +734,10 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     tN *= env.C_RD;
     for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
         tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+        tN *= env.T_R[row % env.sizeN];
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
         }
-        tN *= env.T_R[row % env.sizeN];
     }
     tN *= env.C_RU;
 
@@ -707,11 +800,11 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
     for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
         tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
 
+        tN *= env.T_R[row % env.sizeN];
+
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
         }
-
-        tN *= env.T_R[row % env.sizeN];
     }
     tN *= env.C_RU;
 
@@ -762,11 +855,11 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
     for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
         tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
 
+        tN *= env.T_R[row % env.sizeN];
+
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
         }
-
-        tN *= env.T_R[row % env.sizeN];
     }
     tN *= env.C_RU;
 

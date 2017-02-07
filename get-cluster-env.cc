@@ -125,7 +125,7 @@ int main( int argc, char *argv[] ) {
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO(op2s_ss,
-        std::make_pair(0,0), std::make_pair(0,1)) );
+        std::make_pair(0,1), std::make_pair(1,1)) );
 
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
@@ -155,7 +155,7 @@ int main( int argc, char *argv[] ) {
             // ctmEnv.printSVDspec();
             ev.linkCtmEnv(ctmEnv);
             e_nnH.push_back( ev.eV_2sO(op2s_ss,
-                std::make_pair(0,0), std::make_pair(0,1)) );
+                std::make_pair(0,1), std::make_pair(1,1)) );
         }
     }
 

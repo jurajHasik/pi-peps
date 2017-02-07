@@ -69,6 +69,10 @@ class EVBuilder {
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment
+     double eV_2sO_DBG(
+        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> siteA, std::pair<int,int> siteB) const;
+
     double eV_2sO(
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> siteA, std::pair<int,int> siteB) const;

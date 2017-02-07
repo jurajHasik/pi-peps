@@ -1540,9 +1540,9 @@ std::pair<ITensor,ITensor> CtmEnv::isoT1(IndexSet const& iS_tU,
     // Perform SVD
     svd(t1*delta( iS_delta.first, iS_delta.second )*t2, isoPair.first,
         S,isoPair.second, {"IndexType",SVD_LINK});
-    Print(isoPair.first);
-    Print(S);
-    Print(isoPair.second);
+    //Print(isoPair.first);
+    //Print(S);
+    //Print(isoPair.second);
 
     return isoPair;
 }
@@ -1618,18 +1618,18 @@ std::pair<ITensor,ITensor> CtmEnv::isoT2(IndexSet const& iS_tU,
     }
 
     auto T = t1*D1*t2;
-    Print(T);
+    //Print(T);
     T = T*D2*t3;
-    Print(T);
+    //Print(T);
     T = T*D3*t4;
-    Print(T);
+    //Print(T);
 
     // Perform SVD
     svd(T, isoPair.first,
         S,isoPair.second, {"IndexType",SVD_LINK});
-    Print(isoPair.first);
-    Print(S);
-    Print(isoPair.second);
+    //Print(isoPair.first);
+    //Print(S);
+    //Print(isoPair.second);
 
     return isoPair;
 }
