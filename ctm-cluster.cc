@@ -86,11 +86,6 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c)
             }
         }
     }
-    
-    I_Fxd = Index(TAG_I_FXD, x*d);
-    I_Tx  = Index(TAG_I_TX, x);
-    R = ITensor(I_Fxd, I_Tx);
-    for(int i=1; i<=x; i++) { R.set(I_Fxd(i), I_Tx(i), 1.+0._i); }
 
     // Construct vectors holding SVD spectrum of corner matrices
     spec = {
@@ -136,11 +131,6 @@ CtmEnv::CtmEnv (std::string t_name, CtmData const& ctmD, Cluster const& c)
             }
         }
     }
-    
-    I_Fxd = Index(TAG_I_FXD, x*d);
-    I_Tx  = Index(TAG_I_TX, x);
-    R = ITensor(I_Fxd, I_Tx);
-    for(int i=1; i<=x; i++) { R.set(I_Fxd(i), I_Tx(i), 1.+0._i); }
 
     // Construct vectors holding SVD spectrum of corner matrices
     spec = {
@@ -420,7 +410,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_U, I_XH),
+                tU_tV = isoT2('U', std::make_pair(I_U, I_XH),
                     C_LU, C_LD, C_RD, C_RU);
                 break;
             }
@@ -465,11 +455,9 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
         std::cout <<"(5) ----- Construct reduced C_LU,C_RU -----"<< std::endl;
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LU = (C_LU*tU_tV.first )*delta(I_Tx,I_U);
-        C_RU = (C_RU*tU_tV.second )*delta(I_Tx,prime(I_U,sizeM));
+        C_LU = (C_LU*tU_tV.first )*delta(I_SVD_U,I_U);
+        C_RU = (C_RU*tU_tV.second )*delta(I_SVD_V,prime(I_U,sizeM));
 
         Print(C_LU);
         Print(C_RU);
@@ -532,15 +520,15 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 << std::endl;
             
             // T_U[col] = ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
-            //     *delta(I_Tx,prime(I_U,col));
+            //     *delta(I_SVD_V,prime(I_U,col));
 
             // T_U[col] = ( T_U[col]*tU_tV.first.mapprime(ULINK,col,col+1) ) 
-            //     *delta(I_Tx,prime(I_U,col+1));
+            //     *delta(I_SVD_U,prime(I_U,col+1));
 
             T_U[col] = ( ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
-                *delta(I_Tx,prime(I_U,col)) )
+                *delta(I_SVD_V,prime(I_U,col)) )
                 *tU_tV.first.mapprime(ULINK,col,col+1) )
-                *delta(I_Tx,prime(I_U,col+1));
+                *delta(I_SVD_U,prime(I_U,col+1));
 
             T_U[col].noprime(VSLINK);
             std::cout << TAG_T_U <<"["<< col <<"]";
@@ -578,7 +566,7 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_U, I_XH),
+                tU_tV = isoT2('U', std::make_pair(I_U, I_XH),
                     C_LU, C_LD, C_RD, C_RU);
                 break;
             }
@@ -599,11 +587,9 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
         // references to individual isometry tensors
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LU = ( C_LU*tU_tV.first )*delta(I_Tx,I_U);
-        C_RU = ( C_RU*tU_tV.second )*delta(I_Tx,prime(I_U,sizeM));
+        C_LU = ( C_LU*tU_tV.first )*delta(I_SVD_U,I_U);
+        C_RU = ( C_RU*tU_tV.second )*delta(I_SVD_V,prime(I_U,sizeM));
 
         tU_tV.second.noprime();
         tU_tV.first.prime(ULINK,HSLINK);
@@ -611,10 +597,10 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
             T_U[col] *= sites[cToS[std::make_pair(row,col)]];
     
             T_U[col] = ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
-                 ) *delta(I_Tx,prime(I_U,col));
+                 ) *delta(I_SVD_V,prime(I_U,col));
 
             T_U[col] = ( ( T_U[col]*tU_tV.first.mapprime(ULINK,col,col+1) ) 
-                 ) *delta(I_Tx,prime(I_U,col+1));
+                 ) *delta(I_SVD_U,prime(I_U,col+1));
 
             T_U[col].noprime(VSLINK);
         }
@@ -712,7 +698,7 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_D, I_XH),
+                tU_tV = isoT2('D', std::make_pair(I_D, I_XH),
                     C_LD, C_LU, C_RU, C_RD);
                 break;
             }
@@ -757,11 +743,9 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
         std::cout <<"(5) ----- Construct reduced C_LD,C_RD -----"<< std::endl;
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LD = (C_LD*tU_tV.first)*delta(I_Tx,I_D);
-        C_RD = (C_RD*tU_tV.second)*delta(I_Tx,prime(I_D,sizeM));
+        C_LD = (C_LD*tU_tV.first)*delta(I_SVD_U,I_D);
+        C_RD = (C_RD*tU_tV.second)*delta(I_SVD_V,prime(I_D,sizeM));
 
         Print(C_LD);
         Print(C_RD);
@@ -823,15 +807,15 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 << std::endl;
             
             // T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
-            //     *delta(I_Tx,prime(I_D,col));
+            //     *delta(I_SVD_V,prime(I_D,col));
 
             // T_D[col] = ( T_D[col]*tU_tV.first.mapprime(DLINK,col,col+1) )
-            //     *delta(I_Tx,prime(I_D,col+1));
+            //     *delta(I_SVD_U,prime(I_D,col+1));
             
             T_D[col] = ( ( ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
-                *delta(I_Tx,prime(I_D,col)) )
+                *delta(I_SVD_V,prime(I_D,col)) )
                 *tU_tV.first.mapprime(DLINK,col,col+1) )
-                *delta(I_Tx,prime(I_D,col+1));
+                *delta(I_SVD_U,prime(I_D,col+1));
 
             T_D[col].prime(VSLINK);
             std::cout << TAG_T_D <<"["<< col <<"]";
@@ -869,7 +853,7 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_D, I_XH),
+                tU_tV = isoT2('D', std::make_pair(I_D, I_XH),
                     C_LD, C_LU, C_RU, C_RD);
                 break;
             }
@@ -890,11 +874,9 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
         // references to individual isometry tensors
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LD = (C_LD*tU_tV.first )*delta(I_Tx,I_D);
-        C_RD = (C_RD*tU_tV.second )*delta(I_Tx,prime(I_D,sizeM));
+        C_LD = (C_LD*tU_tV.first )*delta(I_SVD_U,I_D);
+        C_RD = (C_RD*tU_tV.second )*delta(I_SVD_V,prime(I_D,sizeM));
 
         tU_tV.second.noprime();
         tU_tV.first.prime(DLINK,HSLINK);
@@ -902,10 +884,10 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
             T_D[col] *= sites[cToS[std::make_pair(row,col)]];
             
             T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) ) 
-                *delta(I_Tx,prime(I_D,col));
+                *delta(I_SVD_V,prime(I_D,col));
 
             T_D[col] = ( T_D[col]*tU_tV.first.mapprime(DLINK,col,col+1) ) 
-                *delta(I_Tx,prime(I_D,col+1));
+                *delta(I_SVD_U,prime(I_D,col+1));
 
             T_D[col].prime(VSLINK);
         }
@@ -1009,7 +991,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_L, I_XV),
+                tU_tV = isoT2('L', std::make_pair(I_L, I_XV),
                     C_LU, C_RU, C_RD, C_LD);
                 break;
             }
@@ -1054,11 +1036,9 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
         std::cout <<"(5) ----- Construct reduced C_LU,C_LD -----"<< std::endl;
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LU = ( C_LU*tU_tV.first )*delta(I_Tx,I_L);
-        C_LD = ( C_LD*tU_tV.second )*delta(I_Tx,prime(I_L,sizeN));
+        C_LU = ( C_LU*tU_tV.first )*delta(I_SVD_U,I_L);
+        C_LD = ( C_LD*tU_tV.second )*delta(I_SVD_V,prime(I_L,sizeN));
 
         Print(C_LU);
         Print(C_LD);
@@ -1120,15 +1100,15 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 << std::endl;
             
             // T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
-            //     *delta(I_Tx,prime(I_L,row));
+            //     *delta(I_SVD_V,prime(I_L,row));
 
             // T_L[row] = ( T_L[row]*tU_tV.first.mapprime(LLINK,row,row+1) ) 
-            //     *delta(I_Tx,prime(I_L,row+1));
+            //     *delta(I_SVD_U,prime(I_L,row+1));
             
             T_L[row] = ( ( ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
-                *delta(I_Tx,prime(I_L,row)) )
+                *delta(I_SVD_V,prime(I_L,row)) )
                 *tU_tV.first.mapprime(LLINK,row,row+1) ) 
-                *delta(I_Tx,prime(I_L,row+1));
+                *delta(I_SVD_U,prime(I_L,row+1));
 
             T_L[row].noprime(HSLINK);
             std::cout << TAG_T_L <<"["<< row <<"]";
@@ -1165,7 +1145,7 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_L, I_XV),
+                tU_tV = isoT2('L', std::make_pair(I_L, I_XV),
                     C_LU, C_RU, C_RD, C_LD);
                 break;
             }
@@ -1185,11 +1165,9 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
 
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_LU = (C_LU*tU_tV.first)*delta(I_Tx,I_L);
-        C_LD = (C_LD*tU_tV.second)*delta(I_Tx,prime(I_L,sizeN));
+        C_LU = (C_LU*tU_tV.first)*delta(I_SVD_U,I_L);
+        C_LD = (C_LD*tU_tV.second)*delta(I_SVD_V,prime(I_L,sizeN));
 
         tU_tV.second.noprime();
         tU_tV.first.prime(LLINK,VSLINK);
@@ -1197,10 +1175,10 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
             T_L[row] *= sites[cToS[std::make_pair(row,col)]];
 
             T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
-                *delta(I_Tx,prime(I_L,row));
+                *delta(I_SVD_V,prime(I_L,row));
 
             T_L[row] = ( T_L[row]*tU_tV.first.mapprime(LLINK,row,row+1) ) 
-                *delta(I_Tx,prime(I_L,row+1));
+                *delta(I_SVD_U,prime(I_L,row+1));
 
             T_L[row].noprime(HSLINK);
         }
@@ -1303,7 +1281,7 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_R, I_XV),
+                tU_tV = isoT2('R', std::make_pair(I_R, I_XV),
                     C_RU, C_LU, C_LD, C_RD);
                 break;
             }
@@ -1348,11 +1326,9 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
         std::cout <<"(5) ----- Construct reduced C_RU,C_RD -----"<< std::endl;
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_RU = (C_RU*tU_tV.first )*delta(I_Tx,I_R);
-        C_RD = (C_RD*tU_tV.second)*delta(I_Tx,prime(I_R,sizeN));
+        C_RU = (C_RU*tU_tV.first )*delta(I_SVD_U,I_R);
+        C_RD = (C_RD*tU_tV.second)*delta(I_SVD_V,prime(I_R,sizeN));
 
         Print(C_RU);
         Print(C_RD);
@@ -1414,15 +1390,15 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 << std::endl;
             
             // T_R[row] = ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
-            //     *delta(I_Tx,prime(I_R,row));
+            //     *delta(I_SVD_V,prime(I_R,row));
 
             // T_R[row] = ( T_R[row]*tU_tV.first.mapprime(RLINK,row,row+1) ) 
-            //     *delta(I_Tx,prime(I_R,row+1));
+            //     *delta(I_SVD_U,prime(I_R,row+1));
 
             T_R[row] = ( ( ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
-                *delta(I_Tx,prime(I_R,row)) )
+                *delta(I_SVD_V,prime(I_R,row)) )
                 *tU_tV.first.mapprime(RLINK,row,row+1) ) 
-                *delta(I_Tx,prime(I_R,row+1));
+                *delta(I_SVD_U,prime(I_R,row+1));
 
             T_R[row].prime(HSLINK);
             std::cout << TAG_T_R <<"["<< row <<"]";
@@ -1459,7 +1435,7 @@ void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
                 break;
             }
             case ISOMETRY_T2: {
-                tU_tV = isoT2( IndexSet(I_R, I_XV),
+                tU_tV = isoT2('R', std::make_pair(I_R, I_XV),
                     C_RU, C_LU, C_LD, C_RD);
                 break;
             }
@@ -1479,11 +1455,9 @@ void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
 
         auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
-        tU_tV.first  *= delta(I_SVD_U,I_Fxd)*R;
-        tU_tV.second *= delta(I_SVD_V,I_Fxd)*R;
 
-        C_RU = ( C_RU*tU_tV.first )*delta(I_Tx,I_R);
-        C_RD = ( C_RD*tU_tV.second )*delta(I_Tx,prime(I_R,sizeN));
+        C_RU = ( C_RU*tU_tV.first )*delta(I_SVD_U,I_R);
+        C_RD = ( C_RD*tU_tV.second )*delta(I_SVD_V,prime(I_R,sizeN));
 
         tU_tV.second.noprime();
         tU_tV.first.prime(RLINK,VSLINK);
@@ -1491,10 +1465,10 @@ void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
             T_R[row] *= sites[cToS[std::make_pair(row,col)]];
             
             T_R[row] = ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
-                *delta(I_Tx,prime(I_R,row));
+                *delta(I_SVD_V,prime(I_R,row));
 
             T_R[row] = ( T_R[row]*tU_tV.first.mapprime(RLINK,row,row+1) ) 
-                *delta(I_Tx,prime(I_R,row+1));
+                *delta(I_SVD_U,prime(I_R,row+1));
 
             T_R[row].prime(HSLINK);
         }
@@ -1547,7 +1521,8 @@ std::pair<ITensor,ITensor> CtmEnv::isoT1(IndexSet const& iS_tU,
     return isoPair;
 }
 
-std::pair<ITensor,ITensor> CtmEnv::isoT2(IndexSet const& iS_tU,
+std::pair<ITensor,ITensor> CtmEnv::isoT2(char ctmMove,
+    std::pair< Index, Index > const& iS_tU,
     ITensor const& t1, ITensor const& t2, 
     ITensor const& t3, ITensor const& t4) const {
     /*
@@ -1570,68 +1545,103 @@ std::pair<ITensor,ITensor> CtmEnv::isoT2(IndexSet const& iS_tU,
      *     i_S--|__/                      \__|--I_S1
      *
      */
-    // Prepare matrices for SVD - isoPair holds (tU,tV), S holds SVD values
-    std::pair< ITensor, ITensor > isoPair = 
-       std::make_pair(ITensor(iS_tU), ITensor());
-    ITensor S;
+    // Assume we always receive iS_tU.first with prime level 0
+    // and t[1..4] are in respective order
 
     // possible delta tensors (or simply scalars of value 1)
-    ITensor D1, D2, D3;
+    ITensor D1, D2, D3, DR;
 
-    // Find indices of same IndexType on t1 & t2
-    for ( auto const& i : t2.inds() ) {
-        Index I = findtype(t1, i.type());
-        if( I ) {
-            if( I.primeLevel() == i.primeLevel() ) {
+    switch(ctmMove) {
+        case 'U': {
+            D2 = delta(findtype(t2.inds(),DLINK),findtype(t3.inds(),DLINK));
+            if( sizeM > 1 ) {
+                DR = delta(prime(iS_tU.first,sizeM), prime(iS_tU.first));
+            } else {
+                DR = ITensor(1.);
+            }
+            if ( sizeN > 1 ) {
+                D1 = delta(findtype(t1.inds(),LLINK),findtype(t2.inds(),LLINK));
+                D3 = delta(findtype(t3.inds(),RLINK),findtype(t4.inds(),RLINK));
+            } else {
                 D1 = ITensor(1.);
-            } else {
-                D1 = delta(I,i);
-            }
-            break;
-        }
-    }
-
-    // Find indices of same IndexType on t2 & t3
-    for ( auto const& i : t3.inds() ) {
-        Index I = findtype(t2, i.type());
-        if( I ) {
-            if( I.primeLevel() == i.primeLevel() ) {
-                D2 = ITensor(1.);
-            } else {
-                D2 = delta(I,i);
-            }
-            break;
-        }
-    }
-
-    // Find indices of same IndexType on t3 & t4
-    for ( auto const& i : t3.inds() ) {
-        Index I = findtype(t4, i.type());
-        if( I ) {
-            if( I.primeLevel() == i.primeLevel() ) {
                 D3 = ITensor(1.);
-            } else {
-                D3 = delta(I,i);
             }
+            break;
+        }
+        case 'R': {
+            D2 = delta(findtype(t2.inds(),LLINK),findtype(t3.inds(),LLINK));
+            if( sizeN > 1 ) {
+                DR = delta(prime(iS_tU.first,sizeN), prime(iS_tU.first));
+            } else {
+                DR = ITensor(1.);
+            }
+            if ( sizeM > 1 ) {
+                D1 = delta(findtype(t1.inds(),ULINK),findtype(t2.inds(),ULINK));
+                D3 = delta(findtype(t3.inds(),DLINK),findtype(t4.inds(),DLINK));
+            } else {
+                D1 = ITensor(1.);
+                D3 = ITensor(1.);
+            }
+            break;
+        }
+        case 'D': {
+            D2 = delta(findtype(t2.inds(),ULINK),findtype(t3.inds(),ULINK));
+            if( sizeM > 1 ) {
+                DR = delta(prime(iS_tU.first,sizeM), prime(iS_tU.first));
+            } else {
+                DR = ITensor(1.);
+            }
+            if ( sizeN > 1 ) {
+                D1 = delta(findtype(t1.inds(),LLINK),findtype(t2.inds(),LLINK));
+                D3 = delta(findtype(t3.inds(),RLINK),findtype(t4.inds(),RLINK));
+            } else {
+                D1 = ITensor(1.);
+                D3 = ITensor(1.);
+            }
+            break;
+        }
+        case 'L': {
+            D2 = delta(findtype(t2.inds(),RLINK),findtype(t3.inds(),RLINK));
+            if( sizeN > 1 ) {
+                DR = delta(prime(iS_tU.first,sizeN), prime(iS_tU.first));
+            } else {
+                DR = ITensor(1.);
+            }
+            if ( sizeM > 1 ) {
+                D1 = delta(findtype(t1.inds(),ULINK),findtype(t2.inds(),ULINK));
+                D3 = delta(findtype(t3.inds(),DLINK),findtype(t4.inds(),DLINK));
+            } else {
+                D1 = ITensor(1.);
+                D3 = ITensor(1.);
+            }
+            break;
+        }
+        default: {
+            std::cout <<"Unsupported ctmMove type - expecting one of "
+                <<" U,R,D or L"<< std::endl;
+            exit(EXIT_FAILURE);
             break;
         }
     }
 
-    auto T = t1*D1*t2;
-    //Print(T);
-    T = T*D2*t3;
-    //Print(T);
-    T = T*D3*t4;
-    //Print(T);
+    auto T = ( ( ( t1*D1*t2 )*D2*t3 )*D3*t4 )*DR;
+    T += swapPrime(conj(T),0,1);
 
-    // Perform SVD
-    svd(T, isoPair.first,
-        S,isoPair.second, {"IndexType",SVD_LINK});
-    //Print(isoPair.first);
-    //Print(S);
-    //Print(isoPair.second);
+    ITensor tZ, Diag;
 
-    return isoPair;
+    Args args = Args::global();
+    args.add("Maxm",x);
+    diagHermitian(T, tZ, Diag, args);
+
+    auto tZstar = conj(tZ);
+    tZstar.prime(iS_tU.first, iS_tU.second);
+    tZstar *= DR;
+
+    auto cI = commonIndex(tZ, tZstar);
+    tZ *= delta(cI, Index("dummy_diag",cI.m(),SVD_LINK));
+    tZstar *= delta(cI, Index("dummy_diag",cI.m(),SVD_LINK));
+
+    return std::make_pair(tZ, tZstar);
 }
 
 std::pair<ITensor,ITensor> CtmEnv::isoT3(
@@ -1677,7 +1687,10 @@ std::pair<ITensor,ITensor> CtmEnv::isoT3(
 
     ITensor tZ, Diag;
 
-    diagHermitian(T, tZ, Diag);
+    // Compute just x(=chi) largest eigevecs
+    Args args = Args::global();
+    args.add("Maxm",x);
+    diagHermitian(T, tZ, Diag, args);
 
     auto tZstar = conj(tZ);
     tZstar = tZstar*delta(iS_Elink.first, iS_Elink.second)*
@@ -1791,6 +1804,68 @@ void CtmEnv::normalizeBLE() {
     for (int i=0; i<sizeN; i++) {
         normalizeBLE_T(T_L[i]);
         normalizeBLE_T(T_R[i]);
+    }
+}
+
+/*
+ * Normalize the tensors By their Largest Element (BLE)
+ * taking vector of half-row/column tensors and two corner tensors
+ * To be used after any of directional CTM steps labeled U,R,D and L
+ *
+ */
+void CtmEnv::normalizeBLE_ctmStep(char ctmMove) {
+
+    auto normalizeBLE_T = [](ITensor& t)
+    {
+        double m = 0.;
+        auto max_m = [&m](double d)
+        {
+            if(std::abs(d) > m) m = std::abs(d);
+        };
+
+        t.visit(max_m);
+        t /= m;
+    };
+
+    switch(ctmMove) {
+        case 'U': {
+            normalizeBLE_T(C_LU);
+            normalizeBLE_T(C_RU);
+            for (int i=0; i<sizeM; i++) {
+                normalizeBLE_T(T_U[i]);
+            }
+            break;
+        }
+        case 'R': {
+            normalizeBLE_T(C_RU);
+            normalizeBLE_T(C_RD);
+            for (int i=0; i<sizeN; i++) {
+                normalizeBLE_T(T_R[i]);
+            }
+            break;
+        }
+        case 'D': {
+            normalizeBLE_T(C_RD);
+            normalizeBLE_T(C_LD);
+            for (int i=0; i<sizeM; i++) {
+                normalizeBLE_T(T_D[i]);
+            }
+            break;
+        }
+        case 'L': {
+            normalizeBLE_T(C_LD);
+            normalizeBLE_T(C_LU);
+            for (int i=0; i<sizeN; i++) {
+                normalizeBLE_T(T_L[i]);
+            }
+            break;
+        }
+        default: {
+            std::cout <<"Unsupported ctmMove type - expecting one of "
+                <<" U,R,D or L"<< std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
     }
 }
 

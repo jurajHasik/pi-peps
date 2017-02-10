@@ -111,15 +111,6 @@ class CtmEnv
     // aux bond indices of sites ( of auxBondDim == d)
     itensor::Index I_XH, I_XV;
 
-    /*
-     * const(for given x,d) reduction tensor with indices 
-     * index "From" I_Fxd with dim(I_Fxd)=x*d 
-     * index "To"   I_Tx  with dim(I_Tx)=x
-     *
-     */
-    itensor::Index I_Fxd, I_Tx;
-    itensor::ITensor R;
-
     // simple wrapper around spectra of corner matrices 
     CtmSpec spec;
 
@@ -175,13 +166,14 @@ class CtmEnv
     // ########################################################################
     // isometries
 
+    // NOT WORKING in current form
     std::pair< itensor::ITensor,itensor::ITensor > isoT1(
         itensor::IndexSet const& iS_tU, 
         std::pair< itensor::Index, itensor::Index > const& iS_delta,
         itensor::ITensor const& t1, itensor::ITensor const& t2) const;
 
-    std::pair< itensor::ITensor,itensor::ITensor > isoT2(
-        itensor::IndexSet const& iS_tU,
+    std::pair< itensor::ITensor,itensor::ITensor > isoT2(char ctmMove,
+        std::pair< itensor::Index, itensor::Index > const& iS_tU,
         itensor::ITensor const& t1, itensor::ITensor const& t2, 
         itensor::ITensor const& t3, itensor::ITensor const& t4) const;
 
@@ -199,6 +191,8 @@ class CtmEnv
     double getNorm() const;
 
     void normalizeBLE();
+
+    void normalizeBLE_ctmStep(char ctmMove);
 
     void normalizePTN();
 
