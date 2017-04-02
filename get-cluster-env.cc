@@ -1,5 +1,5 @@
 #include "ctm-cluster-io.h"
-#include "ctm-cluster.h"
+#include "ctm-cluster-env.h"
 #include "cluster-ev-builder.h"
 #include <chrono>
 
@@ -110,18 +110,17 @@ int main( int argc, char *argv[] ) {
 
     // Prepare rotated on-site tensor
     auto RA = cluster.sites.at(cluster.siteIds[0]);
-    auto physI = findtype(RA.inds(),Site);
+    auto physI = findtype(RA.inds(),PHYS);
     auto R = ITensor(physI, prime(physI,1));
     for ( int i=1; i<=physI.m(); i++ ) {
         R.set( physI(physI.m()+1-i), prime(physI,1)(i), pow(-1,i-1) );
     }
     RA *= R;
-    RA.prime(Site, -1);
+    RA.prime(PHYS, -1);
     PrintData(RA);
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.siteIds[0]),
-        RA);
+        RA, cluster.sites.at(cluster.siteIds[1]));
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO(op2s_ss,
@@ -179,26 +178,25 @@ int main( int argc, char *argv[] ) {
 
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
 
-    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, 
-        cluster.sites.at(cluster.siteIds[0]), 0);
+    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, cluster.siteIds[0], 0);
 
-    auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, 
-        cluster.sites.at(cluster.siteIds[0]), 0);
+    auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, cluster.siteIds[0], 0);
 
-    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, 
-        cluster.sites.at(cluster.siteIds[0]), 0);
+    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, cluster.siteIds[0], 0);
 
     std::cout <<"ID: "<< ev.eV_1sO(mpo_id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ: "<< ev.eV_1sO(mpo_sz, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
     // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
+    std::cout <<"Constructing 2-site MPO on sites: "<< cluster.siteIds[0]
+        <<" and "<< cluster.siteIds[1] << std::endl;
     auto op2s_id = ev.get2STOT(EVBuilder::OP2S_Id,
         cluster.sites.at(cluster.siteIds[0]),
-        cluster.sites.at(cluster.siteIds[0]));
+        cluster.sites.at(cluster.siteIds[1]));
 
     std::cout <<"ID: "<< ev.eV_2sO(op2s_id,
-        std::make_pair(0,1), std::make_pair(0,2)) << std::endl;
+        std::make_pair(0,0), std::make_pair(0,3)) << std::endl;
 
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {

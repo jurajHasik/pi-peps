@@ -2,7 +2,11 @@
 #define __CTM_CLS_GLOBAL_
 
 #include <string>
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
+#pragma GCC diagnostic pop
 
 /*
  * ENVironment of nxm cluster 
@@ -34,6 +38,8 @@ const char* const TAG_IT_LLINK  = "Llink";
 const char* const TAG_IT_HSLINK = "HSlink";
 const char* const TAG_IT_VSLINK = "VSlink";
 
+const char* const TAG_IT_MPOLINK  = "MPOlink";
+
 // types for auxiliary indices of environment 
 const auto ULINK = itensor::IndexType(TAG_IT_ULINK);
 const auto RLINK = itensor::IndexType(TAG_IT_RLINK);
@@ -41,6 +47,7 @@ const auto DLINK = itensor::IndexType(TAG_IT_DLINK);
 const auto LLINK = itensor::IndexType(TAG_IT_LLINK);
 
 // types for auxiliary indices of on-Site tensors (H-horizontal, V-vertical)
+// contracted through physical index
 const auto HSLINK = itensor::IndexType(TAG_IT_HSLINK);
 const auto VSLINK = itensor::IndexType(TAG_IT_VSLINK);
 
@@ -52,10 +59,12 @@ const std::string TAG_I_U = "I_U";
 const std::string TAG_I_R = "I_R";
 const std::string TAG_I_D = "I_D";
 const std::string TAG_I_L = "I_L";
-// SITE auxiliary indices
+// SITE auxiliary indices (Contracted by physical index)
 const std::string TAG_I_XV = "I_XV";
 const std::string TAG_I_XH = "I_XH";
+
 // ISOMETRY auxiliary indices
+// TODO unused, delete 
 const std::string TAG_I_FXD = "I_FXD";
 const std::string TAG_I_TX  = "I_TX";
 

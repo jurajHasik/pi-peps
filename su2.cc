@@ -2,6 +2,93 @@
 
 using namespace std;
 
+itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
+
+    auto s1 = prime(s);
+    int dimS = s.m();
+
+    // Construct MPO
+    auto Op = itensor::ITensor(s, s1);
+
+    switch(su2o) {
+        case SU2_Id: {
+            std::cout <<">>>>> Constructing 1sO: Id <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), 1.0);
+            break;
+        }
+        case SU2_S_Z: {
+            std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), 0.5*(-(dimS-1) 
+                    + (i-1)*2));
+            break;
+        }
+        case SU2_S_Z2: {
+            std::cout <<">>>>> Constructing 1sO: Sz^2 <<<<<"<< std::endl;
+            for(int i=1;i<=dimS;i++)
+                Op.set(s1(i), s(i), pow(0.5*(-(dimS-1) 
+                    + (i-1)*2), 2.0));
+            break;
+        }
+        /* 
+         * The s^+ operator maps states with s^z = x to states with 
+         * s^z = x+1 . Therefore as a matrix it must act as follows
+         * on vector of basis elements of spin S representation (in 
+         * this particular order) |S M> 
+         *       
+         *     |-S  >    C_+|-S+1>           0 1 0 0 ... 0 
+         * s^+ |-S+1>  = C_+|-S+2>  => S^+ = 0 0 1 0 ... 0 x C_+
+         *      ...         ...              ...
+         *     | S-1>    C_+| S  >           0    ...  0 1
+         *     | S  >     0                  0    ...  0 0
+         *
+         * where C_+ = sqrt(S(S+1)-M(M+1))
+         *
+         */
+        case SU2_S_P: {
+            std::cout <<">>>>> Constructing 1sO: S^+ <<<<<"<< std::endl;
+            for(int i=1;i<=dimS-1;i++)
+                Op.set(s1(i), s(i+1), pow( 0.5*(dimS-1)
+                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
+                    *(-0.5*(dimS-1)+(i-1)+1), 0.5));
+            break;
+        }
+        /* 
+         * The s^- operator maps states with s^z = x to states with 
+         * s^z = x-1 . Therefore as a matrix it must act as follows
+         * on vector of basis elements of spin S representation (in 
+         * this particular order) |S M> 
+         *       
+         *     |-S  >     0                  0 0 0 0 ... 0 
+         * s^- |-S+1>  = C_-|-S  >  => S^- = 1 0 0 0 ... 0 x C_-
+         *      ...         ...              ...
+         *     | S-1>    C_-| S-2>           0   ... 1 0 0
+         *     | S  >    C_-| S-1>           0   ... 0 1 0
+         * 
+         * where C_- = sqrt(S(S+1)-M(M-1))
+         *
+         */
+        case SU2_S_M: {
+            std::cout <<">>>>> Constructing 1sO: S^- <<<<<"<< std::endl;
+            for(int i=2;i<=dimS;i++)
+                Op.set(s1(i), s(i-1), pow( 0.5*(dimS-1)
+                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
+                    *(-0.5*(dimS-1)+(i-1)-1), 0.5));
+            break;
+        }
+        default: {
+            std::cout << "Invalid MPO selection" << std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+
+    PrintData(Op);
+
+    return Op;
+}
+
 double SU2_getCG(int j1, int j2, int j, int m1, int m2, int m) {
     // (!) Use Dynkin notation to pass desired irreps
     

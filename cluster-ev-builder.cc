@@ -14,7 +14,7 @@ EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls,
  *      on-site tensor T as argument
  * 
  */
-ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
+MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
         int primeLvl) const 
 {
     /*
@@ -55,10 +55,11 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
      *
      */
 
+    ITensor const& T = cls.sites.at(siteId);
     // Get auxBond index of T
-    auto auxI = noprime(findtype(T.inds(), Link));
+    auto auxI = noprime(findtype(T.inds(), AUXLINK));
     // Get physical index of T
-    auto s = noprime(findtype(T.inds(), Site));
+    auto s = noprime(findtype(T.inds(), PHYS));
 
     if(auxI.m()*auxI.m() != env.d) {
         std::cout <<"ctmEnv.d does not agree with onSiteT.dimD^2"<< std::endl;
@@ -101,7 +102,8 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
     //     Op.prime(-2);
     // }
 
-    auto TOT = (T*Op*( conj(T).prime(Link,4).prime(Site,1) ))*C04*C15*C26*C37;
+    auto TOT = (T*Op*( conj(T).prime(AUXLINK,4).prime(PHYS,1) ))
+        *C04*C15*C26*C37;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
     auto DH0 = delta(env.I_XH, commonIndex(TOT,C04));
@@ -109,14 +111,30 @@ ITensor EVBuilder::getTOT_DBG(MPO mpo, itensor::ITensor const& T,
     auto DH1 = delta(prime(env.I_XH,1), commonIndex(TOT,C26));
     auto DV1 = delta(prime(env.I_XV,1), commonIndex(TOT,C37));
 
-    return TOT*DH0*DV0*DH1*DV1;
+    MpoNS result;
+    result.nSite = 1;
+    result.mpo.push_back(TOT*DH0*DV0*DH1*DV1);
+    result.siteIds.push_back(siteId);
+
+    return result;
 }
 
 /*
  * TODO consider imaginary part of the result as well
  *
  */
-double EVBuilder::eV_1sO(ITensor const& op, std::pair<int,int> site) const {
+double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
+    if ( op.nSite != 1) {
+        std::cout <<"MPO with #sites != 1 (#sites = "<< op.nSite 
+            << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if ( !(op.siteIds[0] == cls.cToS.at(std::make_pair(
+        site.first % cls.sizeN, site.second % cls.sizeN)) ) ) {
+        std::cout <<"WARNING: MPO constructed on site "<< op.siteIds[0]
+            <<" inserted at site "<< cls.cToS.at(site) << std::endl;
+    }
+
     auto ev = env.C_LU;
     /*
      * Suppose sizeM >= sizeN, contract say left boundary of environment 
@@ -162,8 +180,9 @@ double EVBuilder::eV_1sO(ITensor const& op, std::pair<int,int> site) const {
             // substitute original on-site tensor for op at position site
             if ( site.first == row && site.second == col ) {
                 std::cout <<"OP inserted at ("<< row <<","<< col <<")"
-                    << std::endl;
-                ev *= prime(op, HSLINK, 2*(env.sizeN-1-row));
+                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN, 
+                        col % cls.sizeN)) << std::endl;
+                ev *= prime(op.mpo[0], HSLINK, 2*(env.sizeN-1-row));
             } else {
                 ev *= prime(env.sites.at(env.cToS.at(std::make_pair(row,col))),
                     HSLINK, 2*(env.sizeN-1-row));
@@ -203,11 +222,11 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
      *           s      s''  |ket>     
      *
      */
-    auto s0 = findtype(TA.inds(), Site);
+    auto s0 = findtype(TA.inds(), PHYS);
     auto s1 = prime(s0,1);
-    auto s2 = prime(findtype(TB.inds(), Site), 2);
+    auto s2 = prime(findtype(TB.inds(), PHYS), 2);
     auto s3 = prime(s2,1);
-    // Assume s0 is different then s2
+    // Assume s0 is different then s2S
 
     auto Op = ITensor(s0, s1, s2, s3);
     
@@ -330,7 +349,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     Print(S);
     Print(OpB);
     // Absorb singular values into, say, OpB
-    OpB = S*OpB.prime(Site,-2);
+    OpB = S*OpB.prime(PHYS,-2);
 
     // Contract OpA and OpB with <bra| & |ket> on-site tensors TA and TB 
     /*
@@ -362,8 +381,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     OpB = R1*OpB*R2;
     Print(OpB);*/
 
-    auto auxIA = noprime(findtype(TA.inds(), Link));
-    auto auxIB = noprime(findtype(TB.inds(), Link));
+    auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
+    auto auxIB = noprime(findtype(TB.inds(), AUXLINK));
 
     // Define combiner tensors Y*
     auto C04A = combiner(auxIA, prime(auxIA,4));
@@ -375,9 +394,9 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     auto C26B = prime(C04B,2);
     auto C37B = prime(C04B,3);
 
-    OpA = (TA*OpA*( conj(TA).prime(Link,4).prime(Site,1) ))
+    OpA = (TA*OpA*( conj(TA).prime(AUXLINK,4).prime(PHYS,1) ))
         *C04A*C15A*C26A*C37A;
-    OpB = (TB*OpB*( conj(TB).prime(Link,4).prime(Site,1) ))
+    OpB = (TB*OpB*( conj(TB).prime(AUXLINK,4).prime(PHYS,1) ))
         *C04B*C15B*C26B*C37B;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
@@ -414,9 +433,9 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
      *           s      s''  |ket>     
      *
      */
-    auto s0 = findtype(TA.inds(), Site);
+    auto s0 = findtype(TA.inds(), PHYS);
     auto s1 = prime(s0,1);
-    auto s2 = prime(findtype(TB.inds(), Site), 2);
+    auto s2 = prime(findtype(TB.inds(), PHYS), 2);
     auto s3 = prime(s2,1);
     // Assume s0 is different then s2
 
@@ -527,10 +546,10 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     svd(Op, OpA, S, OpB);
     
     // Absorb singular values into, say, OpB
-    OpB = S*OpB.prime(Site,-2);
+    OpB = S*OpB.prime(PHYS,-2);
 
-    auto auxIA = noprime(findtype(TA.inds(), Link));
-    auto auxIB = noprime(findtype(TB.inds(), Link));
+    auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
+    auto auxIB = noprime(findtype(TB.inds(), AUXLINK));
 
     // Define combiner tensors Y*
     auto C04A = combiner(auxIA, prime(auxIA,4));
@@ -542,9 +561,9 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     auto C26B = prime(C04B,2);
     auto C37B = prime(C04B,3);
 
-    OpA = (TA*OpA*( conj(TA).prime(Link,4).prime(Site,1) ))
+    OpA = (TA*OpA*( conj(TA).prime(AUXLINK,4).prime(PHYS,1) ))
         *C04A*C15A*C26A*C37A;
-    OpB = (TB*OpB*( conj(TB).prime(Link,4).prime(Site,1) ))
+    OpB = (TB*OpB*( conj(TB).prime(AUXLINK,4).prime(PHYS,1) ))
         *C04B*C15B*C26B*C37B;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
@@ -622,11 +641,13 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
             tN.mapprime(0,1,VSLINK);
             if ( siteA.first == row && siteA.second == col ) {
                 std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
-                    << std::endl;
+                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
+                     col % cls.sizeM)) << std::endl;
                 tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
             } else if ( siteB.first == row && siteB.second == col ) {
                 std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
-                    << std::endl;
+                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
+                     col % cls.sizeM)) << std::endl;
                 tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
             } else {
                 tN *= prime( env.sites.at(env.cToS.at(
@@ -715,11 +736,13 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
             tN.mapprime(0,1,VSLINK);
             if ( siteA.first == row && siteA.second == col ) {
                 std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
-                    << std::endl;
+                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
+                     col % cls.sizeM)) << std::endl;
                 tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
             } else if ( siteB.first == row && siteB.second == col ) {
                 std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
-                    << std::endl;
+                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
+                     col % cls.sizeM)) << std::endl;
                 tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
             } else {
                 tN *= prime( env.sites.at(env.cToS.at(
@@ -1194,79 +1217,29 @@ void EVBuilder::linkCtmEnv(CtmEnv const& new_env) {
 //     return sumelsC(ccBare)/sumelsC(ccNorm);
 // }
 
-ITensor EVBuilder::getSpinOp(MPO mpo, Index const& s) const {
+// TODO use getSpinOp defined in su2.h to get spin operator
+ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s) const {
 
-    auto s1 = prime(s);
-    int dimS = s.m();
-
-    // Construct MPO
-    auto Op = ITensor(s, s1);
-
+    SU2O su2o;
     switch(mpo) {
         case MPO_Id: {
-            std::cout <<">>>>> Constructing 1sO: Id <<<<<"<< std::endl;
-            for(int i=1;i<=dimS;i++)
-                Op.set(s1(i), s(i), 1.+0._i);
-            break;
+            su2o = SU2_Id;
+            break;    
         }
         case MPO_S_Z: {
-            std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<< std::endl;
-            for(int i=1;i<=dimS;i++)
-                Op.set(s1(i), s(i), 0.5*(-(dimS-1) 
-                    + (i-1)*2) + 0._i);
+            su2o = SU2_S_Z;
             break;
         }
         case MPO_S_Z2: {
-            std::cout <<">>>>> Constructing 1sO: Sz^2 <<<<<"<< std::endl;
-            for(int i=1;i<=dimS;i++)
-                Op.set(s1(i), s(i), pow(0.5*(-(dimS-1) 
-                    + (i-1)*2), 2.0) + 0._i);
+            su2o = SU2_S_Z2;
             break;
         }
-        /* 
-         * The s^+ operator maps states with s^z = x to states with 
-         * s^z = x+1 . Therefore as a matrix it must act as follows
-         * on vector of basis elements of spin S representation (in 
-         * this particular order) |S M> 
-         *       
-         *     |-S  >    C_+|-S+1>           0 1 0 0 ... 0 
-         * s^+ |-S+1>  = C_+|-S+2>  => S^+ = 0 0 1 0 ... 0 x C_+
-         *      ...         ...              ...
-         *     | S-1>    C_+| S  >           0    ...  0 1
-         *     | S  >     0                  0    ...  0 0
-         *
-         * where C_+ = sqrt(S(S+1)-M(M+1))
-         *
-         */
         case MPO_S_P: {
-            std::cout <<">>>>> Constructing 1sO: S^+ <<<<<"<< std::endl;
-            for(int i=1;i<=dimS-1;i++)
-                Op.set(s1(i), s(i+1), pow( 0.5*(dimS-1)
-                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
-                    *(-0.5*(dimS-1)+(i-1)+1), 0.5) + 0._i);
+            su2o = SU2_S_P;
             break;
         }
-        /* 
-         * The s^- operator maps states with s^z = x to states with 
-         * s^z = x-1 . Therefore as a matrix it must act as follows
-         * on vector of basis elements of spin S representation (in 
-         * this particular order) |S M> 
-         *       
-         *     |-S  >     0                  0 0 0 0 ... 0 
-         * s^- |-S+1>  = C_-|-S  >  => S^- = 1 0 0 0 ... 0 x C_-
-         *      ...         ...              ...
-         *     | S-1>    C_-| S-2>           0   ... 1 0 0
-         *     | S  >    C_-| S-1>           0   ... 0 1 0
-         * 
-         * where C_- = sqrt(S(S+1)-M(M-1))
-         *
-         */
         case MPO_S_M: {
-            std::cout <<">>>>> Constructing 1sO: S^- <<<<<"<< std::endl;
-            for(int i=2;i<=dimS;i++)
-                Op.set(s1(i), s(i-1), pow( 0.5*(dimS-1)
-                    *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
-                    *(-0.5*(dimS-1)+(i-1)-1), 0.5) + 0._i);
+            su2o = SU2_S_M;
             break;
         }
         default: {
@@ -1276,9 +1249,7 @@ ITensor EVBuilder::getSpinOp(MPO mpo, Index const& s) const {
         }
     }
 
-    PrintData(Op);
-
-    return Op;
+    return SU2_getSpinOp(su2o, s);
 }
 
 std::ostream& EVBuilder::print(std::ostream& s) const {

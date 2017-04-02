@@ -9,8 +9,13 @@
 #include <algorithm>
 #include <limits>
 #include "json.hpp"
+#include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
+#pragma GCC diagnostic pop
 
 const std::string WS4(4,' ');
 
@@ -22,33 +27,9 @@ typedef enum IO_ENV_FMT {
 // string to enum conversion
 IO_ENV_FMT toIO_ENV_FMT(std::string const& ioFmt);
 
-// ############################################################################
-// IO for cluster definition using JSON data format
-
-/*
- * Struct holding the raw environment
- * 
- */
-struct Cluster {
-    // size of n x m cluster
-    int sizeN, sizeM;
-    
-    // auxiliary bond dimension
-    int auxBondDim;
-    // dimension of local Hilbert space = dimension of physical index
-    int physDim;
-
-    // siteIds
-    std::vector< std::string > siteIds;
-
-    // inequivalent sites
-    std::map< std::string, itensor::ITensor > sites;
-
-    // map from inequivalent sites to cluster sites
-    std::map< std::pair< int,int >, std::string > cToS; 
-};
-
 Cluster readCluster(std::string const& filename);
+
+void writeCluster(std::string const& filename, Cluster const& cls);
 
 /* 
  * Read elements of an on-site tensor T on a SQUARE lattice
@@ -70,7 +51,15 @@ Cluster readCluster(std::string const& filename);
  * s h v h' v' Re(T) Im(T) <-> ids[0..4] Re(val) Im(val) 
  *
  */
-itensor::ITensor readOnSiteT(nlohmann::json const& j);
+itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
+
+/* 
+ * write elements of an on-site tensor T on a SQUARE lattice into a vector
+ * in the format as described in readOnSiteT. (Optional) Include elements
+ * of abs value > threshold
+ */
+void writeOnSiteTElems(std::vector< std::string > & tEs,
+    itensor::ITensor const& T, int offset = 1, double threshold = 1.0e-10);
 
 // ############################################################################
 // IO for environment of nxm cluster
@@ -135,7 +124,7 @@ itensor::ITensor readTensorB(std::string const& fname);
 
 /* 
  * Defining these methods enables printing of 
- *     Cluster, CtmData 
+ *     CtmData 
  * objects using 
  *     cout << o ;
  * where o is an instance of one of mentioned objects
@@ -145,9 +134,6 @@ itensor::ITensor readTensorB(std::string const& fname);
  * with printf and printfln.
  *
  */
-std::ostream& 
-operator<<(std::ostream& s, Cluster const& c);
-
 std::ostream& 
 operator<<(std::ostream& s, CtmData const& d);
 

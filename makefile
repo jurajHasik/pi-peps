@@ -10,20 +10,28 @@ TENSOR_HEADERS=$(ITENSOR_DIR)/itensor/core.h
 #    set APP to 'get-env'. Running 'make' will compile the app.
 #    Running 'make debug' will make a program called 'get-env-g'
 #    which includes debugging symbols and can be used in gdb (Gnu debugger);
-APP=get-cluster-env
+APP =get-cluster-env
+APP2=opt-simple-update
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS=cluster-ev-builder.h ctm-cluster.h ctm-cluster-io.h ctm-cluster-global.h su2.h json.hpp
+HEADERS =cluster-ev-builder.h ctm-cluster-env.h ctm-cluster-io.h \
+	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
+HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
-CCFILES=$(APP).cc cluster-ev-builder.cc ctm-cluster.cc ctm-cluster-io.cc su2.cc
+CCFILES=$(APP).cc cluster-ev-builder.cc ctm-cluster-env.cc \
+	ctm-cluster-io.cc ctm-cluster.cc su2.cc
+CCFILES2=$(APP2).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
+	su2.cc
 
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
 GOBJECTS=$(patsubst %,.debug_objs/%, $(OBJECTS))
+
+OBJECTS2=$(patsubst %.cc,%.o, $(CCFILES2))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -36,11 +44,14 @@ GOBJECTS=$(patsubst %,.debug_objs/%, $(OBJECTS))
 
 #Targets -----------------
 
-build: clean $(APP)
+build: $(APP)
 debug: $(APP)-g
 
 $(APP): $(OBJECTS) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS) -o $(APP).x $(LIBFLAGS)
+
+$(APP2): $(OBJECTS2) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTS2) -o $(APP2).x $(LIBFLAGS)
 
 $(APP)-g: mkdebugdir $(GOBJECTS) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS) -o $(APP)-g.x $(LIBGFLAGS)

@@ -23,6 +23,7 @@ Cluster readCluster(string const& filename) {
     // Create corresponding cluster struct
     Cluster cluster = Cluster();
 
+    cluster.physDim    = jsonCls["physDim"].get<int>();
     cluster.auxBondDim = jsonCls["auxBondDim"].get<int>();
 
     cluster.sizeN = jsonCls["sizeN"].get<int>();
@@ -50,15 +51,60 @@ Cluster readCluster(string const& filename) {
 }
 
 /*
+ * TODO object Cluster contains map with actual ITensor objects
+ *      which are not suitable for json representations
+ *
+ */
+void writeCluster(string const& filename, Cluster const& cls) {
+    ofstream outf;
+    outf.open(filename, ios::out);
+
+    nlohmann::json jCls;
+    jCls["physDim"]    = cls.physDim;
+    jCls["auxBondDim"] = cls.auxBondDim;
+    jCls["sizeN"]      = cls.sizeN;
+    jCls["sizeM"]      = cls.sizeM;                 
+
+    vector< nlohmann::json > jcToS;
+    for( auto const& entry : cls.cToS ) {
+        nlohmann::json jentry;
+        jentry["x"]      = entry.first.first;
+        jentry["y"]      = entry.first.second;
+        jentry["siteId"] = entry.second;
+        jcToS.push_back(jentry);
+    }
+    jCls["map"] = jcToS;
+
+    jCls["siteIds"] = cls.siteIds;
+
+    vector< nlohmann::json > jsites;
+    for ( auto const& entry : cls.sites ) {
+        nlohmann::json jentry;
+        jentry["siteId"]  = entry.first;
+        jentry["physDim"] = cls.physDim;
+        jentry["auxDim"]  = cls.auxBondDim;
+        vector< string > tensorElems;
+        writeOnSiteTElems(tensorElems, entry.second);
+        jentry["numEntries"] = tensorElems.size();
+        jentry["entries"] = tensorElems;
+        jsites.push_back(jentry);
+    }
+    jCls["sites"] = jsites;
+
+    outf << jCls.dump(4) << endl;
+}
+
+/*
  * TODO? implement named indices in input file processing
  * TODO? expose indices of returned tensor
  * TODO? check auxBondDim vs auxDim per site consistency
  *
  */
-itensor::ITensor readOnSiteT(nlohmann::json const& j) {
-    auto physI = itensor::Index("physI", j["physDim"].get<int>(), 
-        itensor::Site);
-    auto auxI0 = itensor::Index("auxI", j["auxDim"].get<int>());
+itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset) {
+    auto physI = itensor::Index(TAG_I_PHYS, j["physDim"].get<int>(), 
+        PHYS);
+    auto auxI0 = itensor::Index(TAG_I_AUX, j["auxDim"].get<int>(),
+        AUXLINK);
     auto auxI1 = prime(auxI0,1);
     auto auxI2 = prime(auxI0,2);
     auto auxI3 = prime(auxI0,3);
@@ -78,12 +124,13 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j) {
             getline(iss, token[i], delim);
         }
 
-        // Input files index from 0, while ITensor indices start from 1
-        pI  = 1 + stoi(token[0]);
-        aI0 = 1 + stoi(token[1]);
-        aI1 = 1 + stoi(token[2]);
-        aI2 = 1 + stoi(token[3]);
-        aI3 = 1 + stoi(token[4]);
+        // ITensor indices start from 1, hence if input file indices start from
+        // 0 use offset 1
+        pI  = offset + stoi(token[0]);
+        aI0 = offset + stoi(token[1]);
+        aI1 = offset + stoi(token[2]);
+        aI2 = offset + stoi(token[3]);
+        aI3 = offset + stoi(token[4]);
 
         t.set( physI(pI), auxI0(aI0), auxI1(aI1), auxI2(aI2), 
             auxI3(aI3), 
@@ -91,6 +138,34 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j) {
     }
 
     return t;
+}
+
+void writeOnSiteTElems(vector< string > & tEs,
+    itensor::ITensor const& T, int offset, double threshold) {
+
+    auto const& pI = itensor::findtype(T.inds(), PHYS);
+    auto const& aI = itensor::findtype(T.inds(), AUXLINK);
+
+    auto aI0 = itensor::noprime(aI);
+    auto aI1 = itensor::prime(aI0,1);
+    auto aI2 = itensor::prime(aI0,2);
+    auto aI3 = itensor::prime(aI0,3);
+
+    for(int p=1;p<=pI.m();p++) {
+        for(int a0=1;a0<=aI.m();a0++) {
+        for(int a1=1;a1<=aI.m();a1++) {
+        for(int a2=1;a2<=aI.m();a2++) {
+        for(int a3=1;a3<=aI.m();a3++) {
+            complex<double> elem = T.cplx(pI(p), aI0(a0), aI1(a1), aI2(a2), 
+                aI3(a3));
+            if( abs(elem) >= threshold ) {
+                tEs.push_back(to_string(p-offset)+" "+to_string(a0-offset)
+                    +" "+to_string(a1-offset)+" "+to_string(a2-offset)+" "
+                    +to_string(a3-offset)+" "
+                    +to_string(elem.real())+" "+to_string(elem.imag()));
+            }
+        }}}}
+    }
 }
 
 // ############################################################################
@@ -582,31 +657,6 @@ itensor::ITensor readTensorB(string const& fname) {
 
 // ############################################################################
 // IO toString methods
-
-ostream& operator<<(ostream& s, Cluster const& c) {
-    s <<"Cluster( sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 
-        <<", auxBondDim: "<< c.auxBondDim << endl;
-
-    s <<"siteIds: [ ";
-    for( const auto& siteId : c.siteIds ) {
-        s << siteId <<" ";
-    }
-    s <<"]"<< endl;
-
-    s <<"clusterToSite: ["<< endl; 
-    for( const auto& cToSEntry : c.cToS ) {
-        s <<"("<< cToSEntry.first.first <<", "<< cToSEntry.first.second 
-            <<") -> "<< cToSEntry.second << endl;
-    }
-    s << "]" << endl;
-    
-    for( const auto& sitesEntry : c.sites ) {
-        s << sitesEntry.first <<" = ";
-        itensor::printfln("%f", sitesEntry.second);  
-    }
-
-    return s;
-}
 
 ostream& operator<<(ostream& s, CtmData const& d) {
     s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite

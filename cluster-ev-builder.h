@@ -3,11 +3,23 @@
 
 #include <string>
 #include <iostream>
-#include "su2.h"
+#include "ctm-cluster-env.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
+#include "su2.h"
 #include "itensor/all.h"
+
+struct MpoNS {
+    // number of sites over which this MPO acts
+    int nSite;
+
+    // individual MPOs
+    std::vector<itensor::ITensor> mpo;
+
+    // siteId of sites on which the MPOs are constructed
+    std::vector<std::string> siteIds;
+};
 
 class EVBuilder {
 
@@ -28,7 +40,7 @@ class EVBuilder {
     EVBuilder(std::string in_name, Cluster const& in_cls, CtmEnv const& in_env);
 
     // Supported types of 1-site operators
-    enum MPO {
+    enum MPO_1S {
         MPO_Id,     // Identity
         MPO_S_Z,    // Projection on S_z
         MPO_S_Z2,   // S_z^2
@@ -38,8 +50,7 @@ class EVBuilder {
 
     // Get on-site contracted tensor <T(bra)|MPO|T(ket)>,
     // with prime level "l"
-    itensor::ITensor getTOT_DBG(MPO mpo, itensor::ITensor const& T,
-        int primeLvl) const;
+    MpoNS getTOT_DBG(MPO_1S mpo, std::string siteId, int primeLvl) const;
         
     // Compute expectation value of 1-site operator O
     /*
@@ -49,7 +60,7 @@ class EVBuilder {
      *             tensor is replaced with tensor op
      *  
      */
-    double eV_1sO(itensor::ITensor const& op, std::pair<int,int> site) const;
+    double eV_1sO(MpoNS const& op, std::pair<int,int> site) const;
 
     // Supported types of 2-site operators
     enum OP_2S {
@@ -162,7 +173,13 @@ class EVBuilder {
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
 
-    itensor::ITensor getSpinOp(MPO mpo, itensor::Index const& s) const;
+
+    /*
+     * wrapper around SU2_getSpinOp(SU2O su2o, itensor::Index const& s)
+     * from su2.h
+     *
+     */
+    itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s) const;
 
     std::ostream& print(std::ostream& s) const;
 };
