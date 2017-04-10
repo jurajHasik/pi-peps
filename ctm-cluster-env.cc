@@ -605,6 +605,8 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
             T_U[col].noprime(VSLINK);
         }
 
+        normalizePTN('U');
+        //normalizeBLE_ctmStep('U');
     }
 
     // End of cluster absorption
@@ -892,6 +894,8 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
             T_D[col].prime(VSLINK);
         }
 
+        normalizePTN('D');
+        //normalizeBLE_ctmStep('D');
     }
 
     // End of cluster absorption
@@ -1182,6 +1186,9 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
 
             T_L[row].noprime(HSLINK);
         }
+
+        normalizePTN('L');
+        //normalizeBLE_ctmStep('L');
     }
 
     // End of cluster absorption
@@ -1472,6 +1479,9 @@ void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
 
             T_R[row].prime(HSLINK);
         }
+
+        normalizePTN('R');
+        //normalizeBLE_ctmStep('R');
     }
 
     // End of cluster absorption
@@ -1874,46 +1884,49 @@ void CtmEnv::normalizeBLE_ctmStep(char ctmMove) {
  * Normalize the tensors Proportional To (Frobenius) Norm (PTN)
  *
  */
-void CtmEnv::normalizePTN() {
-    double nrm = CtmEnv::getNorm();
-    // Euclidean norms of C_* & T_* matrices
-    double nClu = norm(C_LU);
-    double nCru = norm(C_RU);
-    double nCrd = norm(C_RD);
-    double nCld = norm(C_LD);
-    std::vector<double> nTu, nTr, nTd, nTl;
+void CtmEnv::normalizePTN(char ctmMove) {
+
+    switch(ctmMove) {
+        case 'U': {
+            C_LU *= 1.0/norm(C_LU);
+            C_RU *= 1.0/norm(C_RU);
+            for (int i=0; i<sizeM; i++) {
+                T_U[i] *= 1.0/norm(T_U[i]);
+            }
+            break;
+        }
+        case 'R': {
+            C_RU *= 1.0/norm(C_RU);
+            C_RD *= 1.0/norm(C_RD);
+            for (int i=0; i<sizeN; i++) {
+                T_R[i] *= 1.0/norm(T_R[i]);
+            }
+            break;
+        }
+        case 'D': {
+            C_RD *= 1.0/norm(C_RD);
+            C_LD *= 1.0/norm(C_LD);
+            for (int i=0; i<sizeM; i++) {
+                T_D[i] *= 1.0/norm(T_D[i]);
+            }
+            break;
+        }
+        case 'L': {
+            C_LU *= 1.0/norm(C_LU);
+            C_LD *= 1.0/norm(C_LD);
+            for (int i=0; i<sizeN; i++) {
+                T_L[i] *= 1.0/norm(T_L[i]);
+            }
+            break;
+        }
+        default: {
+            std::cout <<"Unsupported ctmMove type - expecting one of "
+                <<" U,R,D or L"<< std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
     
-    double nSum = nClu + nCru + nCrd + nCld;
-
-    for ( int i=0; i<sizeN; i++ ) {
-        nTl.push_back(norm(T_L[i]));
-        nSum += nTl[i];
-        nTr.push_back(norm(T_R[i]));
-        nSum += nTr[i];
-    }
-
-    for ( int i=0; i<sizeM; i++ ) {
-        nTu.push_back(norm(T_U[i]));
-        nSum += nTu[i];
-        nTd.push_back(norm(T_D[i]));
-        nSum += nTd[i];
-    }
-
-    C_LU *= std::pow(1.0/nrm, nClu/nSum);
-    C_RU *= std::pow(1.0/nrm, nCru/nSum);
-    C_RD *= std::pow(1.0/nrm, nCrd/nSum);
-    C_LD *= std::pow(1.0/nrm, nCld/nSum);
-    
-    for ( int i=0; i<sizeN; i++ ) {
-        T_R[i] *= std::pow(1.0/nrm, nTr[i]/nSum);
-        T_L[i] *= std::pow(1.0/nrm, nTl[i]/nSum);
-    }
-
-    for ( int i=0; i<sizeM; i++ ) {
-        T_U[i] *= std::pow(1.0/nrm, nTu[i]/nSum);
-        T_D[i] *= std::pow(1.0/nrm, nTd[i]/nSum);
-    }
-
 }
 
 // void CtmEnv::normalizeCs() {

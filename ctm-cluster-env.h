@@ -28,7 +28,8 @@ class CtmEnv
     typedef enum ISOMETRY {
         ISOMETRY_T1,
         ISOMETRY_T2,
-        ISOMETRY_T3
+        ISOMETRY_T3,
+        ISOMETRY_T4
     } isometry_type;
 
     // Holding the current spectrum of singular values of C_*
@@ -176,7 +177,7 @@ class CtmEnv
      * Isometry type 2
      *
      * Compute half-row/column reduced density matrix and perform an 
-     * SVD over indices, incresed in dimension by row/column absorption
+     * SVD over indices, increased in dimension by row/column absorption
      * Use part of obtained eigenvectors to reduce dimension of new C's 
      * and T's
      * 
@@ -186,12 +187,20 @@ class CtmEnv
         itensor::ITensor const& t1, itensor::ITensor const& t2, 
         itensor::ITensor const& t3, itensor::ITensor const& t4) const;
 
+    /*
+     * Isometry type 3
+     *
+     * Perform an eigenvalue decomp of t1 t1^dag + t2 t2^dag (thus 
+     * hermitian) and use obtained eigenvectors (corresponding to the 
+     * chi highest eigenvalues) to reduce the environment tensors
+     *
+     */
     std::pair< itensor::ITensor,itensor::ITensor > isoT3(
         std::pair< itensor::Index, itensor::Index > const& iS_Elink,
         std::pair< itensor::Index, itensor::Index > const& iS_Slink,
         itensor::ITensor const& t1, itensor::ITensor const& t2) const;
 
-    
+    std::pair< itensor::ITensor,itensor::ITensor > isoT4(char ctmMove);
 
     // ########################################################################
     // environment normalization methods
@@ -205,7 +214,7 @@ class CtmEnv
 
     void normalizeBLE_ctmStep(char ctmMove);
 
-    void normalizePTN();
+    void normalizePTN(char ctmMove);
 
 //    void normalizeCs();
 

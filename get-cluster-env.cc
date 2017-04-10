@@ -100,7 +100,7 @@ int main( int argc, char *argv[] ) {
 
     const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T2;
 
-    // holds timing for *_DBG moves
+    // holds timing for *_DBG mostves
     std::vector<double> accT(4,0.0);
     // holding energies
     std::vector<double> e_nnH;
@@ -119,7 +119,7 @@ int main( int argc, char *argv[] ) {
     RA.prime(PHYS, -1);
     PrintData(RA);
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-    auto op2s_ss = ev.get2STOT(EVBuilder::OP2S_SS,
+    auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         RA, cluster.sites.at(cluster.siteIds[1]));
 
     // energy with initial environment
@@ -143,13 +143,13 @@ int main( int argc, char *argv[] ) {
 
 
         ctmEnv.insURow(iso_type);
-        ctmEnv.normalizeBLE_ctmStep('U');
+        //ctmEnv.normalizeBLE_ctmStep('U');
         ctmEnv.insRCol(iso_type);
-        ctmEnv.normalizeBLE_ctmStep('R');
+        //ctmEnv.normalizeBLE_ctmStep('R');
         ctmEnv.insDRow(iso_type);
-        ctmEnv.normalizeBLE_ctmStep('D');
+        //ctmEnv.normalizeBLE_ctmStep('D');
         ctmEnv.insLCol(iso_type);
-        ctmEnv.normalizeBLE_ctmStep('L');
+        //ctmEnv.normalizeBLE_ctmStep('L');
 
         // Normalize
         //ctmEnv.normalizeBLE();
