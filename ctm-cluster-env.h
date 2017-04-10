@@ -32,6 +32,11 @@ class CtmEnv
         ISOMETRY_T4
     } isometry_type;
 
+    typedef enum NORMALIZATION {
+        NORM_BLE,
+        NORM_FRN
+    } normalization_type;
+
     // Holding the current spectrum of singular values of C_*
     struct CtmSpec {
         std::vector< double > spec_clu;
@@ -152,17 +157,21 @@ class CtmEnv
     // CTM iterative methods
 
     // Insert, Absorb & Renormalize U(p) row 
-    void insURow_DBG(ISOMETRY iso_type, std::vector<double> & accT);
-    void insURow(ISOMETRY iso_type);
+    void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
+        std::vector<double> & accT);
+    void insURow(ISOMETRY iso_type, NORMALIZATION norm_type);
     // -||- D(own) row
-    void insDRow_DBG(ISOMETRY iso_type, std::vector<double> & accT);
-    void insDRow(ISOMETRY iso_type);
+    void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
+    void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
     // Insert, Absorb & Renormalize R(ight) column
-    void insLCol_DBG(ISOMETRY iso_type, std::vector<double> & accT);
-    void insLCol(ISOMETRY iso_type);
+    void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
+    void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
     // -||- L(eft) column
-    void insRCol_DBG(ISOMETRY iso_type, std::vector<double> & accT);
-    void insRCol(ISOMETRY iso_type);
+    void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
+    void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
     // ########################################################################
     // isometries

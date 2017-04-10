@@ -98,8 +98,6 @@ int main( int argc, char *argv[] ) {
 
     ctmEnv.printSVDspec(); //DBG
 
-    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T2;
-
     // holds timing for *_DBG mostves
     std::vector<double> accT(4,0.0);
     // holding energies
@@ -126,30 +124,25 @@ int main( int argc, char *argv[] ) {
     e_nnH.push_back( ev.eV_2sO(op2s_ss,
         std::make_pair(0,0), std::make_pair(0,1)) );
 
+    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T3;
+    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_BLE;
+
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
         std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
-        // ctmEnv.insURow_DBG(iso_type, accT);
-        // ctmEnv.normalizeBLE_ctmStep('U');
-        // ctmEnv.insRCol_DBG(iso_type, accT);
-        // ctmEnv.normalizeBLE_ctmStep('R');
-        // ctmEnv.insDRow_DBG(iso_type, accT);
-        // ctmEnv.normalizeBLE_ctmStep('D');
-        // ctmEnv.insLCol_DBG(iso_type, accT);
-        // ctmEnv.normalizeBLE_ctmStep('L');
+        //ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        //ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        //ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        //ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 
 
-        ctmEnv.insURow(iso_type);
-        //ctmEnv.normalizeBLE_ctmStep('U');
-        ctmEnv.insRCol(iso_type);
-        //ctmEnv.normalizeBLE_ctmStep('R');
-        ctmEnv.insDRow(iso_type);
-        //ctmEnv.normalizeBLE_ctmStep('D');
-        ctmEnv.insLCol(iso_type);
-        //ctmEnv.normalizeBLE_ctmStep('L');
+        ctmEnv.insURow(iso_type, norm_type);
+        ctmEnv.insRCol(iso_type, norm_type);
+        ctmEnv.insDRow(iso_type, norm_type);
+        ctmEnv.insLCol(iso_type, norm_type);
 
         // Normalize
         //ctmEnv.normalizeBLE();

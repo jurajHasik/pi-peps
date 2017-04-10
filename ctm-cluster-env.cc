@@ -321,7 +321,7 @@ void CtmEnv::initRndEnv(bool isComplex) {
 // CTM iterative methods
 
 void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type, 
-    std::vector<double> & accT) 
+    CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
 
@@ -384,6 +384,53 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
 
         std::cout <<"After contraction"<< std::endl;
         Print(C_RU);
+
+        /* 
+         * Contract T_U[0..sizeM-1] with X[row,col] to obtain new T_U
+         *            ___                           ___
+         * I_U(col)--|T_U|--I_U(col+1)   I_U(col)--|   |--I_U(col+1)
+         *             |                           |T_U|  
+         *            I_XV         =>        I_XH--|___|--I_XH1
+         *            _|_          =>                |
+         *     I_XH--| X |--I_XH1                   I_XV1 
+         *             |
+         *            I_XV1
+         *
+         */
+        std::cout <<"(3) ----- T_U & X "<< std::string(54,'-') << std::endl;
+        for (int col=0; col<sizeM; col++) {
+            std::cout <<"--- Before contraction T_U["<< col <<"] & X["<< row
+                <<","<< col <<"] ---"<< std::endl;
+            std::cout << TAG_T_U <<"["<< col <<"]";
+            printfln("= %s",T_U[col]);
+            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
+                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
+
+            T_U[col] *= sites[cToS[std::make_pair(row,col)]];
+
+            std::cout <<"After contraction Col="<< col << std::endl;
+            std::cout << TAG_T_U <<"["<< col <<"]";
+            printfln("= %s",T_U[col]);
+        
+            std::cout <<" --- Construct reduced T_U["<< col <<"] ---"
+                << std::endl;
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('U');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('U');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         std::chrono::steady_clock::time_point t_iso_end =
             std::chrono::steady_clock::now();
@@ -499,31 +546,13 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
          * indices to the original ones of the environment
          *
          */
-        std::cout <<"(6) ----- T_U & X "<< std::string(54,'-') << std::endl;
+        std::cout <<"(6) ----- REDUCE T_U & X "<< std::string(47,'-') << 
+            std::endl;
         tU_tV.second.noprime();
         tU_tV.first.prime(ULINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
-            std::cout <<"--- Before contraction T_U["<< col <<"] & X["<< row
-                <<","<< col <<"] ---"<< std::endl;
-            std::cout << TAG_T_U <<"["<< col <<"]";
-            printfln("= %s",T_U[col]);
-            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
-                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
-
-            T_U[col] *= sites[cToS[std::make_pair(row,col)]];
-
-            std::cout <<"After contraction Col="<< col << std::endl;
-            std::cout << TAG_T_U <<"["<< col <<"]";
-            printfln("= %s",T_U[col]);
-        
             std::cout <<" --- Construct reduced T_U["<< col <<"] ---"
                 << std::endl;
-            
-            // T_U[col] = ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
-            //     *delta(I_SVD_V,prime(I_U,col));
-
-            // T_U[col] = ( T_U[col]*tU_tV.first.mapprime(ULINK,col,col+1) ) 
-            //     *delta(I_SVD_U,prime(I_U,col+1));
 
             T_U[col] = ( ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
                 *delta(I_SVD_V,prime(I_U,col)) )
@@ -549,11 +578,32 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsURow Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type, 
+    CtmEnv::NORMALIZATION norm_type) {
     for (int row=0; row<sizeN; row++) {
 
         C_LU *= T_L[row];
         C_RU *= T_R[row];
+
+        for (int col=0; col<sizeM; col++) {
+            T_U[col] *= sites[cToS[std::make_pair(row,col)]];
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('U');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('U');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
         std::pair< ITensor, ITensor > tU_tV;
@@ -594,8 +644,6 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
         tU_tV.second.noprime();
         tU_tV.first.prime(ULINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
-            T_U[col] *= sites[cToS[std::make_pair(row,col)]];
-    
             T_U[col] = ( ( T_U[col]*tU_tV.second.mapprime(ULINK,col-1,col) ) 
                  ) *delta(I_SVD_V,prime(I_U,col));
 
@@ -615,7 +663,7 @@ void CtmEnv::insURow(CtmEnv::ISOMETRY iso_type) {
 }
 
 void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
-    std::vector<double> & accT) 
+    CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
     // sequentialy contract lower boundary of environment with 
@@ -677,6 +725,38 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
 
         std::cout <<"After contraction"<< std::endl;
         Print(C_RD);
+
+        std::cout <<"(3) ----- T_D & X "<< std::string(54,'-') << std::endl;
+        for (int col=0; col<sizeM; col++) {
+            std::cout <<"--- Before contraction T_D["<< col <<"] & X["<< row
+                <<","<< col <<"] ---"<< std::endl;
+            std::cout << TAG_T_D <<"["<< col <<"]";
+            printfln("= %s",T_D[col]);
+            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
+                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
+
+            T_D[col] *= sites[cToS[std::make_pair(row,col)]];
+
+            std::cout <<"After contraction Col="<< col << std::endl;
+            std::cout << TAG_T_D <<"["<< col <<"]";
+            printfln("= %s",T_D[col]);
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('D');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('D');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         std::chrono::steady_clock::time_point t_iso_end =
             std::chrono::steady_clock::now();
@@ -788,31 +868,13 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
          * indices to the original ones of the environment
          *
          */
-        std::cout <<"(6) ----- T_D & X "<< std::string(54,'-') << std::endl;
+        std::cout <<"(6) ----- REDUCE T_D & X "<< std::string(47,'-') << 
+            std::endl;
         tU_tV.second.noprime();
         tU_tV.first.prime(DLINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
-            std::cout <<"--- Before contraction T_D["<< col <<"] & X["<< row
-                <<","<< col <<"] ---"<< std::endl;
-            std::cout << TAG_T_D <<"["<< col <<"]";
-            printfln("= %s",T_D[col]);
-            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
-                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
-
-            T_D[col] *= sites[cToS[std::make_pair(row,col)]];
-
-            std::cout <<"After contraction Col="<< col << std::endl;
-            std::cout << TAG_T_D <<"["<< col <<"]";
-            printfln("= %s",T_D[col]);
-        
             std::cout <<" --- Construct reduced T_D["<< col <<"] ---"
                 << std::endl;
-            
-            // T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
-            //     *delta(I_SVD_V,prime(I_D,col));
-
-            // T_D[col] = ( T_D[col]*tU_tV.first.mapprime(DLINK,col,col+1) )
-            //     *delta(I_SVD_U,prime(I_D,col+1));
             
             T_D[col] = ( ( ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
                 *delta(I_SVD_V,prime(I_D,col)) )
@@ -838,11 +900,32 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type,
+    CtmEnv::NORMALIZATION norm_type) {
     for (int row=sizeN-1; row>=0; row--) {
 
         C_LD *= T_L[row];
         C_RD *= T_R[row];
+
+        for (int col=0; col<sizeM; col++) {
+            T_D[col] *= sites[cToS[std::make_pair(row,col)]];
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('D');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('D');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
         std::pair< ITensor, ITensor > tU_tV;
@@ -883,8 +966,6 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
         tU_tV.second.noprime();
         tU_tV.first.prime(DLINK,HSLINK);
         for (int col=0; col<sizeM; col++) {
-            T_D[col] *= sites[cToS[std::make_pair(row,col)]];
-            
             T_D[col] = ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) ) 
                 *delta(I_SVD_V,prime(I_D,col));
 
@@ -904,7 +985,7 @@ void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type) {
 }
 
 void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
-    std::vector<double> & accT)
+    CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT)
 {
     std::cout <<"##### InsLCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
@@ -972,6 +1053,38 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
 
         std::cout <<"After contraction"<< std::endl;
         Print(C_LD);
+
+        std::cout <<"(3) ----- T_L & X "<< std::string(54,'-') << std::endl;
+        for (int row=0; row<sizeN; row++) {
+            std::cout <<"--- Before contraction T_L["<< row <<"] & X["<< row
+                <<","<< col <<"] ---"<< std::endl;
+            std::cout << TAG_T_L <<"["<< row <<"]";
+            printfln("= %s",T_L[row]);
+            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
+                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
+
+            T_L[row] *= sites[cToS[std::make_pair(row,col)]];
+
+            std::cout <<"After contraction Row="<< row << std::endl;
+            std::cout << TAG_T_L <<"["<< row <<"]";
+            printfln("= %s",T_L[row]);
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('L');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('L');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         std::chrono::steady_clock::time_point t_iso_end = 
             std::chrono::steady_clock::now();
@@ -1083,32 +1196,14 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
          * indices to the original ones of the environment
          *
          */
-        std::cout <<"(6) ----- T_L & X "<< std::string(54,'-') << std::endl;
+        std::cout <<"(6) ----- REDUCE T_L & X "<< std::string(47,'-') <<
+            std::endl;
         tU_tV.second.noprime();
         tU_tV.first.prime(LLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
-            std::cout <<"--- Before contraction T_L["<< row <<"] & X["<< row
-                <<","<< col <<"] ---"<< std::endl;
-            std::cout << TAG_T_L <<"["<< row <<"]";
-            printfln("= %s",T_L[row]);
-            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
-                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
-
-            T_L[row] *= sites[cToS[std::make_pair(row,col)]];
-
-            std::cout <<"After contraction Row="<< row << std::endl;
-            std::cout << TAG_T_L <<"["<< row <<"]";
-            printfln("= %s",T_L[row]);
-        
             std::cout <<" --- Construct reduced T_L["<< row <<"] ---"
                 << std::endl;
-            
-            // T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
-            //     *delta(I_SVD_V,prime(I_L,row));
-
-            // T_L[row] = ( T_L[row]*tU_tV.first.mapprime(LLINK,row,row+1) ) 
-            //     *delta(I_SVD_U,prime(I_L,row+1));
-            
+        
             T_L[row] = ( ( ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
                 *delta(I_SVD_V,prime(I_L,row)) )
                 *tU_tV.first.mapprime(LLINK,row,row+1) ) 
@@ -1133,10 +1228,31 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type,
+    CtmEnv::NORMALIZATION norm_type) {
     for (int col=0; col<sizeM; col++) {
         C_LU *= T_U[col];
         C_LD *= T_D[col];
+
+        for (int row=0; row<sizeN; row++) {
+            T_L[row] *= sites[cToS[std::make_pair(row,col)]];
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('L');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('L');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
         std::pair< ITensor, ITensor > tU_tV;
@@ -1176,8 +1292,6 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
         tU_tV.second.noprime();
         tU_tV.first.prime(LLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
-            T_L[row] *= sites[cToS[std::make_pair(row,col)]];
-
             T_L[row] = ( T_L[row]*tU_tV.second.mapprime(LLINK,row-1,row) ) 
                 *delta(I_SVD_V,prime(I_L,row));
 
@@ -1197,7 +1311,7 @@ void CtmEnv::insLCol(CtmEnv::ISOMETRY iso_type) {
 }
 
 void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
-        std::vector<double> & accT) 
+    CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsRCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
@@ -1265,6 +1379,38 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
 
         std::cout <<"After contraction"<< std::endl;
         Print(C_RD);
+
+        std::cout <<"(3) ----- T_R & X "<< std::string(54,'-') << std::endl;
+        for (int row=0; row<sizeN; row++) {
+            std::cout <<"--- Before contraction T_R["<< row <<"] & X["<< row
+                <<","<< col <<"] ---"<< std::endl;
+            std::cout << TAG_T_R <<"["<< row <<"]";
+            printfln("= %s",T_R[row]);
+            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
+                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
+
+            T_R[row] *= sites[cToS[std::make_pair(row,col)]];
+
+            std::cout <<"After contraction Row="<< row << std::endl;
+            std::cout << TAG_T_R <<"["<< row <<"]";
+            printfln("= %s",T_R[row]);
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('R');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('R');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         std::chrono::steady_clock::time_point t_iso_end = 
             std::chrono::steady_clock::now();
@@ -1376,23 +1522,11 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
          * indices to the original ones of the environment
          *
          */
-        std::cout <<"(6) ----- T_R & X "<< std::string(54,'-') << std::endl;
+        std::cout <<"(6) ----- REDUCE T_R & X "<< std::string(47,'-') << 
+            std::endl;
         tU_tV.second.noprime();
         tU_tV.first.prime(RLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
-            std::cout <<"--- Before contraction T_R["<< row <<"] & X["<< row
-                <<","<< col <<"] ---"<< std::endl;
-            std::cout << TAG_T_R <<"["<< row <<"]";
-            printfln("= %s",T_R[row]);
-            std::cout <<"("<< row <<","<< col <<") -> sites["<< 
-                cToS[std::make_pair(row,col)] <<"]"<< std::endl;
-
-            T_R[row] *= sites[cToS[std::make_pair(row,col)]];
-
-            std::cout <<"After contraction Row="<< row << std::endl;
-            std::cout << TAG_T_R <<"["<< row <<"]";
-            printfln("= %s",T_R[row]);
-        
             std::cout <<" --- Construct reduced T_R["<< row <<"] ---"
                 << std::endl;
             
@@ -1426,10 +1560,31 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
 }
 
-void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
+void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type,
+    CtmEnv::NORMALIZATION norm_type) {
     for (int col=sizeM-1; col>=0; col--) {
         C_RU *= T_U[col];
         C_RD *= T_D[col];
+
+        for (int row=0; row<sizeN; row++) {
+            T_R[row] *= sites[cToS[std::make_pair(row,col)]];
+        }
+
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('R');
+                break;
+            }
+            case NORM_FRN: {
+                normalizePTN('R');
+                break;
+            }
+            default: {
+                std::cout <<"Unsupported Normalization type"<< std::endl;
+                exit(EXIT_FAILURE);
+                break;
+            }
+        }
 
         // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
         std::pair< ITensor, ITensor > tU_tV;
@@ -1469,8 +1624,6 @@ void CtmEnv::insRCol(CtmEnv::ISOMETRY iso_type) {
         tU_tV.second.noprime();
         tU_tV.first.prime(RLINK,VSLINK);
         for (int row=0; row<sizeN; row++) {
-            T_R[row] *= sites[cToS[std::make_pair(row,col)]];
-            
             T_R[row] = ( T_R[row]*tU_tV.second.mapprime(RLINK,row-1,row) ) 
                 *delta(I_SVD_V,prime(I_R,row));
 
@@ -1926,7 +2079,7 @@ void CtmEnv::normalizePTN(char ctmMove) {
             break;
         }
     }
-    
+
 }
 
 // void CtmEnv::normalizeCs() {
