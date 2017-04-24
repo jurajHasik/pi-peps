@@ -29,21 +29,92 @@ MPO_3site getMPO3s_Id(int physDim) {
 	mpo3s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
 	mpo3s.Is3 = Index(TAG_MPO3S_PHYS3,physDim,PHYS);
 
+    ITensor idpI1(mpo3s.Is1,prime(mpo3s.Is1,1));
+    ITensor idpI2(mpo3s.Is2,prime(mpo3s.Is2,1));
+    ITensor idpI3(mpo3s.Is3,prime(mpo3s.Is3,1));
+    for (int i=1;i<=physDim;i++) {
+        idpI1.set(mpo3s.Is1(i),prime(mpo3s.Is1,1)(i),1.0);
+        idpI2.set(mpo3s.Is2(i),prime(mpo3s.Is2,1)(i),1.0);
+        idpI3.set(mpo3s.Is3(i),prime(mpo3s.Is3,1)(i),1.0);
+    }
+
+    ITensor id3s = idpI1*idpI2*idpI3;
+    //PrintData(id3s);
+
+    mpo3s.H1 = ITensor(mpo3s.Is1,prime(mpo3s.Is1));
+    ITensor SV_12,temp;
+    svd(id3s,mpo3s.H1,SV_12,temp);
+    
+    PrintData(mpo3s.H1);
+    PrintData(SV_12);
+    Print(temp);
+
+    //Index cmnI = commonIndex(mpo3s.H1,SV_12);
+    // Define aux indices linking the on-site MPOs
+	//Index iMPO3s12(TAG_MPO3S_12LINK,cmnI.m(),MPOLINK);
+	//Index iMPO3s23(TAG_MPO3S_23LINK,1,MPOLINK);
+    //mpo3s.H1 *= delta(cmnI,iMPO3s12)
+
+	Index a2 = commonIndex(SV_12,temp);
+	mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),a2);
+	ITensor SV_23;
+    svd(temp,mpo3s.H2,SV_23,mpo3s.H3);
+
+    PrintData(mpo3s.H1);
+    PrintData(SV_12);
+    PrintData(mpo3s.H2);
+    PrintData(SV_23);
+    PrintData(mpo3s.H3);
+
+    /*
+     *   |                      |                      |
+     *  |H1|--a1--<SV_12>--a2--|H2|--a3--<SV_23>--a4--|H3|
+     *   |                      |                      |
+     *
+     */
+
+	//create a lambda function
+	//which returns the square of its argument
+	auto sqrt_T = [](Real r) { return sqrt(r); };
+
+	SV_12.apply(sqrt_T);
+	SV_23.apply(sqrt_T);
+
+	Index a1 = commonIndex(mpo3s.H1,SV_12);
 	// Define aux indices linking the on-site MPOs
-	Index iMPO3s12(TAG_MPO3S_12LINK,1,MPOLINK);
-	Index iMPO3s23(TAG_MPO3S_23LINK,1,MPOLINK);
+	Index iMPO3s12(TAG_MPO3S_12LINK,a2.m(),MPOLINK);
+	mpo3s.H1 = (mpo3s.H1 * SV_12) * delta(a2,iMPO3s12);
+	
+	Index a3 = commonIndex(mpo3s.H2,SV_23);
+	Index a4 = commonIndex(SV_23,mpo3s.H3);
+	Index iMPO3s23(TAG_MPO3S_23LINK,a3.m(),MPOLINK);
+	mpo3s.H2 = delta(iMPO3s12,a1)*(SV_12 * mpo3s.H2 * SV_23)
+		*delta(a4,iMPO3s23);
+	
+	mpo3s.H3 = (mpo3s.H3 * SV_23) * delta(a3,iMPO3s23);
 
-	mpo3s.H1 = ITensor(iMPO3s12,mpo3s.Is1,prime(mpo3s.Is1));
-	mpo3s.H2 = ITensor(iMPO3s12,iMPO3s23,mpo3s.Is2,prime(mpo3s.Is2));
-	mpo3s.H3 = ITensor(iMPO3s23,mpo3s.Is3,prime(mpo3s.Is3));
+	PrintData(mpo3s.H1);
+	PrintData(mpo3s.H2);
+	PrintData(mpo3s.H3);
 
-	// Define tensor elements
-	for (int i=1;i<=physDim;i++) {
-		mpo3s.H1.set( iMPO3s12(1), mpo3s.Is1(i), prime(mpo3s.Is1)(i), 1.0 );
-		mpo3s.H2.set( iMPO3s12(1), iMPO3s23(1), mpo3s.Is2(i), 
-			prime(mpo3s.Is2)(i), 1.0);
-		mpo3s.H3.set( iMPO3s23(1), mpo3s.Is3(i), prime(mpo3s.Is3)(i), 1.0 );
-	}
+	PrintData(mpo3s.H2*mpo3s.H3);
+
+	svd(mpo3s.H2*mpo3s.H3,mpo3s.H3,SV_23,mpo3s.H2);
+	PrintData(mpo3s.H2);
+    PrintData(SV_23);
+    PrintData(mpo3s.H3);
+
+    SV_23.apply(sqrt_T);
+    
+    a3 = commonIndex(mpo3s.H2,SV_23);
+    a4 = commonIndex(SV_23,mpo3s.H3);
+    iMPO3s23 = Index(TAG_MPO3S_23LINK,a3.m(),MPOLINK);
+    mpo3s.H2 = (mpo3s.H2 * SV_23) * delta(a4,iMPO3s23);
+	mpo3s.H3 = (mpo3s.H3 * SV_23) * delta(a3,iMPO3s23);
+
+	PrintData(mpo3s.H1);
+	PrintData(mpo3s.H2);
+	PrintData(mpo3s.H3);
 
 	return mpo3s;
 }
@@ -127,6 +198,23 @@ void applyH_123(MPO_3site const& mpo3s,
 	PrintData(SV_L12);
 	Print(T2);
 
+	// Take the square-root of SV's
+	auto sqrtT = [](Real r) { return sqrt(r); };
+
+	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
+	SV_L12.apply(sqrtT);
+	T1 *= SV_L12;
+	ITensor dR_12L = delta( commonIndex(T1,SV_L12), link12.first );
+	T1 *= dR_12L;
+
+	T2 *= SV_L12;
+	ITensor dR_12R = delta( commonIndex(T2,SV_L12), link12.second );
+	T2 *= dR_12R;
+
+	PrintData(SV_L12);
+	PrintData(T1);
+	Print(T2);
+
 	/*
 	 * Perform SVD of new on-site tensors |2~~| and |3~| by contrating them
 	 * along common index
@@ -176,24 +264,7 @@ void applyH_123(MPO_3site const& mpo3s,
 	 *                                        ||
 	 */
 
-	// Take the square-root of SV's
-	auto sqrtT = [](Real r) { return sqrt(r); };
-
-	std::cout <<"----- Reducing dimension of link12 -----"<< std::endl;
-	SV_L12.apply(sqrtT);
-	T1 *= SV_L12;
-	ITensor dR_12L = delta( commonIndex(T1,SV_L12), link12.first );
-	T1 *= dR_12L;
-
-	T2 *= SV_L12;
-	ITensor dR_12R = delta( commonIndex(T2,SV_L12), link12.second );
-	T2 *= dR_12R;
-
-	PrintData(SV_L12);
-	PrintData(T1);
-	Print(T2);
-
-	std::cout <<"----- Reducing dimension of link23 -----"<< std::endl;
+	std::cout <<"----- (NOT)Reducing dimension of link23 -----"<< std::endl;
 	SV_L23.apply(sqrtT);
 	T2 *= SV_L23;
 	ITensor dR_23L = delta( commonIndex(T2,SV_L23), link23.first );

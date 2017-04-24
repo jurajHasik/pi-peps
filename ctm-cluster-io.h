@@ -6,6 +6,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <algorithm>
 #include <limits>
 #include "json.hpp"

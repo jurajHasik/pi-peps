@@ -145,36 +145,37 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
      *     |
      *    ...
      *     |
-     * |T_LsizeN|--I_XH0
+     * |T_Ln-1|----I_XH0
      *     |
      *   |C_LD|----I_D0 
      *
      */
-    for ( auto const& t : env.T_L ) {
+    for ( int row=0; row<=env.sizeN-1; row++ ) {
         ev.prime(HSLINK,2);
-        ev *= t;
+        ev *= env.T_L[row];
     }
     ev *= env.C_LD;
 
+    /*
+     * Contract the cluster+environment column by column
+     *
+     *   |C_LU|----I_U0
+     *     |
+     *   |T_L0|----I_XH(n-1)*2
+     *     |
+     *    ...              I_XV
+     *     |                | 
+     * |T_Ln-1|----I_XH0--| X  |--I_XH1
+     *     |                |
+     *     |               I_XV1<<I_XVn (via mapprime)
+     *     |                |
+     *   |C_LD|----I_D0---|T_D0|--I_D1 
+     *
+     */
     for ( int col=0; col<env.sizeM; col++ ) {
         ev *= env.T_D[col];
+        ev.mapprime(env.sizeN,1,VSLINK);
 
-        /*
-         * Contract the cluster+environment column by column
-         *
-         *   |C_LU|----I_U0
-         *     |
-         *   |T_L0|----I_XH(sizeN-1)*2
-         *     |
-         *    ...              I_XV
-         *     |                | 
-         * |T_LsizeN|--I_XH0--| X  |--I_XH1
-         *     |                |
-         *     |               I_XV1
-         *     |                |
-         *   |C_LD|----I_D0---|T_D0|--I_D1 
-         *
-         */
         for ( int row=env.sizeN-1; row>=0; row-- ) {
             ev.mapprime(0,1,VSLINK);
             // substitute original on-site tensor for op at position site
@@ -188,14 +189,49 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
                     HSLINK, 2*(env.sizeN-1-row));
             }
         }
+        /*
+         * After 1st full column insertion
+         *
+         *   |C_LU|----|T_U0|--I_U1
+         *     |         |         
+         *   |T_L0|----| X  |--I_XH(sizeN-1)*2+1
+         *     |         |
+         *    ...       ...
+         *     |         | 
+         * |T_LsizeN|--| X  |--I_XH1
+         *     |         |
+         *   |C_LD|----|T_D0|--I_D1 
+         *
+         */
         ev.prime(HSLINK,-1);
         ev *= env.T_U[col];
 
     }
 
+    // ev *= env.C_RD;
+    // for ( int row=env.sizeN-1; row>=0; row-- ) {
+    //     ev.mapprime(2*(env.sizeN-1-row),sizeM,HSLINK);
+    //     ev *= env.T_R[row];
+    // }
+    // ev *= env.C_RU;
+    /*
+     * Contract with right edge from bottom to top
+     *
+     *   |C_LU|--...--|T_Um-1|--I_Um
+     *     |            |         
+     *   |T_L0|--...--| X  |--I_XH(n-1)*2+m
+     *     |            |
+     *    ...          ...
+     *     |            |                      |
+     * |T_Ln-1|--...--| X  |---I_XH0>>I_XHm--|T_Rn-1|
+     *     |            |                      |
+     *   |C_LD|--...--|T_Dm-1|--I_Dm---------|C_RD| 
+     *
+     */
+    ev.prime(HSLINK,env.sizeM);
     ev *= env.C_RD;
     for ( int row=env.sizeN-1; row>=0; row-- ) {
-        ev.mapprime(2*(env.sizeN-1-row),1,HSLINK);
+        ev.mapprime(2*(env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
         ev *= env.T_R[row];
     }
     ev *= env.C_RU;
@@ -211,6 +247,12 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
 std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     ITensor const& TA, ITensor const& TB) const 
 {
+    std::cout <<"===== EVBuilder::get2STOT_DBG called ====="
+        << std::string(30,'=') << std::endl;
+    std::cout <<">>>>> 1) initial |ket> on-site tensors <<<<<"<< std::endl;
+    PrintData(TA);
+    PrintData(TB);
+    
     /*
      * 2-site operator acts on 2 physical indices
      * 
@@ -240,7 +282,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
 
     switch(op2s) {
         case OP2S_Id: { // Identity operator
-            std::cout <<">>>>> Constructing OP2S_Id <<<<<"<< std::endl;  
+            std::cout <<">>>>> 2) Constructing OP2S_Id <<<<<"<< std::endl;  
             for(int i=1;i<=dimS;i++) {
                 for(int j=1;j<=dimS;j++){
                     Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
@@ -249,7 +291,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
             break;
         }
         case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
-            std::cout <<">>>>> Constructing OP2S_AKLT-S2-H <<<<<"<< std::endl;
+            std::cout <<">>>>> 2) Constructing OP2S_AKLT-S2-H <<<<<"
+                << std::endl;
             // Loop over <bra| indices
             int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
             int mbA, mbB, mkA, mkB;
@@ -282,7 +325,9 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
                         }
                     }
                     if((bA == kA) && (bB == kB)) {
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+2.);
+                        // add 2*Id(bA,kA;bB,kB) == 
+                        //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+sqrt(2.0));
                     } else {
                         Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
                     }
@@ -293,7 +338,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
         case OP2S_SS: { 
             // S^vec_i * S^vec_i+1 =
             // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
-            std::cout <<">>>>> Constructing OP2S_SS <<<<<"<< std::endl;
+            std::cout <<">>>>> 2) Constructing OP2S_SS <<<<<"<< std::endl;
     
             Index sBra = Index("sBra", dimS);
             Index sKet = prime(sBra);
@@ -342,45 +387,33 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     auto OpA = ITensor(s0, s1);
     ITensor OpB, S; 
 
-    std::cout <<"Performing SVD OP2S -> OpA * S * OpB"<< std::endl;
+    std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
+        << std::endl;
     svd(Op, OpA, S, OpB);
     
     Print(OpA);
-    Print(S);
+    PrintData(S);
     Print(OpB);
-    // Absorb singular values into, say, OpB
+    
+    //create a lambda function
+    //which returns the square of its argument
+    auto sqrt_T = [](Real r) { return sqrt(r); };
+    S.apply(sqrt_T);
+
+    // Absorb singular values (symmetrically) into OpA, OpB
+    OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
     OpB = S*OpB.prime(PHYS,-2);
+    
+    std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
+        << std::endl;
+    PrintData(OpA);
+    PrintData(OpB);
 
     // Contract OpA and OpB with <bra| & |ket> on-site tensors TA and TB 
     /*
      * TODO write comment about this process
      *
      */
-    //auto Tdag = prime(conj(T), Link, 2);
-    //Tdag.prime(s,1);
-
-    // Perform rotation on OpB (we can always assume B to correspond 
-    // to "odd" site of bipartite AKLT
-    /*
-     * I(s)''--|OpB|--I(s)''' => 
-     * 
-     * I(s)--|R1|--I(s)''--|Op|--I(s)'''--|R2|--I(s)'
-     *
-     * where Rot is a real symmetric rotation matrix, thus R1 = R2
-     * defined below. Then one has to set indices of rotated
-     * Op to proper prime level
-     *
-     */
-    /*td::cout << "Rotation on physical indices of OpB" << "\n";
-    auto R1 = ITensor(s, s2);
-    auto R2 = ITensor(s3,s1);
-    for(int i=1;i<=dimS;i++) {
-        R1.set(s(i), s2(dimS+1-i), pow(-1,i-1));
-        R2.set(s3(dimS+1-i), s1(i), pow(-1,i-1));
-    }
-    OpB = R1*OpB*R2;
-    Print(OpB);*/
-
     auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
     auto auxIB = noprime(findtype(TB.inds(), AUXLINK));
 
@@ -412,16 +445,21 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
     OpA = OpA*DH0A*DV0A*DH1A*DV1A;
     OpB = OpB*DH0B*DV0B*DH1B*DV1B;
 
-    std::cout <<"OP2S as two MPOs OpA,OpB with additional index"<< std::endl;
+    std::cout <<">>>>> 5) contracting OpA,OpB with TA,TB on site tensors <<<<<"
+        << std::endl;
     Print(OpA);
     Print(OpB);
 
+    std::cout <<"===== EVBuilder::get2STOT_DBG done ====="
+        << std::string(32,'=') << std::endl;
     return std::make_pair(OpA, OpB);
 }
 
 std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     ITensor const& TA, ITensor const& TB) const 
 {
+    std::cout <<"===== EVBuilder::get2STOT_DBG called ====="
+        << std::string(30,'=') << std::endl;
     /*
      * 2-site operator acts on 2 physical indices
      * 
@@ -450,7 +488,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     int dimS = s0.m();
 
     switch(op2s) {
-        case OP2S_Id: { // Identity operator 
+        case OP2S_Id: { // Identity operator
+            std::cout <<">>>>> Constructing OP2S_Id <<<<<"<< std::endl; 
             for(int i=1;i<=dimS;i++) {
                 for(int j=1;j<=dimS;j++){
                     Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
@@ -459,6 +498,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
             break;
         }
         case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
+            std::cout <<">>>>> Constructing OP2S_AKLT-S2-H <<<<<"<< std::endl;
             // Loop over <bra| indices
             int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
             int mbA, mbB, mkA, mkB;
@@ -484,7 +524,9 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
                         }
                     }
                     if((bA == kA) && (bB == kB)) {
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+2.);
+                        // add 2*Id(bA,kA;bB,kB) == 
+                        //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+sqrt(2.0));
                     } else {
                         Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
                     }
@@ -492,7 +534,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
             }}
             break;
         }
-        case OP2S_SS: { 
+        case OP2S_SS: {
+            std::cout <<">>>>> Constructing OP2S_SS <<<<<"<< std::endl;
             // S^vec_i * S^vec_i+1 =
             // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
     
@@ -545,7 +588,13 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
 
     svd(Op, OpA, S, OpB);
     
-    // Absorb singular values into, say, OpB
+    //create a lambda function
+    //which returns the square of its argument
+    auto sqrt_T = [](Real r) { return sqrt(r); };
+    S.apply(sqrt_T);
+
+    // Absorb singular values (symmetrically) into OpA, OpB
+    OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
     OpB = S*OpB.prime(PHYS,-2);
 
     auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
@@ -579,8 +628,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     OpA = OpA*DH0A*DV0A*DH1A*DV1A;
     OpB = OpB*DH0B*DV0B*DH1B*DV1B;
 
-    std::cout <<"OP2S as two MPOs OpA,OpB with additional index"<< std::endl;
-
+    std::cout <<"===== EVBuilder::get2STOT_DBG done ====="
+        << std::string(32,'=') << std::endl;
     return std::make_pair(OpA, OpB);
 }
 
@@ -591,7 +640,8 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
 double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
     std::pair<int,int> siteA, std::pair<int,int> siteB) const
 {
-    std::cout <<">>>>> eV_2sO called <<<<<"<< std::endl;
+    std::cout <<"===== EVBuilder::eV_2sO_DBG called ====="
+        << std::string(32,'=') << std::endl;
     /*
      * Get the size of "super"cell assuming span along "col" direction
      * is bigger then along "row" direction
@@ -629,6 +679,8 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
         tN *= env.T_L[row % env.sizeN];
     }
     tN *= env.C_LD;
+    std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+    Print(tN);
 
     for ( int col=0; col<nC*env.sizeM; col++ ) {
         if ( (col > 0) && (col % env.sizeM == 0) ) {
@@ -636,6 +688,7 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
             tN.prime(ULINK, -env.sizeM);
         }
         tN *= env.T_D[col % env.sizeM];
+        tN.mapprime(env.sizeN,1,VSLINK);
 
         for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
@@ -657,36 +710,58 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
         }
         tN.prime(HSLINK,-1);
         tN *= env.T_U[col % env.sizeM];
+
+        std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
+            << col % env.sizeM <<" <<<<<"<< std::endl;
+        Print(tN);
     }
-
+    std::cout <<">>>>> 2) "<< nC*env.sizeM 
+        << " cols appended <<<<<"<< std::endl;
     Print(tN);
 
-    tN *= env.C_RD;
-    Print(tN);
-    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
-        std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row) <<"->1 "<< std::endl;
+    // tN *= env.C_RD;
+    // for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+    //     tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+    //     std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row) <<"->1 "<< std::endl;
         
-        Print(env.T_R[row % env.sizeN]);
+    //     Print(env.T_R[row % env.sizeN]);
+    //     tN *= env.T_R[row % env.sizeN];
+
+    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
+    //         tN.prime(RLINK, env.sizeN);
+    //         std::cout <<"RLINK RESET +"<< env.sizeN <<" prime"<< std::endl;
+    //     }
+    //     Print(tN);
+    // }
+    // tN *= env.C_RU;
+    tN.prime(HSLINK,env.sizeM);
+    tN *= env.C_RD;
+    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(nR*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
+        std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row)+env.sizeM <<" -> "<<  
+            env.sizeM << std::endl;
+        
         tN *= env.T_R[row % env.sizeN];
 
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
             std::cout <<"RLINK RESET +"<< env.sizeN <<" prime"<< std::endl;
         }
-        Print(tN);
     }
     tN *= env.C_RU;
-
+    std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
     Print(tN);
 
+    std::cout <<"===== EVBuilder::eV_2sO_DBG done ====="
+        << std::string(34,'=') << std::endl;
     return sumels(tN)/getNormSupercell_DBG(std::make_pair(nR,nC));
 }
 
 double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     std::pair<int,int> siteA, std::pair<int,int> siteB) const
 {
-    std::cout <<">>>>> eV_2sO called <<<<<"<< std::endl;
+    std::cout <<"===== EVBuilder::eV_2sO called ====="<< std::string(36,'=')
+        << std::endl;
     /*
      * Get the size of "super"cell assuming span along "col" direction
      * is bigger then along "row" direction
@@ -731,6 +806,7 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
             tN.prime(ULINK, -env.sizeM);
         }
         tN *= env.T_D[col % env.sizeM];
+        tN.mapprime(env.sizeN,1,VSLINK);
 
         for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
@@ -754,9 +830,19 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
         tN *= env.T_U[col % env.sizeM];
     }
 
+    // tN *= env.C_RD;
+    // for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+    //     tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+    //     tN *= env.T_R[row % env.sizeN];
+    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
+    //         tN.prime(RLINK, env.sizeN);
+    //     }
+    // }
+    // tN *= env.C_RU;
+    tN.prime(HSLINK,env.sizeM);
     tN *= env.C_RD;
     for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
+        tN.mapprime(2*(nR*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
         tN *= env.T_R[row % env.sizeN];
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
@@ -764,6 +850,8 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     }
     tN *= env.C_RU;
 
+    std::cout <<"===== EVBuilder::eV_2sO done ====="<< std::string(38,'=')
+        << std::endl;
     return sumels(tN)/getNormSupercell(std::make_pair(nR,nC));
 }
 
@@ -773,8 +861,10 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
  */
 double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
     //  N x M == sc.first x sc.second supercell
-    std::cout <<"##### getNormSupercell called for ("<< sc.first <<","
-        << sc.second <<") supercell #####"<< std::endl;
+    std::cout <<"===== EVBuilder::getNormSupercell_DBG called ====="
+        << std::string(22,'=') << std::endl;
+    std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
+        << std::endl;
     
     // check N =< M condition
     if ( sc.first > sc.second ) {
@@ -785,6 +875,7 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
 
     auto tN = env.C_LU;
 
+    // Construct left edge
     for ( int row=0; row<sc.first*env.sizeN; row++ ) {
         tN.prime(HSLINK,2);
         // Reset index primeLevel when entering new cell=(copy of)cluster
@@ -804,6 +895,9 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
             tN.prime(ULINK, -env.sizeM);
         }
         tN *= env.T_D[col % env.sizeM];
+        tN.mapprime(env.sizeN,1,VSLINK);
+        std::cout<<"T_D["<< col % env.sizeM <<"] inserted"<<std::endl;
+        Print(tN);
 
         for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
@@ -811,19 +905,40 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
                 std::make_pair(row % env.sizeN,col % env.sizeM))),
                 HSLINK, 2*(sc.first*env.sizeN-1-row) );
         }
+
         tN.prime(HSLINK,-1);
         tN *= env.T_U[col % env.sizeM];
+
+        std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
+            << col % env.sizeM <<" <<<<<"<< std::endl;
+        Print(tN);
     }
 
-    std::cout <<">>>>> 2) "<< sc.second*env.sizeM-1 
+    std::cout <<">>>>> 2) "<< sc.second*env.sizeM 
         << " cols appended <<<<<"<< std::endl;
     Print(tN);
 
+    // tN *= env.C_RD;
+    // for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+    //     tN.mapprime(2*(sc.first*env.sizeN-1-row),sizeM,HSLINK);
+
+    //     tN *= env.T_R[row % env.sizeN];
+
+    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
+    //         tN.prime(RLINK, env.sizeN);
+    //     }
+    // }
+    // tN *= env.C_RU;
+    tN.prime(HSLINK,env.sizeM);
     tN *= env.C_RD;
+    Print(tN);
     for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+        tN.mapprime(2*(sc.first*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
+        std::cout <<"HSLINK "<< 2*(sc.first*env.sizeN-1-row)+env.sizeM <<" -> "<<  
+            env.sizeM << std::endl;
 
         tN *= env.T_R[row % env.sizeN];
+        Print(tN);
 
         if ( (row > 0) && (row % env.sizeN == 0) ) {
             tN.prime(RLINK, env.sizeN);
@@ -831,14 +946,21 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
     }
     tN *= env.C_RU;
 
-    std::cout <<">>>>> 3) contraction with Right edge <<<<<"<< std::endl;
+    std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
     Print(tN);
 
+    std::cout <<"===== EVBuilder::getNormSupercell_DBG done ====="
+        << std::string(24,'=') << std::endl;
     return norm(tN);
 }
 
 double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
     // check N =< M condition
+    std::cout <<"===== EVBuilder::getNormSupercell called ====="
+        << std::string(26,'=') << std::endl;
+    std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
+        << std::endl;
+
     if ( sc.first > sc.second ) {
         std::cout <<"Number of columns < number of rows in supercell"
             << std::endl;
@@ -863,6 +985,7 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
             tN.prime(ULINK, -env.sizeM);
         }
         tN *= env.T_D[col % env.sizeM];
+        tN.mapprime(env.sizeN,1,VSLINK);
 
         for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
@@ -874,9 +997,21 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
         tN *= env.T_U[col % env.sizeM];
     }
 
+    // tN *= env.C_RD;
+    // for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+    //     tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+
+    //     tN *= env.T_R[row % env.sizeN];
+
+    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
+    //         tN.prime(RLINK, env.sizeN);
+    //     }
+    // }
+    // tN *= env.C_RU;
+    tN.prime(HSLINK,env.sizeM);
     tN *= env.C_RD;
     for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+        tN.mapprime(2*(sc.first*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
 
         tN *= env.T_R[row % env.sizeN];
 
@@ -886,6 +1021,8 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
     }
     tN *= env.C_RU;
 
+    std::cout <<"===== EVBuilder::getNormSupercell done ====="
+        << std::string(28,'=') << std::endl;
     return norm(tN);
 }
 

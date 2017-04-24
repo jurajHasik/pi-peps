@@ -96,6 +96,7 @@ int main( int argc, char *argv[] ) {
         }
     }
 
+    std::cout << ctmEnv;
     ctmEnv.printSVDspec(); //DBG
 
     // holds timing for *_DBG mostves
@@ -118,14 +119,16 @@ int main( int argc, char *argv[] ) {
     PrintData(RA);
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        RA, cluster.sites.at(cluster.siteIds[1]));
+        cluster.sites.at("A"), 
+        //RA);
+        cluster.sites.at("B");
 
     // energy with initial environment
-    e_nnH.push_back( ev.eV_2sO(op2s_ss,
+    e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
         std::make_pair(0,0), std::make_pair(0,1)) );
 
-    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T3;
-    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_BLE;
+    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T4;
+    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_PTN;
 
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
@@ -133,10 +136,10 @@ int main( int argc, char *argv[] ) {
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
-        //ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        //ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        //ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-        //ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 
 
         ctmEnv.insURow(iso_type, norm_type);
@@ -154,7 +157,7 @@ int main( int argc, char *argv[] ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
             ev.linkCtmEnv(ctmEnv);
-            e_nnH.push_back( ev.eV_2sO(op2s_ss,
+            e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
                 std::make_pair(0,0), std::make_pair(0,1)) );
         }
     }

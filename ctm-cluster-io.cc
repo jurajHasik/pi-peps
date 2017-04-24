@@ -151,6 +151,9 @@ void writeOnSiteTElems(vector< string > & tEs,
     auto aI2 = itensor::prime(aI0,2);
     auto aI3 = itensor::prime(aI0,3);
 
+    string t_entry_str;
+    //ostringstream ost;
+    //ost.precision( numeric_limits< double >::max_digits10 );
     for(int p=1;p<=pI.m();p++) {
         for(int a0=1;a0<=aI.m();a0++) {
         for(int a1=1;a1<=aI.m();a1++) {
@@ -159,10 +162,16 @@ void writeOnSiteTElems(vector< string > & tEs,
             complex<double> elem = T.cplx(pI(p), aI0(a0), aI1(a1), aI2(a2), 
                 aI3(a3));
             if( abs(elem) >= threshold ) {
-                tEs.push_back(to_string(p-offset)+" "+to_string(a0-offset)
+                t_entry_str = to_string(p-offset)+" "+to_string(a0-offset)
                     +" "+to_string(a1-offset)+" "+to_string(a2-offset)+" "
-                    +to_string(a3-offset)+" "
-                    +to_string(elem.real())+" "+to_string(elem.imag()));
+                    +to_string(a3-offset)+" ";
+                ostringstream ost;
+                ost.precision( numeric_limits< double >::max_digits10 );
+                ost << elem.real() <<" "<< elem.imag();
+                t_entry_str += ost.str();
+                //ost.clear();
+                //ost.seekp(0);   
+                tEs.push_back(t_entry_str);
             }
         }}}}
     }

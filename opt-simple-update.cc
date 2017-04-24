@@ -29,7 +29,7 @@ int main( int argc, char *argv[] ) {
     MPO_3site mpo3s_Id = getMPO3s_Id(cluster.physDim);
 
     /*
-     * Applying H_123 to sites ABC
+     * Applying H_123 to sites ABD
      * 
      *      a1          a1
      *      |            |
@@ -39,7 +39,7 @@ int main( int argc, char *argv[] ) {
      *                   | 
      *                   a1
      *                   |
-     *              a0--|C|--a2
+     *              a0--|D|--a2
      *                   | 
      *                   a3
      * 
@@ -47,14 +47,14 @@ int main( int argc, char *argv[] ) {
      * and (B_a3,C_a1) 
      * 
      */
-    applyH_123(3.0*mpo3s_Id, 
-        cluster.sites["A"], cluster.sites["B"], cluster.sites["C"],
+    applyH_123(2.0*mpo3s_Id,
+        cluster.sites["A"], cluster.sites["B"], cluster.sites["D"],
         std::make_pair( 
             noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
             noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ),
         std::make_pair( 
             noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(3),
-            noprime( findtype(cluster.sites["C"].inds(), AUXLINK)).prime(1)));
+            noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(1)));
 
     writeCluster("test_H123.in", cluster);
 }

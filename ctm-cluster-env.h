@@ -34,7 +34,7 @@ class CtmEnv
 
     typedef enum NORMALIZATION {
         NORM_BLE,
-        NORM_FRN
+        NORM_PTN
     } normalization_type;
 
     // Holding the current spectrum of singular values of C_*
@@ -160,15 +160,18 @@ class CtmEnv
     void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
         std::vector<double> & accT);
     void insURow(ISOMETRY iso_type, NORMALIZATION norm_type);
+    
     // -||- D(own) row
     void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
         std::vector<double> & accT);
     void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
-    // Insert, Absorb & Renormalize R(ight) column
+    
+    // Insert, Absorb & Renormalize L(eft) column
     void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
         std::vector<double> & accT);
     void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
-    // -||- L(eft) column
+    
+    // -||- R(ight) column
     void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
         std::vector<double> & accT);
     void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
@@ -191,10 +194,7 @@ class CtmEnv
      * and T's
      * 
      */
-    std::pair< itensor::ITensor,itensor::ITensor > isoT2(char ctmMove,
-        std::pair< itensor::Index, itensor::Index > const& iS_tU,
-        itensor::ITensor const& t1, itensor::ITensor const& t2, 
-        itensor::ITensor const& t3, itensor::ITensor const& t4) const;
+    void isoT2(char ctmMove);
 
     /*
      * Isometry type 3
@@ -204,12 +204,22 @@ class CtmEnv
      * chi highest eigenvalues) to reduce the environment tensors
      *
      */
-    std::pair< itensor::ITensor,itensor::ITensor > isoT3(
-        std::pair< itensor::Index, itensor::Index > const& iS_Elink,
-        std::pair< itensor::Index, itensor::Index > const& iS_Slink,
-        itensor::ITensor const& t1, itensor::ITensor const& t2) const;
+    void isoT3(char ctmMove);
 
-    std::pair< itensor::ITensor,itensor::ITensor > isoT4(char ctmMove);
+    /*
+     * Isometry type 4 - 2X2 CLUSTER
+     *
+     * Perform an eigenvalue decomp of t1 t1^dag + t2 t2^dag (thus 
+     * hermitian) and use obtained eigenvectors (corresponding to the 
+     * chi highest eigenvalues) tZ, tZstar to reduce the two corner 
+     * tensor C_*
+     *
+     * Combine unreduced C_*s and T_*s to obtain second isometry
+     * tW,tWstar and use both tW,tWstar AND tZ,tZstar to reduce
+     * half-row/column tensors
+     * 
+     */
+    void isoT4(char ctmMove);
 
     // ########################################################################
     // environment normalization methods
@@ -223,7 +233,9 @@ class CtmEnv
 
     void normalizeBLE_ctmStep(char ctmMove);
 
-    void normalizePTN(char ctmMove);
+    void normalizePTN();
+
+    void normalizePTN_ctmStep(char ctmMove);
 
 //    void normalizeCs();
 

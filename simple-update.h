@@ -5,6 +5,7 @@
 #define __SMPL_UPDT_H_
 
 #include "su2.h"
+#include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
 
 #pragma GCC diagnostic push 
