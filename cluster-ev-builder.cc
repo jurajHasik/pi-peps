@@ -642,6 +642,16 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
 {
     std::cout <<"===== EVBuilder::eV_2sO_DBG called ====="
         << std::string(32,'=') << std::endl;
+    
+    // determine number of cells=clusters in row/col direction required
+    // to form the supercell
+    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
+        ((float)env.sizeN));
+    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
+        ((float)env.sizeM));
+
+    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
+
     /*
      * Get the size of "super"cell assuming span along "col" direction
      * is bigger then along "row" direction
@@ -652,21 +662,11 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
      *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
      *
      */
-    if ( std::max(siteA.second, siteB.second) < std::max(siteA.first,
-        siteB.first) ) {
+    if ( nC < nR ) {
         std::cout <<"Number of columns < number of rows in supercell"
             << std::endl;
         exit(EXIT_FAILURE);
     }
-
-    // determine number of cells=clusters in row/col direction required
-    // to form the supercell
-    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)env.sizeN));
-    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)env.sizeM));
-
-    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
 
     // Contract TN with Op inserted
     auto tN = env.C_LU;
@@ -762,6 +762,16 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
 {
     std::cout <<"===== EVBuilder::eV_2sO called ====="<< std::string(36,'=')
         << std::endl;
+    
+    // determine number of cells=clusters in row/col direction required
+    // to form the supercell
+    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
+        ((float)env.sizeN));
+    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
+        ((float)env.sizeM));
+
+    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
+
     /*
      * Get the size of "super"cell assuming span along "col" direction
      * is bigger then along "row" direction
@@ -772,21 +782,11 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
      *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
      *
      */
-    if ( std::max(siteA.second, siteB.second) < std::max(siteA.first,
-        siteB.first) ) {
+    if ( nC < nR ) {
         std::cout <<"Number of columns < number of rows in supercell"
             << std::endl;
         exit(EXIT_FAILURE);
     }
-
-    // determine number of cells=clusters in row/col direction required
-    // to form the supercell
-    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)env.sizeN));
-    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)env.sizeM));
-
-    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
 
     // Contract TN with Op inserted
     auto tN = env.C_LU;

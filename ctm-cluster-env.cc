@@ -2011,7 +2011,6 @@ void CtmEnv::isoT3(char ctmMove) {
 }
 
 void CtmEnv::isoT4(char ctmMove) {
-    std::cout << "################# ISO_T4 " << ctmMove << " ###################" << std::endl;
     /*
      * Compute the "isometry" Z which will be used to reduce
      * contracted C_*s and T_*s
@@ -2061,9 +2060,15 @@ void CtmEnv::isoT4(char ctmMove) {
             break;
         }
     }
-    std::cout << "RESULT OF CC^dag + C~C~^dag" << std::endl;
+    double m = 0.;
+    auto max_m = [&m](double d)
+    {
+        if(std::abs(d) > m) m = std::abs(d);
+    };
+    T.visit(max_m);
+    std::cout << "T = CC^d + C~C~^d largest elem: "<< m << std::endl;
     Print(T);
-    std::cout <<"Norm T-T^t: "<< norm(T-swapPrime(T,0,1)) << std::endl;
+
 
     ITensor tZ, DiagZ;
 
@@ -2147,13 +2152,12 @@ void CtmEnv::isoT4(char ctmMove) {
             break;
         }
     }
-    Print(Q1);
-    Print(Q2);
+    m = 0.;
+    T.visit(max_m);
+    std::cout << "T = QQ^d + Q~Q~^d largest elem: "<< m << std::endl;
     Print(T);
-    std::cout <<"Norm T-T^t: "<< norm(T-swapPrime(T,0,1)) << std::endl;
     
     ITensor tW, DiagW;
-
     diagHermitian(T, tW, DiagW, args);
 
     auto tWstar = conj(tW);
@@ -2235,8 +2239,28 @@ void CtmEnv::isoT4(char ctmMove) {
              *
              */
             T_U[0] = ( tZstar * T_U[0] )*delta(I_SVD_V,I_U);
-            Print(T_U[0]);
 
+            /*
+             * Reduce all inner links of T_U*'s using an isometry tW and tW* 
+             * as follows 
+             *             ______             _
+             *  I_Ucol-1--|      |--I_Ucol---| \
+             *            |T_Ucol|           |tW--I_W>>I_Ucol  
+             *            |______|--I_XHcol--|_/
+             *              |
+             *             I_XV0
+             *
+             * and                 _             ______
+             *                    / |--I_Ucol---|      |--I_Ucol
+             *     I_Ucol<<I_Ws--tW*|           |T_Ucol|
+             *                    \_|--I_XHcol--|______|--I_XHcol
+             *                                     |                     
+             *                                    I_XV0
+             *
+             * and using appropriate delta-matrices to relabel auxiliary 
+             * reduction indices to the original ones of the environment
+             *
+             */
             for (int col=1; col<=sizeM-1; col++) {
                 T_U[col-1] = ( tW.primeExcept(I_W) * T_U[col-1] )
                     *delta(I_W, prime(I_U,col));
@@ -2247,7 +2271,6 @@ void CtmEnv::isoT4(char ctmMove) {
             tZ.primeExcept(I_SVD_U,sizeM);
             T_U[sizeM-1] = ( T_U[sizeM-1] * tZ )*delta(I_SVD_U,
                 prime(I_U,sizeM));
-            Print(T_U[sizeM-1]);
             break;
         }
         case 'R': {
@@ -2709,7 +2732,7 @@ std::ostream& CtmEnv::print(std::ostream& s) const {
     s <<"sites: ["<< std::endl;
     for( std::size_t i=0; i<sites.size(); i++) {
         s << WS4 << i;
-        printfln(" = %f", sites[i]);
+        printfln(" = %s", sites[i]);
     }
     s <<"]"<< std::endl;
 

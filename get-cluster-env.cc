@@ -121,14 +121,14 @@ int main( int argc, char *argv[] ) {
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         cluster.sites.at("A"), 
         //RA);
-        cluster.sites.at("B");
+        cluster.sites.at("B"));
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
         std::make_pair(0,0), std::make_pair(0,1)) );
 
     const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T4;
-    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_PTN;
+    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_BLE;
 
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
@@ -140,7 +140,6 @@ int main( int argc, char *argv[] ) {
         // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
         // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-
 
         ctmEnv.insURow(iso_type, norm_type);
         ctmEnv.insRCol(iso_type, norm_type);
@@ -198,6 +197,27 @@ int main( int argc, char *argv[] ) {
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
         std::cout << i*50 <<" "<< 2.0*e_nnH[i] << std::endl;
     }
+
+    auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("A"),
+        cluster.sites.at("C"));
+
+    auto op2s_ssBD = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("B"),
+        cluster.sites.at("D"));
+
+    auto op2s_ssCD = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("C"),
+        cluster.sites.at("D"));
+
+    std::cout <<"SS_AB: "<< ev.eV_2sO(op2s_ss,
+        std::make_pair(0,0), std::make_pair(0,1)) << std::endl;
+    std::cout <<"SS_AC: "<< ev.eV_2sO(op2s_ssAC,
+        std::make_pair(0,0), std::make_pair(1,0)) << std::endl;
+    std::cout <<"SS_BD: "<< ev.eV_2sO(op2s_ssBD,
+        std::make_pair(0,1), std::make_pair(1,1)) << std::endl;
+    std::cout <<"SS_CD: "<< ev.eV_2sO(op2s_ssCD,
+        std::make_pair(1,0), std::make_pair(1,1)) << std::endl;
 
     return 0;
 }

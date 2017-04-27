@@ -4,6 +4,7 @@
 #ifndef __SMPL_UPDT_H_
 #define __SMPL_UPDT_H_
 
+#include <cmath>
 #include "su2.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
@@ -99,9 +100,24 @@ MPO_3site getMPO3s_Id(int physDim);
  *
  */
 void applyH_123(MPO_3site const& mpo3s, 
-	itensor::ITensor & A, itensor::ITensor & B, itensor::ITensor & C, 
-	std::pair<itensor::Index, itensor::Index> const& linkAB,
-	std::pair<itensor::Index, itensor::Index> const& linkBC);
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
+
+void applyH_123_v2(MPO_3site const& mpo3s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
+
+void applyH_123_v3(MPO_3site const& mpo3s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
+
+void applyH_123_v4(MPO_3site const& mpo3s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
 
 std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);
