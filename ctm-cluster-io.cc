@@ -5,7 +5,7 @@ using namespace std;
 IO_ENV_FMT toIO_ENV_FMT(string const& ioFmt) {
     if(ioFmt == "IO_ENV_FMT_txt") return IO_ENV_FMT_txt;
     if(ioFmt == "IO_ENV_FMT_bin") return IO_ENV_FMT_bin;
-    cout << "Unsupported IO_ENV_FMT" << "\n";
+    cout << "Unsupported IO_ENV_FMT" << std::endl;
     exit(EXIT_FAILURE);
     //return -1;
 }

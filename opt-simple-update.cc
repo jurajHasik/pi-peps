@@ -8,15 +8,16 @@ int main( int argc, char *argv[] ) {
     // ########################################################################
     // Handle command-line arguments
 
-    int arg_auxEnvDim, arg_ctmIter;
+    ID_TYPE arg_id_type;
+    F_MPO3S arg_f_mpo3s;
     std::string arg_clusterFile, arg_ioEnvTag; 
     
     if( argc >= 4) { 
         // minimal: [executable name], arg_clusterFile, arg_auxEnvDim,
         //          arg_ctmIter
         arg_clusterFile = argv[1];
-        arg_auxEnvDim   = stoi(std::string(argv[2]));
-        arg_ctmIter     = stoi(std::string(argv[3]));
+        arg_id_type     = toID_TYPE(std::string(argv[2]));
+        arg_f_mpo3s     = toF_MPO3S(std::string(argv[3]));
     } else {
         std::cout <<"Invalid amount of Agrs (< 4)"<< std::endl;
         exit(EXIT_FAILURE);
@@ -26,7 +27,21 @@ int main( int argc, char *argv[] ) {
     Cluster cluster = readCluster(arg_clusterFile);
     std::cout << cluster; //DBG
 
-    MPO_3site mpo3s_Id = getMPO3s_Id(cluster.physDim);
+    MPO_3site mpo3s_Id;
+    switch(arg_id_type) {
+        case(ID_TYPE_1): {
+            mpo3s_Id = getMPO3s_Id(cluster.physDim);
+            break;
+        }
+        case(ID_TYPE_2): {
+            mpo3s_Id = getMPO3s_Id_v2(cluster.physDim);
+            break;
+        }
+        default: {
+            std::cout << "Unsupported ID_TYPE" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
     /*
      * Applying H_123 to sites ABD
@@ -47,7 +62,40 @@ int main( int argc, char *argv[] ) {
      * and (B_a3,C_a1) 
      * 
      */
-    applyH_123_v3(mpo3s_Id,
+    void (*applyMPO3S)(MPO_3site const&, ITensor &, ITensor &, ITensor &,
+        std::pair<Index,Index> const&, std::pair<Index,Index> const&);
+    switch(arg_f_mpo3s) {
+        case(F_MPO3S_1): {
+            applyMPO3S = &applyH_123;
+            break;
+        }
+        case(F_MPO3S_2): {
+            applyMPO3S = &applyH_123_v2;
+            break;
+        }
+        case(F_MPO3S_3): {
+            applyMPO3S = &applyH_123_v3;
+            break;
+        }
+        case(F_MPO3S_4): {
+            applyMPO3S = &applyH_123_v4;
+            break;
+        }
+        case(F_MPO3S_5): {
+            applyMPO3S = &applyH_123_v5;
+            break;
+        }
+        case(F_MPO3S_6): {
+            applyMPO3S = &applyH_123_v6;
+            break;
+        }
+        default: {
+            std::cout << "Unsupported F_MPO3S" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    applyMPO3S(mpo3s_Id,
         cluster.sites["A"], cluster.sites["B"], cluster.sites["D"],
         std::make_pair( 
             noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
@@ -57,7 +105,7 @@ int main( int argc, char *argv[] ) {
             noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(1)));
 
     // Balance cluster
-    std::vector<double> largest_elem;
+    /*std::vector<double> largest_elem;
     
     double m = 0.;
     auto max_m = [&m](double d)
@@ -88,7 +136,7 @@ int main( int argc, char *argv[] ) {
         std::cout << "largest t_elem* "<< siteId << " : "
             << m << std::endl;
         m = 0.;
-    }
+    }*/
 
     writeCluster("test_H123.in", cluster);
 }

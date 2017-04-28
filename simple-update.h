@@ -89,11 +89,35 @@ struct MPO_3site {
  */
 MPO_3site operator*(double scalar, MPO_3site const& mpo3s);
 
+typedef enum ID_TYPE {
+    ID_TYPE_1,
+    ID_TYPE_2
+} id_type;
+
+// string to enum conversion
+ID_TYPE toID_TYPE(std::string const& idType);
+
 /*
  * construct Identity MPO_3site 
  *
  */
+// Splits SVD values S^1/2 : S^1/4 : S^1/4
 MPO_3site getMPO3s_Id(int physDim);
+
+// Splits SVD values S^1/3 : S^1/3 : S^1/3
+MPO_3site getMPO3s_Id_v2(int physDim);
+
+typedef enum F_MPO3S {
+    F_MPO3S_1,
+    F_MPO3S_2,
+    F_MPO3S_3,
+    F_MPO3S_4,
+    F_MPO3S_5,
+    F_MPO3S_6
+} f_mpo3s;
+
+// string to enum conversion
+F_MPO3S toF_MPO3S(std::string const& fMpo3s);
 
 /*
  * Apply MPO_3site over three sites ABC
@@ -115,6 +139,16 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 	std::pair<itensor::Index, itensor::Index> const& link23);
 
 void applyH_123_v4(MPO_3site const& mpo3s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
+
+void applyH_123_v5(MPO_3site const& mpo3s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
+	std::pair<itensor::Index, itensor::Index> const& link12,
+	std::pair<itensor::Index, itensor::Index> const& link23);
+
+void applyH_123_v6(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
 	std::pair<itensor::Index, itensor::Index> const& link12,
 	std::pair<itensor::Index, itensor::Index> const& link23);
