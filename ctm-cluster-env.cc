@@ -2152,6 +2152,8 @@ void CtmEnv::isoT4(char ctmMove) {
             break;
         }
     }
+    Print(Q1);
+    Print(Q2);
     m = 0.;
     T.visit(max_m);
     std::cout << "T = QQ^d + Q~Q~^d largest elem: "<< m << std::endl;
@@ -2811,5 +2813,21 @@ CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
     if( iE=="INIT_ENV_rnd"   ) return CtmEnv::INIT_ENV_rnd;
     if( iE=="INIT_ENV_file"  ) return CtmEnv::INIT_ENV_file;
     std::cout << "Unsupported INIT_ENV" << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+CtmEnv::ISOMETRY toISOMETRY(std::string const& isoType) {
+    if(isoType == "ISOMETRY_T1") return CtmEnv::ISOMETRY_T1;
+    if(isoType == "ISOMETRY_T2") return CtmEnv::ISOMETRY_T2;
+    if(isoType == "ISOMETRY_T3") return CtmEnv::ISOMETRY_T3;
+    if(isoType == "ISOMETRY_T4") return CtmEnv::ISOMETRY_T4;
+    std::cout << "Unsupported ISOMETRY" << std::endl;
+    exit(EXIT_FAILURE);
+}
+
+CtmEnv::NORMALIZATION toNORMALIZATION(std::string const& normType) {
+    if(normType == "NORM_BLE") return CtmEnv::NORM_BLE;
+    if(normType == "NORM_PTN") return CtmEnv::NORM_PTN;
+    std::cout << "Unsupported NORMALIZATION" << std::endl;
     exit(EXIT_FAILURE);
 }

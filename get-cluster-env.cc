@@ -10,7 +10,7 @@ int main( int argc, char *argv[] ) {
     // Handle command-line arguments
 
     int arg_auxEnvDim, arg_ctmIter;
-    std::string arg_clusterFile, arg_ioEnvTag; 
+    std::string arg_clusterFile, arg_ioEnvTag, arg_isoType, arg_norm; 
     
     if( argc >= 4) { 
         // minimal: [executable name], arg_clusterFile, arg_auxEnvDim,
@@ -30,10 +30,13 @@ int main( int argc, char *argv[] ) {
     // Prepare blank CtmEnv
     CtmEnv ctmEnv;
 
+    CtmEnv::isometry_type iso_type;
+    CtmEnv::normalization_type norm_type;
+
     // Depending on the number of args call different environment 
     // initialization function
     switch (argc) {
-        case 5: {
+        case 7: {
             // [executable name], arg_clusterFile, arg_auxEnvDim, arg_ctmIter,
             // env_init
             CtmEnv::init_env_type init_Env = toINIT_ENV(std::string(argv[4]));
@@ -45,9 +48,11 @@ int main( int argc, char *argv[] ) {
                     << std::endl;
                 exit(EXIT_FAILURE);
             }
+            iso_type  = toISOMETRY(argv[5]);
+            norm_type = toNORMALIZATION(argv[6]);
             break;
         }
-        case 6: {
+        case 8: {
             // [executable name], arg_clusterFile, arg_auxEnvDim, arg_ctmIter,
             // env_init, boolean
             CtmEnv::init_env_type init_Env = toINIT_ENV(std::string(argv[4]));
@@ -70,9 +75,11 @@ int main( int argc, char *argv[] ) {
                     << std::endl;
                 exit(EXIT_FAILURE);
             }
+            iso_type  = toISOMETRY(argv[6]);
+            norm_type = toNORMALIZATION(argv[7]);
             break;
         } 
-        case 7: {
+        case 9: {
             // [executable name], arg_clusterFile, arg_auxEnvDim, arg_ctmIter,
             // env_init, env_file_fmt, in_files_prefix
             CtmEnv::init_env_type init_Env = toINIT_ENV(std::string(argv[4]));
@@ -86,6 +93,8 @@ int main( int argc, char *argv[] ) {
                 std::cout<< argv[4] << " requires its additional args" << "\n";
                 exit(EXIT_FAILURE);
             }
+            iso_type  = toISOMETRY(argv[7]);
+            norm_type = toNORMALIZATION(argv[8]);
             break;
         }
         default: { 
@@ -148,24 +157,21 @@ int main( int argc, char *argv[] ) {
     e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
         std::make_pair(1,0), std::make_pair(1,1)) );
 
-    const CtmEnv::isometry_type iso_type = CtmEnv::ISOMETRY_T4;
-    const CtmEnv::normalization_type norm_type = CtmEnv::NORM_BLE;
-
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
         std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
-        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 
-        ctmEnv.insURow(iso_type, norm_type);
-        ctmEnv.insRCol(iso_type, norm_type);
-        ctmEnv.insDRow(iso_type, norm_type);
-        ctmEnv.insLCol(iso_type, norm_type);
+        // ctmEnv.insURow(iso_type, norm_type);
+        // ctmEnv.insRCol(iso_type, norm_type);
+        // ctmEnv.insDRow(iso_type, norm_type);
+        // ctmEnv.insLCol(iso_type, norm_type);
 
         // Normalize
         //ctmEnv.normalizeBLE();

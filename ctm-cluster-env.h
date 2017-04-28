@@ -288,4 +288,8 @@ operator<<(std::ostream& s, CtmEnv::CtmSpec const& spec);
 // string to enum conversion
 CtmEnv::INIT_ENV toINIT_ENV(std::string const& inEnv);
 
+CtmEnv::ISOMETRY toISOMETRY(std::string const& isoType);
+
+CtmEnv::NORMALIZATION toNORMALIZATION(std::string const& normType);
+
 #endif
