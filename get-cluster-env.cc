@@ -2,6 +2,7 @@
 #include "ctm-cluster-env.h"
 #include "cluster-ev-builder.h"
 #include <chrono>
+#include <random>
 
 using namespace itensor;
 
@@ -157,16 +158,37 @@ int main( int argc, char *argv[] ) {
     e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
         std::make_pair(1,0), std::make_pair(1,1)) );
 
+    // ##### randomization of directional CTM moves ###################
+    // Seed with a real random value, if available
+    std::random_device rd;  // Will be used to obtain a seed for the 
+                            // random number engine
+    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded 
+                            // with rd()
+    std::uniform_int_distribution<> dis(1, 4);
+    // ##### randomization of directional CTM moves ###################
+
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
         std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
-        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        for (int i=1; i<5; i++) {
+            switch(dis(gen)) {
+                case 1:
+                    ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+                    break;
+                case 2:
+                    ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+                    break;
+                case 3:
+                    ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+                    break;
+                case 4:
+                    ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+                    break;
+            }
+        }
 
         // ctmEnv.insURow(iso_type, norm_type);
         // ctmEnv.insRCol(iso_type, norm_type);
