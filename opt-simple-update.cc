@@ -27,6 +27,9 @@ int main( int argc, char *argv[] ) {
     Cluster cluster = readCluster(arg_clusterFile);
     std::cout << cluster; //DBG
 
+    auto initC = contractCluster(cluster);
+    PrintData( initC );
+
     MPO_3site mpo3s_Id;
     switch(arg_id_type) {
         case(ID_TYPE_1): {
@@ -105,14 +108,14 @@ int main( int argc, char *argv[] ) {
             noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(1)));
 
     // Balance cluster
-    /*std::vector<double> largest_elem;
+    /*std::vector<double> largest_elem;*/
     
     double m = 0.;
     auto max_m = [&m](double d)
     {
         if(std::abs(d) > m) m = std::abs(d);
     };
-    for ( auto siteId : cluster.siteIds ) {
+    /*for ( auto siteId : cluster.siteIds ) {
         cluster.sites.at(siteId).visit(max_m);
         largest_elem.push_back(m);
         m = 0.;
@@ -137,6 +140,14 @@ int main( int argc, char *argv[] ) {
             << m << std::endl;
         m = 0.;
     }*/
+
+    auto finalC = contractCluster(cluster);
+    PrintData(finalC);
+
+    auto dif = initC - finalC;
+    dif.visit(max_m);
+    
+    std::cout <<"Largest elem initC-finalC: "<< m << std::endl;
 
     writeCluster("test_H123.in", cluster);
 }

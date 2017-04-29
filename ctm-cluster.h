@@ -50,6 +50,8 @@ struct Cluster {
     std::map< std::pair< int,int >, std::string > cToS;
 };
 
+itensor::ITensor contractCluster(Cluster const& c);
+
 std::ostream& 
 operator<<(std::ostream& s, Cluster const& c);
 
