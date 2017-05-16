@@ -77,6 +77,10 @@ struct CtmData {
 
     int sizeN, sizeM; // size of n(row) x m(columns) cluster
 
+    std::vector< itensor::ITensor > sites;
+    // map from cluster to sites
+    std::map< std::pair<int,int>, int> cToS;
+
     // arrays holding half-row/column tensors
     std::vector< itensor::ITensor > T_U;
     std::vector< itensor::ITensor > T_R;
@@ -101,6 +105,13 @@ void writeEnv(IO_ENV_FMT ioFmt, std::string TAG, CtmData const& ctmD);
  *
  */
 CtmData readEnv(IO_ENV_FMT ioFmt, std::string const& TAG, Cluster const& cls);
+
+/*
+ * Read full environment of a cluster composed from simple environments
+ * of non-equivalent sites
+ */
+std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, std::string const& TAG, 
+    Cluster const& cls);
 
 // ############################################################################
 // IO for ITensor tensors

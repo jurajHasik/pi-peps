@@ -6,8 +6,9 @@ using namespace itensor;
 EVBuilder::EVBuilder () {}
 
 EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls, 
-    CtmEnv const& in_env) 
-    : name(in_name), cls(in_cls), env(in_env) {}
+    CtmData const& in_cd) 
+    : name(in_name), cls(in_cls), cd(in_cd) {        
+}
 
 /* 
  * TODO include (arbitrary) rotation matrix on physical index of 
@@ -61,8 +62,9 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
     // Get physical index of T
     auto s = noprime(findtype(T.inds(), PHYS));
 
-    if(auxI.m()*auxI.m() != env.d) {
-        std::cout <<"ctmEnv.d does not agree with onSiteT.dimD^2"<< std::endl;
+    if(auxI.m()*auxI.m() != cd.auxDimSite) {
+        std::cout <<"ctmData.auxDimSite does not agree with onSiteT.dimD^2"
+            << std::endl;
         exit(EXIT_FAILURE);
     }
     
@@ -106,10 +108,10 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
         *C04*C15*C26*C37;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0 = delta(env.I_XH, commonIndex(TOT,C04));
-    auto DV0 = delta(env.I_XV, commonIndex(TOT,C15));
-    auto DH1 = delta(prime(env.I_XH,1), commonIndex(TOT,C26));
-    auto DV1 = delta(prime(env.I_XV,1), commonIndex(TOT,C37));
+    auto DH0 = delta(cd.I_XH, commonIndex(TOT,C04));
+    auto DV0 = delta(cd.I_XV, commonIndex(TOT,C15));
+    auto DH1 = delta(prime(cd.I_XH,1), commonIndex(TOT,C26));
+    auto DV1 = delta(prime(cd.I_XV,1), commonIndex(TOT,C37));
 
     MpoNS result;
     result.nSite = 1;
@@ -135,7 +137,7 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
             <<" inserted at site "<< cls.cToS.at(site) << std::endl;
     }
 
-    auto ev = env.C_LU;
+    auto ev = cd.C_LU;
     /*
      * Suppose sizeM >= sizeN, contract say left boundary of environment 
      *
@@ -150,11 +152,11 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
      *   |C_LD|----I_D0 
      *
      */
-    for ( int row=0; row<=env.sizeN-1; row++ ) {
+    for ( int row=0; row<=cd.sizeN-1; row++ ) {
         ev.prime(HSLINK,2);
-        ev *= env.T_L[row];
+        ev *= cd.T_L[row];
     }
-    ev *= env.C_LD;
+    ev *= cd.C_LD;
 
     /*
      * Contract the cluster+environment column by column
@@ -172,21 +174,21 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
      *   |C_LD|----I_D0---|T_D0|--I_D1 
      *
      */
-    for ( int col=0; col<env.sizeM; col++ ) {
-        ev *= env.T_D[col];
-        ev.mapprime(env.sizeN,1,VSLINK);
+    for ( int col=0; col<cd.sizeM; col++ ) {
+        ev *= cd.T_D[col];
+        ev.mapprime(cd.sizeN,1,VSLINK);
 
-        for ( int row=env.sizeN-1; row>=0; row-- ) {
+        for ( int row=cd.sizeN-1; row>=0; row-- ) {
             ev.mapprime(0,1,VSLINK);
             // substitute original on-site tensor for op at position site
             if ( site.first == row && site.second == col ) {
                 std::cout <<"OP inserted at ("<< row <<","<< col <<")"
                     " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN, 
                         col % cls.sizeN)) << std::endl;
-                ev *= prime(op.mpo[0], HSLINK, 2*(env.sizeN-1-row));
+                ev *= prime(op.mpo[0], HSLINK, 2*(cd.sizeN-1-row));
             } else {
-                ev *= prime(env.sites.at(env.cToS.at(std::make_pair(row,col))),
-                    HSLINK, 2*(env.sizeN-1-row));
+                ev *= prime(cd.sites.at(cd.cToS.at(std::make_pair(row,col))),
+                    HSLINK, 2*(cd.sizeN-1-row));
             }
         }
         /*
@@ -204,16 +206,10 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
          *
          */
         ev.prime(HSLINK,-1);
-        ev *= env.T_U[col];
+        ev *= cd.T_U[col];
 
     }
 
-    // ev *= env.C_RD;
-    // for ( int row=env.sizeN-1; row>=0; row-- ) {
-    //     ev.mapprime(2*(env.sizeN-1-row),sizeM,HSLINK);
-    //     ev *= env.T_R[row];
-    // }
-    // ev *= env.C_RU;
     /*
      * Contract with right edge from bottom to top
      *
@@ -228,15 +224,15 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
      *   |C_LD|--...--|T_Dm-1|--I_Dm---------|C_RD| 
      *
      */
-    ev.prime(HSLINK,env.sizeM);
-    ev *= env.C_RD;
-    for ( int row=env.sizeN-1; row>=0; row-- ) {
-        ev.mapprime(2*(env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
-        ev *= env.T_R[row];
+    ev.prime(HSLINK,cd.sizeM);
+    ev *= cd.C_RD;
+    for ( int row=cd.sizeN-1; row>=0; row-- ) {
+        ev.mapprime(2*(cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
+        ev *= cd.T_R[row];
     }
-    ev *= env.C_RU;
+    ev *= cd.C_RU;
 
-    return sumels(ev)/env.getNorm();
+    return sumels(ev)/getNormSupercell(std::make_pair(1,1));
 }
 
 /* 
@@ -433,14 +429,14 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
         *C04B*C15B*C26B*C37B;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0A = delta(env.I_XH, commonIndex(OpA,C04A));
-    auto DV0A = delta(env.I_XV, commonIndex(OpA,C15A));
-    auto DH1A = delta(prime(env.I_XH,1), commonIndex(OpA,C26A));
-    auto DV1A = delta(prime(env.I_XV,1), commonIndex(OpA,C37A));
-    auto DH0B = delta(env.I_XH, commonIndex(OpB,C04B));
-    auto DV0B = delta(env.I_XV, commonIndex(OpB,C15B));
-    auto DH1B = delta(prime(env.I_XH,1), commonIndex(OpB,C26B));
-    auto DV1B = delta(prime(env.I_XV,1), commonIndex(OpB,C37B));
+    auto DH0A = delta(cd.I_XH, commonIndex(OpA,C04A));
+    auto DV0A = delta(cd.I_XV, commonIndex(OpA,C15A));
+    auto DH1A = delta(prime(cd.I_XH,1), commonIndex(OpA,C26A));
+    auto DV1A = delta(prime(cd.I_XV,1), commonIndex(OpA,C37A));
+    auto DH0B = delta(cd.I_XH, commonIndex(OpB,C04B));
+    auto DV0B = delta(cd.I_XV, commonIndex(OpB,C15B));
+    auto DH1B = delta(prime(cd.I_XH,1), commonIndex(OpB,C26B));
+    auto DV1B = delta(prime(cd.I_XV,1), commonIndex(OpB,C37B));
 
     OpA = OpA*DH0A*DV0A*DH1A*DV1A;
     OpB = OpB*DH0B*DV0B*DH1B*DV1B;
@@ -616,14 +612,14 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
         *C04B*C15B*C26B*C37B;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0A = delta(env.I_XH, commonIndex(OpA,C04A));
-    auto DV0A = delta(env.I_XV, commonIndex(OpA,C15A));
-    auto DH1A = delta(prime(env.I_XH,1), commonIndex(OpA,C26A));
-    auto DV1A = delta(prime(env.I_XV,1), commonIndex(OpA,C37A));
-    auto DH0B = delta(env.I_XH, commonIndex(OpB,C04B));
-    auto DV0B = delta(env.I_XV, commonIndex(OpB,C15B));
-    auto DH1B = delta(prime(env.I_XH,1), commonIndex(OpB,C26B));
-    auto DV1B = delta(prime(env.I_XV,1), commonIndex(OpB,C37B));
+    auto DH0A = delta(cd.I_XH, commonIndex(OpA,C04A));
+    auto DV0A = delta(cd.I_XV, commonIndex(OpA,C15A));
+    auto DH1A = delta(prime(cd.I_XH,1), commonIndex(OpA,C26A));
+    auto DV1A = delta(prime(cd.I_XV,1), commonIndex(OpA,C37A));
+    auto DH0B = delta(cd.I_XH, commonIndex(OpB,C04B));
+    auto DV0B = delta(cd.I_XV, commonIndex(OpB,C15B));
+    auto DH1B = delta(prime(cd.I_XH,1), commonIndex(OpB,C26B));
+    auto DV1B = delta(prime(cd.I_XV,1), commonIndex(OpB,C37B));
 
     OpA = OpA*DH0A*DV0A*DH1A*DV1A;
     OpB = OpB*DH0B*DV0B*DH1B*DV1B;
@@ -646,9 +642,9 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
     // determine number of cells=clusters in row/col direction required
     // to form the supercell
     int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)env.sizeN));
+        ((float)cd.sizeN));
     int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)env.sizeM));
+        ((float)cd.sizeM));
 
     std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
 
@@ -669,86 +665,71 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
     }
 
     // Contract TN with Op inserted
-    auto tN = env.C_LU;
+    auto tN = cd.C_LU;
 
-    for ( int row=0; row<nR*env.sizeN; row++ ) {
+    for ( int row=0; row<nR*cd.sizeN; row++ ) {
         tN.prime(HSLINK,2);
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(LLINK, -env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(LLINK, -cd.sizeN);
         }
-        tN *= env.T_L[row % env.sizeN];
+        tN *= cd.T_L[row % cd.sizeN];
     }
-    tN *= env.C_LD;
+    tN *= cd.C_LD;
     std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
     Print(tN);
 
-    for ( int col=0; col<nC*env.sizeM; col++ ) {
-        if ( (col > 0) && (col % env.sizeM == 0) ) {
-            tN.prime(DLINK, -env.sizeM);
-            tN.prime(ULINK, -env.sizeM);
+    for ( int col=0; col<nC*cd.sizeM; col++ ) {
+        if ( (col > 0) && (col % cd.sizeM == 0) ) {
+            tN.prime(DLINK, -cd.sizeM);
+            tN.prime(ULINK, -cd.sizeM);
         }
-        tN *= env.T_D[col % env.sizeM];
-        tN.mapprime(env.sizeN,1,VSLINK);
+        tN *= cd.T_D[col % cd.sizeM];
+        tN.mapprime(cd.sizeN,1,VSLINK);
 
-        for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+        for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
             if ( siteA.first == row && siteA.second == col ) {
                 std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
                     " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
                      col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
+                tN *= prime(Op.first, HSLINK, 2*(nR*cd.sizeN-1-row));
             } else if ( siteB.first == row && siteB.second == col ) {
                 std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
                     " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
                      col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
+                tN *= prime(Op.second, HSLINK, 2*(nR*cd.sizeN-1-row));
             } else {
-                tN *= prime( env.sites.at(env.cToS.at(
-                    std::make_pair(row % env.sizeN,col % env.sizeM))),
-                    HSLINK, 2*(nR*env.sizeN-1-row) );
+                tN *= prime( cd.sites.at(cd.cToS.at(
+                    std::make_pair(row % cd.sizeN,col % cd.sizeM))),
+                    HSLINK, 2*(nR*cd.sizeN-1-row) );
             }
         }
         tN.prime(HSLINK,-1);
-        tN *= env.T_U[col % env.sizeM];
+        tN *= cd.T_U[col % cd.sizeM];
 
         std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
-            << col % env.sizeM <<" <<<<<"<< std::endl;
+            << col % cd.sizeM <<" <<<<<"<< std::endl;
         Print(tN);
     }
-    std::cout <<">>>>> 2) "<< nC*env.sizeM 
+    std::cout <<">>>>> 2) "<< nC*cd.sizeM 
         << " cols appended <<<<<"<< std::endl;
     Print(tN);
 
-    // tN *= env.C_RD;
-    // for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-    //     tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
-    //     std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row) <<"->1 "<< std::endl;
+    tN.prime(HSLINK,cd.sizeM);
+    tN *= cd.C_RD;
+    for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(nR*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
+        std::cout <<"HSLINK "<< 2*(nR*cd.sizeN-1-row)+cd.sizeM <<" -> "<<  
+            cd.sizeM << std::endl;
         
-    //     Print(env.T_R[row % env.sizeN]);
-    //     tN *= env.T_R[row % env.sizeN];
+        tN *= cd.T_R[row % cd.sizeN];
 
-    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
-    //         tN.prime(RLINK, env.sizeN);
-    //         std::cout <<"RLINK RESET +"<< env.sizeN <<" prime"<< std::endl;
-    //     }
-    //     Print(tN);
-    // }
-    // tN *= env.C_RU;
-    tN.prime(HSLINK,env.sizeM);
-    tN *= env.C_RD;
-    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
-        std::cout <<"HSLINK "<< 2*(nR*env.sizeN-1-row)+env.sizeM <<" -> "<<  
-            env.sizeM << std::endl;
-        
-        tN *= env.T_R[row % env.sizeN];
-
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(RLINK, env.sizeN);
-            std::cout <<"RLINK RESET +"<< env.sizeN <<" prime"<< std::endl;
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(RLINK, cd.sizeN);
+            std::cout <<"RLINK RESET +"<< cd.sizeN <<" prime"<< std::endl;
         }
     }
-    tN *= env.C_RU;
+    tN *= cd.C_RU;
     std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
     Print(tN);
 
@@ -766,9 +747,9 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     // determine number of cells=clusters in row/col direction required
     // to form the supercell
     int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)env.sizeN));
+        ((float)cd.sizeN));
     int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)env.sizeM));
+        ((float)cd.sizeM));
 
     std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
 
@@ -789,66 +770,57 @@ double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
     }
 
     // Contract TN with Op inserted
-    auto tN = env.C_LU;
+    auto tN = cd.C_LU;
 
-    for ( int row=0; row<nR*env.sizeN; row++ ) {
+    for ( int row=0; row<nR*cd.sizeN; row++ ) {
         tN.prime(HSLINK,2);
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(LLINK, -env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(LLINK, -cd.sizeN);
         }
-        tN *= env.T_L[row % env.sizeN];
+        tN *= cd.T_L[row % cd.sizeN];
     }
-    tN *= env.C_LD;
+    tN *= cd.C_LD;
 
-    for ( int col=0; col<nC*env.sizeM; col++ ) {
-        if ( (col > 0) && (col % env.sizeM == 0) ) {
-            tN.prime(DLINK, -env.sizeM);
-            tN.prime(ULINK, -env.sizeM);
+    for ( int col=0; col<nC*cd.sizeM; col++ ) {
+        if ( (col > 0) && (col % cd.sizeM == 0) ) {
+            tN.prime(DLINK, -cd.sizeM);
+            tN.prime(ULINK, -cd.sizeM);
         }
-        tN *= env.T_D[col % env.sizeM];
-        tN.mapprime(env.sizeN,1,VSLINK);
+        tN *= cd.T_D[col % cd.sizeM];
+        tN.mapprime(cd.sizeN,1,VSLINK);
 
-        for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
+        for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
             if ( siteA.first == row && siteA.second == col ) {
                 std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
                     " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
                      col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.first, HSLINK, 2*(nR*env.sizeN-1-row));
+                tN *= prime(Op.first, HSLINK, 2*(nR*cd.sizeN-1-row));
             } else if ( siteB.first == row && siteB.second == col ) {
                 std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
                     " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
                      col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.second, HSLINK, 2*(nR*env.sizeN-1-row));
+                tN *= prime(Op.second, HSLINK, 2*(nR*cd.sizeN-1-row));
             } else {
-                tN *= prime( env.sites.at(env.cToS.at(
-                    std::make_pair(row % env.sizeN,col % env.sizeM))),
-                    HSLINK, 2*(nR*env.sizeN-1-row) );
+                tN *= prime( cd.sites.at(cd.cToS.at(
+                    std::make_pair(row % cd.sizeN,col % cd.sizeM))),
+                    HSLINK, 2*(nR*cd.sizeN-1-row) );
             }
         }
         tN.prime(HSLINK,-1);
-        tN *= env.T_U[col % env.sizeM];
+        tN *= cd.T_U[col % cd.sizeM];
     }
 
-    // tN *= env.C_RD;
-    // for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-    //     tN.mapprime(2*(nR*env.sizeN-1-row),1,HSLINK);
-    //     tN *= env.T_R[row % env.sizeN];
-    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
-    //         tN.prime(RLINK, env.sizeN);
-    //     }
-    // }
-    // tN *= env.C_RU;
-    tN.prime(HSLINK,env.sizeM);
-    tN *= env.C_RD;
-    for ( int row=nR*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
-        tN *= env.T_R[row % env.sizeN];
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(RLINK, env.sizeN);
+    tN.prime(HSLINK,cd.sizeM);
+    tN *= cd.C_RD;
+    for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(nR*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
+        tN *= cd.T_R[row % cd.sizeN];
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(RLINK, cd.sizeN);
         }
     }
-    tN *= env.C_RU;
+    tN *= cd.C_RU;
 
     std::cout <<"===== EVBuilder::eV_2sO done ====="<< std::string(38,'=')
         << std::endl;
@@ -873,85 +845,74 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
         exit(EXIT_FAILURE);
     }
 
-    auto tN = env.C_LU;
+    auto tN = cd.C_LU;
 
     // Construct left edge
-    for ( int row=0; row<sc.first*env.sizeN; row++ ) {
+    for ( int row=0; row<sc.first*cd.sizeN; row++ ) {
         tN.prime(HSLINK,2);
         // Reset index primeLevel when entering new cell=(copy of)cluster
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(LLINK, -env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(LLINK, -cd.sizeN);
         }
-        tN *= env.T_L[row % env.sizeN];
+        tN *= cd.T_L[row % cd.sizeN];
     }
-    tN *= env.C_LD;
+    tN *= cd.C_LD;
 
     std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
     Print(tN);
 
-    for ( int col=0; col<sc.second*env.sizeM; col++ ) {
-        if ( (col > 0) && (col % env.sizeM == 0) ) {
-            tN.prime(DLINK, -env.sizeM);
-            tN.prime(ULINK, -env.sizeM);
+    for ( int col=0; col<sc.second*cd.sizeM; col++ ) {
+        if ( (col > 0) && (col % cd.sizeM == 0) ) {
+            tN.prime(DLINK, -cd.sizeM);
+            tN.prime(ULINK, -cd.sizeM);
         }
-        tN *= env.T_D[col % env.sizeM];
-        tN.mapprime(env.sizeN,1,VSLINK);
-        std::cout<<"T_D["<< col % env.sizeM <<"] inserted"<<std::endl;
+        tN *= cd.T_D[col % cd.sizeM];
+        tN.mapprime(cd.sizeN,1,VSLINK);
+        std::cout<<"T_D["<< col % cd.sizeM <<"] inserted"<<std::endl;
         Print(tN);
 
-        for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+        for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
-            tN *= prime( env.sites.at(env.cToS.at(
-                std::make_pair(row % env.sizeN,col % env.sizeM))),
-                HSLINK, 2*(sc.first*env.sizeN-1-row) );
+            tN *= prime( cd.sites.at(cd.cToS.at(
+                std::make_pair(row % cd.sizeN,col % cd.sizeM))),
+                HSLINK, 2*(sc.first*cd.sizeN-1-row) );
         }
 
         tN.prime(HSLINK,-1);
-        tN *= env.T_U[col % env.sizeM];
+        tN *= cd.T_U[col % cd.sizeM];
 
         std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
-            << col % env.sizeM <<" <<<<<"<< std::endl;
+            << col % cd.sizeM <<" <<<<<"<< std::endl;
         Print(tN);
     }
 
-    std::cout <<">>>>> 2) "<< sc.second*env.sizeM 
+    std::cout <<">>>>> 2) "<< sc.second*cd.sizeM 
         << " cols appended <<<<<"<< std::endl;
     Print(tN);
 
-    // tN *= env.C_RD;
-    // for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-    //     tN.mapprime(2*(sc.first*env.sizeN-1-row),sizeM,HSLINK);
-
-    //     tN *= env.T_R[row % env.sizeN];
-
-    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
-    //         tN.prime(RLINK, env.sizeN);
-    //     }
-    // }
-    // tN *= env.C_RU;
-    tN.prime(HSLINK,env.sizeM);
-    tN *= env.C_RD;
+    tN.prime(HSLINK,cd.sizeM);
+    tN *= cd.C_RD;
     Print(tN);
-    for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
-        std::cout <<"HSLINK "<< 2*(sc.first*env.sizeN-1-row)+env.sizeM <<" -> "<<  
-            env.sizeM << std::endl;
+    for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(sc.first*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
+        std::cout <<"HSLINK "<< 2*(sc.first*cd.sizeN-1-row)+cd.sizeM <<" -> "<<  
+            cd.sizeM << std::endl;
 
-        tN *= env.T_R[row % env.sizeN];
+        tN *= cd.T_R[row % cd.sizeN];
         Print(tN);
 
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(RLINK, env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(RLINK, cd.sizeN);
         }
     }
-    tN *= env.C_RU;
+    tN *= cd.C_RU;
 
     std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
     Print(tN);
 
     std::cout <<"===== EVBuilder::getNormSupercell_DBG done ====="
         << std::string(24,'=') << std::endl;
-    return norm(tN);
+    return sumels(tN);
 }
 
 double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
@@ -967,68 +928,58 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
         exit(EXIT_FAILURE);
     }
 
-    auto tN = env.C_LU;
+    auto tN = cd.C_LU;
 
-    for ( int row=0; row<sc.first*env.sizeN; row++ ) {
+    for ( int row=0; row<sc.first*cd.sizeN; row++ ) {
         tN.prime(HSLINK,2);
         // Reset index primeLevel when entering new cell=(copy of)cluster
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(LLINK, -env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(LLINK, -cd.sizeN);
         }
-        tN *= env.T_L[row % env.sizeN];
+        tN *= cd.T_L[row % cd.sizeN];
     }
-    tN *= env.C_LD;
+    tN *= cd.C_LD;
 
-    for ( int col=0; col<sc.second*env.sizeM; col++ ) {
-        if ( (col > 0) && (col % env.sizeM == 0) ) {
-            tN.prime(DLINK, -env.sizeM);
-            tN.prime(ULINK, -env.sizeM);
+    for ( int col=0; col<sc.second*cd.sizeM; col++ ) {
+        if ( (col > 0) && (col % cd.sizeM == 0) ) {
+            tN.prime(DLINK, -cd.sizeM);
+            tN.prime(ULINK, -cd.sizeM);
         }
-        tN *= env.T_D[col % env.sizeM];
-        tN.mapprime(env.sizeN,1,VSLINK);
+        tN *= cd.T_D[col % cd.sizeM];
+        tN.mapprime(cd.sizeN,1,VSLINK);
 
-        for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
+        for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
             tN.mapprime(0,1,VSLINK);
-            tN *= prime( env.sites.at(env.cToS.at(
-                std::make_pair(row % env.sizeN,col % env.sizeM))),
-                HSLINK, 2*(sc.first*env.sizeN-1-row) );
+            tN *= prime( cd.sites.at(cd.cToS.at(
+                std::make_pair(row % cd.sizeN,col % cd.sizeM))),
+                HSLINK, 2*(sc.first*cd.sizeN-1-row) );
         }
         tN.prime(HSLINK,-1);
-        tN *= env.T_U[col % env.sizeM];
+        tN *= cd.T_U[col % cd.sizeM];
     }
 
-    // tN *= env.C_RD;
-    // for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-    //     tN.mapprime(2*(sc.first*env.sizeN-1-row),1,HSLINK);
+    tN.prime(HSLINK,cd.sizeM);
+    tN *= cd.C_RD;
+    for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
+        tN.mapprime(2*(sc.first*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
 
-    //     tN *= env.T_R[row % env.sizeN];
+        tN *= cd.T_R[row % cd.sizeN];
 
-    //     if ( (row > 0) && (row % env.sizeN == 0) ) {
-    //         tN.prime(RLINK, env.sizeN);
-    //     }
-    // }
-    // tN *= env.C_RU;
-    tN.prime(HSLINK,env.sizeM);
-    tN *= env.C_RD;
-    for ( int row=sc.first*env.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*env.sizeN-1-row)+env.sizeM,env.sizeM,HSLINK);
-
-        tN *= env.T_R[row % env.sizeN];
-
-        if ( (row > 0) && (row % env.sizeN == 0) ) {
-            tN.prime(RLINK, env.sizeN);
+        if ( (row > 0) && (row % cd.sizeN == 0) ) {
+            tN.prime(RLINK, cd.sizeN);
         }
     }
-    tN *= env.C_RU;
+    tN *= cd.C_RU;
 
     std::cout <<"===== EVBuilder::getNormSupercell done ====="
         << std::string(28,'=') << std::endl;
-    return norm(tN);
+    return sumels(tN);
 }
 
-void EVBuilder::linkCtmEnv(CtmEnv const& new_env) {
-    env = new_env;
+void EVBuilder::setCtmData(CtmData const& new_cd) {
+    cd = new_cd;
 }
+
 
 // std::complex<double> ExpValBuilder::expVal_1sO1sO_H(int dist, 
 //         itensor::ITensor const& op1, itensor::ITensor const& op2)

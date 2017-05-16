@@ -411,6 +411,13 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
     return ctmD;
 }
 
+std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, string const& TAG, 
+    Cluster const& cls) {
+
+    std::vector<CtmData> result;
+    return result;
+}
+
 // ############################################################################
 // IO for ITensor tensors
 

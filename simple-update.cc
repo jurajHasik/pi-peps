@@ -39,6 +39,182 @@ MPO_3site operator*(double scalar, MPO_3site const& mpo3s ) {
 	return result;
 }
 
+// 2 SITE OPS #########################################################
+
+MPO_2site getMPO2s_Id(int physDim) {
+	MPO_2site mpo2s;
+	
+	// Define physical indices
+	mpo2s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo2s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+
+	//create a lambda function
+	//which returns the square of its argument
+	auto sqrt_T = [](double r) { return sqrt(r); };
+
+    ITensor idpI1(mpo2s.Is1,prime(mpo2s.Is1,1));
+    ITensor idpI2(mpo2s.Is2,prime(mpo2s.Is2,1));
+    for (int i=1;i<=physDim;i++) {
+        idpI1.set(mpo2s.Is1(i),prime(mpo2s.Is1,1)(i),1.0);
+        idpI2.set(mpo2s.Is2(i),prime(mpo2s.Is2,1)(i),1.0);
+    }
+
+    ITensor id2s = idpI1*idpI2;
+
+    /*
+     *  s1'                    s2' 
+     *   |                      |
+     *  |H1|--a1--<SV_12>--a2--|H2|
+     *   |                      |
+     *  s1                     s2
+     *
+     */
+    mpo2s.H1 = ITensor(mpo2s.Is1,prime(mpo2s.Is1));
+    ITensor SV_12;
+    svd(id2s,mpo2s.H1,SV_12,mpo2s.H2);
+
+    PrintData(mpo2s.H1);
+    PrintData(SV_12);
+    Print(mpo2s.H2);
+
+    Index a1 = commonIndex(mpo2s.H1,SV_12);
+    Index a2 = commonIndex(SV_12,mpo2s.H2);
+
+    // Define aux indices linking the on-site MPOs
+	Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
+
+	/*
+	 * Split obtained SVD values symmetricaly and absorb to obtain
+	 * final tensor H1 and intermediate tensor temp
+	 *
+     *  s1'                                     s2' 
+     *   |                                       |
+     *  |H1|--a1--<SV_12>^1/2--<SV_12>^1/2--a2--|H2|
+     *   |                                       |
+     *  s1                                      s2
+     *
+     */
+    SV_12.apply(sqrt_T);
+    mpo2s.H1 = ( mpo2s.H1 * SV_12 )*delta(a2,iMPO3s12);
+    mpo2s.H2 = ( mpo2s.H2 * SV_12 )*delta(a1,iMPO3s12);
+    Print(mpo2s.H1);
+    Print(mpo2s.H2);
+
+	return mpo2s;
+}
+
+void applyH_12(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, 
+	std::pair<Index, Index> const& link12) {
+
+	std::cout <<">>>>> applyH_12_v1 called <<<<<"<< std::endl;
+	std::cout << mpo2s;
+	PrintData(mpo2s.H1);
+    PrintData(mpo2s.H2);
+
+	std::cout <<"link12 "<< link12.first <<" "<< link12.second << std::endl;
+
+	// Take the square-root of SV's
+	auto sqrtT = [](double r) { return sqrt(r); };
+
+	/*
+	 * Applying 3-site MPO leads to a new tensor network of the form
+	 * 
+	 *    \ |    __               s1    s2
+	 *   --|1|~~|H1|~~s1          |_    |_ 
+	 *    \ |     |       ==   --|  |  |  |--
+	 *   --|2|~~|H2|~~s2  ==   --|1~|==|2~|--  
+	 *      |     |       ==   --|__|  |__|--
+              
+	 *
+	 * Indices s1,s2 are relabeled back to physical indices of 
+	 * original sites 1 and 2 after applying MPO.
+	 * Now auxiliary index linking sites 1 & 2 have dimension increased 
+	 * from D to D*auxDim of applied 2-site MPO. To obtain the network 
+	 * of the original size, we have to reduce dimensions of these links 
+	 * back to D by performing SVDs along link12.
+	 *
+	 */
+
+	std::cout <<"----- Initial |12> -----"<< std::endl;
+	Print(T1);
+	Print(T2);
+
+	// D^4 x Ds x auxD_mpo3s
+	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
+	T1 = ( T1 * kd_phys1) * mpo2s.H1;
+	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
+	// D^4 x Ds x auxD_mpo3s^2
+	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
+	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
+	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+
+	std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
+	PrintData(T1);
+    PrintData(T2);
+
+	/*
+	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
+	 * along common index
+	 *
+	 *       _______               s1                       s2
+	 *  s1~~|       |~~s2           |                        |
+	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
+	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
+	 *    --|_______|--         --|___|                    |___|--
+	 *
+	 * where 1~~ and 2~~ are now holding singular vectors wrt
+	 * to SVD done along link between sites 1 and 2
+	 *
+	 */
+	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	ITensor SV_L12;
+	svd(T1*delta(link12.first, link12.second)*T2, T1, SV_L12, T2);
+
+	Print(T1);
+	PrintData(SV_L12);
+	Print(T2);
+
+	/*
+	 * We absorb SV matrices into new on-site tensors in symmetric fashion,
+	 * absorbing square root of SV matrix of the link to both on-site
+	 * tensors which it connects. Then we discard the excess SV values
+	 * to reduce back to the auxBond dimension D
+	 *
+	 * ++|SV_L12|++ => ++|SV_L12^1/2|++|SV_L12^1/2|++
+	 *
+	 *     s1
+	 *     |
+	 *  --|   |                                    ==>    \ |
+	 *  --|1~~|++|SV_L12^1/2|++a2>>--link12.first  ==>  --|1n|~~s1
+	 *  --|___|                                    ==>      |
+	 *
+	 *  where dR is a reduction tensor, which discards all the SV values
+	 *  except the first D. Analogous operation is performed on the |2~~~|
+	 *  on-site tensor
+	 *
+	 *                                       s2
+     *                                       |       
+	 *                                     |    |--  ==>   \ |
+	 *  link12.second--<<a1++|SV_L12^1/2|++|2~~~|--  ==> --|2n|~~s2
+	 *                                     |____|--  ==>     |
+	 *                                       
+	 */
+
+	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
+	SV_L12.apply(sqrtT);
+	auto a1 = commonIndex(T1,SV_L12);
+	auto a2 = commonIndex(T2,SV_L12);
+	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
+	T2 = ( T2*SV_L12 )*delta( a1, link12.second );
+
+	PrintData(SV_L12);
+	PrintData(T1);
+	PrintData(T2);
+}
+
+// 3 SITE OPS #########################################################
+
 MPO_3site getMPO3s_Id(int physDim) {
 	MPO_3site mpo3s;
 	
@@ -1241,6 +1417,16 @@ void applyH_123_v6(MPO_3site const& mpo3s,
 	PrintData(SV_L23);
 	PrintData(T2);
 	PrintData(T3);
+}
+
+std::ostream& 
+operator<<(std::ostream& s, MPO_2site const& mpo2s) {
+	s <<"----- BEGIN MPO_2site "<< std::string(50,'-') << std::endl;
+	s << mpo2s.Is1 <<" "<< mpo2s.Is2 << std::endl;
+	s <<"H1 "<< mpo2s.H1 << std::endl;
+	s <<"H2 "<< mpo2s.H2;
+	s <<"----- END MPO_2site "<< std::string(52,'-') << std::endl;
+	return s; 
 }
 
 std::ostream& 

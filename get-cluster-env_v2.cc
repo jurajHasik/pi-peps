@@ -1,5 +1,5 @@
 #include "ctm-cluster-io.h"
-#include "ctm-cluster-env.h"
+#include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include <chrono>
 #include <random>
@@ -88,7 +88,7 @@ int main( int argc, char *argv[] ) {
             std::string in_files_prefix = std::string(argv[6]);
             if (init_Env == CtmEnv::INIT_ENV_file) {
                 ctmEnv = CtmEnv("TEST_ENV_2x2", 
-                    readEnv(ioEnvFmt, in_files_prefix, cluster),
+                    readEnv_V2(ioEnvFmt, in_files_prefix, cluster),
                     cluster);
             } else {
                 std::cout<< argv[4] << " requires its additional args" << "\n";
@@ -98,7 +98,7 @@ int main( int argc, char *argv[] ) {
             norm_type = toNORMALIZATION(argv[8]);
             break;
         }
-        default: { 
+        default: {
             // argc should at most 3 for correct execution
             std::cout <<"Invalid amount of Agrs (>6)"<< std::endl;
             exit(EXIT_FAILURE);
@@ -160,11 +160,11 @@ int main( int argc, char *argv[] ) {
 
     // ##### randomization of directional CTM moves ###################
     // Seed with a real random value, if available
-    std::random_device rd;  // Will be used to obtain a seed for the 
-                            // random number engine
-    std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded 
-                            // with rd()
-    std::uniform_int_distribution<> dis(1, 4);
+    // std::random_device rd;  // Will be used to obtain a seed for the 
+    //                         // random number engine
+    // std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded 
+    //                         // with rd()
+    // std::uniform_int_distribution<> dis(1, 4);
     // ##### randomization of directional CTM moves ###################
 
     // Start timing iteration loop
@@ -190,17 +190,17 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
-        ctmEnv.insURow(iso_type, norm_type);
-        ctmEnv.insRCol(iso_type, norm_type);
-        ctmEnv.insDRow(iso_type, norm_type);
-        ctmEnv.insLCol(iso_type, norm_type);
+        // ctmEnv.insURow(iso_type, norm_type);
+        // ctmEnv.insRCol(iso_type, norm_type);
+        // ctmEnv.insDRow(iso_type, norm_type);
+        // ctmEnv.insLCol(iso_type, norm_type);
 
         std::cout << "STEP " << iter << std::endl;
 
         if ( iter % 50 == 0 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
-            ev.setCtmData(ctmEnv.getCtmData());
+            ev.linkCtmEnv(ctmEnv);
             e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
                 std::make_pair(0,0), std::make_pair(0,1)) );
             // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,

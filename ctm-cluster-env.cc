@@ -2066,7 +2066,8 @@ void CtmEnv::isoT4(char ctmMove) {
         if(std::abs(d) > m) m = std::abs(d);
     };
     T.visit(max_m);
-    std::cout << "T = CC^d + C~C~^d largest elem: "<< m << std::endl;
+    std::cout <<"MV "<< ctmMove <<"T = CC^d + C~C~^d largest elem: "<< m 
+        << std::endl;
     Print(T);
 
 
@@ -2075,7 +2076,10 @@ void CtmEnv::isoT4(char ctmMove) {
     // Compute just x(=chi) largest eigenvecs
     Args args = Args::global();
     args.add("Maxm",x);
-    diagHermitian(T, tZ, DiagZ, args);
+    args.add("Cutoff",10E-9);
+    auto spec = diagHermitian(T, tZ, DiagZ, args);
+    Print(spec);
+    Print(tZ);
 
     auto tZstar = conj(tZ);
     auto cI = commonIndex(tZ, DiagZ);
@@ -2156,11 +2160,14 @@ void CtmEnv::isoT4(char ctmMove) {
     Print(Q2);
     m = 0.;
     T.visit(max_m);
-    std::cout << "T = QQ^d + Q~Q~^d largest elem: "<< m << std::endl;
+    std::cout <<"MV "<< ctmMove <<"T = QQ^d + Q~Q~^d largest elem: "<< m 
+        << std::endl;
     Print(T);
     
     ITensor tW, DiagW;
-    diagHermitian(T, tW, DiagW, args);
+    spec = diagHermitian(T, tW, DiagW, args);
+    Print(spec);
+    Print(tW);
 
     auto tWstar = conj(tW);
     cI = commonIndex(tW, DiagW);
@@ -2412,7 +2419,7 @@ double CtmEnv::getNorm() const {
     }
     Norm *= C_RU;
 
-    return norm(Norm);
+    return sumels(Norm);
 }
 
 /*
@@ -2706,7 +2713,8 @@ CtmEnv::CtmSpec CtmEnv::getCtmSpec() const {
 
 CtmData CtmEnv::getCtmData() const {
     CtmData ctmData = {
-        x, d, sizeN, sizeM, 
+        x, d, sizeN, sizeM,
+        sites, cToS, 
         T_U, T_R, T_D, T_L,
         C_LU, C_RU, C_RD, C_LD,
         I_U, I_R, I_D, I_L,

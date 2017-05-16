@@ -83,6 +83,13 @@ struct MPO_3site {
 	itensor::Index Is1, Is2, Is3;
 };
 
+struct MPO_2site {
+	itensor::ITensor H1, H2;
+
+	// expose physical indices
+	itensor::Index Is1, Is2;
+};
+
 /*
  * Define multiplication of 3site MPO by REAL scalar scalar*MPO_3site
  *
@@ -96,6 +103,16 @@ typedef enum ID_TYPE {
 
 // string to enum conversion
 ID_TYPE toID_TYPE(std::string const& idType);
+
+/*
+ * construct Identity MPO_2site 
+ *
+ */
+MPO_2site getMPO2s_Id(int physDim);
+
+void applyH_12(MPO_2site const& mpo2s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, 
+	std::pair<itensor::Index, itensor::Index> const& link12);
 
 /*
  * construct Identity MPO_3site 
@@ -152,6 +169,9 @@ void applyH_123_v6(MPO_3site const& mpo3s,
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
 	std::pair<itensor::Index, itensor::Index> const& link12,
 	std::pair<itensor::Index, itensor::Index> const& link23);
+
+std::ostream& 
+operator<<(std::ostream& s, MPO_2site const& mpo2s);
 
 std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);

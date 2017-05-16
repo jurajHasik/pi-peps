@@ -32,7 +32,7 @@ const auto PHYS    = itensor::IndexType(TAG_IT_PHYSSITE);
  * 
  */
 struct Cluster {
-    // size of n x m cluster
+    // size of n=Y(=rows) x m=X(=cols) cluster
     int sizeN, sizeM;
     
     // auxiliary bond dimension

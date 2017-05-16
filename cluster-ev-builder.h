@@ -28,8 +28,8 @@ class EVBuilder {
     // Cluster
     Cluster cls;
 
-    // With Environment one can compute expectation values
-    CtmEnv env;
+    // With Environment Data one can compute expectation values
+    CtmData cd;
 
     public:
 
@@ -37,7 +37,7 @@ class EVBuilder {
     EVBuilder();
 
     // Basic Constructor
-    EVBuilder(std::string in_name, Cluster const& in_cls, CtmEnv const& in_env);
+    EVBuilder(std::string in_name, Cluster const& in_cls, CtmData const& in_cd);
 
     // Supported types of 1-site operators
     enum MPO_1S {
@@ -94,7 +94,7 @@ class EVBuilder {
 
     double getNormSupercell(std::pair<int,int> sc) const;
 
-    void linkCtmEnv(CtmEnv const& new_env);
+    void setCtmData(CtmData const& new_cd);
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2

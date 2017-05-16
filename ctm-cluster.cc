@@ -3,7 +3,8 @@
 using namespace itensor; 
 
 ITensor contractCluster(Cluster const& c) {
-    
+    std::cout <<">>>> contractCluster called <<<<<"<< std::endl;
+
     // Contract cluster
     ITensor initPlaq, siteT;
     Index tempI;
@@ -22,7 +23,9 @@ ITensor contractCluster(Cluster const& c) {
             prime(aI[col-1],2), aI[col] ) * siteT );
     }
 
-    for (int row = 1; row < c.sizeM; row ++) {
+    std::cout <<">>>> 1) row 0 contrated <<<<<"<< std::endl;
+
+    for (int row = 1; row < c.sizeN; row ++) {
         siteT = c.sites.at( c.cToS.at(std::make_pair(row,0)) );
         tempI = noprime( 
             findtype(siteT.inds(), AUXLINK) );
@@ -41,6 +44,7 @@ ITensor contractCluster(Cluster const& c) {
         }
     }
 
+    std::cout <<">>>> contractCluster done <<<<<"<< std::endl;
     return initPlaq;
 }
 
