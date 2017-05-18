@@ -114,6 +114,10 @@ void applyH_12(MPO_2site const& mpo2s,
 	itensor::ITensor & T1, itensor::ITensor & T2, 
 	std::pair<itensor::Index, itensor::Index> const& link12);
 
+void applyH_12_v2(MPO_2site const& mpo2s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, 
+	std::pair<itensor::Index, itensor::Index> const& link12);
+
 /*
  * construct Identity MPO_3site 
  *

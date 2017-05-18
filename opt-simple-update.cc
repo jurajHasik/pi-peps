@@ -33,7 +33,25 @@ int main( int argc, char *argv[] ) {
     MPO_2site mpo2s_Id;
     mpo2s_Id = getMPO2s_Id(cluster.physDim);
 
-    applyH_12(mpo2s_Id, 
+    void (*applyMPO2S)(MPO_2site const&, ITensor &, ITensor &,
+        std::pair<Index,Index> const&);
+
+    switch(arg_f_mpo3s) {
+        case(F_MPO3S_1): {
+            applyMPO2S = &applyH_12;
+            break;
+        }
+        case(F_MPO3S_2): {
+            applyMPO2S = &applyH_12_v2;
+            break;
+        }
+        default: {
+            std::cout << "Unsupported F_MPO3S" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    applyMPO2S(mpo2s_Id, 
         cluster.sites["A"], cluster.sites["B"], 
         std::make_pair( 
             noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),

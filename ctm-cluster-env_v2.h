@@ -121,7 +121,6 @@ class CtmEnv
 
     // ########################################################################
     // member methods of CtmEnv
-//    public:
     
     // Default constructor
     CtmEnv();
@@ -159,32 +158,41 @@ class CtmEnv
     // CTM iterative methods
 
     // Insert, Absorb & Renormalize U(p) row 
-    // void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
-    //     std::vector<double> & accT);
+    void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
+        std::vector<double> & accT);
     // void insURow(ISOMETRY iso_type, NORMALIZATION norm_type);
     
+    // -||- R(ight) column
+    void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
+    // void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
+
     // -||- D(own) row
     // void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
     //     std::vector<double> & accT);
     // void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
     
     // Insert, Absorb & Renormalize L(eft) column
-    // void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-    //     std::vector<double> & accT);
+    void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
     // void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
-    
-    // -||- R(ight) column
-    // void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-    //     std::vector<double> & accT);
-    // void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
     // ########################################################################
     // isometries
+    
+    std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
 
-    void isoT1(
-        itensor::IndexSet const& iS_tU, 
-        std::pair< itensor::Index, itensor::Index > const& iS_delta,
-        itensor::ITensor const& t1, itensor::ITensor const& t2);
+    // build reduced density matrix of 2x2 cluster with cut(=uncontracted
+    // indices) along one of the CTM directions U,R,D or L starting from
+    // position (col,row), where starting site is always nearest site in
+    // clock-wise direction wrt. to cut
+    // CONVENTION indices clockwise wrt. to cut have primeLevel 0
+    itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
+
+    // builds the corner of environment of site (col,row) + site where 
+    // corner is 1,2,3 or 4 according to following key 1|2
+    //                                                 4|3
+    itensor::ITensor build_corner(char corner, int col, int row) const;
 
     // ########################################################################
     // environment normalization methods

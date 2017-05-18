@@ -109,6 +109,16 @@ int main( int argc, char *argv[] ) {
     std::cout << ctmEnv;
     ctmEnv.printSVDspec(); //DBG
 
+    Print(ctmEnv.build_corner('1',0,0));
+    Print(ctmEnv.build_corner('2',0,0));
+    Print(ctmEnv.build_corner('3',0,0));
+    Print(ctmEnv.build_corner('4',0,0));
+
+    Print(ctmEnv.build_2x2_RDM('L',0,0));
+    Print(ctmEnv.build_2x2_RDM('U',0,0));
+    Print(ctmEnv.build_2x2_RDM('R',0,0));
+    Print(ctmEnv.build_2x2_RDM('D',0,0));
+
     // holds timing for *_DBG mostves
     std::vector<double> accT(4,0.0);
     // holding energies
@@ -118,6 +128,7 @@ int main( int argc, char *argv[] ) {
     // std::vector<double> e_nnH_CD;
 
     // Build expectation value builder
+    std::cout << ctmEnv.getCtmData();
     EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData());
 
     // Prepare rotated on-site tensor
@@ -190,17 +201,17 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
-        // ctmEnv.insURow(iso_type, norm_type);
-        // ctmEnv.insRCol(iso_type, norm_type);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        //ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         // ctmEnv.insDRow(iso_type, norm_type);
-        // ctmEnv.insLCol(iso_type, norm_type);
+        //ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 
         std::cout << "STEP " << iter << std::endl;
 
         if ( iter % 50 == 0 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
-            ev.linkCtmEnv(ctmEnv);
+            ev.setCtmData(ctmEnv.getCtmData());
             e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
                 std::make_pair(0,0), std::make_pair(0,1)) );
             // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
