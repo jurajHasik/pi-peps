@@ -327,7 +327,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
         accT[1] += std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
-        std::cout <<"(5) ----- Construct reduced C_LU,C_LD -----"<< std::endl;
+        std::cout <<"(5) ----- Construct reduced C_LU,C_RU -----"<< std::endl;
         /*   _______                            ________
          *  |       |--I_U               I_U0--|        \
          *  |C_LU_01|        *contract*        |ZsizeM-1 --I_UsizeM+10>>I_U0
@@ -486,246 +486,183 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
 //     C_RU.noprime(RLINK);
 // }
 
-// void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
-//     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
-// {
-//     std::cout <<"##### InsDRow called "<< std::string(51,'#') << std::endl;
-//     // sequentialy contract lower boundary of environment with 
-//     // sizeN rows of cluster + half-row matrices T_L* and T_R*
-//     for (int row=sizeN-1; row>=0; row--) {
-//         std::chrono::steady_clock::time_point t_iso_begin = 
-//             std::chrono::steady_clock::now();
-//         /*
-//          * Insert a copy of row into network to obtain following expanded TN:
-//          *
-//          *  A  I_Ln-1                                            I_Rn-1  A
-//          *  A  _|____                                            _|____  A 
-//          *  A |T_Ln-1|--I_XH                             I_XHm--|T_Rn-1| A    
-//          *  A   |                                                 |      A
-//          *  A  I_Ln         I_XVn                I_XVn           I_Rn    A
-//          *  A  _|__         _|__                 _|____          _|__    A
-//          *  A |C_LD|--I_D--|T_D0|--...--I_Dm-1--|T_Dm-1|--I_Dm--|C_RD|   A
-//          *
-//          * Focus on a part of the TN highlighted by A's. Absorb the 
-//          * inserted tensors to obtain TN of the original form
-//          *
-//          * 1) Contract C_LU with T_L(row)
-//          *
-//          *   I_L(row)            I_(row)
-//          *   _|______            _|__
-//          *  |T_L(row)|--I_XH    |    |--I_XH
-//          *    |              => |C_LD| 
-//          *   I_L(row+1)      => |____|--I_D
-//          *   _|__            => 
-//          *  |C_LD|------I_D
-//          *
-//          * 2) Contract C_RU with T_R(row)
-//          *         
-//          *         I_R(row)               I_R(row)
-//          *         _|______               _|__
-//          * I_XHm--|T_R(row)|      I_XHm--|    |
-//          *          |         =>         |C_RU|  
-//          *         I_R(row+1) =>   I_Dm--|____|
-//          *         _|__       =>
-//          *  I_Dm--|C_RD|
-//          *
-//          */
-//         std::cout <<"(1) ----- C_LD & T_L"<< row <<"-----"<< std::endl;
-//         std::cout <<"Before contraction"<< std::endl;
-//         Print(C_LD);
-//         Print(T_L[row]);
+void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
+    CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
+{
+    std::cout <<"##### InsDRow called "<< std::string(51,'#') << std::endl;
+    // sequentialy contract lower boundary of environment with 
+    // sizeN rows of cluster + half-row matrices T_L* and T_R*
+    for (int row=sizeN-1; row>=0; row--) {
+        std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
+        /*
+         * Absorb one row of network up, leading to new (unreduced) environment
+         * tensors for sites one row down (+1 in Y coord)
+         *
+         *   I_L0>>I_L1               I_XV0>>I_XV1             I_R0>>I_R1
+         *    |                         |                          | 
+         *  |T_L_0n-1|--I_XH ... I_XH--|X_xn-1|--I_XH1 ... I_XH1--|T_R_m-1n-1|
+         *    |                         |                          | 
+         *  |C_LD_0n-1|--I_D ... I_D--|T_D_xn-1|--I_D1 ... I_D1--|C_RD_m-1n-1| 
+         *
+         *    V V V                  V V V V V                    V V V
+         *
+         *     I_L1                    I_XV1                        I_R1
+         *   ___|_____                ___|____                  _____|_____
+         *  |         |--I_D    I_D--|        |--I_D1    I_D1--|           |
+         *  |C_LD_0n-1|              |T_D_xn-1|                |C_RD_m-1n-1|
+         *  |_________|--I_XH  I_XH--|________|--I_XH1  I_XH1--|___________|
+         *
+         */
+         std::cout <<"(1) ----- C_LD & T_L ["<< 0 <<","<< row <<"] -----"
+            << std::endl;
+        auto tC4 = C_LD.at( cToS.at(std::make_pair(0,row)) ) * 
+            T_L.at( cToS.at(std::make_pair(0,row)) );
+        tC4.prime(LLINK);
+        Print(tC4);
 
-//         C_LD *= T_L[row];
+        std::cout <<"(2) ----- C_RD & T_R ["<< sizeM-1 <<","<< row <<"] -----"
+            << std::endl;
+        auto tC3 = C_RD.at( cToS.at(std::make_pair(sizeM-1,row)) ) * 
+            T_R.at( cToS.at(std::make_pair(sizeM-1,row)) );
+        tC3.prime(RLINK);
+        Print(tC3);
 
-//         std::cout <<"After contraction"<< std::endl;
-//         Print(C_LD);
+        std::vector<ITensor> tT3; 
+        for (int col=0; col<sizeM; col++) {
+            std::cout <<"(3."<< col <<") ----- T_D & X ["<< col <<","<< row <<
+                "] -----"<< std::endl;
 
-//         std::cout <<"(2) ----- C_RD & T_R"<< row <<"-----"<< std::endl;
-//         std::cout <<"Before contraction"<< std::endl;
-//         Print(C_RD);
-//         Print(T_R[row]);
+            tT3.push_back( T_D.at( cToS.at(std::make_pair(col,row)) ) * 
+                sites[cToS[std::make_pair(col,row)]] );
+            tT3.at(tT3.size()-1).prime(VSLINK);
 
-//         C_RD *= T_R[row];
+            printfln("= %s", tT3[col]);
+        }
 
-//         std::cout <<"After contraction"<< std::endl;
-//         Print(C_RD);
+        std::chrono::steady_clock::time_point t_iso_end =
+            std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
-//         std::cout <<"(3) ----- T_D & X "<< std::string(54,'-') << std::endl;
-//         for (int col=0; col<sizeM; col++) {
-//             std::cout <<"--- Before contraction T_D["<< col <<"] & X["<< row
-//                 <<","<< col <<"] ---"<< std::endl;
-//             std::cout << TAG_T_D <<"["<< col <<"]";
-//             printfln("= %s",T_D[col]);
-//             std::cout <<"("<< row <<","<< col <<") -> sites["<< 
-//                 cToS[std::make_pair(row,col)] <<"]"<< std::endl;
+       std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
+        /*
+         * Obtain the set of isometries with index format
+         *           _____________
+         *    I_D0--|             \
+         *          |Z[0..sizeM-1] |--I_DsizeM+10
+         *   I_XH0--|_____________/
+         *
+         */
 
-//             T_D[col].mapprime(sizeN,1,VSLINK);
-//             T_D[col] *= sites[cToS[std::make_pair(row,col)]];
-//             T_D[col].prime(HSLINK,col);
-//             T_D[col].prime(VSLINK,sizeN);
+        std::vector<ITensor> isoZ;
+        switch(iso_type) {
+            case ISOMETRY_T1: {
+                isoZ = isoT1('D', -1, row);
+                break;
+            }
+        }
 
-//             std::cout <<"After contraction Col="<< col << std::endl;
-//             std::cout << TAG_T_D <<"["<< col <<"]";
-//             printfln("= %s",T_D[col]);
-//         }
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[1] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
-//         switch(norm_type) {
-//             case NORM_BLE: {
-//                 normalizeBLE_ctmStep('D');
-//                 break;
-//             }
-//             case NORM_PTN: {
-//                 normalizePTN_ctmStep('D');
-//                 break;
-//             }
-//             default: {
-//                 std::cout <<"Unsupported Normalization type"<< std::endl;
-//                 exit(EXIT_FAILURE);
-//                 break;
-//             }
-//         }
+        std::cout <<"(5) ----- Construct reduced C_LD,C_RD -----"<< std::endl;
+        /*
+         *    I_L1
+         *   __|______                            ________
+         *  |         |--I_D               I_D0--|        \
+         *  |C_LD_0n-2|        *contract*        |ZsizeM-1 --I_DsizeM+10>>I_D0
+         *  |_________|--I_XH             I_XH0--|________/
+         *
+         */
+        C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) ) = 
+            tC4 * isoZ[sizeM-1];
+        C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) )
+            .mapprime(DLINK,sizeM+10,0);
+        std::cout << TAG_C_LD <<"["<< 0 <<","<< (row-1+sizeN)%sizeN <<"]";
+        printfln("= %s", 
+            C_LD.at(cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN))) );
 
-//         std::chrono::steady_clock::time_point t_iso_end =
-//             std::chrono::steady_clock::now();
-//         accT[0] += std::chrono::duration_cast
-//             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+        /*
+         *            I_R1
+         *         ____|______                           ________
+         *  I_D1--|           |             I_D1<<I_D0--|        \
+         *        |C_RD_m-1n-2| *contract*              |ZsizeM-1 --I_DsizeM+10
+         * I_XH1--|___________|           I_XH1<<I_XH0--|_dagger_/     >>I_D1
+         *
+         */
+        C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) ) = 
+            tC3 * isoZ[sizeM-1].conj().mapprime(DLINK,0,1, HSLINK,0,1);
+        C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) )
+            .mapprime(DLINK,sizeM+10,1);
+        std::cout << TAG_C_RD <<"["<< sizeM-1 <<","<< (row-1+sizeN)%sizeN <<"]";
+        printfln("= %s", C_RD.at( 
+            cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN))) );
 
-//         /*
-//          * compute one of the "trivial" isometries
-//          *
-//          */
-//         std::cout <<"(4) ----- Computing Isometry -----"<< std::endl;
-    
-//         // .first -> tU, .second -> tV from SVD/Diag = tU*S*tV
-//         std::pair< ITensor, ITensor > tU_tV;
+        /*
+         *          I_XV1
+         *        ___|____
+         *  I_D--|        |--I_D1              I_D0--|Zc-1\__I_DsizeM+10>>I_D0 
+         *       |T_D_cn-1|       *contract*  I_XH0--|dag /
+         * I_XH--|________|--I_XH1   
+         *                               I_D1--|Zc  \__I_DsizeM+10>>I_D1
+         *                              I_XH1--|    /
+         */
+        std::cout <<"(6) ----- REDUCE T_D & X "<< std::string(47,'-') <<
+            std::endl;
+        for (int col=0; col<sizeM; col++) {
+            std::cout <<" --- Construct reduced T_D["<< col <<","
+                << (row-1+sizeN)%sizeN <<"] ---"<< std::endl;
         
-//         switch(iso_type) {
-//             case ISOMETRY_T1: {
-//                 tU_tV = isoT1( IndexSet(I_D, I_XH), 
-//                     std::make_pair( prime(I_L,row),prime(I_R,row) ),
-//                     C_LD, C_RD);
-//                 break;
-//             }
-//             case ISOMETRY_T2: {
-//                 isoT2('D');
-//                 break;
-//             }
-//             case ISOMETRY_T3: {
-//                 isoT3('D');
-//                 break;
-//             }
-//             case ISOMETRY_T4: {
-//                 isoT4('D');
-//                 break;
-//             }
-//             default: {
-//                 std::cout <<"Unsupported Isometry type"<< std::endl;
-//                 exit(EXIT_FAILURE);
-//                 break;
-//             }
-//         }
+            // reset primes
+            isoZ[(col-1+sizeM)%sizeM].mapprime(DLINK,1,0, HSLINK,1,0);
 
-//         t_iso_end = std::chrono::steady_clock::now();
-//         accT[1] += std::chrono::duration_cast
-//             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+            tT3[col] *= isoZ[(col-1+sizeM)%sizeM];
+            tT3[col].mapprime(DLINK,sizeM+10,0);
 
-//         /*
-//          * Obtain new C_LD,C_RD by contraction of C_LD,C_RD 
-//          * with an isometry U,V and reduction matrix R
-//          *
-//          *   I_L(row)
-//          *   _|__          _                      I_L(row)
-//          *  |    |--I_D---| \                      |
-//          *  |C_LD|        |tU--I_SVD--|R|--I_D = |C_LD|--I_D  
-//          *  |____|--I_XH--|_/  
-//          *
-//          *                                                 I_R(row)
-//          *          I_R(row)                   _           _|__ 
-//          *           |                        / |---I_Dm--|    |
-//          *   I_Dm--|C_RD|= I_Dm--|R|--I_SVD1--tV|         |C_RD|
-//          *                                    \_|--I_XH1--|____|
-//          * 
-//          * and using appropriate delta-matrices to relabel auxiliary reduction 
-//          * indices to the original ones of the environment
-//          *
-//          */
-//         std::cout <<"(5) ----- Construct reduced C_LD,C_RD -----"<< std::endl;
-//         /*auto I_SVD_U = findtype(tU_tV.first.inds(),SVD_LINK);
-//         auto I_SVD_V = findtype(tU_tV.second.inds(),SVD_LINK);
+            // conjugate back
+            isoZ[(col-1+sizeM)%sizeM].conj();
 
-//         C_LD = (C_LD*tU_tV.first)*delta(I_SVD_U,I_D);
-//         C_RD = (C_RD*tU_tV.second)*delta(I_SVD_V,prime(I_D,sizeM));
+            isoZ[col].mapprime(DLINK,0,1, HSLINK,0,1);
 
-//         Print(C_LD);
-//         Print(C_RD);*/
-
-//         t_iso_end = std::chrono::steady_clock::now();
-//         accT[2] += std::chrono::duration_cast
-//             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
-        
-//         /* 
-//          * Contract T_D[0..sizeM-1] with X[row,col] to obtain new T_D
-//          *
-//          *            I_XV                           I_XV  
-//          *            _|_                            _|_
-//          *     I_XH--| X |--I_XH1             I_XH--|   |--I_XH1
-//          *             |                            |T_D|  
-//          *            I_XV1            => I_D(col)--|___|--I_D(col+1)
-//          *            _|_              =>
-//          * I_D(col)--|T_D |--I_D(col+1)
-//          *
-//          * Obtain new T_D by contraction of T_D with an isometry tU, tV and
-//          * reduction matrix R as follows (since C_LD was reduced by tU--R--
-//          * from the right)
-//          *
-//          *                                         I_XV 
-//          *                          _              _|_ 
-//          *                         / |--I_XH------|   |--I_XH1
-//          *  I_D(col)--|R|--I_SVD1--tV|            |T_D|
-//          *                         \_|--I_D(col)--|___|--I_D(col+1)
-//          * and from the right
-//          *
-//          *            I_XV
-//          *            _|_                _
-//          * I_D(col)--|   |--I_XH1-------| \
-//          *           |T_D|              |tU--I_SVD--|R|--I_D(col+1)  
-//          *           |___|--I_D(col+1)--|_/
-//          *
-//          * and using appropriate delta-matrices to relabel auxiliary reduction 
-//          * indices to the original ones of the environment
-//          *
-//          */
-//         std::cout <<"(6) ----- REDUCE T_D & X "<< std::string(47,'-') << 
-//             std::endl;
-//         /*tU_tV.second.noprime();
-//         tU_tV.first.prime(DLINK,HSLINK);
-//         for (int col=0; col<sizeM; col++) {
-//             std::cout <<" --- Construct reduced T_D["<< col <<"] ---"
-//                 << std::endl;
+            T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
+                tT3[col] * isoZ[col];
+            T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
+                .mapprime(DLINK,sizeM+10,1);
             
-//             T_D[col] = ( ( ( T_D[col]*tU_tV.second.mapprime(DLINK,col-1,col) )
-//                 *delta(I_SVD_V,prime(I_D,col)) )
-//                 *tU_tV.first.mapprime(DLINK,col,col+1) )
-//                 *delta(I_SVD_U,prime(I_D,col+1));
+            isoZ[col].conj();
 
-//             T_D[col].prime(VSLINK);
-//             std::cout << TAG_T_D <<"["<< col <<"]";
-//             printfln("= %s",T_D[col]);
-//         }*/
+            std::cout << TAG_T_D <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
+            printfln("= %s", T_D.at( 
+                cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
+        }
 
-//         t_iso_end = std::chrono::steady_clock::now();
-//         accT[3] += std::chrono::duration_cast
-//             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[2] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+        
+        std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        switch(norm_type) {
+            case NORM_BLE: {
+                normalizeBLE_ctmStep('D', -1, row);
+                break;
+            }
+            case NORM_PTN: {
+                normalizePTN_ctmStep('D', -1, row);
+                break;
+            }
+        }
 
-//         std::cout <<"Row "<< row <<" done"<< std::endl;
-//     }
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
-//     // End of cluster absorption
-//     C_LD.prime(LLINK,sizeN);
-//     C_RD.prime(RLINK,sizeN);
+        std::cout <<"Row "<< row <<" done"<< std::endl;
+    }
 
-//     std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
-// }
+    std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
+}
 
 // void CtmEnv::insDRow(CtmEnv::ISOMETRY iso_type,
 //     CtmEnv::NORMALIZATION norm_type) {
@@ -1311,7 +1248,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
         case 'U': {
             isoZ = std::vector<ITensor>(sizeM, ITensor(I_U, I_XH));
             for (int c=0; c<sizeM; c++) {
-                tRDM = build_2x2_RDM('U', c, row);
+                tRDM = build_2x2_RDM('U', (c+1)%sizeM, row);
                 spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x});
                 svdI = commonIndex(isoZ[c],S);
                 isoZ[c] *= delta(svdI, prime(I_U, sizeM+10));
@@ -1321,7 +1258,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
         case 'R': {
             isoZ = std::vector<ITensor>(sizeN, ITensor(I_R, I_XV));
             for (int r=0; r<sizeN; r++) {
-                tRDM = build_2x2_RDM('R', col, r);
+                tRDM = build_2x2_RDM('R', col, (r+1)%sizeN);
                 spec = svd(tRDM, isoZ[r], S, V, {"Maxm",x});
                 svdI = commonIndex(isoZ[r],S);
                 isoZ[r] *= delta(svdI, prime(I_R, sizeN+10));
@@ -1404,6 +1341,9 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
             break;
         }
     }
+
+    // symmetrize rdm to obtain hermitian matrix
+    rdm = 0.5*( rdm + swapPrime(rdm, 0, 1).conj() );
 
     return rdm;
 }
@@ -1608,7 +1548,7 @@ void CtmEnv::normalizeBLE_ctmStep(char ctmMove, int col, int row) {
             normalizeBLE_T( C_LU.at( 
                 cToS.at( std::make_pair(0, (row+1)%sizeN) ) ) );
             
-            for (int c=0; c<sizeN; c++) {
+            for (int c=0; c<sizeM; c++) {
                 normalizeBLE_T( T_U.at( 
                     cToS.at( std::make_pair(c, (row+1)%sizeN) ) ) );
             }
@@ -1634,8 +1574,8 @@ void CtmEnv::normalizeBLE_ctmStep(char ctmMove, int col, int row) {
             normalizeBLE_T( C_LD.at( 
                 cToS.at( std::make_pair(0, (row-1+sizeN)%sizeN) ) ) );
             
-            for (int c=0; c<sizeN; c++) {
-                normalizeBLE_T( T_U.at( 
+            for (int c=0; c<sizeM; c++) {
+                normalizeBLE_T( T_D.at( 
                     cToS.at( std::make_pair(c, (row-1+sizeN)%sizeN) ) ) );
             }
 
@@ -1703,48 +1643,71 @@ void CtmEnv::normalizePTN() {
  * TCDT
  * CTTC 
  */
-void CtmEnv::normalizePTN_ctmStep(char ctmMove, int m, int n) {
+void CtmEnv::normalizePTN_ctmStep(char ctmMove, int col, int row) {
 
-    auto normalizePTN_T = [](ITensor& t) { t /= sqrt(norm(t)); };
+    auto normalizePTN_T = [](ITensor& t) { t /= norm(t); };
+
+    std::cout <<"----- normalizePTN_ctmStep called for "<< ctmMove 
+        <<" ["<< col <<","<< row <<"]-----"<< std::endl;
 
     switch(ctmMove) {
-        case 'U': {
-            normalizePTN_T( C_LU.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( C_RU.at( cToS.at(
-                std::make_pair((m+1) % sizeM,n)) ) );
+        case 'U': { // col is ignored as we iterate over cols
+            normalizePTN_T( C_LU.at( 
+                cToS.at( std::make_pair(0, (row+1)%sizeN) ) ) );
             
-            normalizePTN_T( T_U.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( T_U.at( cToS.at(
-                std::make_pair((m+1) % sizeM,n)) ) );
+            for (int c=0; c<sizeM; c++) {
+                normalizePTN_T( T_U.at( 
+                    cToS.at( std::make_pair(c, (row+1)%sizeN) ) ) );
+            }
+
+            normalizePTN_T( C_RU.at( 
+                cToS.at( std::make_pair(sizeM-1, (row+1)%sizeN) ) ) );
             break;
         }
-        case 'R': {
-            normalizePTN_T( C_RU.at( cToS.at(std::make_pair(m,n)) ) );
+        case 'R': { // row is ignored as we iterate over rows
+            normalizePTN_T( C_RU.at( 
+                cToS.at( std::make_pair((col-1+sizeM)%sizeM, 0) ) ) );
+            
+            for (int r=0; r<sizeN; r++) {
+                normalizePTN_T( T_R.at( 
+                    cToS.at( std::make_pair((col-1+sizeM)%sizeM, r) ) ) );
+            }
+
             normalizePTN_T( C_RD.at( 
-                cToS.at(std::make_pair(m,(n+1) % sizeN)) ) );
-            
-            normalizePTN_T( T_R.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( T_R.at( 
-                cToS.at(std::make_pair(m,(n+1) % sizeN)) ) );
+                cToS.at( std::make_pair((col-1+sizeM)%sizeM, sizeN-1) ) ) );
             break;
         }
-        case 'D': {
-            normalizePTN_T( C_LD.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( C_RD.at( cToS.at(
-                std::make_pair((m+1) % sizeM,n)) ) );
-            
-            normalizePTN_T( T_D.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( T_D.at( cToS.at(
-                std::make_pair((m+1) % sizeM,n)) ) );
-        }
-        case 'L': {
-            normalizePTN_T( C_LU.at( cToS.at(std::make_pair(m,n)) ) );
+        case 'D': { // col is ignored as we iterate over cols
             normalizePTN_T( C_LD.at( 
-                cToS.at(std::make_pair(m,(n+1) % sizeN)) ) );
+                cToS.at( std::make_pair(0, (row-1+sizeN)%sizeN) ) ) );
             
-            normalizePTN_T( T_L.at( cToS.at(std::make_pair(m,n)) ) );
-            normalizePTN_T( T_L.at( 
-                cToS.at(std::make_pair(m,(n+1) % sizeN)) ) );
+            for (int c=0; c<sizeM; c++) {
+                normalizePTN_T( T_D.at( 
+                    cToS.at( std::make_pair(c, (row-1+sizeN)%sizeN) ) ) );
+            }
+
+            normalizePTN_T( C_RD.at( 
+                cToS.at( std::make_pair(sizeM-1, (row-1+sizeN)%sizeN) ) ) );
+            break;
+        }
+        case 'L': { // row is ignored as we iterate over rows
+            normalizePTN_T( C_LU.at( 
+                cToS.at( std::make_pair((col+1)%sizeM, 0) ) ) );
+            std::cout <<"C_LU ["<< (col+1)%sizeM <<","<< 0 <<"]"<< std::endl;
+
+            for (int r=0; r<sizeN; r++) {
+                normalizePTN_T( T_L.at( 
+                    cToS.at( std::make_pair((col+1)%sizeM, r) ) ) );
+                std::cout <<"T_L ["<< (col+1)%sizeM <<","<< r <<"]"
+                    << std::endl;
+            }
+
+            normalizePTN_T( C_LD.at( 
+                cToS.at( std::make_pair((col+1)%sizeM, sizeN-1) ) ) );
+            std::cout <<"C_LD ["<< (col+1)%sizeM <<","<< sizeN-1 <<"]"
+                << std::endl;
+
+            break;
         }
         default: {
             std::cout <<"Unsupported ctmMove type - expecting one of "

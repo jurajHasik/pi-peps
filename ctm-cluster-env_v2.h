@@ -168,8 +168,8 @@ class CtmEnv
     // void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
     // -||- D(own) row
-    // void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-    //     std::vector<double> & accT);
+    void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
+        std::vector<double> & accT);
     // void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
     
     // Insert, Absorb & Renormalize L(eft) column
@@ -201,11 +201,11 @@ class CtmEnv
 
     void normalizeBLE();
 
-    void normalizeBLE_ctmStep(char ctmMove, int m, int n);
+    void normalizeBLE_ctmStep(char ctmMove, int col, int row);
 
     void normalizePTN();
 
-    void normalizePTN_ctmStep(char ctmMove, int m, int n);
+    void normalizePTN_ctmStep(char ctmMove, int col, int row);
 
     // ########################################################################
     // methods handling SVD spectra of corner matrices

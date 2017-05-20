@@ -201,14 +201,15 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
+        
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        //ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insDRow(iso_type, norm_type);
-        //ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
         std::cout << "STEP " << iter << std::endl;
 
-        if ( iter % 50 == 0 ) {
+        if ( iter % 1 == 0 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
             ev.setCtmData(ctmEnv.getCtmData());
@@ -233,6 +234,8 @@ int main( int argc, char *argv[] ) {
     std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
         <<" "<< accT[3] << std::endl;
 
+    std::cout << ctmEnv;
+
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
 
     auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, cluster.siteIds[0], 0);
@@ -246,14 +249,14 @@ int main( int argc, char *argv[] ) {
     std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
     // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
-    std::cout <<"Constructing 2-site MPO on sites: "<< cluster.siteIds[0]
-        <<" and "<< cluster.siteIds[1] << std::endl;
-    auto op2s_id = ev.get2STOT(EVBuilder::OP2S_Id,
-        cluster.sites.at(cluster.siteIds[0]),
-        cluster.sites.at(cluster.siteIds[1]));
+    // std::cout <<"Constructing 2-site MPO on sites: "<< cluster.siteIds[0]
+    //     <<" and "<< cluster.siteIds[1] << std::endl;
+    // auto op2s_id = ev.get2STOT(EVBuilder::OP2S_Id,
+    //     cluster.sites.at(cluster.siteIds[0]),
+    //     cluster.sites.at(cluster.siteIds[1]));
 
-    std::cout <<"ID: "<< ev.eV_2sO(op2s_id,
-        std::make_pair(0,0), std::make_pair(0,3)) << std::endl;
+    // std::cout <<"ID: "<< ev.eV_2sO(op2s_id,
+    //     std::make_pair(0,0), std::make_pair(0,3)) << std::endl;
 
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
