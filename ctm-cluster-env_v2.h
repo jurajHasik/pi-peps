@@ -22,6 +22,7 @@ class CtmEnv
     typedef enum INIT_ENV {
         INIT_ENV_const1,
         INIT_ENV_rnd,
+        INIT_ENV_ctmrg,
         INIT_ENV_file
     } init_env_type;
 
@@ -154,6 +155,8 @@ class CtmEnv
     // specified by IO_ENV_FMT
 //    void initFromFile(int chi, IO_ENV_FMT ioFmt, std::string TAG);
 
+    void initCtmrgEnv();
+
     // ########################################################################
     // CTM iterative methods
 
@@ -230,6 +233,8 @@ class CtmEnv
     /* Store canonical environment = one of the original cluster
      */
     CtmData getCtmData() const;
+
+    CtmData getCtmData_DBG() const;
 
     std::ostream& print(std::ostream& s) const;
 };

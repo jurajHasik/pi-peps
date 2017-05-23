@@ -2,7 +2,6 @@
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include <chrono>
-#include <random>
 
 using namespace itensor;
 
@@ -44,6 +43,9 @@ int main( int argc, char *argv[] ) {
             if ( init_Env == CtmEnv::INIT_ENV_const1 ) {
                 ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster);
                 ctmEnv.initMockEnv();
+            } else if ( init_Env == CtmEnv::INIT_ENV_ctmrg ) {
+                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster);
+                ctmEnv.initCtmrgEnv();
             } else {
                 std::cout<< argv[4] <<" requires its additional args" 
                     << std::endl;
@@ -128,7 +130,7 @@ int main( int argc, char *argv[] ) {
     // std::vector<double> e_nnH_CD;
 
     // Build expectation value builder
-    std::cout << ctmEnv.getCtmData();
+    std::cout << ctmEnv.getCtmData_DBG();
     EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData());
 
     // Prepare rotated on-site tensor
@@ -144,8 +146,8 @@ int main( int argc, char *argv[] ) {
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         cluster.sites.at("A"), 
-        //RA);
-        cluster.sites.at("B"));
+        RA);
+        //cluster.sites.at("B"));
 
     // auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
     //     cluster.sites.at("A"),
@@ -201,7 +203,6 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
-        
         ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insURow_DBG(iso_type, norm_type, accT);

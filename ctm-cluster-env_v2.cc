@@ -224,6 +224,7 @@ void CtmEnv::initMockEnv() {
 
 void CtmEnv::initRndEnv(bool isComplex) {
     //Fill with random numbers (real or complex)
+
     for ( auto& t : C_LU ) { randomize(t, {"Complex", isComplex}); }
     for ( auto& t : C_RU ) { randomize(t, {"Complex", isComplex}); }
     for ( auto& t : C_RD ) { randomize(t, {"Complex", isComplex}); }
@@ -240,6 +241,114 @@ void CtmEnv::initRndEnv(bool isComplex) {
     std::cout <<"INIT_ENV_rnd with all C's and T's random (complex ? " 
         << isComplex <<")"<< std::endl;
     std::cout << std::string(72,'=') << std::endl;
+}
+
+void CtmEnv::initCtmrgEnv() {
+    std::cout <<"===== INIT_ENV_ctmrg called "<< std::string(44,'=') 
+        << std::endl;
+    
+    //Define "contractor" tensor
+    int D = round(sqrt(d));
+    auto cI = Index("C",d);
+    auto CT = ITensor(cI);
+    for ( int i=1; i<= D; i++ ) {
+        CT.set(cI(i+D*(i-1)),1.0);
+    }
+
+    PrintData(CT);
+
+    for ( size_t i=0; i<sites.size(); i++ ) {
+        std::cout <<"----- generating init env for site "<< siteIds[i]
+            <<" -----"<< std::endl;
+        // Locate the first appearance of given site within cluster
+        int row, col;
+        for ( const auto& cToSEntry : cToS ) {
+            if ( cToSEntry.second == i) {
+                col = cToSEntry.first.first;
+                row = cToSEntry.first.second;
+                break;
+            }
+        }
+        std::cout <<"Found "<< siteIds[i] <<" at ["<< col <<","<< row
+            <<"]"<< std::endl;
+
+        //Construct corner matrices
+        std::pair<int,int> site = 
+            std::make_pair((col-1+sizeM)%sizeM,(row-1+sizeN)%sizeN);
+        C_LU[i] = ( ( ( sites[ cToS.at(site) ]
+            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,I_XV)) )
+            *delta( prime(I_XH,1), I_U ) )
+            *delta( prime(I_XV,1), I_L);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LU;
+        printfln(" = %s", C_LU[i]);
+        
+        site = 
+            std::make_pair((col+1)%sizeM,(row-1+sizeN)%sizeN);
+        C_RU[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,I_XV)) )
+            *delta( I_XH, prime(I_U,1) ) )
+            *delta( prime(I_XV,1), I_R);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RU;
+        printfln(" = %s", C_RU[i]);
+
+        site = 
+            std::make_pair((col+1)%sizeM,(row+1)%sizeN);
+        C_RD[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,prime(I_XV,1))) )
+            *delta( I_XH, prime(I_D,1) ) )
+            *delta( I_XV, prime(I_R,1));
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RD;
+        printfln(" = %s", C_RD[i]);
+
+        site = 
+            std::make_pair((col-1+sizeM)%sizeM,(row+1)%sizeN);
+        C_LD[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,prime(I_XV,1))) )
+            *delta( prime(I_XH,1), I_D ) )
+            *delta( I_XV, prime(I_L,1));
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LD;
+        printfln(" = %s", C_LD[i]);
+    
+        //Construct half-row/col matrices
+        site = 
+            std::make_pair(col,(row-1+sizeN)%sizeN);
+        T_U[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XV)) )
+            *delta(I_XH, I_U) )*delta(prime(I_XH,1), prime(I_U,1));
+        T_U[i].prime(VSLINK,-1);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_U;
+        printfln(" = %s", T_U[i]);
+
+        site = 
+            std::make_pair((col+1)%sizeM,row);
+        T_R[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XH,1))) )
+            *delta(I_XV, I_R) )*delta(prime(I_XV,1), prime(I_R,1));
+        T_R[i].prime(I_XH,1);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_R;
+        printfln(" = %s", T_R[i]);
+
+        site = 
+            std::make_pair(col,(row+1)%sizeN);
+        T_D[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XV,1))) )
+            *delta(I_XH, I_D) )*delta(prime(I_XH,1), prime(I_D,1));
+        T_D[i].prime(I_XV,1);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_D;
+        printfln(" = %s", T_D[i]);
+
+        site = 
+            std::make_pair((col-1+sizeM)%sizeM,row);
+        T_L[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XH)) )
+            *delta(I_XV, I_L) )*delta(prime(I_XV,1), prime(I_L,1));
+        T_L[i].prime(HSLINK,-1);
+        std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_L;
+        printfln(" = %s", T_L[i]);
+    }
+
+    normalizePTN();
+
+    computeSVDspec();
+
+    std::cout <<"===== INIT_ENV_ctmrg done "<< std::string(46,'=') 
+        << std::endl; 
 }
 
 // ########################################################################
@@ -1236,12 +1345,12 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
                 // build RDM
                 tRDM = build_2x2_RDM('L', col, r);
                 // Perform SVD
-                spec = svd(tRDM, isoZ[r], S, V, {"Maxm",x});
+                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x});
                 Print(spec);
+                PrintData(S);
                 // relabel isometry index
                 svdI = commonIndex(isoZ[r],S);
                 isoZ[r] *= delta(svdI, prime(I_L, sizeN+10));
-                Print(isoZ[r]);
             }
             break;
         }
@@ -1250,6 +1359,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             for (int c=0; c<sizeM; c++) {
                 tRDM = build_2x2_RDM('U', (c+1)%sizeM, row);
                 spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x});
+                Print(spec);
                 svdI = commonIndex(isoZ[c],S);
                 isoZ[c] *= delta(svdI, prime(I_U, sizeM+10));
             }
@@ -1259,7 +1369,9 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             isoZ = std::vector<ITensor>(sizeN, ITensor(I_R, I_XV));
             for (int r=0; r<sizeN; r++) {
                 tRDM = build_2x2_RDM('R', col, (r+1)%sizeN);
-                spec = svd(tRDM, isoZ[r], S, V, {"Maxm",x});
+                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x});
+                Print(spec);
+                PrintData(S);
                 svdI = commonIndex(isoZ[r],S);
                 isoZ[r] *= delta(svdI, prime(I_R, sizeN+10));
             }
@@ -1270,6 +1382,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             for (int c=0; c<sizeM; c++) {
                 tRDM = build_2x2_RDM('D', c, row);
                 spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x});
+                Print(spec);
                 svdI = commonIndex(isoZ[c],S);
                 isoZ[c] *= delta(svdI, prime(I_D, sizeM+10));
             }
@@ -1343,7 +1456,7 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
     }
 
     // symmetrize rdm to obtain hermitian matrix
-    rdm = 0.5*( rdm + swapPrime(rdm, 0, 1).conj() );
+    //rdm = 0.5*( rdm + swapPrime(rdm, 0, 1).conj() );
 
     return rdm;
 }
@@ -1537,6 +1650,7 @@ void CtmEnv::normalizeBLE_ctmStep(char ctmMove, int col, int row) {
         };
 
         t.visit(max_m);
+        std::cout << "MAX elem = "<< m << std::endl;
         t /= m;
     };
 
@@ -1852,7 +1966,7 @@ CtmData CtmEnv::getCtmData() const {
         tT_U.push_back( prime(
             T_U.at( cToS.at(std::make_pair(col,0)) ), ULINK, col) );
         tT_D.push_back( mapprime(
-            T_D.at( cToS.at(std::make_pair(col,sizeN-1)) ), 
+            T_D.at( cToS.at(std::make_pair(col,sizeM-1)) ), 
             VSLINK, 1, sizeN,
             DLINK, 0, col,
             DLINK, 1, col+1) );
@@ -1869,7 +1983,77 @@ CtmData CtmEnv::getCtmData() const {
 
     CtmData ctmData = {
         x, d, sizeN, sizeM,
-        sites, cToS, 
+        sites, cToS,
+        tT_U, tT_R, tT_D, tT_L,
+        C_LU.at( cToS.at(std::make_pair(0,0)) ),
+        mapprime( C_RU.at( cToS.at(std::make_pair(sizeM-1,0)) ),
+            ULINK, 1, sizeM),
+        mapprime( C_RD.at( cToS.at(std::make_pair(sizeM-1,sizeN-1)) ),
+            RLINK, 1, sizeN,
+            DLINK, 1, sizeM ),
+        mapprime( C_LD.at( cToS.at(std::make_pair(0,sizeN-1)) ),
+            LLINK, 1, sizeN),
+        I_U, I_R, I_D, I_L,
+        I_XH, I_XV };
+    return ctmData;
+}
+
+CtmData CtmEnv::getCtmData_DBG() const {
+    std::vector< itensor::ITensor > tT_U;
+    std::vector< itensor::ITensor > tT_R;
+    std::vector< itensor::ITensor > tT_D;
+    std::vector< itensor::ITensor > tT_L;
+
+    int site;
+
+    for( int col=0; col<sizeM; col++) {
+        site = cToS.at(std::make_pair(col,0));
+        tT_U.push_back( prime(T_U.at( site ), ULINK, col) );
+        std::cout<<"T_U["<< col <<"] <- T_U["<< site <<"=("<< col <<","<< 0
+             <<")] = T_U["<< siteIds[site] <<"]"<< std::endl;
+
+        site = cToS.at(std::make_pair(col,sizeM-1));
+        tT_D.push_back( mapprime(
+            T_D.at( site ), 
+            VSLINK, 1, sizeN,
+            DLINK, 0, col,
+            DLINK, 1, col+1) );
+        std::cout<<"T_D["<< col <<"] <- T_D["<< site <<"=("<< col <<","
+            << sizeM-1 <<")] = T_D["<< siteIds[site] <<"]"<< std::endl;
+    }
+    for( int row=0; row<sizeN; row++) {
+        site = cToS.at(std::make_pair(0,row));
+        tT_L.push_back( prime(
+            T_L.at( site ), LLINK, row) );
+        std::cout<<"T_L["<< row <<"] <- T_L["<< site <<"=("<< 0 <<","<< row 
+            <<")] = T_L["<< siteIds[site] <<"]"<< std::endl;
+
+        site = cToS.at(std::make_pair(sizeM-1,row));
+        tT_R.push_back( mapprime(
+            T_R.at( site ),
+            HSLINK, 1, sizeM,
+            RLINK, 0, row,
+            RLINK, 1, row+1) );
+        std::cout<<"T_R["<< row <<"] <- T_R["<< site <<"=("<< sizeM-1 <<","
+            << row <<")] = T_R["<< siteIds[site] <<"]"<< std::endl;
+    }
+
+    site = cToS.at(std::make_pair(0,0));
+    std::cout<<"C_LU <- C_LU["<< site <<"=("<< 0 <<","<< 0 <<")] = C_LU["
+        << siteIds[site] <<"]"<< std::endl;
+    site = cToS.at(std::make_pair(sizeM-1,0));
+    std::cout<<"C_RU <- C_RU["<< site <<"=("<< sizeM-1 <<","<< 0 <<")] = C_RU["
+        << siteIds[site] <<"]"<< std::endl;
+    site = cToS.at(std::make_pair(sizeM-1,sizeN-1));
+    std::cout<<"C_RD <- C_RD["<< site <<"=("<< sizeM-1 <<","<< sizeN-1 <<
+        ")] = C_RD["<< siteIds[site] <<"]"<< std::endl;
+    site = cToS.at(std::make_pair(0,sizeN-1));
+    std::cout<<"C_LD <- C_LD["<< site <<"=("<< 0 <<","<< sizeN-1 <<")] = C_LD["
+        << siteIds[site] <<"]"<< std::endl;
+
+    CtmData ctmData = {
+        x, d, sizeN, sizeM,
+        sites, cToS,
         tT_U, tT_R, tT_D, tT_L,
         C_LU.at( cToS.at(std::make_pair(0,0)) ),
         mapprime( C_RU.at( cToS.at(std::make_pair(sizeM-1,0)) ),
@@ -1978,6 +2162,7 @@ std::ostream& operator<<(std::ostream& s, CtmEnv::CtmSpec const& spec) {
 CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
     if( iE=="INIT_ENV_const1") return CtmEnv::INIT_ENV_const1;
     if( iE=="INIT_ENV_rnd"   ) return CtmEnv::INIT_ENV_rnd;
+    if( iE=="INIT_ENV_ctmrg" ) return CtmEnv::INIT_ENV_ctmrg;
     if( iE=="INIT_ENV_file"  ) return CtmEnv::INIT_ENV_file;
     std::cout << "Unsupported INIT_ENV" << std::endl;
     exit(EXIT_FAILURE);

@@ -133,8 +133,8 @@ int main( int argc, char *argv[] ) {
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         cluster.sites.at("A"), 
-        //RA);
-        cluster.sites.at("B"));
+        RA);
+        //cluster.sites.at("B"));
 
     // auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
     //     cluster.sites.at("A"),
