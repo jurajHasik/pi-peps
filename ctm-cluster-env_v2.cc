@@ -359,6 +359,9 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
 {
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
 
+    std::vector<ITensor> tC1(sizeN);
+    std::vector<ITensor> tC2(sizeN);
+    std::vector< std::vector<ITensor> > tT1(sizeN, std::vector<ITensor>(sizeM) );
     // sequentialy contract upper boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
     for (int row=0; row<sizeN; row++) {
@@ -385,28 +388,28 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
          */
         std::cout <<"(1) ----- C_LU & T_L ["<< 0 <<","<< row <<"] -----"
             << std::endl;
-        auto tC1 = C_LU.at( cToS.at(std::make_pair(0,row)) ) * 
+        tC1[row] = C_LU.at( cToS.at(std::make_pair(0,row)) ) * 
             T_L.at( cToS.at(std::make_pair(0,row)) );
-        tC1.prime(LLINK, -1);
-        Print(tC1);
+        tC1[row].prime(LLINK, -1);
+        Print(tC1[row]);
         
         std::cout <<"(2) ----- C_RU & T_R ["<< sizeM-1 <<","<< row <<"] -----"
             << std::endl;
-        auto tC2 = C_RU.at( cToS.at(std::make_pair(sizeM-1,row)) ) * 
+        tC2[row] = C_RU.at( cToS.at(std::make_pair(sizeM-1,row)) ) * 
             T_R.at( cToS.at(std::make_pair(sizeM-1,row)) );
-        tC2.prime(RLINK, -1);
-        Print(tC2);
+        tC2[row].prime(RLINK, -1);
+        Print(tC2[row]);
 
-        std::vector<ITensor> tT1; 
+        //std::vector<ITensor> tT1; 
         for (int col=0; col<sizeM; col++) {
             std::cout <<"(3."<< col <<") ----- T_U & X ["<< col <<","<< row <<
                 "] -----"<< std::endl;
 
-            tT1.push_back( T_U.at( cToS.at(std::make_pair(col,row)) ) * 
+            tT1[row][col]=( T_U.at( cToS.at(std::make_pair(col,row)) ) * 
                 sites[cToS[std::make_pair(col,row)]] );
-            tT1.at(tT1.size()-1).prime(VSLINK, -1);
+            tT1[row][col].prime(VSLINK, -1);
 
-            printfln("= %s", tT1[col]);
+            printfln("= %s", tT1[col][row]);
         }
 
         std::chrono::steady_clock::time_point t_iso_end =
@@ -445,13 +448,13 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
          *    I_L
          *
          */
-        C_LU.at( cToS.at(std::make_pair(0,(row+1)%sizeN)) ) = 
-            tC1 * isoZ[sizeM-1];
-        C_LU.at( cToS.at(std::make_pair(0,(row+1)%sizeN)) )
-            .mapprime(ULINK,sizeM+10,0);
-        std::cout << TAG_C_LU <<"["<< 0 <<","<< (row+1)%sizeN <<"]";
-        printfln("= %s", C_LU.at(cToS.at(std::make_pair(0,(row+1)%sizeN))) );
-
+        //C_LU.at( cToS.at(std::make_pair(0,(row+1)%sizeN)) ) = 
+        tC1[row] = tC1[row] * isoZ[sizeM-1];
+        //C_LU.at( cToS.at(std::make_pair(0,(row+1)%sizeN)) )
+        tC1[row].mapprime(ULINK,sizeM+10,0);
+        //std::cout << TAG_C_LU <<"["<< 0 <<","<< (row+1)%sizeN <<"]";
+        //printfln("= %s", C_LU.at(cToS.at(std::make_pair(0,(row+1)%sizeN))) );
+        
         /*         _________                            ________
          *  I_U1--|         |              I_U1<<I_U0--|        \
          *        |C_RU_m-11|  *contract*              |ZsizeM-1 --I_UsizeM+10
@@ -460,13 +463,13 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
          *           I_R
          *
          */
-        C_RU.at( cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN)) ) = 
-            tC2 * isoZ[sizeM-1].conj().mapprime(ULINK,0,1, HSLINK,0,1);
-        C_RU.at( cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN)) )
-            .mapprime(ULINK,sizeM+10,1);
-        std::cout << TAG_C_RU <<"["<< sizeM-1 <<","<< (row+1)%sizeN <<"]";
-        printfln("= %s", C_RU.at( 
-            cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN))) );
+        //C_RU.at( cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN)) ) = 
+        tC2[row] = tC2[row] * isoZ[sizeM-1].conj().mapprime(ULINK,0,1, HSLINK,0,1);
+        //C_RU.at( cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN)) )
+        tC2[row].mapprime(ULINK,sizeM+10,1);
+        //std::cout << TAG_C_RU <<"["<< sizeM-1 <<","<< (row+1)%sizeN <<"]";
+        //printfln("= %s", C_RU.at( 
+        //    cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN))) );
 
         /*        ______
          *  I_U--|      |--I_U1              I_U0--|Zc-1\__I_UsizeM+10>>I_U0 
@@ -485,29 +488,65 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
             // reset primes
             isoZ[(col-1+sizeM)%sizeM].mapprime(ULINK,1,0, HSLINK,1,0);
 
-            tT1[col] *= isoZ[(col-1+sizeM)%sizeM];
-            tT1[col].mapprime(ULINK,sizeM+10,0);
+            tT1[row][col] *= isoZ[(col-1+sizeM)%sizeM];
+            tT1[row][col].mapprime(ULINK,sizeM+10,0);
 
             // conjugate back
             isoZ[(col-1+sizeM)%sizeM].conj();
 
             isoZ[col].mapprime(ULINK,0,1, HSLINK,0,1);
 
-            T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
-                tT1[col] * isoZ[col];
-            T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) )
-                .mapprime(ULINK,sizeM+10,1);
+            //T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
+            tT1[row][col] = tT1[row][col] * isoZ[col];
+            //T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) )
+            tT1[row][col].mapprime(ULINK,sizeM+10,1);
             
             isoZ[col].conj();
 
-            std::cout << TAG_T_U <<"["<< col <<","<< (row+1)%sizeN <<"]";
-            printfln("= %s", T_U.at( 
-                cToS.at(std::make_pair(col,(row+1)%sizeN))) );
+            //std::cout << TAG_T_U <<"["<< col <<","<< (row+1)%sizeN <<"]";
+            //printfln("= %s", T_U.at( 
+            //    cToS.at(std::make_pair(col,(row+1)%sizeN))) );
         }
 
         t_iso_end = std::chrono::steady_clock::now();
         accT[2] += std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+        // std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        // switch(norm_type) {
+        //     case NORM_BLE: {
+        //         normalizeBLE_ctmStep('U', -1, row);
+        //         break;
+        //     }
+        //     case NORM_PTN: {
+        //         normalizePTN_ctmStep('U', -1, row);
+        //         break;
+        //     }
+        // }
+        std::cout <<"Row "<< row <<" done"<< std::endl;
+    }
+
+    std::chrono::steady_clock::time_point t_iso_begin = 
+        std::chrono::steady_clock::now();
+
+    for (int row=0; row<sizeN; row++) {
+
+        C_LU.at( cToS.at(std::make_pair(0,(row+1)%sizeN)) ) = tC1[row];
+        std::cout << TAG_C_LU <<"["<< 0 <<","<< (row+1)%sizeN <<"]";
+        printfln("= %s", C_LU.at(cToS.at(std::make_pair(0,(row+1)%sizeN))) );
+
+        C_RU.at( cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN)) ) = tC2[row];
+        std::cout << TAG_C_RU <<"["<< sizeM-1 <<","<< (row+1)%sizeN <<"]";
+        printfln("= %s", C_RU.at( 
+            cToS.at(std::make_pair(sizeM-1,(row+1)%sizeN))) );
+
+        for (int col=0; col<sizeM; col++) {
+            T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
+                tT1[row][col];
+            std::cout << TAG_T_U <<"["<< col <<","<< (row+1)%sizeN <<"]";
+            printfln("= %s", T_U.at( 
+                cToS.at(std::make_pair(col,(row+1)%sizeN))) );
+        }
 
         std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
         switch(norm_type) {
@@ -520,13 +559,12 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
-
-        t_iso_end = std::chrono::steady_clock::now();
-        accT[3] += std::chrono::duration_cast
-            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
-
-        std::cout <<"Row "<< row <<" done"<< std::endl;
     }
+
+    std::chrono::steady_clock::time_point t_iso_end =
+            std::chrono::steady_clock::now();
+    accT[3] += std::chrono::duration_cast
+        <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
     std::cout <<"##### InsURow Done "<< std::string(53,'#') << std::endl;
 }
@@ -601,6 +639,11 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsDRow called "<< std::string(51,'#') << std::endl;
     // sequentialy contract lower boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
+    
+    std::vector<ITensor> tC4(sizeN);
+    std::vector<ITensor> tC3(sizeN);
+    std::vector< std::vector<ITensor> > tT3(sizeN, std::vector<ITensor>(sizeM));
+
     for (int row=sizeN-1; row>=0; row--) {
         std::chrono::steady_clock::time_point t_iso_begin = 
             std::chrono::steady_clock::now();
@@ -625,28 +668,28 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
          */
          std::cout <<"(1) ----- C_LD & T_L ["<< 0 <<","<< row <<"] -----"
             << std::endl;
-        auto tC4 = C_LD.at( cToS.at(std::make_pair(0,row)) ) * 
+        tC4[row] = C_LD.at( cToS.at(std::make_pair(0,row)) ) * 
             T_L.at( cToS.at(std::make_pair(0,row)) );
-        tC4.prime(LLINK);
-        Print(tC4);
+        tC4[row].prime(LLINK);
+        Print(tC4[row]);
 
         std::cout <<"(2) ----- C_RD & T_R ["<< sizeM-1 <<","<< row <<"] -----"
             << std::endl;
-        auto tC3 = C_RD.at( cToS.at(std::make_pair(sizeM-1,row)) ) * 
+        tC3[row] = C_RD.at( cToS.at(std::make_pair(sizeM-1,row)) ) * 
             T_R.at( cToS.at(std::make_pair(sizeM-1,row)) );
-        tC3.prime(RLINK);
-        Print(tC3);
+        tC3[row].prime(RLINK);
+        Print(tC3[row]);
 
-        std::vector<ITensor> tT3; 
+        //std::vector<ITensor> tT3; 
         for (int col=0; col<sizeM; col++) {
             std::cout <<"(3."<< col <<") ----- T_D & X ["<< col <<","<< row <<
                 "] -----"<< std::endl;
 
-            tT3.push_back( T_D.at( cToS.at(std::make_pair(col,row)) ) * 
+            tT3[row][col] = ( T_D.at( cToS.at(std::make_pair(col,row)) ) * 
                 sites[cToS[std::make_pair(col,row)]] );
-            tT3.at(tT3.size()-1).prime(VSLINK);
+            tT3[row][col].prime(VSLINK);
 
-            printfln("= %s", tT3[col]);
+            printfln("= %s", tT3[row][col]);
         }
 
         std::chrono::steady_clock::time_point t_iso_end =
@@ -685,13 +728,13 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
          *  |_________|--I_XH             I_XH0--|________/
          *
          */
-        C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) ) = 
-            tC4 * isoZ[sizeM-1];
-        C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) )
-            .mapprime(DLINK,sizeM+10,0);
-        std::cout << TAG_C_LD <<"["<< 0 <<","<< (row-1+sizeN)%sizeN <<"]";
-        printfln("= %s", 
-            C_LD.at(cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN))) );
+        //C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) ) = 
+        tC4[row] = tC4[row] * isoZ[sizeM-1];
+        //C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) )
+        tC4[row].mapprime(DLINK,sizeM+10,0);
+        //std::cout << TAG_C_LD <<"["<< 0 <<","<< (row-1+sizeN)%sizeN <<"]";
+        //printfln("= %s", 
+        //    C_LD.at(cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN))) );
 
         /*
          *            I_R1
@@ -701,13 +744,13 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
          * I_XH1--|___________|           I_XH1<<I_XH0--|_dagger_/     >>I_D1
          *
          */
-        C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) ) = 
-            tC3 * isoZ[sizeM-1].conj().mapprime(DLINK,0,1, HSLINK,0,1);
-        C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) )
-            .mapprime(DLINK,sizeM+10,1);
-        std::cout << TAG_C_RD <<"["<< sizeM-1 <<","<< (row-1+sizeN)%sizeN <<"]";
-        printfln("= %s", C_RD.at( 
-            cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN))) );
+        //C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) ) = 
+        tC3[row] = tC3[row] * isoZ[sizeM-1].conj().mapprime(DLINK,0,1, HSLINK,0,1);
+        //C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) )
+        tC3[row].mapprime(DLINK,sizeM+10,1);
+        //std::cout << TAG_C_RD <<"["<< sizeM-1 <<","<< (row-1+sizeN)%sizeN <<"]";
+        //printfln("= %s", C_RD.at( 
+        //    cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN))) );
 
         /*
          *          I_XV1
@@ -727,30 +770,68 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
             // reset primes
             isoZ[(col-1+sizeM)%sizeM].mapprime(DLINK,1,0, HSLINK,1,0);
 
-            tT3[col] *= isoZ[(col-1+sizeM)%sizeM];
-            tT3[col].mapprime(DLINK,sizeM+10,0);
+            tT3[row][col] *= isoZ[(col-1+sizeM)%sizeM];
+            tT3[row][col].mapprime(DLINK,sizeM+10,0);
 
             // conjugate back
             isoZ[(col-1+sizeM)%sizeM].conj();
 
             isoZ[col].mapprime(DLINK,0,1, HSLINK,0,1);
 
-            T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
-                tT3[col] * isoZ[col];
-            T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
-                .mapprime(DLINK,sizeM+10,1);
+            //T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
+            tT3[row][col] = tT3[row][col] * isoZ[col];
+            //T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
+            tT3[row][col].mapprime(DLINK,sizeM+10,1);
             
             isoZ[col].conj();
 
-            std::cout << TAG_T_D <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
-            printfln("= %s", T_D.at( 
-                cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
+            //std::cout << TAG_T_D <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
+            //printfln("= %s", T_D.at( 
+            //    cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
         }
 
         t_iso_end = std::chrono::steady_clock::now();
         accT[2] += std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
         
+        // std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        // switch(norm_type) {
+        //     case NORM_BLE: {
+        //         normalizeBLE_ctmStep('D', -1, row);
+        //         break;
+        //     }
+        //     case NORM_PTN: {
+        //         normalizePTN_ctmStep('D', -1, row);
+        //         break;
+        //     }
+        // }
+
+        std::cout <<"Row "<< row <<" done"<< std::endl;
+    }
+
+    std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
+
+    for (int row=sizeN-1; row>=0; row--) {
+
+        C_LD.at( cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN)) ) = tC4[row];
+        std::cout << TAG_C_LD <<"["<< 0 <<","<< (row-1+sizeN)%sizeN <<"]";
+        printfln("= %s", 
+           C_LD.at(cToS.at(std::make_pair(0,(row-1+sizeN)%sizeN))) );
+
+        C_RD.at( cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN)) ) = tC3[row];
+        std::cout << TAG_C_RD <<"["<< sizeM-1 <<","<< (row-1+sizeN)%sizeN <<"]";
+        printfln("= %s", C_RD.at( 
+            cToS.at(std::make_pair(sizeM-1,(row-1+sizeN)%sizeN))) );
+
+        for (int col=0; col<sizeM; col++) {
+            T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
+                tT3[row][col];
+            std::cout << TAG_T_D <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
+            printfln("= %s", T_D.at( 
+                cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
+        }
+
         std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
         switch(norm_type) {
             case NORM_BLE: {
@@ -762,13 +843,12 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
-
-        t_iso_end = std::chrono::steady_clock::now();
-        accT[3] += std::chrono::duration_cast
-            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
-
-        std::cout <<"Row "<< row <<" done"<< std::endl;
     }
+
+    std::chrono::steady_clock::time_point t_iso_end =
+        std::chrono::steady_clock::now();
+    accT[3] += std::chrono::duration_cast
+        <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
     std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
 }
@@ -844,9 +924,16 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsLCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
+    
+    std::vector<ITensor> tC1(sizeN);
+    std::vector<ITensor> tC4(sizeN);
+    std::vector<ITensor> tT4(sizeN);
+
     for (int col=0; col<sizeM; col++) {
         std::chrono::steady_clock::time_point t_iso_begin = 
             std::chrono::steady_clock::now();
+
+        for (int row=0; row<sizeN; row++) {
         /*
          * Absorb one column of network to the left, leading to new (unreduced)
          * environment tensors for sites in column to the right (+1 in X coord)
@@ -860,44 +947,35 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
          *  |T_L_00|--|X_00|--I_XH1   ==> |T_L_10|--I_XH1>>I_XH   
          *    |         |                  |    |
          *   I_L1      I_XV1              I_L1 I_XV1
-         *   ...
-         *   I_L         I_XV               I_L  I_XV 
-         *   _|______     |                  |    |
-         *  |T_L_0n-1|--|X_0n-1|--I_XH1 ==> |T_L_1n-1|--I_XH1>>I_XH
-         *    |           |                  |    |
-         *   I_L1        I_XV1              I_L1 I_XV1 
-
-         *   I_L1          I_XV1               I_L1   I_XV1 
-         *   _|_______     |                   |     |
-         *  |C_LD_0n-1|--|T_D_0n-1|--I_D1 ==> |C_LD_1n-1|--I_D1>>I_D
+         *
+         *   I_L1       I_XV1               I_L1   I_XV1 
+         *   _|_____     |                   |     |
+         *  |C_LD_00|--|T_D_00|--I_D1 ==> |C_LD_10|--I_D1>>I_D
          *
          */
-        std::cout <<"(1) ----- C_LU & T_U ["<< col <<","<< 0 <<"] -----"
+        std::cout <<"(1) ----- C_LU & T_U ["<< col <<","<< row <<"] -----"
             << std::endl;
-        auto tC1 = C_LU.at( cToS.at(std::make_pair(col,0)) ) * 
-            T_U.at( cToS.at(std::make_pair(col,0)) );
-        tC1.prime(ULINK, -1);
-        Print(tC1);
+        tC1[row] = C_LU.at( cToS.at(std::make_pair(col,row)) ) * 
+            T_U.at( cToS.at(std::make_pair(col,row)) );
+        tC1[row].prime(ULINK, -1);
+        Print(tC1[row]);
 
-        std::cout <<"(2) ----- C_LD & T_D ["<< col <<","<< sizeN-1 <<"] -----"
+        std::cout <<"(2) ----- C_LD & T_D ["<< col <<","<< row <<"] -----"
             << std::endl;
-        auto tC4 = C_LD.at( cToS.at(std::make_pair(col,sizeN-1)) ) * 
-            T_D.at( cToS.at(std::make_pair(col,sizeN-1)) );
-        tC4.prime(DLINK, -1);
-        Print(tC4);
+        tC4[row] = C_LD.at( cToS.at(std::make_pair(col,row)) ) * 
+            T_D.at( cToS.at(std::make_pair(col,row)) );
+        tC4[row].prime(DLINK, -1);
+        Print(tC4[row]);
 
-        std::vector<ITensor> tT4; 
-        for (int row=0; row<sizeN; row++) {
-            std::cout <<"(3."<< row <<") ----- T_L & X ["<< col <<","<< row <<
-                "] -----"<< std::endl;
+        std::cout <<"(3."<< row <<") ----- T_L & X ["<< col <<","<< row <<
+            "] -----"<< std::endl;
 
-            tT4.push_back( T_L.at( cToS.at(std::make_pair(col,row)) ) * 
-                sites[cToS[std::make_pair(col,row)]] );
-            tT4.at(tT4.size()-1).prime(HSLINK, -1);
+        tT4[row] = ( T_L.at( cToS.at(std::make_pair(col,row)) ) * 
+            sites[cToS[std::make_pair(col,row)]] );
+        tT4[row].prime(HSLINK, -1);
 
-            printfln("= %s", tT4[row]);
-        }
-
+        printfln("= %s", tT4[row]);
+        
         std::chrono::steady_clock::time_point t_iso_end = 
             std::chrono::steady_clock::now();
         accT[0] += std::chrono::duration_cast
@@ -916,7 +994,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
         std::vector<ITensor> isoZ;
         switch(iso_type) {
             case ISOMETRY_T1: {
-                isoZ = isoT1('L', col, -1);
+                isoZ = isoT1('L', col, row);
                 break;
             }
         }
@@ -932,12 +1010,12 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
          * I_L0  I_XV0                I_XV0--|________/
          *
          */
-        C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,0)) ) = 
-            tC1 * isoZ[sizeN-1];
-        C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,0)) )
-            .mapprime(LLINK,sizeN+10,0);
-        std::cout << TAG_C_LU <<"["<< (col+1)%sizeM <<","<< 0 <<"]";
-        printfln("= %s", C_LU.at(cToS.at(std::make_pair((col+1)%sizeM,0))) );
+        //C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,0)) ) = 
+        tC1[row] = tC1[row] * isoZ[sizeN-1];
+        //C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,0)) )
+        tC1[row].mapprime(LLINK,sizeN+10,0);
+        //std::cout << TAG_C_LU <<"["<< (col+1)%sizeM <<","<< 0 <<"]";
+        //printfln("= %s", C_LU.at(cToS.at(std::make_pair((col+1)%sizeM,0))) );
 
         /*                                             ________
          * I_L1  I_XV1                    I_L1<<I_L0--|        \
@@ -945,13 +1023,13 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
          * |C_LD_1n-1|--I_D             I_XV1<<I_XV0--|_dagger_/      >>I_L1
          *
          */
-        C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,sizeN-1)) ) = 
-            tC4 * isoZ[sizeN-1].conj().mapprime(LLINK,0,1, VSLINK,0,1);
-        C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,sizeN-1)) )
-            .mapprime(LLINK,sizeN+10,1);
-        std::cout << TAG_C_LD <<"["<< (col+1)%sizeM <<","<< sizeN-1 <<"]";
-        printfln("= %s", C_LD.at( 
-            cToS.at(std::make_pair((col+1)%sizeM,sizeN-1))) );
+        //C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,sizeN-1)) ) = 
+        tC4[col] = tC4[col] * isoZ[sizeN-1].conj().mapprime(LLINK,0,1, VSLINK,0,1);
+        //C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,sizeN-1)) )
+        tC4[col].mapprime(LLINK,sizeN+10,1);
+        //std::cout << TAG_C_LD <<"["<< (col+1)%sizeM <<","<< sizeN-1 <<"]";
+        //printfln("= %s", C_LD.at( 
+        //    cToS.at(std::make_pair((col+1)%sizeM,sizeN-1))) );
 
         /* 
          * I_L0 I_XV0                  I_L0--|Zr-1\__I_LsizeN+10>>I_L0 
@@ -970,29 +1048,70 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
             // reset primes
             isoZ[(row-1+sizeN)%sizeN].mapprime(LLINK,1,0, VSLINK,1,0);
 
-            tT4[row] *= isoZ[(row-1+sizeN)%sizeN];
-            tT4[row].mapprime(LLINK,sizeN+10,0);
+            tT4[col][row] *= isoZ[(row-1+sizeN)%sizeN];
+            tT4[col][row].mapprime(LLINK,sizeN+10,0);
 
             // conjugate back
             isoZ[(row-1+sizeN)%sizeN].conj();
 
             isoZ[row].mapprime(LLINK,0,1, VSLINK,0,1);
 
-            T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
-                tT4[row] * isoZ[row];
-            T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) )
-                .mapprime(LLINK,sizeN+10,1);
+            //T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
+            tT4[col][row] = tT4[col][row] * isoZ[row];
+            //T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) )
+            tT4[col][row].mapprime(LLINK,sizeN+10,1);
             
             isoZ[row].conj();
 
-            std::cout << TAG_T_L <<"["<< (col+1)%sizeM <<","<< row <<"]";
-            printfln("= %s", T_L.at( 
-                cToS.at(std::make_pair((col+1)%sizeM,row))) );
+            //std::cout << TAG_T_L <<"["<< (col+1)%sizeM <<","<< row <<"]";
+            //printfln("= %s", T_L.at( 
+            //   cToS.at(std::make_pair((col+1)%sizeM,row))) );
         }
 
         t_iso_end = std::chrono::steady_clock::now();
         accT[2] += std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+        // std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        // switch(norm_type) {
+        //     case NORM_BLE: {
+        //         normalizeBLE_ctmStep('L', col, -1);
+        //         break;
+        //     }
+        //     case NORM_PTN: {
+        //         normalizePTN_ctmStep('L', col, -1);
+        //         break;
+        //     }
+        // }
+
+        // t_iso_end = std::chrono::steady_clock::now();
+        // accT[3] += std::chrono::duration_cast
+        //     <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+        std::cout <<"Column "<< col <<" done"<< std::endl;
+    }
+
+    std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
+
+    for (int col=0; col<sizeM; col++) {
+        
+        C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,0)) ) = tC1[col];
+        std::cout << TAG_C_LU <<"["<< (col+1)%sizeM <<","<< 0 <<"]";
+        printfln("= %s", C_LU.at(cToS.at(std::make_pair((col+1)%sizeM,0))) );
+
+        C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,sizeN-1)) ) = tC4[col];
+        std::cout << TAG_C_LD <<"["<< (col+1)%sizeM <<","<< sizeN-1 <<"]";
+        printfln("= %s", C_LD.at( 
+           cToS.at(std::make_pair((col+1)%sizeM,sizeN-1))) );
+
+        for (int row=0; row<sizeN; row++) {
+            T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
+                tT4[col][row];
+            std::cout << TAG_T_L <<"["<< (col+1)%sizeM <<","<< row <<"]";
+            printfln("= %s", T_L.at( 
+               cToS.at(std::make_pair((col+1)%sizeM,row))) );
+        }
 
         std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
         switch(norm_type) {
@@ -1005,13 +1124,12 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
-
-        t_iso_end = std::chrono::steady_clock::now();
-        accT[3] += std::chrono::duration_cast
-            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
-
-        std::cout <<"Column "<< col <<" done"<< std::endl;
     }
+
+    std::chrono::steady_clock::time_point t_iso_end =
+            std::chrono::steady_clock::now();
+    accT[3] += std::chrono::duration_cast
+        <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
     std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
 }
@@ -1085,6 +1203,11 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
     std::cout <<"##### InsRCol called "<< std::string(51,'#') << std::endl;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
+    
+    std::vector<ITensor> tC2(sizeM);
+    std::vector<ITensor> tC3(sizeM);
+    std::vector< std::vector<ITensor> > tT2(sizeM, std::vector<ITensor>(sizeN));
+
     for (int col=sizeM-1; col>=0; col--) {
         std::chrono::steady_clock::time_point t_iso_begin = 
             std::chrono::steady_clock::now();
@@ -1116,28 +1239,28 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
          */
         std::cout <<"(1) ----- C_RU & T_U ["<< col <<","<< 0 <<"] -----"
             << std::endl;
-        auto tC2 = C_RU.at( cToS.at(std::make_pair(col,0)) ) * 
+        tC2[col] = C_RU.at( cToS.at(std::make_pair(col,0)) ) * 
             T_U.at( cToS.at(std::make_pair(col,0)) );
-        tC2.prime(ULINK);
-        Print(tC2);
+        tC2[col].prime(ULINK);
+        Print(tC2[col]);
 
         std::cout <<"(2) ----- C_RD & T_D ["<< col <<","<< sizeN-1 <<"] -----"
             << std::endl;
-        auto tC3 = C_RD.at( cToS.at(std::make_pair(col,sizeN-1)) ) * 
+        tC3[col] = C_RD.at( cToS.at(std::make_pair(col,sizeN-1)) ) * 
             T_D.at( cToS.at(std::make_pair(col,sizeN-1)) );
-        tC3.prime(DLINK);
-        Print(tC3);
+        tC3[col].prime(DLINK);
+        Print(tC3[col]);
 
-        std::vector<ITensor> tT2; 
+        //std::vector<ITensor> tT2; 
         for (int row=0; row<sizeN; row++) {
             std::cout <<"(3."<< row <<") ----- T_R & X ["<< col <<","<< row <<
                 "] -----"<< std::endl;
 
-            tT2.push_back( T_R.at( cToS.at(std::make_pair(col,row)) ) * 
+            tT2[col][row] = ( T_R.at( cToS.at(std::make_pair(col,row)) ) * 
                 sites[cToS[std::make_pair(col,row)]] );
-            tT2.at(tT2.size()-1).prime(HSLINK);
+            tT2[col][row].prime(HSLINK);
 
-            printfln("= %s", tT2[row]);
+            printfln("= %s", tT2[col][row]);
         }
 
         std::chrono::steady_clock::time_point t_iso_end = 
@@ -1174,13 +1297,13 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
          *        I_XV0  I_R0            I_XV0--|________/
          *
          */
-        C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,0)) ) = 
-            tC2 * isoZ[sizeN-1];
-        C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,0)) )
-            .mapprime(RLINK,sizeN+10,0);
-        std::cout << TAG_C_RU <<"["<< (col-1+sizeM)%sizeM <<","<< 0 <<"]";
-        printfln("= %s",
-            C_RU.at(cToS.at(std::make_pair((col-1+sizeM)%sizeM,0))) );
+        //C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,0)) ) = 
+        tC2[col] = tC2[col] * isoZ[sizeN-1];
+        //C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,0)) )
+        tC2[col].mapprime(RLINK,sizeN+10,0);
+        //std::cout << TAG_C_RU <<"["<< (col-1+sizeM)%sizeM <<","<< 0 <<"]";
+        //printfln("= %s",
+        //    C_RU.at(cToS.at(std::make_pair((col-1+sizeM)%sizeM,0))) );
 
         /*                                               ________
          *        I_XV1  I_R1               I_R1<<I_R0--|        \
@@ -1188,13 +1311,13 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
          * I_D1--|C_RD_m-2n-1|            I_XV1<<I_XV0--|_dagger_/     >>I_R1
          *
          */
-        C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1)) ) = 
-            tC3 * isoZ[sizeN-1].conj().mapprime(RLINK,0,1, VSLINK,0,1);
-        C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1)) )
-            .mapprime(RLINK,sizeN+10,1);
-        std::cout << TAG_C_RD <<"["<< (col-1+sizeM)%sizeM <<","<< sizeN-1 <<"]";
-        printfln("= %s", C_RD.at( 
-            cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1))) );
+        //C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1)) ) = 
+        tC3[col] = tC3[col] * isoZ[sizeN-1].conj().mapprime(RLINK,0,1, VSLINK,0,1);
+        //C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1)) )
+        tC3[col].mapprime(RLINK,sizeN+10,1);
+        //std::cout << TAG_C_RD <<"["<< (col-1+sizeM)%sizeM <<","<< sizeN-1 <<"]";
+        //printfln("= %s", C_RD.at( 
+        //    cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1))) );
 
         /* 
          *       I_XV0 I_R0                 I_R0--|Zr-1\__I_RsizeN+10>>I_R0 
@@ -1213,31 +1336,67 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
             // reset primes
             isoZ[(row-1+sizeN)%sizeN].mapprime(RLINK,1,0, VSLINK,1,0);
 
-            tT2[row] *= isoZ[(row-1+sizeN)%sizeN];
-            tT2[row].mapprime(RLINK,sizeN+10,0);
+            tT2[col][row] *= isoZ[(row-1+sizeN)%sizeN];
+            tT2[col][row].mapprime(RLINK,sizeN+10,0);
 
             // conjugate back
             isoZ[(row-1+sizeN)%sizeN].conj();
 
             isoZ[row].mapprime(RLINK,0,1, VSLINK,0,1);
 
-            T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
-                tT2[row] * isoZ[row];
-            T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) )
-                .mapprime(RLINK,sizeN+10,1);
-
-            T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) );
+            //T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
+            tT2[col][row] = tT2[col][row] * isoZ[row];
+            //T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) )
+            tT2[col][row].mapprime(RLINK,sizeN+10,1);
             
             isoZ[row].conj();
 
-            std::cout << TAG_T_R <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
-            printfln("= %s", T_R.at( 
-                cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
+            //std::cout << TAG_T_R <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
+            //printfln("= %s", T_R.at( 
+            //    cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
         }
 
         t_iso_end = std::chrono::steady_clock::now();
         accT[2] += std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+        // std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        // switch(norm_type) {
+        //     case NORM_BLE: {
+        //         normalizeBLE_ctmStep('R', col, -1);
+        //         break;
+        //     }
+        //     case NORM_PTN: {
+        //         normalizePTN_ctmStep('R', col, -1);
+        //         break;
+        //     }
+        // }
+
+        std::cout <<"Column "<< col <<" done"<< std::endl;
+    }
+
+    std::chrono::steady_clock::time_point t_iso_begin = 
+            std::chrono::steady_clock::now();
+
+    for (int col=sizeM-1; col>=0; col--) {
+
+        C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,0)) ) = tC2[col];
+        std::cout << TAG_C_RU <<"["<< (col-1+sizeM)%sizeM <<","<< 0 <<"]";
+        printfln("= %s",
+            C_RU.at(cToS.at(std::make_pair((col-1+sizeM)%sizeM,0))) );
+
+        C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1)) ) = tC3[col];
+        std::cout << TAG_C_RD <<"["<< (col-1+sizeM)%sizeM <<","<< sizeN-1 <<"]";
+        printfln("= %s", C_RD.at( 
+            cToS.at(std::make_pair((col-1+sizeM)%sizeM,sizeN-1))) );
+
+        for (int row=0; row<sizeN; row++) {
+            T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
+                tT2[col][row];
+            std::cout << TAG_T_R <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
+            printfln("= %s", T_R.at( 
+                cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
+        }
 
         std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
         switch(norm_type) {
@@ -1250,13 +1409,12 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
-
-        t_iso_end = std::chrono::steady_clock::now();
-        accT[3] += std::chrono::duration_cast
-            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
-
-        std::cout <<"Column "<< col <<" done"<< std::endl;
     }
+
+    std::chrono::steady_clock::time_point t_iso_end = 
+            std::chrono::steady_clock::now();
+    accT[3] += std::chrono::duration_cast
+        <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
     std::cout <<"##### InsRCol Done "<< std::string(53,'#') << std::endl;
 }

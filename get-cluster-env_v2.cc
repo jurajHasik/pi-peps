@@ -26,7 +26,7 @@ int main( int argc, char *argv[] ) {
     // read in n x m cluster data 
     Cluster cluster = readCluster(arg_clusterFile);
     std::cout << cluster; //DBG
-
+    
     // Prepare blank CtmEnv
     CtmEnv ctmEnv;
 
@@ -187,7 +187,7 @@ int main( int argc, char *argv[] ) {
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
         
         // for (int i=1; i<5; i++) {
-        //     switch(dis(gen)) {
+        //     switch(dis(gen)) { 
         //         case 1:
         //             ctmEnv.insURow_DBG(iso_type, norm_type, accT);
         //             break;
@@ -203,10 +203,15 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
-        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+
+        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
         std::cout << "STEP " << iter << std::endl;
 
@@ -261,7 +266,7 @@ int main( int argc, char *argv[] ) {
 
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
-        std::cout << i*50 <<" "<< e_nnH[i] 
+        std::cout << i <<" "<< e_nnH[i] 
             // <<" "<< e_nnH_AC[i]
             // <<" "<< e_nnH_BD[i]
             // <<" "<< e_nnH_CD[i]
