@@ -62,6 +62,8 @@ class EVBuilder {
      */
     double eV_1sO(MpoNS const& op, std::pair<int,int> site) const;
 
+    double eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const;
+
     // Supported types of 2-site operators
     enum OP_2S {
         OP2S_Id,        // Identity
@@ -80,7 +82,7 @@ class EVBuilder {
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment
-     double eV_2sO_DBG(
+    double eV_2sO_DBG(
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> siteA, std::pair<int,int> siteB) const;
 

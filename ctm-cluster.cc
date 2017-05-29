@@ -12,21 +12,24 @@ ITensor contractCluster(Cluster const& c) {
 
     // First on-site tensor
     initPlaq = c.sites.at( c.cToS.at(std::make_pair(0,0)) );
+    std::cout << c.cToS.at(std::make_pair(0,0));
     aI.push_back( noprime( 
         findtype(initPlaq.inds(), AUXLINK) ) );
 
     for (int col = 1; col < c.sizeM; col ++) {        
-        siteT = c.sites.at( c.cToS.at(std::make_pair(0,col)) );
+        siteT = c.sites.at( c.cToS.at(std::make_pair(col,0)) );
+        std::cout << c.cToS.at(std::make_pair(col,0));
         aI.push_back( noprime( 
             findtype(siteT.inds(), AUXLINK) ) );
         initPlaq *= ( delta( 
             prime(aI[col-1],2), aI[col] ) * siteT );
     }
 
-    std::cout <<">>>> 1) row 0 contrated <<<<<"<< std::endl;
+    std::cout <<" >>>> row 0 contrated <<<<<"<< std::endl;
 
     for (int row = 1; row < c.sizeN; row ++) {
-        siteT = c.sites.at( c.cToS.at(std::make_pair(row,0)) );
+        siteT = c.sites.at( c.cToS.at(std::make_pair(0,row)) );
+        std::cout << c.cToS.at(std::make_pair(0,row));
         tempI = noprime( 
             findtype(siteT.inds(), AUXLINK) );
         initPlaq *= ( siteT * delta( 
@@ -34,7 +37,8 @@ ITensor contractCluster(Cluster const& c) {
         aI[0] = tempI;
 
         for (int col = 1; col < c.sizeM; col ++) {
-            auto siteT = c.sites.at( c.cToS.at(std::make_pair(row,col)) );
+            auto siteT = c.sites.at( c.cToS.at(std::make_pair(col,row)) );
+            std::cout << c.cToS.at(std::make_pair(col,row));
             tempI = noprime( 
                 findtype(siteT.inds(), AUXLINK) );
             initPlaq *= ( siteT 
@@ -42,6 +46,8 @@ ITensor contractCluster(Cluster const& c) {
                 * delta( prime(aI[col-1],2), tempI) );
             aI[col] = tempI;
         }
+
+        std::cout <<" >>>> row "<< row <<" contrated <<<<<"<< std::endl;
     }
 
     std::cout <<">>>> contractCluster done <<<<<"<< std::endl;

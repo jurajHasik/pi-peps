@@ -134,7 +134,7 @@ int main( int argc, char *argv[] ) {
     EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData());
 
     // Prepare rotated on-site tensor
-    auto RA = cluster.sites.at(cluster.siteIds[0]);
+    auto RA = cluster.sites.at("A");
     auto physI = findtype(RA.inds(),PHYS);
     auto R = ITensor(physI, prime(physI,1));
     for ( int i=1; i<=physI.m(); i++ ) {
@@ -146,8 +146,8 @@ int main( int argc, char *argv[] ) {
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         cluster.sites.at("A"), 
-        RA);
-        //cluster.sites.at("B"));
+        //RA);
+        cluster.sites.at("C"));
 
     // auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
     //     cluster.sites.at("A"),
@@ -203,10 +203,10 @@ int main( int argc, char *argv[] ) {
         //     }
         // }
 
-        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
         // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
@@ -215,7 +215,8 @@ int main( int argc, char *argv[] ) {
 
         std::cout << "STEP " << iter << std::endl;
 
-        if ( iter % 1 == 0 ) {
+        //if ( iter % 1 == 0 ) {
+        if ( iter > 400 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
             ev.setCtmData(ctmEnv.getCtmData());
