@@ -7,7 +7,7 @@ EVBuilder::EVBuilder () {}
 
 EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls, 
     CtmData const& in_cd) 
-    : name(in_name), cls(in_cls), cd(in_cd) {        
+    : name(in_name), cls(in_cls), cd(in_cd) {
 }
 
 /* 
@@ -810,7 +810,7 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
                 tN *= prime(Op.second, HSLINK, 2*(nR*cd.sizeN-1-row));
             } else {
                 tN *= prime( cd.sites.at(cd.cToS.at(
-                    std::make_pair(col % cd.sizeN, row % cd.sizeM))),
+                    std::make_pair(col % cd.sizeM, row % cd.sizeN))),
                     HSLINK, 2*(nR*cd.sizeN-1-row) );
             }
         }

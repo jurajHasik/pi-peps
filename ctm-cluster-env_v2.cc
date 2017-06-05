@@ -1644,11 +1644,8 @@ CtmData CtmEnv::getCtmData_DBG() const {
              <<")] = T_U["<< siteIds[site] <<"]"<< std::endl;
 
         site = cToS.at(std::make_pair(col,sizeM-1));
-        tT_D.push_back( mapprime(
-            T_D.at( site ), 
-            VSLINK, 1, sizeN,
-            DLINK, 0, col,
-            DLINK, 1, col+1) );
+        tT_D.push_back( prime(T_D.at( site ), DLINK, col)
+            .mapprime(VSLINK, 1, sizeN) );
         std::cout<<"T_D["<< col <<"] <- T_D["<< site <<"=("<< col <<","
             << sizeM-1 <<")] = T_D["<< siteIds[site] <<"]"<< std::endl;
     }
@@ -1660,11 +1657,8 @@ CtmData CtmEnv::getCtmData_DBG() const {
             <<")] = T_L["<< siteIds[site] <<"]"<< std::endl;
 
         site = cToS.at(std::make_pair(sizeM-1,row));
-        tT_R.push_back( mapprime(
-            T_R.at( site ),
-            HSLINK, 1, sizeM,
-            RLINK, 0, row,
-            RLINK, 1, row+1) );
+        tT_R.push_back( prime(T_R.at( site ), RLINK, row)
+            .mapprime(HSLINK, 1, sizeM) );
         std::cout<<"T_R["<< row <<"] <- T_R["<< site <<"=("<< sizeM-1 <<","
             << row <<")] = T_R["<< siteIds[site] <<"]"<< std::endl;
     }

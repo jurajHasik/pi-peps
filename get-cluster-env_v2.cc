@@ -131,7 +131,7 @@ int main( int argc, char *argv[] ) {
 
     // Build expectation value builder
     std::cout << ctmEnv.getCtmData_DBG();
-    EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData());
+    EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData_DBG());
 
     // Prepare rotated on-site tensor
     auto RA = cluster.sites.at("A");
@@ -147,7 +147,7 @@ int main( int argc, char *argv[] ) {
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
         cluster.sites.at("A"), 
         //RA);
-        cluster.sites.at("C"));
+        cluster.sites.at("B"));
 
     // auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
     //     cluster.sites.at("A"),
@@ -163,7 +163,7 @@ int main( int argc, char *argv[] ) {
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
-        std::make_pair(0,0), std::make_pair(0,1)) );
+        std::make_pair(0,0), std::make_pair(1,0)) );
     // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
     //     std::make_pair(0,0), std::make_pair(1,0)) );
     // e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
@@ -215,13 +215,13 @@ int main( int argc, char *argv[] ) {
 
         std::cout << "STEP " << iter << std::endl;
 
-        //if ( iter % 1 == 0 ) {
-        if ( iter > 400 ) {
+        if ( iter % 10 == 0 ) {
+        //if ( iter > 100 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
-            ev.setCtmData(ctmEnv.getCtmData());
+            ev.setCtmData(ctmEnv.getCtmData_DBG());
             e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
-                std::make_pair(0,0), std::make_pair(0,1)) );
+                std::make_pair(0,0), std::make_pair(1,0)) );
             // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
             //     std::make_pair(0,0), std::make_pair(1,0)) );
             // e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
