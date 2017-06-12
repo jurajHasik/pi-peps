@@ -55,7 +55,7 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
      * TOT = Y(h)*Y(h')*Y(v)*Y(v')*|T*OT|
      *
      */
-
+     
     ITensor const& T = cls.sites.at(siteId);
     // Get auxBond index of T
     auto auxI = noprime(findtype(T.inds(), AUXLINK));
@@ -181,7 +181,7 @@ double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
         for ( int row=cd.sizeN-1; row>=0; row-- ) {
             ev.mapprime(0,1,VSLINK);
             // substitute original on-site tensor for op at position site
-            if ( site.first == row && site.second == col ) {
+            if ( site.first == col && site.second == row ) {
                 std::cout <<"OP inserted at ("<< col <<","<< row <<")"
                     " -> "<< cls.cToS.at(std::make_pair(col % cls.sizeM, 
                         row % cls.sizeN)) << std::endl;
@@ -342,7 +342,7 @@ double EVBuilder::eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const {
     }
     ev *= cd.C_RU;
 
-    return sumels(ev)/getNormSupercell(std::make_pair(1,1));
+    return sumels(ev)/getNormSupercell_DBG(std::make_pair(1,1));
 }
 
 /* 
@@ -1027,10 +1027,10 @@ double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
 
 double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
     // check N =< M condition
-    std::cout <<"===== EVBuilder::getNormSupercell called ====="
-        << std::string(26,'=') << std::endl;
-    std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
-        << std::endl;
+    // std::cout <<"===== EVBuilder::getNormSupercell called ====="
+    //     << std::string(26,'=') << std::endl;
+    // std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
+    //     << std::endl;
 
     if ( sc.first > sc.second ) {
         std::cout <<"Number of columns < number of rows in supercell"
@@ -1081,8 +1081,9 @@ double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
     }
     tN *= cd.C_RU;
 
-    std::cout <<"===== EVBuilder::getNormSupercell done ====="
-        << std::string(28,'=') << std::endl;
+    if ( tN.r() > 0 ) std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
+    // std::cout <<"===== EVBuilder::getNormSupercell done ====="
+    //     << std::string(28,'=') << std::endl;
     return sumels(tN);
 }
 

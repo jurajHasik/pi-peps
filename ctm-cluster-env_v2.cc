@@ -254,6 +254,9 @@ void CtmEnv::initCtmrgEnv() {
     for ( int i=1; i<= D; i++ ) {
         CT.set(cI(i+D*(i-1)),1.0);
     }
+    // for ( int i=1; i<= D*D; i++ ) {
+    //     CT.set(cI(i),1.0);
+    // }
 
     PrintData(CT);
 
@@ -343,7 +346,7 @@ void CtmEnv::initCtmrgEnv() {
         printfln(" = %s", T_L[i]);
     }
 
-    normalizePTN();
+//    normalizePTN();
 
     computeSVDspec();
 
@@ -468,7 +471,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
             printfln("= %s", T_U.at( 
                cToS.at(std::make_pair(col,(row+1)%sizeN))) );
         
-            std::cout <<"(3."<< col <<".3) ----- Construct reduced C_LD -----"
+            std::cout <<"(3."<< col <<".3) ----- Construct reduced C_RU -----"
                 << std::endl;
             /*         _______                           ________
              *  I_U1--|       |             I_U1<<I_U0--|        \
@@ -1011,7 +1014,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
                 // build RDM
                 tRDM = build_2x2_RDM('L', col, r);
                 // Perform SVD
-                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x});
+                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x,"SVDThreshold",1E-2});
                 Print(spec);
                 PrintData(S);
                 // relabel isometry index
@@ -1024,8 +1027,9 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             isoZ = std::vector<ITensor>(sizeM, ITensor(I_U, I_XH));
             for (int c=0; c<sizeM; c++) {
                 tRDM = build_2x2_RDM('U', (c+1)%sizeM, row);
-                spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x});
+                spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 Print(spec);
+                PrintData(S);
                 svdI = commonIndex(isoZ[c],S);
                 isoZ[c] *= delta(svdI, prime(I_U, sizeM+10));
             }
@@ -1035,7 +1039,7 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             isoZ = std::vector<ITensor>(sizeN, ITensor(I_R, I_XV));
             for (int r=0; r<sizeN; r++) {
                 tRDM = build_2x2_RDM('R', col, (r+1)%sizeN);
-                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x});
+                spec = svd(tRDM, isoZ[r], S, V, {"Maxm=",x,"SVDThreshold",1E-2});
                 Print(spec);
                 PrintData(S);
                 svdI = commonIndex(isoZ[r],S);
@@ -1047,8 +1051,9 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
             isoZ = std::vector<ITensor>(sizeM, ITensor(I_D, I_XH));
             for (int c=0; c<sizeM; c++) {
                 tRDM = build_2x2_RDM('D', c, row);
-                spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x});
+                spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 Print(spec);
+                PrintData(S);
                 svdI = commonIndex(isoZ[c],S);
                 isoZ[c] *= delta(svdI, prime(I_D, sizeM+10));
             }
@@ -1063,6 +1068,7 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
 
     ITensor rdm;
 
+    std::cout << ctmMove <<" ";
     switch (ctmMove) {
         case 'L': {
             // build left upper corner
@@ -1091,8 +1097,8 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
             rdm *= build_corner('4', (col-1+sizeM)%sizeM, (row+1)%sizeN );
             // build left upper corner
             rdm *= build_corner('1', (col-1+sizeM)%sizeM, row );
-            rdm.mapprime(ULINK,0,1, HSLINK,0,1); // Indices along cut
-            rdm.mapprime(ULINK,10,0, HSLINK,10,0); // Indices along cut
+            //rdm.mapprime(ULINK,0,1, HSLINK,0,1); // Indices along cut
+            rdm.mapprime(ULINK,10,1, HSLINK,10,1); // Indices along cut
             break;
         }
         case 'R': {
@@ -1106,8 +1112,8 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
                 (row-1+sizeN)%sizeN );
             // build right upper corner
             rdm *= build_corner('2', col, (row-1+sizeN)%sizeN );
-            rdm.mapprime(RLINK,0,1, VSLINK,0,1); // Indices along cut
-            rdm.mapprime(RLINK,10,0, VSLINK,10,0); // Indices along cut
+            //rdm.mapprime(RLINK,0,1, VSLINK,0,1); // Indices along cut
+            rdm.mapprime(RLINK,10,1, VSLINK,10,1); // Indices along cut
             break;
         }
         case 'D': {
@@ -1126,51 +1132,58 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
     }
 
     // symmetrize rdm to obtain hermitian matrix
-    //rdm = 0.5*( rdm + swapPrime(rdm, 0, 1).conj() );
+    // rdm = 0.5*( rdm + swapPrime(rdm, 0, 1).conj() );
 
+    std::cout << std::endl;
     return rdm;
 }
 
 ITensor CtmEnv::build_corner(char corner, int col, int row) const {
     ITensor ct;
+    int siteIndex = cToS.at(std::make_pair(col,row));
     switch(corner) {
         case '1': {
             // build left upper corner
-            ct = T_L.at( cToS.at(std::make_pair(col,row)) );
-            ct *= C_LU.at( cToS.at(std::make_pair(col,row)) );
-            ct *= sites[cToS.at(std::make_pair(col,row))];
-            ct *= T_U.at( cToS.at(std::make_pair(col,row)) );
+            ct = T_L.at( siteIndex );
+            ct *= C_LU.at( siteIndex );
+            //ct *= sites[siteIndex];
+            ct *= T_U.at( siteIndex );
+            ct *= sites[siteIndex];
             ct.mapprime(ULINK,1,0, HSLINK,1,0);
             break;
         }
         case '2': {
             // build right upper corner
-            ct = T_U.at( cToS.at(std::make_pair(col,row)) );
-            ct *= C_RU.at( cToS.at(std::make_pair(col,row)) );
-            ct *= sites[cToS.at(std::make_pair(col,row))];
-            ct *= T_R.at( cToS.at(std::make_pair(col,row)) );
+            ct = T_U.at( siteIndex );
+            ct *= C_RU.at( siteIndex );
+            //ct *= sites[siteIndex];
+            ct *= T_R.at( siteIndex );
+            ct *= sites[siteIndex];
             ct.mapprime(RLINK,1,0, VSLINK,1,0);
             break;
         }
         case '3': {
             // build right lower corner
-            ct = T_R.at( cToS.at(std::make_pair(col,row)) );
-            ct *= C_RD.at( cToS.at(std::make_pair(col,row)) );
-            ct *= sites[cToS.at(std::make_pair(col,row))];
-            ct *= T_D.at( cToS.at(std::make_pair(col,row)) );
+            ct = T_R.at( siteIndex );
+            ct *= C_RD.at( siteIndex );
+            //ct *= sites[siteIndex];
+            ct *= T_D.at( siteIndex );
+            ct *= sites[siteIndex];
             ct.mapprime(DLINK,0,1, HSLINK,0,1);
             break;
         }
         case '4': {
             // build left lower corner
-            ct = T_D.at( cToS.at(std::make_pair(col,row)) );
-            ct *= C_LD.at( cToS.at(std::make_pair(col,row)) ); 
-            ct *= sites[cToS.at(std::make_pair(col,row))];
-            ct *= T_L.at( cToS.at(std::make_pair(col,row)) );
+            ct = T_D.at( siteIndex );
+            ct *= C_LD.at( siteIndex ); 
+            //ct *= sites[siteIndex];
+            ct *= T_L.at( siteIndex );
+            ct *= sites[siteIndex];
             ct.mapprime(LLINK,0,1, VSLINK,0,1);
             break;
         }
     }
+    std::cout << siteIds.at(siteIndex);
     return ct;
 }
 
@@ -1643,7 +1656,7 @@ CtmData CtmEnv::getCtmData_DBG() const {
         std::cout<<"T_U["<< col <<"] <- T_U["<< site <<"=("<< col <<","<< 0
              <<")] = T_U["<< siteIds[site] <<"]"<< std::endl;
 
-        site = cToS.at(std::make_pair(col,sizeM-1));
+        site = cToS.at(std::make_pair(col,sizeN-1));
         tT_D.push_back( prime(T_D.at( site ), DLINK, col)
             .mapprime(VSLINK, 1, sizeN) );
         std::cout<<"T_D["<< col <<"] <- T_D["<< site <<"=("<< col <<","

@@ -125,9 +125,9 @@ int main( int argc, char *argv[] ) {
     std::vector<double> accT(4,0.0);
     // holding energies
     std::vector<double> e_nnH;
-    // std::vector<double> e_nnH_AC;
-    // std::vector<double> e_nnH_BD;
-    // std::vector<double> e_nnH_CD;
+    std::vector<double> e_nnH_AC;
+    std::vector<double> e_nnH_BD;
+    std::vector<double> e_nnH_CD;
 
     // Build expectation value builder
     std::cout << ctmEnv.getCtmData_DBG();
@@ -149,27 +149,27 @@ int main( int argc, char *argv[] ) {
         //RA);
         cluster.sites.at("B"));
 
-    // auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
-    //     cluster.sites.at("A"),
-    //     cluster.sites.at("C"));
+    auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("A"),
+        cluster.sites.at("C"));
 
-    // auto op2s_ssBD = ev.get2STOT(EVBuilder::OP2S_SS,
-    //     cluster.sites.at("B"),
-    //     cluster.sites.at("D"));
+    auto op2s_ssBD = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("B"),
+        cluster.sites.at("D"));
 
-    // auto op2s_ssCD = ev.get2STOT(EVBuilder::OP2S_SS,
-    //     cluster.sites.at("C"),
-    //     cluster.sites.at("D"));
+    auto op2s_ssCD = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at("C"),
+        cluster.sites.at("D"));
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
         std::make_pair(0,0), std::make_pair(1,0)) );
-    // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
-    //     std::make_pair(0,0), std::make_pair(1,0)) );
-    // e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
-    //     std::make_pair(0,1), std::make_pair(1,1)) );
-    // e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
-    //     std::make_pair(1,0), std::make_pair(1,1)) );
+    e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
+        std::make_pair(0,0), std::make_pair(0,1)) );
+    e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
+        std::make_pair(1,0), std::make_pair(1,1)) );
+    e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
+        std::make_pair(0,1), std::make_pair(1,1)) );
 
     // ##### randomization of directional CTM moves ###################
     // Seed with a real random value, if available
@@ -185,49 +185,27 @@ int main( int argc, char *argv[] ) {
         std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
-        
-        // for (int i=1; i<5; i++) {
-        //     switch(dis(gen)) { 
-        //         case 1:
-        //             ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        //             break;
-        //         case 2:
-        //             ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        //             break;
-        //         case 3:
-        //             ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-        //             break;
-        //         case 4:
-        //             ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        //             break;
-        //     }
-        // }
 
         ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insURow_DBG(iso_type, norm_type, accT);
         ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
-        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-
         std::cout << "STEP " << iter << std::endl;
 
-        if ( iter % 10 == 0 ) {
+        if ( iter % 1 == 0 ) {
         //if ( iter > 100 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
             ev.setCtmData(ctmEnv.getCtmData_DBG());
             e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
                 std::make_pair(0,0), std::make_pair(1,0)) );
-            // e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
-            //     std::make_pair(0,0), std::make_pair(1,0)) );
-            // e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
-            //     std::make_pair(0,1), std::make_pair(1,1)) );
-            // e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
-            //     std::make_pair(1,0), std::make_pair(1,1)) );
+            e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
+                std::make_pair(0,0), std::make_pair(0,1)) );
+            e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
+                std::make_pair(1,0), std::make_pair(1,1)) );
+            e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
+                std::make_pair(0,1), std::make_pair(1,1)) );
         }
     }
 
@@ -245,14 +223,22 @@ int main( int argc, char *argv[] ) {
 
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
 
-    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, cluster.siteIds[0], 0);
+    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, "A", 0);
 
-    auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, cluster.siteIds[0], 0);
+    auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "A", 0);
+    auto mpo_szB = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "B", 0);
+    auto mpo_szC = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "C", 0);
+    auto mpo_szD = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "D", 0);
 
-    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, cluster.siteIds[0], 0);
+    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, "A", 0);
 
-    std::cout <<"ID: "<< ev.eV_1sO(mpo_id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"ID: "<< ev.eV_1sO_DBG(mpo_id, std::make_pair(0,0)) << std::endl;
+
     std::cout <<"SZ: "<< ev.eV_1sO(mpo_sz, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szB, std::make_pair(1,0)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szC, std::make_pair(0,1)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szD, std::make_pair(1,1)) << std::endl;
+    
     std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
     // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
@@ -268,9 +254,9 @@ int main( int argc, char *argv[] ) {
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
         std::cout << i <<" "<< e_nnH[i] 
-            // <<" "<< e_nnH_AC[i]
-            // <<" "<< e_nnH_BD[i]
-            // <<" "<< e_nnH_CD[i]
+            <<" "<< e_nnH_AC[i]
+            <<" "<< e_nnH_BD[i]
+            <<" "<< e_nnH_CD[i]
             << std::endl;
     }
 

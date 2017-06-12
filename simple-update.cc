@@ -97,6 +97,30 @@ MPO_2site getMPO2s_Id(int physDim) {
     SV_12.apply(sqrt_T);
     mpo2s.H1 = ( mpo2s.H1 * SV_12 )*delta(a2,iMPO3s12);
     mpo2s.H2 = ( mpo2s.H2 * SV_12 )*delta(a1,iMPO3s12);
+    
+    double m1, m2;
+	double m = 0.;
+	double sign = 0.;
+    auto max_m = [&m, &sign](double d) {
+        if(std::abs(d) > m) {
+        	sign = (d > 0) ? 1 : ((d < 0) ? -1 : 0);
+         	m = std::abs(d);
+        }
+    };
+
+    mpo2s.H1.visit(max_m);
+    m1 = m*sign;
+    m = 0.;
+    mpo2s.H2.visit(max_m);
+    m2 = m*sign;
+
+    std::cout <<"m1: "<< m1 <<" m2: "<< m2 << std::endl;
+
+	if ( m1*m2 > 0 ) {
+		mpo2s.H1 /= m1;
+		mpo2s.H2 /= m2;
+	}
+
     Print(mpo2s.H1);
     Print(mpo2s.H2);
 
@@ -509,6 +533,35 @@ MPO_3site getMPO3s_Id_v2(int physDim) {
 	mpo3s.H2 = (mpo3s.H2 * SV_23)*delta(a4,iMPO3s23);
 	mpo3s.H3 = (mpo3s.H3 * SV_23)*delta(a3,iMPO3s23);
 
+	double m1, m2, m3;
+	double sign1, sign2, sign3;
+	double m = 0.;
+	double sign = 0.;
+    auto max_m = [&m, &sign](double d) {
+        if(std::abs(d) > m) {
+        	sign = (d > 0) ? 1 : ((d < 0) ? -1 : 0);
+         	m = std::abs(d);
+        }
+    };
+
+    mpo3s.H1.visit(max_m);
+    sign1 = sign;
+    m1 = m*sign;
+    m = 0.;
+    mpo3s.H2.visit(max_m);
+    m2 = m*sign;
+    m = 0.;
+    mpo3s.H3.visit(max_m);
+    m3 = m*sign;
+
+    std::cout <<"m1: "<< m1 <<" m2: "<< m2 <<" m3: "<< m3 << std::endl;
+
+	if ( m1*m2*m3 > 0 ) {
+		mpo3s.H1 /= m1;
+		mpo3s.H2 /= m2;
+		mpo3s.H3 /= m3;	
+	}
+	 
 	PrintData(mpo3s.H1);
 	PrintData(mpo3s.H2);
 	PrintData(mpo3s.H3);
@@ -1093,7 +1146,7 @@ void applyH_123_v4(MPO_3site const& mpo3s,
 	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
 	auto a1 = commonIndex(T1,SV_L12);
 	auto a2 = commonIndex(temp2,SV_L12);
-	temp2 = ( temp2*SV_L12 )*delta(a1,a2);
+	temp2 = ( temp2*SV_L12 );
 
 	PrintData(SV_L12);
 	PrintData(T1);
@@ -1163,8 +1216,8 @@ void applyH_123_v4(MPO_3site const& mpo3s,
 	SV_L12.apply(sqrtT);	
 	//auto a1 = commonIndex(T1,SV_L12);
 	//auto a2 = commonIndex(T2,SV_L12);
-	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
-	T2 = ( T2*SV_L12 )*delta( a1, link12.second );
+	T1 = T1*delta( a1, link12.first );
+	T2 = T2*delta( a1, link12.second );
 
 	PrintData(SV_L12);
 	PrintData(T1);
