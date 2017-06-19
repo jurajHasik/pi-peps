@@ -121,8 +121,8 @@ MPO_2site getMPO2s_Id(int physDim) {
 		mpo2s.H2 /= m2;
 	}
 
-    Print(mpo2s.H1);
-    Print(mpo2s.H2);
+    PrintData(mpo2s.H1);
+    PrintData(mpo2s.H2);
 
 	return mpo2s;
 }

@@ -52,10 +52,10 @@ int main( int argc, char *argv[] ) {
     }
 
     applyMPO2S(mpo2s_Id, 
-        cluster.sites["D"], cluster.sites["C"], 
+        cluster.sites["A"], cluster.sites["B"], 
         std::make_pair( 
-            noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(2),
-            noprime( findtype(cluster.sites["C"].inds(), AUXLINK)).prime(0) ));
+            noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
+            noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ));
 
     // MPO_3site mpo3s_Id;
     // switch(arg_id_type) {

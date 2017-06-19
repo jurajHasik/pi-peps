@@ -67,6 +67,9 @@ $(APP2): $(OBJECTS2) $(ITENSOR_LIBS)
 $(APP3): $(OBJECTS3) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS3) -o $(APP3).x $(LIBFLAGS)
 
+test3x3: $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
+
 clean:
 	rm -fr .debug_objs *.o $(APP).x $(APP)-g.x
 
