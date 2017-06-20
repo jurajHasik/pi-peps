@@ -30,48 +30,48 @@ int main( int argc, char *argv[] ) {
     auto initC = contractCluster(cluster);
     PrintData( initC );
 
-    MPO_2site mpo2s_Id;
-    mpo2s_Id = getMPO2s_Id(cluster.physDim);
+    // MPO_2site mpo2s_Id;
+    // mpo2s_Id = getMPO2s_Id(cluster.physDim);
 
-    void (*applyMPO2S)(MPO_2site const&, ITensor &, ITensor &,
-        std::pair<Index,Index> const&);
+    // void (*applyMPO2S)(MPO_2site const&, ITensor &, ITensor &,
+    //     std::pair<Index,Index> const&);
 
-    switch(arg_f_mpo3s) {
-        case(F_MPO3S_1): {
-            applyMPO2S = &applyH_12;
-            break;
-        }
-        case(F_MPO3S_2): {
-            applyMPO2S = &applyH_12_v2;
-            break;
-        }
-        default: {
-            std::cout << "Unsupported F_MPO2S" << std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    applyMPO2S(mpo2s_Id, 
-        cluster.sites["A"], cluster.sites["B"], 
-        std::make_pair( 
-            noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
-            noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ));
-
-    // MPO_3site mpo3s_Id;
-    // switch(arg_id_type) {
-    //     case(ID_TYPE_1): {
-    //         mpo3s_Id = getMPO3s_Id(cluster.physDim);
+    // switch(arg_f_mpo3s) {
+    //     case(F_MPO3S_1): {
+    //         applyMPO2S = &applyH_12;
     //         break;
     //     }
-    //     case(ID_TYPE_2): {
-    //         mpo3s_Id = getMPO3s_Id_v2(cluster.physDim);
+    //     case(F_MPO3S_2): {
+    //         applyMPO2S = &applyH_12_v2;
     //         break;
     //     }
     //     default: {
-    //         std::cout << "Unsupported ID_TYPE" << std::endl;
+    //         std::cout << "Unsupported F_MPO2S" << std::endl;
     //         exit(EXIT_FAILURE);
     //     }
     // }
+
+    // applyMPO2S(mpo2s_Id, 
+    //     cluster.sites["A"], cluster.sites["B"], 
+    //     std::make_pair( 
+    //         noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
+    //         noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ));
+
+    MPO_3site mpo3s_Id;
+    switch(arg_id_type) {
+        case(ID_TYPE_1): {
+            mpo3s_Id = getMPO3s_Id(cluster.physDim);
+            break;
+        }
+        case(ID_TYPE_2): {
+            mpo3s_Id = getMPO3s_Id_v2(cluster.physDim);
+            break;
+        }
+        default: {
+            std::cout << "Unsupported ID_TYPE" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
     /*
      * Applying H_123 to sites ABD
@@ -92,47 +92,47 @@ int main( int argc, char *argv[] ) {
      * and (B_a3,C_a1) 
      * 
      */
-    // void (*applyMPO3S)(MPO_3site const&, ITensor &, ITensor &, ITensor &,
-    //     std::pair<Index,Index> const&, std::pair<Index,Index> const&);
-    // switch(arg_f_mpo3s) {
-    //     case(F_MPO3S_1): {
-    //         applyMPO3S = &applyH_123;
-    //         break;
-    //     }
-    //     case(F_MPO3S_2): {
-    //         applyMPO3S = &applyH_123_v2;
-    //         break;
-    //     }
-    //     case(F_MPO3S_3): {
-    //         applyMPO3S = &applyH_123_v3;
-    //         break;
-    //     }
-    //     case(F_MPO3S_4): {
-    //         applyMPO3S = &applyH_123_v4;
-    //         break;
-    //     }
-    //     case(F_MPO3S_5): {
-    //         applyMPO3S = &applyH_123_v5;
-    //         break;
-    //     }
-    //     case(F_MPO3S_6): {
-    //         applyMPO3S = &applyH_123_v6;
-    //         break;
-    //     }
-    //     default: {
-    //         std::cout << "Unsupported F_MPO3S" << std::endl;
-    //         exit(EXIT_FAILURE);
-    //     }
-    // }
+    void (*applyMPO3S)(MPO_3site const&, ITensor &, ITensor &, ITensor &,
+        std::pair<Index,Index> const&, std::pair<Index,Index> const&);
+    switch(arg_f_mpo3s) {
+        case(F_MPO3S_1): {
+            applyMPO3S = &applyH_123;
+            break;
+        }
+        case(F_MPO3S_2): {
+            applyMPO3S = &applyH_123_v2;
+            break;
+        }
+        case(F_MPO3S_3): {
+            applyMPO3S = &applyH_123_v3;
+            break;
+        }
+        case(F_MPO3S_4): {
+            applyMPO3S = &applyH_123_v4;
+            break;
+        }
+        case(F_MPO3S_5): {
+            applyMPO3S = &applyH_123_v5;
+            break;
+        }
+        case(F_MPO3S_6): {
+            applyMPO3S = &applyH_123_v6;
+            break;
+        }
+        default: {
+            std::cout << "Unsupported F_MPO3S" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+    }
 
-    // applyMPO3S(mpo3s_Id,
-    //     cluster.sites["A"], cluster.sites["B"], cluster.sites["D"],
-    //     std::make_pair( 
-    //         noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
-    //         noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ),
-    //     std::make_pair( 
-    //         noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(3),
-    //         noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(1)));
+    applyMPO3S(mpo3s_Id,
+        cluster.sites["A"], cluster.sites["B"], cluster.sites["D"],
+        std::make_pair( 
+            noprime( findtype(cluster.sites["A"].inds(), AUXLINK)).prime(2),
+            noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(0) ),
+        std::make_pair( 
+            noprime( findtype(cluster.sites["B"].inds(), AUXLINK)).prime(3),
+            noprime( findtype(cluster.sites["D"].inds(), AUXLINK)).prime(1)));
 
     // Balance cluster
     /*std::vector<double> largest_elem;*/

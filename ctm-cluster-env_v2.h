@@ -27,7 +27,8 @@ class CtmEnv
     } init_env_type;
 
     typedef enum ISOMETRY {
-        ISOMETRY_T1
+        ISOMETRY_T1,
+        ISOMETRY_T2
     } isometry_type;
 
     typedef enum NORMALIZATION {
@@ -184,6 +185,7 @@ class CtmEnv
     // isometries
     
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
+    std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row);
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from
@@ -191,6 +193,9 @@ class CtmEnv
     // clock-wise direction wrt. to cut
     // CONVENTION indices clockwise wrt. to cut have primeLevel 0
     itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
+
+    std::pair<itensor::ITensor, itensor::ITensor> build_halves(
+        char ctmMove, int col, int row) const;
 
     // builds the corner of environment of site (col,row) + site where 
     // corner is 1,2,3 or 4 according to following key 1|2

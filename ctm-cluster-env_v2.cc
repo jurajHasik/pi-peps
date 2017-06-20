@@ -382,6 +382,10 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 isoZ = isoT1('U', -1, row);
                 break;
             }
+            case ISOMETRY_T2: {
+                isoZ = isoT2('U', -1, row);
+                break;
+            }
         }
 
         for (int col=0; col<sizeM; col++) {
@@ -426,7 +430,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
             Print(tC2);
         
             std::cout <<"(3."<< col <<".1) ----- Construct reduced C_LU -----"
-                << std::endl;
+                <<" isoZ["<< (2*col)%(2*sizeM) <<"]"<< std::endl;
             /*   _______                           ________
              *  |       |--I_U              I_U0--|        \
              *  |C_LU_01|       *contract*        |ZsizeM-1 --I_UsizeM+10>>I_U0
@@ -436,7 +440,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             C_LU.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
-                tC1 * isoZ[(col-1+sizeM)%sizeM];
+                tC1 * isoZ[(2*col)%(2*sizeM)];
             C_LU.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) )
                 .mapprime(ULINK,sizeM+10,0);
             std::cout << TAG_C_LU <<"["<< col <<","<< (row+1)%sizeN <<"]";
@@ -452,27 +456,25 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             std::cout <<"(3."<< col <<".2) ----- REDUCE T_U["<< col <<","
-                << (row+1)%sizeN <<"] -----"<< std::endl;
+                << (row+1)%sizeN <<"] ----- isoZ["<< (2*col+1)%(2*sizeM) <<"] & "
+                <<"isoZ["<< (2*col+2)%(2*sizeM) <<"]"<<std::endl;
         
-            isoZ[(col-1+sizeM)%sizeM].conj();
-            tT1 *= isoZ[(col-1+sizeM)%sizeM];
+            tT1 *= isoZ[(2*col+1)%(2*sizeM)];
             tT1.mapprime(ULINK,sizeM+10,0);
 
-            // conjugate back
-            isoZ[(col-1+sizeM)%sizeM].conj();
-
-            isoZ[col].mapprime(ULINK,0,1, HSLINK,0,1);
             T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
-                tT1 * isoZ[col];
+                tT1 * isoZ[(2*col+2)%(2*sizeM)].prime();
             T_U.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) )
-                .mapprime(ULINK,sizeM+10,1);
+                .mapprime(ULINK,sizeM+10+1,1);
+
+            isoZ[(2*col+2)%(2*sizeM)].prime(-1);
 
             std::cout << TAG_T_U <<"["<< col <<","<< (row+1)%sizeN <<"]";
             printfln("= %s", T_U.at( 
                cToS.at(std::make_pair(col,(row+1)%sizeN))) );
         
             std::cout <<"(3."<< col <<".3) ----- Construct reduced C_RU -----"
-                << std::endl;
+                <<"isoZ["<< (2*col+3)%(2*sizeM) <<"]"<< std::endl;
             /*         _______                           ________
              *  I_U1--|       |             I_U1<<I_U0--|        \
              *        |C_RU_c1| *contract*              |ZsizeM-1 --I_UsizeM+10
@@ -481,14 +483,12 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
              *           I_R
              *
              */
-            isoZ[col].conj();
             C_RU.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) ) = 
-                tC2 * isoZ[col];
+                tC2 * isoZ[(2*col+3)%(2*sizeM)].prime();
             C_RU.at( cToS.at(std::make_pair(col,(row+1)%sizeN)) )
-                .mapprime(ULINK,sizeM+10,1);
+                .mapprime(ULINK,sizeM+10+1,1);
 
-            // conjugate back and prime indices back to initial value
-            isoZ[col].conj().mapprime(ULINK,1,0, HSLINK,1,0);
+            isoZ[(2*col+3)%(2*sizeM)].prime(-1);
 
             std::cout << TAG_C_RU <<"["<< col <<","<< (row+1)%sizeN <<"]";
             printfln("= %s", C_RU.at( 
@@ -542,6 +542,10 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 isoZ = isoT1('D', -1, row);
                 break;
             }
+            case ISOMETRY_T2: {
+                isoZ = isoT2('D', -1, row);
+                break;
+            }
         }
 
         for (int col=0; col<sizeM; col++) {
@@ -586,7 +590,7 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
             Print(tC3);
 
             std::cout <<"(3."<< col <<".1) ----- Construct reduced C_LD -----"
-                << std::endl;
+                <<"isoZ["<< (2*col)%(2*sizeM) <<"]"<< std::endl;
             /*
              *    I_L1
              *   __|______                         ________
@@ -596,7 +600,7 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             C_LD.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
-                tC4 * isoZ[(col-1+sizeM)%sizeM];
+                tC4 * isoZ[(2*col)%(2*sizeM)];
             C_LD.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
                 .mapprime(DLINK,sizeM+10,0);
             std::cout << TAG_C_LD <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
@@ -604,7 +608,8 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                C_LD.at(cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
 
             std::cout <<"(3."<< col <<".2) ----- REDUCE T_D["<< col <<","
-            << (row-1+sizeN)%sizeN <<"] -----"<< std::endl;
+            << (row-1+sizeN)%sizeN <<"] ----- isoZ["<< (2*col+1)%(2*sizeM) <<"] & "
+                <<"isoZ["<< (2*col+2)%(2*sizeM) <<"]"<<std::endl;
             /*
              *          I_XV1
              *        ___|____
@@ -616,25 +621,22 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
              */
 
             // reset primes
-            isoZ[(col-1+sizeM)%sizeM].conj();
-            tT3 *= isoZ[(col-1+sizeM)%sizeM];
+            tT3 *= isoZ[(2*col+1)%(2*sizeM)];
             tT3.mapprime(DLINK,sizeM+10,0);
 
-            // conjugate back
-            isoZ[(col-1+sizeM)%sizeM].conj();
-
-            isoZ[col].mapprime(DLINK,0,1, HSLINK,0,1);
             T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
-                tT3 * isoZ[col];
+                tT3 * isoZ[(2*col+2)%(2*sizeM)].prime();
             T_D.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
-                .mapprime(DLINK,sizeM+10,1);
+                .mapprime(DLINK,sizeM+10+1,1);
+
+            isoZ[(2*col+2)%(2*sizeM)].prime(-1);
 
             std::cout << TAG_T_D <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
             printfln("= %s", T_D.at( 
                cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
 
             std::cout <<"(3."<< col <<".3) ----- Construct reduced C_LD -----"
-                << std::endl;
+                <<" isoZ["<< (2*col+3)%(2*sizeM) <<"]"<< std::endl;
             /*
              *            I_R1
              *         ____|____                          ________
@@ -643,14 +645,12 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
              * I_XH1--|_________|          I_XH1<<I_XH0--|_dagger_/     >>I_D1
              *
              */
-            isoZ[col].conj();
             C_RD.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) ) = 
-                tC3 * isoZ[col];
+                tC3 * isoZ[(2*col+3)%(2*sizeM)].prime();
             C_RD.at( cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN)) )
-                .mapprime(DLINK,sizeM+10,1);
+                .mapprime(DLINK,sizeM+10+1,1);
 
-            // conjugate back and prime indices back to initial value
-            isoZ[col].conj().mapprime(DLINK,1,0, HSLINK,1,0);
+            isoZ[(2*col+3)%(2*sizeM)].prime(-1);
 
             std::cout << TAG_C_RD <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
             printfln("= %s", C_RD.at( 
@@ -705,6 +705,10 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 isoZ = isoT1('L', col, -1);
                 break;
             }
+            case ISOMETRY_T2: {
+                isoZ = isoT2('L', col, -1);
+                break;
+            }
         }
 
         for (int row=0; row<sizeN; row++) {
@@ -750,7 +754,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
             Print(tC4);
 
             std::cout <<"(3."<< row <<".1) ----- Construct reduced C_LU -----"
-                << std::endl;
+                <<" isoZ["<< (2*row)%(2*sizeN) <<"]"<< std::endl;
             /*                                    ________
              * |C_LD_10|--I_U              I_L0--|        \
              *  |    |         *contract*        |ZsizeN-1 --I_LsizeN+10>>I_L0
@@ -758,7 +762,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
-                tC1 * isoZ[(row-1+sizeN)%sizeN];
+                tC1 * isoZ[(2*row)%(2*sizeN)];
             C_LU.at( cToS.at(std::make_pair((col+1)%sizeM,row)) )
                 .mapprime(LLINK,sizeN+10,0);
             std::cout << TAG_C_LU <<"["<< (col+1)%sizeM <<","<< row <<"]";
@@ -774,41 +778,37 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             std::cout <<"(3."<< row <<".2) ----- REDUCE T_L ["<< (col+1)%sizeM 
-                <<","<< row <<"] -----"<< std::endl;
+                <<","<< row <<"] ----- isoZ["<< (2*row+1)%(2*sizeN) <<"] & "
+                <<" isoZ["<< (2*row+2)%(2*sizeN) <<"]"<< std::endl;
             
-            isoZ[(row-1+sizeN)%sizeN].conj();
-            tT4 *= isoZ[(row-1+sizeN)%sizeN];
+            tT4 *= isoZ[(2*row+1)%(2*sizeN)];
             tT4.mapprime(LLINK,sizeN+10,0);
 
-            // conjugate back
-            isoZ[(row-1+sizeN)%sizeN].conj();
-
-            isoZ[row].mapprime(LLINK,0,1, VSLINK,0,1);
             T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
-                tT4 * isoZ[row];
+                tT4 * isoZ[(2*row+2)%(2*sizeN)].prime();
             T_L.at( cToS.at(std::make_pair((col+1)%sizeM,row)) )
-                .mapprime(LLINK,sizeN+10,1);
+                .mapprime(LLINK,sizeN+10+1,1);
+
+            isoZ[(2*row+2)%(2*sizeN)].prime(-1);
 
             std::cout << TAG_T_L <<"["<< (col+1)%sizeM <<","<< row <<"]";
             printfln("= %s", T_L.at( 
                 cToS.at(std::make_pair((col+1)%sizeM,row))) );
 
             std::cout <<"(3."<< row <<".3) ----- Construct reduced C_LD -----"
-                << std::endl;
+                <<" isoZ["<< (2*row+3)%(2*sizeN) <<"]"<< std::endl;
             /*                                           ________
              * I_L1  I_XV1                  I_L1<<I_L0--|        \
              *  |    |         *contract*               |ZsizeN-1 --I_LsizeN+10
              * |C_LD_10|--I_D             I_XV1<<I_XV0--|_dagger_/      >>I_L1
              *
              */
-            isoZ[row].conj();
             C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,row)) ) = 
-                tC4 * isoZ[row];
+                tC4 * isoZ[(2*row+3)%(2*sizeN)].prime();
             C_LD.at( cToS.at(std::make_pair((col+1)%sizeM,row)) )
-                .mapprime(LLINK,sizeN+10,1);
+                .mapprime(LLINK,sizeN+10+1,1);
 
-            // conjugate back and prime indices back to initial value
-            isoZ[row].conj().mapprime(LLINK,1,0, VSLINK,1,0);
+            isoZ[(2*row+3)%(2*sizeN)].prime(-1);
 
             std::cout << TAG_C_LD <<"["<< (col+1)%sizeM <<","<< row <<"]";
             printfln("= %s", C_LD.at( 
@@ -862,6 +862,10 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 isoZ = isoT1('R', col, -1);
                 break;
             }
+            case ISOMETRY_T2: {
+                isoZ = isoT2('R', col, -1);
+                break;
+            }
         }
 
         for (int row=0; row<sizeN; row++) {
@@ -908,7 +912,7 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
             Print(tC3);
 
             std::cout <<"(3."<< row <<".1) ----- Construct reduced C_RU -----"
-                << std::endl;
+                <<" isoZ["<< (2*row)%(2*sizeN) <<"]"<< std::endl;
             /*                                      ________
              * I_U1--|C_RU_m-20|             I_R0--|        \
              *         |     |    *contract*       |ZsizeN-1 --I_RsizeN+10>>I_R0
@@ -916,7 +920,7 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
              *
              */
             C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
-                tC2 * isoZ[(row-1+sizeN)%sizeN];
+                tC2 * isoZ[(2*row)%(2*sizeN)];
             C_RU.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) )
                 .mapprime(RLINK,sizeN+10,0);
             std::cout << TAG_C_RU <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
@@ -924,7 +928,9 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                C_RU.at(cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
             
             std::cout <<"(3."<< row <<".2) ----- REDUCE T_R ["<< 
-                (col-1+sizeM)%sizeM <<","<< row <<"] -----"<< std::endl;
+                (col-1+sizeM)%sizeM <<","<< row <<"] ----- isoZ["
+                << (2*row+1)%(2*sizeN) <<"] & "<<" isoZ["<< (2*row+2)%(2*sizeN) 
+                <<"]"<< std::endl;
             /* 
              *       I_XV0 I_R0                 I_R0--|Zr-1\__I_RsizeN+10>>I_R0 
              *         |    |                  I_XV0--|dag /
@@ -933,25 +939,22 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
              *       I_XV1 I_R1                I_XV1--|    /
              *
              */
-            isoZ[(row-1+sizeN)%sizeN].conj();
-            tT2 *= isoZ[(row-1+sizeN)%sizeN];
+            tT2 *= isoZ[(2*row+1)%(2*sizeN)];
             tT2.mapprime(RLINK,sizeN+10,0);
 
-            // conjugate back
-            isoZ[(row-1+sizeN)%sizeN].conj();
-
-            isoZ[row].mapprime(RLINK,0,1, VSLINK,0,1);
             T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
-                tT2 * isoZ[row];
+                tT2 * isoZ[(2*row+2)%(2*sizeN)].prime();
             T_R.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) )
-                .mapprime(RLINK,sizeN+10,1);
+                .mapprime(RLINK,sizeN+10+1,1);
+
+            isoZ[(2*row+2)%(2*sizeN)].prime(-1);
 
             std::cout << TAG_T_R <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
             printfln("= %s", T_R.at( 
                cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
 
             std::cout <<"(3."<< row <<".3) ----- Construct reduced C_RD -----"
-                << std::endl;
+                <<" isoZ["<< (2*row+3)%(2*sizeN) <<"]"<< std::endl;
             /*                                             ________
              *       I_XV1 I_R1               I_R1<<I_R0--|        \
              *        |     |    *contract*               |ZsizeN-1 --I_RsizeN+10
@@ -960,12 +963,11 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
              */
             isoZ[row].conj();
             C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) ) = 
-                tC3 * isoZ[row];
+                tC3 * isoZ[(2*row+3)%(2*sizeN)].prime();
             C_RD.at( cToS.at(std::make_pair((col-1+sizeM)%sizeM,row)) )
-                .mapprime(RLINK,sizeN+10,1);
+                .mapprime(RLINK,sizeN+10+1,1);
 
-            // conjugate back and prime indices back to initial value
-            isoZ[row].conj().mapprime(RLINK,1,0, VSLINK,1,0);
+            isoZ[(2*row+3)%(2*sizeN)].prime(-1);
 
             std::cout << TAG_C_RD <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
             printfln("= %s", C_RD.at( 
@@ -1064,6 +1066,236 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
     return isoZ;   
 }
 
+std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
+    std::cout <<"----- ISO_T2 called for "<< ctmMove <<" at ["<< col
+        <<","<< row <<"] -----"<<std::endl;
+
+    std::vector<ITensor> isoZ;
+    
+    std::pair<ITensor, ITensor> halves;
+    ITensor uh,lh; // upper half and lower half
+    
+    ITensor R, Rt;
+    Index auxIR, auxIRt, sIU, sIV;
+
+    ITensor S, U, V;
+    Index svdI;
+    Spectrum spec;
+    int p1, p2;
+
+    // Take the square-root of SV's
+    auto oneOverSqrtT = [](double r) { return 1.0/sqrt(r); };
+
+    switch(ctmMove) {
+        case 'L': {
+            isoZ = std::vector<ITensor>(2*sizeN, ITensor(I_L, I_XV));
+            // iterate over rows and create isometries
+            for (int r=0; r<sizeN; r++) {
+                std::cout <<"Computing Projector for row: "<< r << std::endl;
+                // build upper and lower half
+                std::cout <<"Upper and lower half of 2x2(+Env) cell: "<< std::endl;
+                halves = build_halves('L', col, r);
+                Print(halves.first);  // upper_h
+                Print(halves.second); // lower_h
+
+                // Obtain R and Rt(ilde)
+                std::cout <<"R and R~ obtained: "<< std::endl;
+                R = ITensor(I_L, I_XV);
+                svd(halves.first, R, S, U);
+                R *= S;
+                auxIR = commonIndex(R,S);
+                Rt = ITensor(I_L, I_XV);
+                svd(halves.second, Rt, S, U);
+                Rt *= S;
+                auxIRt = commonIndex(Rt,S);
+                Print(R);
+                Print(Rt);
+
+                std::cout <<"SVD of R*R~: "<< std::endl;
+                U = ITensor(auxIR);
+                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                PrintData(S);
+
+                // Create inverse matrix
+                sIU = commonIndex(U,S);
+                sIV = commonIndex(S,V);
+                S.apply(oneOverSqrtT);
+                PrintData(S);
+
+                p1 = (2*(r+1))%(2*sizeN);
+                p2 = (2*(r+1)+1)%(2*sizeN);
+                std::cout <<"Set Projectors "<< p1 <<" "<< p2 <<" :"<< std::endl;
+                isoZ[p1] = Rt*V.conj()*S*delta(sIU, prime(I_L,sizeN+10));
+                //PrintData(isoZ[r*2]);
+                Print(isoZ[p1]);
+                isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_L,sizeN+10));
+                //PrintData(isoZ[r*2+1]);
+                Print(isoZ[p2]);
+            }
+            break;
+        }
+        case 'U': {
+            // isoZ = std::vector<ITensor>(sizeM, ITensor(I_U, I_XH));
+            // for (int c=0; c<sizeM; c++) {
+            //     tRDM = build_2x2_RDM('U', (c+1)%sizeM, row);
+            //     spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x,"SVDThreshold",1E-2});
+            //     Print(spec);
+            //     PrintData(S);
+            //     svdI = commonIndex(isoZ[c],S);
+            //     isoZ[c] *= delta(svdI, prime(I_U, sizeM+10));
+            // }
+            isoZ = std::vector<ITensor>(2*sizeM, ITensor(I_U, I_XH));
+            // iterate over rows and create isometries
+            for (int c=0; c<sizeM; c++) {
+                std::cout <<"Computing Projector for col: "<< c << std::endl;
+                // build upper and lower half
+                std::cout <<"left and right half of 2x2(+Env) cell: "<< std::endl;
+                halves = build_halves('U', (c+1)%sizeM, row);
+                Print(halves.first);  // left_h
+                Print(halves.second); // right_h
+
+                // Obtain R and Rt(ilde)
+                std::cout <<"R and R~ obtained: "<< std::endl;
+                R = ITensor(I_U, I_XH);
+                svd(halves.first, R, S, U);
+                R *= S;
+                auxIR = commonIndex(R,S);
+                Rt = ITensor(I_U, I_XH);
+                svd(halves.second, Rt, S, U);
+                Rt *= S;
+                auxIRt = commonIndex(Rt,S);
+                Print(R);
+                Print(Rt);
+
+                std::cout <<"SVD of R*R~: "<< std::endl;
+                U = ITensor(auxIR);
+                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                PrintData(S);
+
+                // Create inverse matrix
+                sIU = commonIndex(U,S);
+                sIV = commonIndex(S,V);
+                S.apply(oneOverSqrtT);
+                PrintData(S);
+
+                p1 = (2*(c+1))%(2*sizeM);
+                p2 = (2*(c+1)+1)%(2*sizeM);
+                std::cout <<"Set Projectors "<< p1 <<" "<< p2 <<" :"<< std::endl;
+                isoZ[p1] = Rt*V.conj()*S*delta(sIU, prime(I_U,sizeM+10));
+                //PrintData(isoZ[c*2]);
+                Print(isoZ[p1]);
+                isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_U,sizeM+10));
+                //PrintData(isoZ[c*2+1]);
+                Print(isoZ[p2]); 
+            }
+            break;
+        }
+        case 'R': {
+            isoZ = std::vector<ITensor>(2*sizeN, ITensor(I_R, I_XV));
+            // iterate over rows and create isometries
+            for (int r=0; r<sizeN; r++) {
+                std::cout <<"Computing Projector for row: "<< r << std::endl;
+                // build upper and lower half
+                std::cout <<"Upper and lower half of 2x2(+Env) cell: "<< std::endl;
+                halves = build_halves('R', col, (r+1)%sizeN);
+                Print(halves.first);
+                Print(halves.second);
+
+                // Obtain R and Rt(ilde)
+                std::cout <<"R and R~ obtained: "<< std::endl;
+                R = ITensor(I_R, I_XV);
+                svd(halves.first, R, S, U);
+                R *= S;
+                auxIR = commonIndex(R,S);
+                Rt = ITensor(I_R, I_XV);
+                svd(halves.second, Rt, S, U);
+                Rt *= S;
+                auxIRt = commonIndex(Rt,S);
+                Print(R);
+                Print(Rt);
+
+                std::cout <<"SVD of R*R~: "<< std::endl;
+                U = ITensor(auxIR);
+                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                PrintData(S);
+
+                // Create inverse matrix
+                sIU = commonIndex(U,S);
+                sIV = commonIndex(S,V);
+                S.apply(oneOverSqrtT);
+                PrintData(S);
+
+                p1 = (2*(r+1))%(2*sizeN);
+                p2 = (2*(r+1)+1)%(2*sizeN);
+                std::cout <<"Set Projectors "<< p1 <<" "<< p2 <<" :"<< std::endl;
+                isoZ[p1] = Rt*V.conj()*S*delta(sIU, prime(I_R,sizeN+10));
+                Print(isoZ[p1]);
+                isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_R,sizeN+10));
+                Print(isoZ[p2]);
+            }
+            break;
+        }
+        case 'D': {
+            // isoZ = std::vector<ITensor>(sizeM, ITensor(I_D, I_XH));
+            // for (int c=0; c<sizeM; c++) {
+            //     tRDM = build_2x2_RDM('D', c, row);
+            //     spec = svd(tRDM, isoZ[c], S, V, {"Maxm",x,"SVDThreshold",1E-2});
+            //     Print(spec);
+            //     PrintData(S);
+            //     svdI = commonIndex(isoZ[c],S);
+            //     isoZ[c] *= delta(svdI, prime(I_D, sizeM+10));
+            // }
+            isoZ = std::vector<ITensor>(2*sizeM, ITensor(I_D, I_XH));
+            // iterate over rows and create isometries
+            for (int c=0; c<sizeM; c++) {
+                std::cout <<"Computing Projector for col: "<< c << std::endl;
+                // build upper and lower half
+                std::cout <<"left and right half of 2x2(+Env) cell: "<< std::endl;
+                halves = build_halves('D', c, row);
+                Print(halves.first);  // left_h
+                Print(halves.second); // right_h
+
+                // Obtain R and Rt(ilde)
+                std::cout <<"R and R~ obtained: "<< std::endl;
+                R = ITensor(I_D, I_XH);
+                svd(halves.first, R, S, U);
+                R *= S;
+                auxIR = commonIndex(R,S);
+                Rt = ITensor(I_D, I_XH);
+                svd(halves.second, Rt, S, U);
+                Rt *= S;
+                auxIRt = commonIndex(Rt,S);
+                Print(R);
+                Print(Rt);
+
+                std::cout <<"SVD of R*R~: "<< std::endl;
+                U = ITensor(auxIR);
+                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                PrintData(S);
+
+                // Create inverse matrix
+                sIU = commonIndex(U,S);
+                sIV = commonIndex(S,V);
+                S.apply(oneOverSqrtT);
+                PrintData(S);
+
+                p1 = (2*(c+1))%(2*sizeM);
+                p2 = (2*(c+1)+1)%(2*sizeM);
+                std::cout <<"Set Projectors "<< p1 <<" "<< p2 <<" :"<< std::endl;
+                isoZ[p1] = Rt*V.conj()*S*delta(sIU, prime(I_D,sizeM+10));
+                //PrintData(isoZ[c*2]);
+                Print(isoZ[p1]);
+                isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_D,sizeM+10));
+                //PrintData(isoZ[c*2+1]);
+                Print(isoZ[p2]); 
+            }
+            break;
+        }
+    }
+
+    return isoZ;
+}
+
 ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
 
     ITensor rdm;
@@ -1137,6 +1369,66 @@ ITensor CtmEnv::build_2x2_RDM(char ctmMove, int col, int row) const {
     std::cout << std::endl;
     return rdm;
 }
+
+std::pair<ITensor, ITensor> CtmEnv::build_halves(char ctmMove, int col,  
+    int row) const {
+
+    ITensor upper_h, lower_h;
+
+    std::cout << ctmMove <<" ";
+    switch (ctmMove) {
+        case 'L': {
+            // build upper half
+            upper_h = build_corner('1', col, row);
+            upper_h *= build_corner('2', (col+1)%sizeM, row);
+            upper_h = swapPrime(upper_h, 0,1);
+            // build lower half
+            lower_h = build_corner('3', (col+1)%sizeM, (row+1)%sizeN );
+            lower_h *= build_corner('4', col, (row+1)%sizeN );
+            lower_h = swapPrime(lower_h, 0,1);
+
+            std::cout << std::endl <<"UH and LH for "
+                << siteIds[cToS.at(std::make_pair(col, row))]
+                << siteIds[cToS.at(std::make_pair(col, (row+1)%sizeN))]
+                <<" created"<< std::endl;
+            break;
+        }
+        case 'U': {
+            // build right half (lower_h)
+            lower_h = build_corner('2', col, row);
+            lower_h *= build_corner('3', col, (row+1)%sizeN );
+            // build left half (upper_h)
+            upper_h = build_corner('4', (col-1+sizeM)%sizeM, (row+1)%sizeN );
+            upper_h *= build_corner('1', (col-1+sizeM)%sizeM, row );
+            break;
+        }
+        case 'R': {
+            // build lower half
+            lower_h = build_corner('3', col, row);
+            lower_h *= build_corner('4', (col-1+sizeM)%sizeM, row);
+            // build upper half
+            upper_h = build_corner('1', (col-1+sizeM)%sizeM,
+                (row-1+sizeN)%sizeN );
+            upper_h *= build_corner('2', col, (row-1+sizeN)%sizeN );
+            break;
+        }
+        case 'D': {
+            // build left half (upper_h)
+            upper_h = build_corner('4', col, row);
+            upper_h *= build_corner('1', col, (row-1+sizeN)%sizeN );
+            upper_h = swapPrime(upper_h, 0,1);
+            // build right half (lower_h)
+            lower_h = build_corner('2', (col+1)%sizeM, (row-1+sizeN)%sizeN );
+            lower_h *= build_corner('3', (col+1)%sizeM, row );
+            lower_h = swapPrime(lower_h, 0,1);
+            break;
+        }
+    }
+
+    std::cout << std::endl;
+    return std::make_pair(upper_h, lower_h);
+}
+
 
 ITensor CtmEnv::build_corner(char corner, int col, int row) const {
     ITensor ct;
@@ -1808,6 +2100,7 @@ CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
 
 CtmEnv::ISOMETRY toISOMETRY(std::string const& isoType) {
     if(isoType == "ISOMETRY_T1") return CtmEnv::ISOMETRY_T1;
+    if(isoType == "ISOMETRY_T2") return CtmEnv::ISOMETRY_T2;
     std::cout << "Unsupported ISOMETRY" << std::endl;
     exit(EXIT_FAILURE);
 }
