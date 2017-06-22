@@ -361,6 +361,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsURow called "<< std::string(51,'#') << std::endl;
+    std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
 
     // sequentialy contract upper boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
@@ -375,6 +376,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
          *   I_XH0--|_____________/
          *
          */
+        t_iso_begin = std::chrono::steady_clock::now(); 
 
         std::vector<ITensor> isoZ;
         switch(iso_type) {
@@ -387,6 +389,10 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         for (int col=0; col<sizeM; col++) {
             /*
@@ -408,6 +414,8 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
              *    I_L                    I_XV                     I_R
              *
              */
+            t_iso_begin = std::chrono::steady_clock::now();
+
             std::cout <<"(2."<< col <<".1) ----- C_LU & T_L ["<< col <<","
                 << row <<"] -----"<< std::endl;
             auto tC1 = C_LU.at( cToS.at(std::make_pair(col,row)) ) * 
@@ -429,6 +437,12 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
             tC2.prime(RLINK, -1);
             Print(tC2);
         
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[1] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+            t_iso_begin = std::chrono::steady_clock::now();
+
             std::cout <<"(3."<< col <<".1) ----- Construct reduced C_LU -----"
                 <<" isoZ["<< (2*col)%(2*sizeM) <<"]"<< std::endl;
             /*   _______                           ________
@@ -490,12 +504,18 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
 
             isoZ[(2*col+3)%(2*sizeM)].prime(-1);
 
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[2] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
             std::cout << TAG_C_RU <<"["<< col <<","<< (row+1)%sizeN <<"]";
             printfln("= %s", C_RU.at( 
                cToS.at(std::make_pair(col,(row+1)%sizeN))) );
         }
         
         std::cout <<"(4) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        
+        t_iso_begin = std::chrono::steady_clock::now();
         switch(norm_type) {
             case NORM_BLE: {
                 normalizeBLE_ctmStep('U', -1, (row+1)%sizeN);
@@ -506,6 +526,10 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Row "<< row <<" done"<< std::endl;
     }
@@ -521,6 +545,7 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsDRow called "<< std::string(51,'#') << std::endl;
+    std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     // sequentialy contract lower boundary of environment with 
     // sizeN rows of cluster + half-row matrices T_L* and T_R*
 
@@ -536,6 +561,8 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
          *
          */
 
+        t_iso_begin = std::chrono::steady_clock::now();
+
         std::vector<ITensor> isoZ;
         switch(iso_type) {
             case ISOMETRY_T1: {
@@ -547,6 +574,10 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         for (int col=0; col<sizeM; col++) {
             /*
@@ -568,6 +599,8 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
              *  |_________|--I_XH  I_XH--|________|--I_XH1  I_XH1--|_________|
              *
              */
+            t_iso_begin = std::chrono::steady_clock::now();
+
             std::cout <<"(2."<< col <<".1) ----- C_LD & T_L ["<< col <<","
                 << row <<"] -----"<< std::endl;
             auto tC4 = C_LD.at( cToS.at(std::make_pair(col,row)) ) * 
@@ -588,6 +621,12 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 T_R.at( cToS.at(std::make_pair(col,row)) );
             tC3.prime(RLINK);
             Print(tC3);
+
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[1] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+            t_iso_begin = std::chrono::steady_clock::now(); 
 
             std::cout <<"(3."<< col <<".1) ----- Construct reduced C_LD -----"
                 <<"isoZ["<< (2*col)%(2*sizeM) <<"]"<< std::endl;
@@ -652,6 +691,10 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
 
             isoZ[(2*col+3)%(2*sizeM)].prime(-1);
 
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[2] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
             std::cout << TAG_C_RD <<"["<< col <<","<< (row-1+sizeN)%sizeN <<"]";
             printfln("= %s", C_RD.at( 
                cToS.at(std::make_pair(col,(row-1+sizeN)%sizeN))) );
@@ -659,6 +702,9 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
         }
 
         std::cout <<"(6) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+        
+        t_iso_begin = std::chrono::steady_clock::now();
+
         switch(norm_type) {
             case NORM_BLE: {
                 normalizeBLE_ctmStep('D', -1, (row-1+sizeN)%sizeN);
@@ -669,6 +715,10 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Row "<< row <<" done"<< std::endl;
     }
@@ -684,6 +734,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT)
 {
     std::cout <<"##### InsLCol called "<< std::string(51,'#') << std::endl;
+    std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
     
@@ -699,6 +750,8 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
          *
          */
 
+        t_iso_begin = std::chrono::steady_clock::now();
+
         std::vector<ITensor> isoZ;
         switch(iso_type) {
             case ISOMETRY_T1: {
@@ -710,6 +763,10 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         for (int row=0; row<sizeN; row++) {
             /*
@@ -732,6 +789,8 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
              *  |C_LD_00|--|T_D_00|--I_D1 ==> |C_LD_10|--I_D1>>I_D
              *
              */
+            t_iso_begin = std::chrono::steady_clock::now();
+
             std::cout <<"(2."<< row <<".1) ----- C_LU & T_U ["<< col <<","
                 << row <<"] -----"<< std::endl;
             auto tC1 = C_LU.at( cToS.at(std::make_pair(col,row)) ) * 
@@ -752,6 +811,12 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 T_D.at( cToS.at(std::make_pair(col,row)) );
             tC4.prime(DLINK, -1);
             Print(tC4);
+
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[1] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+            t_iso_begin = std::chrono::steady_clock::now();
 
             std::cout <<"(3."<< row <<".1) ----- Construct reduced C_LU -----"
                 <<" isoZ["<< (2*row)%(2*sizeN) <<"]"<< std::endl;
@@ -810,12 +875,19 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
 
             isoZ[(2*row+3)%(2*sizeN)].prime(-1);
 
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[2] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
             std::cout << TAG_C_LD <<"["<< (col+1)%sizeM <<","<< row <<"]";
             printfln("= %s", C_LD.at( 
                cToS.at(std::make_pair((col+1)%sizeM,row))) );
         }
 
         std::cout <<"(4) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+
+        t_iso_begin = std::chrono::steady_clock::now();
+
         switch(norm_type) {
             case NORM_BLE: {
                 normalizeBLE_ctmStep('L', (col+1)%sizeM, -1);
@@ -826,6 +898,10 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Column "<< col <<" done"<< std::endl;
     }
@@ -841,6 +917,7 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT) 
 {
     std::cout <<"##### InsRCol called "<< std::string(51,'#') << std::endl;
+    std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     // sequentialy contract left boundary of environment with 
     // sizeM rows of cluster + half-row matrices T_U* and T_D*
 
@@ -856,6 +933,8 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
          *
          */
 
+        t_iso_begin = std::chrono::steady_clock::now();
+
         std::vector<ITensor> isoZ;
         switch(iso_type) {
             case ISOMETRY_T1: {
@@ -867,6 +946,10 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[0] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         for (int row=0; row<sizeN; row++) {
         
@@ -890,6 +973,8 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
              *  I_D--|T_D_m-10|--|C_RD_m-10| ==> I_D1<<I_D--|C_RD_m-20|
              *
              */
+            t_iso_begin = std::chrono::steady_clock::now();
+
             std::cout <<"(2."<< row <<".1) ----- C_RU & T_U ["<< col <<","
                 << row <<"] -----"<< std::endl;
             auto tC2 = C_RU.at( cToS.at(std::make_pair(col,row)) ) * 
@@ -910,6 +995,12 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 T_D.at( cToS.at(std::make_pair(col,row)) );
             tC3.prime(DLINK);
             Print(tC3);
+
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[1] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+            t_iso_begin = std::chrono::steady_clock::now();
 
             std::cout <<"(3."<< row <<".1) ----- Construct reduced C_RU -----"
                 <<" isoZ["<< (2*row)%(2*sizeN) <<"]"<< std::endl;
@@ -969,12 +1060,19 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
 
             isoZ[(2*row+3)%(2*sizeN)].prime(-1);
 
+            t_iso_end = std::chrono::steady_clock::now();
+            accT[2] += std::chrono::duration_cast
+                <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
             std::cout << TAG_C_RD <<"["<< (col-1+sizeM)%sizeM <<","<< row <<"]";
             printfln("= %s", C_RD.at( 
                cToS.at(std::make_pair((col-1+sizeM)%sizeM,row))) );
         }
 
         std::cout <<"(4) ----- NORMALIZE "<< std::string(47,'-') << std::endl;
+
+        t_iso_begin = std::chrono::steady_clock::now();
+
         switch(norm_type) {
             case NORM_BLE: {
                 normalizeBLE_ctmStep('R', (col-1+sizeM)%sizeM, -1);
@@ -985,6 +1083,10 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
         }
+
+        t_iso_end = std::chrono::steady_clock::now();
+        accT[3] += std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
 
         std::cout <<"Column "<< col <<" done"<< std::endl;
     }

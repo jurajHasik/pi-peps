@@ -193,7 +193,7 @@ int main( int argc, char *argv[] ) {
 
         std::cout << "STEP " << iter << std::endl;
 
-        if ( iter % 1 == 0 ) {
+        /*if ( iter % 1 == 0 ) {
         //if ( iter > 100 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
@@ -206,7 +206,7 @@ int main( int argc, char *argv[] ) {
                 std::make_pair(1,0), std::make_pair(1,1)) );
             e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
                 std::make_pair(0,1), std::make_pair(1,1)) );
-        }
+        }*/
     }
 
     // End timing iteration loop
