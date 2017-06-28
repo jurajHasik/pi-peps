@@ -185,7 +185,8 @@ class CtmEnv
     // isometries
     
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
-    std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row);
+    std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,
+        std::vector<double> & accT);
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from

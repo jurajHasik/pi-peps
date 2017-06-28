@@ -385,7 +385,7 @@ void CtmEnv::insURow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                isoZ = isoT2('U', -1, row);
+                isoZ = isoT2('U', -1, row, accT);
                 break;
             }
         }
@@ -570,7 +570,7 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                isoZ = isoT2('D', -1, row);
+                isoZ = isoT2('D', -1, row, accT);
                 break;
             }
         }
@@ -759,7 +759,7 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                isoZ = isoT2('L', col, -1);
+                isoZ = isoT2('L', col, -1, accT);
                 break;
             }
         }
@@ -942,7 +942,7 @@ void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
                 break;
             }
             case ISOMETRY_T2: {
-                isoZ = isoT2('R', col, -1);
+                isoZ = isoT2('R', col, -1, accT);
                 break;
             }
         }
@@ -1168,9 +1168,12 @@ std::vector<ITensor> CtmEnv::isoT1(char ctmMove, int col, int row) {
     return isoZ;   
 }
 
-std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
+std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row, 
+    std::vector<double> & accT) {
+    
     std::cout <<"----- ISO_T2 called for "<< ctmMove <<" at ["<< col
         <<","<< row <<"] -----"<<std::endl;
+    std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
 
     std::vector<ITensor> isoZ;
     
@@ -1194,29 +1197,59 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
             // iterate over rows and create isometries
             for (int r=0; r<sizeN; r++) {
                 std::cout <<"Computing Projector for row: "<< r << std::endl;
-                // build upper and lower half
+                // STEP 1 build upper and lower half
                 std::cout <<"Upper and lower half of 2x2(+Env) cell: "<< std::endl;
+                
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 halves = build_halves('L', col, r);
                 Print(halves.first);  // upper_h
                 Print(halves.second); // lower_h
 
-                // Obtain R and Rt(ilde)
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[4] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                // STEP 2 Obtain R and Rt(ilde)
                 std::cout <<"R and R~ obtained: "<< std::endl;
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 R = ITensor(I_L, I_XV);
-                svd(halves.first, R, S, U);
+                spec = svd(halves.first, R, S, U, {"Maxm",x});
+                std::cout.precision( std::numeric_limits< double >::max_digits10 );
+                PrintData(S);
+                Print(spec);
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_L, I_XV);
-                svd(halves.second, Rt, S, U);
+                spec = svd(halves.second, Rt, S, U, {"Maxm",x});
+                PrintData(S);
+                Print(spec);
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
                 Print(Rt);
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[5] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                // STEP 3
                 std::cout <<"SVD of R*R~: "<< std::endl;
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 U = ITensor(auxIR);
                 spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 PrintData(S);
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[6] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                // STEP 4
+                t_iso_begin = std::chrono::steady_clock::now();
 
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
@@ -1233,6 +1266,10 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_L,sizeN+10));
                 //PrintData(isoZ[r*2+1]);
                 Print(isoZ[p2]);
+            
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[3] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
             }
             break;
         }
@@ -1252,27 +1289,49 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 std::cout <<"Computing Projector for col: "<< c << std::endl;
                 // build upper and lower half
                 std::cout <<"left and right half of 2x2(+Env) cell: "<< std::endl;
+                
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 halves = build_halves('U', (c+1)%sizeM, row);
                 Print(halves.first);  // left_h
                 Print(halves.second); // right_h
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[4] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
                 // Obtain R and Rt(ilde)
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_U, I_XH);
-                svd(halves.first, R, S, U);
+                svd(halves.first, R, S, U, {"Maxm",x});
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_U, I_XH);
-                svd(halves.second, Rt, S, U);
+                svd(halves.second, Rt, S, U, {"Maxm",x});
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
                 Print(Rt);
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[5] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
                 spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 PrintData(S);
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[6] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
 
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
@@ -1288,7 +1347,11 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 Print(isoZ[p1]);
                 isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_U,sizeM+10));
                 //PrintData(isoZ[c*2+1]);
-                Print(isoZ[p2]); 
+                Print(isoZ[p2]);
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[7] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0; 
             }
             break;
         }
@@ -1299,27 +1362,49 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 std::cout <<"Computing Projector for row: "<< r << std::endl;
                 // build upper and lower half
                 std::cout <<"Upper and lower half of 2x2(+Env) cell: "<< std::endl;
+                
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 halves = build_halves('R', col, (r+1)%sizeN);
                 Print(halves.first);
                 Print(halves.second);
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[4] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
                 // Obtain R and Rt(ilde)
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_R, I_XV);
-                svd(halves.first, R, S, U);
+                svd(halves.first, R, S, U, {"Maxm",x});
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_R, I_XV);
-                svd(halves.second, Rt, S, U);
+                svd(halves.second, Rt, S, U, {"Maxm",x});
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
                 Print(Rt);
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[5] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
                 spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 PrintData(S);
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[6] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
 
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
@@ -1334,6 +1419,11 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 Print(isoZ[p1]);
                 isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_R,sizeN+10));
                 Print(isoZ[p2]);
+            
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[7] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
             }
             break;
         }
@@ -1353,27 +1443,49 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 std::cout <<"Computing Projector for col: "<< c << std::endl;
                 // build upper and lower half
                 std::cout <<"left and right half of 2x2(+Env) cell: "<< std::endl;
+                
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 halves = build_halves('D', c, row);
                 Print(halves.first);  // left_h
                 Print(halves.second); // right_h
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[4] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
                 // Obtain R and Rt(ilde)
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_D, I_XH);
-                svd(halves.first, R, S, U);
+                svd(halves.first, R, S, U, {"Maxm",x});
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_D, I_XH);
-                svd(halves.second, Rt, S, U);
+                svd(halves.second, Rt, S, U, {"Maxm",x});
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
                 Print(Rt);
 
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[5] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
+
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
                 spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
                 PrintData(S);
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[6] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
+
+                t_iso_begin = std::chrono::steady_clock::now();
 
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
@@ -1390,6 +1502,10 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row) {
                 isoZ[p2] = R*U.conj()*S*delta(sIV, prime(I_D,sizeM+10));
                 //PrintData(isoZ[c*2+1]);
                 Print(isoZ[p2]); 
+
+                t_iso_end = std::chrono::steady_clock::now();
+                accT[7] += std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0;
             }
             break;
         }

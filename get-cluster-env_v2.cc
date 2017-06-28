@@ -122,7 +122,7 @@ int main( int argc, char *argv[] ) {
     Print(ctmEnv.build_2x2_RDM('D',0,0));
 
     // holds timing for *_DBG mostves
-    std::vector<double> accT(4,0.0);
+    std::vector<double> accT(8,0.0);
     // holding energies
     std::vector<double> e_nnH;
     std::vector<double> e_nnH_AC;
@@ -193,7 +193,7 @@ int main( int argc, char *argv[] ) {
 
         std::cout << "STEP " << iter << std::endl;
 
-        /*if ( iter % 1 == 0 ) {
+        if ( iter % 1 == 0 ) {
         //if ( iter > 100 ) {
             // ctmEnv.computeSVDspec();
             // ctmEnv.printSVDspec();
@@ -206,7 +206,7 @@ int main( int argc, char *argv[] ) {
                 std::make_pair(1,0), std::make_pair(1,1)) );
             e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
                 std::make_pair(0,1), std::make_pair(1,1)) );
-        }*/
+        }
     }
 
     // End timing iteration loop
@@ -218,6 +218,8 @@ int main( int argc, char *argv[] ) {
         << std::endl;
     std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
         <<" "<< accT[3] << std::endl;
+    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+        <<" "<< accT[7] << std::endl;
 
     std::cout << ctmEnv;
 
