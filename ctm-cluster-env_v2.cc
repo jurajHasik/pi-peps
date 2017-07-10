@@ -346,7 +346,7 @@ void CtmEnv::initCtmrgEnv() {
         printfln(" = %s", T_L[i]);
     }
 
-//    normalizePTN();
+    //    normalizePTN();
 
     computeSVDspec();
 
@@ -1180,6 +1180,10 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
     std::pair<ITensor, ITensor> halves;
     ITensor uh,lh; // upper half and lower half
     
+    //auto argsSVDhalves = Args("Maxm",x);
+    auto argsSVDhalves = Args();
+    auto argsSVDRRt    = Args("Maxm",x,"SVDThreshold",1E-2);
+
     ITensor R, Rt;
     Index auxIR, auxIRt, sIU, sIV;
 
@@ -1216,14 +1220,14 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 R = ITensor(I_L, I_XV);
-                spec = svd(halves.first, R, S, U, {"Maxm",x});
+                spec = svd(halves.first, R, S, U, argsSVDhalves);
                 std::cout.precision( std::numeric_limits< double >::max_digits10 );
                 PrintData(S);
                 Print(spec);
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_L, I_XV);
-                spec = svd(halves.second, Rt, S, U, {"Maxm",x});
+                spec = svd(halves.second, Rt, S, U, argsSVDhalves);
                 PrintData(S);
                 Print(spec);
                 Rt *= S;
@@ -1241,7 +1245,7 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 U = ITensor(auxIR);
-                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 PrintData(S);
 
                 t_iso_end = std::chrono::steady_clock::now();
@@ -1306,11 +1310,11 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_U, I_XH);
-                svd(halves.first, R, S, U, {"Maxm",x});
+                svd(halves.first, R, S, U, argsSVDhalves);
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_U, I_XH);
-                svd(halves.second, Rt, S, U, {"Maxm",x});
+                svd(halves.second, Rt, S, U, argsSVDhalves);
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
@@ -1324,7 +1328,7 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
-                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 PrintData(S);
 
                 t_iso_end = std::chrono::steady_clock::now();
@@ -1379,11 +1383,11 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_R, I_XV);
-                svd(halves.first, R, S, U, {"Maxm",x});
+                svd(halves.first, R, S, U, argsSVDhalves);
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_R, I_XV);
-                svd(halves.second, Rt, S, U, {"Maxm",x});
+                svd(halves.second, Rt, S, U, argsSVDhalves);
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
@@ -1397,7 +1401,7 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
-                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 PrintData(S);
 
                 t_iso_end = std::chrono::steady_clock::now();
@@ -1460,11 +1464,11 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"R and R~ obtained: "<< std::endl;
                 R = ITensor(I_D, I_XH);
-                svd(halves.first, R, S, U, {"Maxm",x});
+                svd(halves.first, R, S, U, argsSVDhalves);
                 R *= S;
                 auxIR = commonIndex(R,S);
                 Rt = ITensor(I_D, I_XH);
-                svd(halves.second, Rt, S, U, {"Maxm",x});
+                svd(halves.second, Rt, S, U, argsSVDhalves);
                 Rt *= S;
                 auxIRt = commonIndex(Rt,S);
                 Print(R);
@@ -1478,7 +1482,7 @@ std::vector<ITensor> CtmEnv::isoT2(char ctmMove, int col, int row,
 
                 std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(auxIR);
-                spec = svd(R*Rt, U, S, V, {"Maxm",x,"SVDThreshold",1E-2});
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 PrintData(S);
 
                 t_iso_end = std::chrono::steady_clock::now();

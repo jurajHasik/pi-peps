@@ -110,10 +110,18 @@ ID_TYPE toID_TYPE(std::string const& idType);
  */
 MPO_2site getMPO2s_Id(int physDim);
 
+/*
+ * Apply symmetric MPO by splitting sing. values as S^1/2 : S^1/2
+ *
+ */
 void applyH_12(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, 
 	std::pair<itensor::Index, itensor::Index> const& link12);
 
+/*
+ * Apply MPO by splitting sing. values as S^1 : S^0
+ *
+ */
 void applyH_12_v2(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, 
 	std::pair<itensor::Index, itensor::Index> const& link12);

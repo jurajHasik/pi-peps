@@ -751,9 +751,9 @@ double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
     
     // determine number of cells=clusters in row/col direction required
     // to form the supercell
-    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
+    int nR = std::ceil(std::max(1+siteA.second,1+siteB.second)/
         ((float)cd.sizeN));
-    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
+    int nC = std::ceil(std::max(1+siteA.first,1+siteB.first)/
         ((float)cd.sizeM));
 
     std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
