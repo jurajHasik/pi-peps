@@ -14,6 +14,20 @@
 #include "itensor/all.h"
 #pragma GCC diagnostic pop
 
+typedef enum ID_TYPE {
+    ID_TYPE_1,
+    ID_TYPE_2
+} id_type;
+
+typedef enum OP2S_TYPE {
+    ID_OP,
+    NNH_OP
+} op2s_type;
+
+// string to enum conversion
+ID_TYPE toID_TYPE(std::string const& idType);
+
+OP2S_TYPE toOP2S_TYPE(std::string const& op2sType);
 
 /*
  * H_J1J2 acting on a square lattice can be decomposed into sum of
@@ -76,6 +90,7 @@ const std::string TAG_MPO3S_23LINK = "I_MPO3S_L23";
 // types for auxiliary indices of MPO tensors
 const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 
+// ----- Main MPO Structures ------------------------------------------
 struct MPO_3site {
 	itensor::ITensor H1, H2, H3;
 
@@ -89,29 +104,34 @@ struct MPO_2site {
 	// expose physical indices
 	itensor::Index Is1, Is2;
 };
+// ----- END Main MPO Structures --------------------------------------
+
+// ----- 2-Site operator functions ------------------------------------
 
 /*
- * Define multiplication of 3site MPO by REAL scalar scalar*MPO_3site
- *
- */
-MPO_3site operator*(double scalar, MPO_3site const& mpo3s);
-
-typedef enum ID_TYPE {
-    ID_TYPE_1,
-    ID_TYPE_2
-} id_type;
-
-// string to enum conversion
-ID_TYPE toID_TYPE(std::string const& idType);
-
-/*
- * construct Identity MPO_2site 
+ * construct 2-site Identity operator 
  *
  */
 MPO_2site getMPO2s_Id(int physDim);
 
 /*
- * Apply symmetric MPO by splitting sing. values as S^1/2 : S^1/2
+ * construct 2-site operator for "Nearest-neighbour Heisenberg in magnetic
+ * field" spin s=1/2 (physDim=2) defined on a lattice with coordination z 
+ * corresponding to the imaginary evolution approximated through Suzuki-Trotter 
+ * decomposition for time tau
+ *
+ */
+MPO_2site getMPO2s_NNH(int z, double tau, double J, double h);
+
+/*
+ * Apply 2-site MPO to T1 and T2 tensors connected through weight L
+ *
+ */
+void applyH_T1_L_T2(MPO_2site const& mpo2s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L);
+
+/*
+ * Apply MPO SYMMETRICALY by splitting sing. values as S^1/2 : S^1/2
  *
  */
 void applyH_12(MPO_2site const& mpo2s, 
@@ -125,6 +145,8 @@ void applyH_12(MPO_2site const& mpo2s,
 void applyH_12_v2(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, 
 	std::pair<itensor::Index, itensor::Index> const& link12);
+
+// ----- 2-Site operator functions ------------------------------------
 
 /*
  * construct Identity MPO_3site 

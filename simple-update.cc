@@ -9,6 +9,13 @@ ID_TYPE toID_TYPE(std::string const& idType) {
     exit(EXIT_FAILURE);
 }
 
+OP2S_TYPE toOP2S_TYPE(std::string const& op2sType) {
+	if(op2sType == "ID_OP") return ID_OP;
+    if(op2sType == "NNH_OP") return NNH_OP;
+    std::cout << "Unsupported OP2S_TYPE" << std::endl;
+    exit(EXIT_FAILURE);
+}
+
 F_MPO3S toF_MPO3S(std::string const& fMpo3s) {
     if(fMpo3s == "F_MPO3S_1") return F_MPO3S_1;
     if(fMpo3s == "F_MPO3S_2") return F_MPO3S_2;
@@ -18,25 +25,6 @@ F_MPO3S toF_MPO3S(std::string const& fMpo3s) {
     if(fMpo3s == "F_MPO3S_6") return F_MPO3S_6;
     std::cout << "Unsupported F_MPO3S" << std::endl;
     exit(EXIT_FAILURE);
-}
-
-// TODO the multiplication by negative) scalar is not uniquely defined
-MPO_3site operator*(double scalar, MPO_3site const& mpo3s ) {
-	MPO_3site result;
-	if (scalar > 0.0) {
-		// use "symmetric" variant
-		result.H1 = mpo3s.H1 * std::pow(scalar,1.0/3.0);
-		result.H2 = mpo3s.H2 * std::pow(scalar,1.0/3.0);
-		result.H3 = mpo3s.H3 * std::pow(scalar,1.0/3.0);
-	} else {
-		// not implemented, throw error
-		std::cout <<"neg.scalar*MPO_3site not supported"<< std::endl;
-		exit(EXIT_FAILURE);
-	}
-	result.Is1 = mpo3s.Is1;
-	result.Is2 = mpo3s.Is2;
-	result.Is3 = mpo3s.Is3;
-	return result;
 }
 
 // 2 SITE OPS #########################################################
@@ -98,6 +86,8 @@ MPO_2site getMPO2s_Id(int physDim) {
     mpo2s.H1 = ( mpo2s.H1 * SV_12 )*delta(a2,iMPO3s12);
     mpo2s.H2 = ( mpo2s.H2 * SV_12 )*delta(a1,iMPO3s12);
     
+    // ----- analyze signs of largest elements in H1, H2 and switch to 
+    // positive sign -1 * -1 => +1 * +1 --------------------------------
     double m1, m2;
 	double m = 0.;
 	double sign = 0.;
@@ -120,11 +110,196 @@ MPO_2site getMPO2s_Id(int physDim) {
 		mpo2s.H1 /= m1;
 		mpo2s.H2 /= m2;
 	}
+	// ----- end sign analysis ----------------------------------------
 
     PrintData(mpo2s.H1);
     PrintData(mpo2s.H2);
 
 	return mpo2s;
+}
+
+MPO_2site getMPO2s_NNH(int z, double tau, double J, double h) {
+	MPO_2site mpo2s;
+	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+	
+	// Define physical indices
+	mpo2s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo2s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+
+	//create a lambda function
+	//which returns the square of its argument
+	auto sqrt_T = [](double r) { return sqrt(r); };
+
+	// Define the individual tensor elements
+	// The values of index enumerate local spin s=1/2 basis as follows
+	// Is1 AND Is2 {1 -> s_z=-1/2, 2 -> s_z=1/2}
+    // Thus tensor product of indices Is1(x)Is2 gives
+    // {1->-1/2 -1/2, 2->-1/2 1/2, 3->1/2 -1/2, 4->1/2 1/2}
+    ITensor nnhT(mpo2s.Is1, prime(mpo2s.Is1), mpo2s.Is2, prime(mpo2s.Is2));
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(-tau*(J/4.0-h/z)) );
+
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*cosh(tau*J/2.0) );
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(1), -exp(tau*J/4.0)*sinh(tau*J/2.0) );
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(2), -exp(tau*J/4.0)*sinh(tau*J/2.0) );
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*cosh(tau*J/2.0) );
+
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(-tau*(J/4.0+h/z)) );
+
+    PrintData(nnhT);
+
+    /*
+     *  s1'                    s2' 
+     *   |                      |
+     *  |H1|--a1--<SV_12>--a2--|H2|
+     *   |                      |
+     *  s1                     s2
+     *
+     */
+    mpo2s.H1 = ITensor(mpo2s.Is1,prime(mpo2s.Is1));
+    ITensor SV_12;
+    svd(nnhT, mpo2s.H1,SV_12,mpo2s.H2);
+
+    PrintData(mpo2s.H1);
+    PrintData(SV_12);
+    Print(mpo2s.H2);
+
+    Index a1 = commonIndex(mpo2s.H1,SV_12);
+    Index a2 = commonIndex(SV_12,mpo2s.H2);
+
+    // Define aux indices linking the on-site MPOs
+	Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
+
+	/*
+	 * Split obtained SVD values symmetricaly and absorb to obtain
+	 * final tensor H1 and intermediate tensor temp
+	 *
+     *  s1'                                     s2' 
+     *   |                                       |
+     *  |H1|--a1--<SV_12>^1/2--<SV_12>^1/2--a2--|H2|
+     *   |                                       |
+     *  s1                                      s2
+     *
+     */
+    SV_12.apply(sqrt_T);
+    mpo2s.H1 = ( mpo2s.H1 * SV_12 )*delta(a2,iMPO3s12);
+    mpo2s.H2 = ( mpo2s.H2 * SV_12 )*delta(a1,iMPO3s12);
+    
+    // ----- analyze signs of largest elements in H1, H2 and switch to 
+    // positive sign -1 * -1 => +1 * +1 --------------------------------
+ //    double m1, m2;
+	// double m = 0.;
+	// double sign = 0.;
+ //    auto max_m = [&m, &sign](double d) {
+ //        if(std::abs(d) > m) {
+ //        	sign = (d > 0) ? 1 : ((d < 0) ? -1 : 0);
+ //         	m = std::abs(d);
+ //        }
+ //    };
+
+ //    mpo2s.H1.visit(max_m);
+ //    m1 = m*sign;
+ //    m = 0.;
+ //    mpo2s.H2.visit(max_m);
+ //    m2 = m*sign;
+
+ //    std::cout <<"m1: "<< m1 <<" m2: "<< m2 << std::endl;
+
+	// if ( m1*m2 > 0 ) {
+	// 	mpo2s.H1 /= m1;
+	// 	mpo2s.H2 /= m2;
+	// }
+	// ----- end sign analysis ----------------------------------------
+
+    PrintData(mpo2s.H1);
+    PrintData(mpo2s.H2);
+
+	return mpo2s;
+}
+
+void applyH_T1_L_T2(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, ITensor & L) {
+	std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
+	std::cout << mpo2s;
+	PrintData(mpo2s.H1);
+    PrintData(mpo2s.H2);
+
+	/*
+	 * Applying 2-site MPO leads to a new tensor network of the form
+	 * 
+	 *    \ |    __               
+	 *   --|1|~~|H1|~~s1           
+	 *      |     |               s1       s2
+	 *      L     |               |_       |_ 
+	 *    \ |     |       ==   --|  |-----|  |--
+	 *   --|2|~~|H2|~~s2  ==   --|1~|     |2~|--  
+	 *      |             ==   --|__|--L--|__|--
+     *
+	 * Indices s1,s2 are relabeled back to physical indices of 
+	 * original sites 1 and 2 after applying MPO.
+	 *
+	 */
+
+	std::cout <<"----- Initial |12> -----"<< std::endl;
+	Print(T1);
+	Print(L);
+	Print(T2);
+	Index iT1_L = commonIndex(T1, L);
+	Index iL_T2 = commonIndex(L, T2);
+
+	// D^4 x Ds x auxD_mpo3s
+	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
+	T1 = ( T1 * kd_phys1) * mpo2s.H1;
+	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
+	// D^4 x Ds x auxD_mpo3s^2
+	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
+	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
+	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+
+	std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
+	Print(T1);
+    Print(T2);
+
+	/*
+	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
+	 * along diagonal matrix with weights
+	 *
+	 *       _______               s1                       s2
+	 *  s1~~|       |~~s2           |                        |
+	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
+	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
+	 *    --|_______|--         --|___|                    |___|--
+	 *
+	 * where 1~~ and 2~~ are now holding singular vectors wrt
+	 * to SVD and SV_L12 holds a new weights
+	 * We keep only auxBondDim largest singular values
+	 *
+	 */
+
+	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	ITensor SV_L12;
+	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m()});
+	PrintData(SV_L12);
+
+	// Set proper indices to resulting tensors from SVD routine
+	Index iT1_SV_L12 = commonIndex(T1, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2);
+
+	T1 = T1 * delta(iT1_SV_L12, iT1_L);
+	for (int i=1; i<=iT1_L.m(); i++) {
+		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
+	}
+	L = L / norm(L);
+	T2 = T2 * delta(iSV_L12_T2, iL_T2);
+
+	Print(T1);
+	PrintData(L);
+	Print(T2);
 }
 
 void applyH_12(MPO_2site const& mpo2s, 

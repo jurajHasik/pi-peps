@@ -12,15 +12,17 @@ TENSOR_HEADERS=$(ITENSOR_DIR)/itensor/core.h
 #    which includes debugging symbols and can be used in gdb (Gnu debugger);
 APP =get-cluster-env
 APP2=opt-simple-update
-APP3 =get-cluster-env_v2
+APP3=get-cluster-env_v2
+APP4=opt-simple-update-2x2-2site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
 HEADERS =cluster-ev-builder.h ctm-cluster-env.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
-HEADERS3 =cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
+HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
+HEADERS4=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -30,16 +32,16 @@ CCFILES2=$(APP2).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
 	su2.cc
 CCFILES3=$(APP3).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
+CCFILES4=$(APP4).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
+	su2.cc
 
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
 GOBJECTS=$(patsubst %,.debug_objs/%, $(OBJECTS))
-
 OBJECTS2=$(patsubst %.cc,%.o, $(CCFILES2))
-
-
 OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
+OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -66,6 +68,9 @@ $(APP2): $(OBJECTS2) $(ITENSOR_LIBS)
 
 $(APP3): $(OBJECTS3) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS3) -o $(APP3).x $(LIBFLAGS)
+
+$(APP4): $(OBJECTS4) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTS4) -o $(APP4).x $(LIBFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
