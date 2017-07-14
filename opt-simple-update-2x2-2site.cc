@@ -123,11 +123,11 @@ int main( int argc, char *argv[] ) {
         for (int i=1; i<=aIA.m(); i++ ) {
             l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
         }
-        PrintData(l2I);
-        std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
-        Print(A);
-        Print(l2);
-        Print(B);
+        // PrintData(l2I);
+        // std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
+        // Print(A);
+        // Print(l2);
+        // Print(B);
 
         // Apply 2-site op along bond B--l1--A
         A = A*l3*l2*l4;
@@ -139,11 +139,11 @@ int main( int argc, char *argv[] ) {
         for (int i=1; i<=aIA.m(); i++ ) {
             l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
         }
-        PrintData(l1I);
-        std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
-        Print(B);
-        Print(l1);
-        Print(A);
+        // PrintData(l1I);
+        // std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
+        // Print(B);
+        // Print(l1);
+        // Print(A);
 
         // Apply 2-site op along bond A--l4--B
         A = A*l1*l3*l2;
@@ -156,11 +156,11 @@ int main( int argc, char *argv[] ) {
             l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
                 1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
         }
-        PrintData(l4I);
-        std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
-        Print(A);
-        Print(l4);
-        Print(B);
+        // PrintData(l4I);
+        // std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
+        // Print(A);
+        // Print(l4);
+        // Print(B);
 
         // Apply 2-site op along bond B--l3--A
         A = A*l2*l4*l1;
@@ -173,17 +173,21 @@ int main( int argc, char *argv[] ) {
             l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
                 1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
         }
-        PrintData(l3I);
-        std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
-        Print(B);
-        Print(l3);
-        Print(A);
+        // PrintData(l3I);
+        // std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
+        // Print(B);
+        // Print(l3);
+        // Print(A);
     
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
+            PrintData(l1);
+            PrintData(l2);
+            PrintData(l3);
+            PrintData(l4);
             t_iso_begin = std::chrono::steady_clock::now();
         }
     }

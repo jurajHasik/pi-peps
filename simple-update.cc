@@ -222,7 +222,7 @@ MPO_2site getMPO2s_NNH(int z, double tau, double J, double h) {
 	return mpo2s;
 }
 
-void applyH_T1_L_T2(MPO_2site const& mpo2s, 
+void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s, 
 	ITensor & T1, ITensor & T2, ITensor & L) {
 	std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
 	std::cout << mpo2s;
@@ -302,6 +302,71 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	Print(T1);
 	PrintData(L);
 	Print(T2);
+}
+
+void applyH_T1_L_T2(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, ITensor & L) {
+
+	/*
+	 * Applying 2-site MPO leads to a new tensor network of the form
+	 * 
+	 *    \ |    __               
+	 *   --|1|~~|H1|~~s1           
+	 *      |     |               s1       s2
+	 *      L     |               |_       |_ 
+	 *    \ |     |       ==   --|  |-----|  |--
+	 *   --|2|~~|H2|~~s2  ==   --|1~|     |2~|--  
+	 *      |             ==   --|__|--L--|__|--
+     *
+	 * Indices s1,s2 are relabeled back to physical indices of 
+	 * original sites 1 and 2 after applying MPO.
+	 *
+	 */
+	Index iT1_L = commonIndex(T1, L);
+	Index iL_T2 = commonIndex(L, T2);
+
+	//std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
+	// D^4 x Ds x auxD_mpo3s
+	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
+	T1 = ( T1 * kd_phys1) * mpo2s.H1;
+	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
+	// D^4 x Ds x auxD_mpo3s^2
+	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
+	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
+	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+
+	
+	/*
+	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
+	 * along diagonal matrix with weights
+	 *
+	 *       _______               s1                       s2
+	 *  s1~~|       |~~s2           |                        |
+	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
+	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
+	 *    --|_______|--         --|___|                    |___|--
+	 *
+	 * where 1~~ and 2~~ are now holding singular vectors wrt
+	 * to SVD and SV_L12 holds a new weights
+	 * We keep only auxBondDim largest singular values
+	 *
+	 */
+	//std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	ITensor SV_L12;
+	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m()});
+
+	// Set proper indices to resulting tensors from SVD routine
+	Index iT1_SV_L12 = commonIndex(T1, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2);
+
+	T1 = T1 * delta(iT1_SV_L12, iT1_L);
+	
+	for (int i=1; i<=iT1_L.m(); i++) {
+		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
+	}
+	L = L / norm(L);
+
+	T2 = T2 * delta(iSV_L12_T2, iL_T2);
 }
 
 void applyH_12(MPO_2site const& mpo2s, 
