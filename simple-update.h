@@ -127,6 +127,9 @@ MPO_2site getMPO2s_NNH(int z, double tau, double J, double h);
  * Apply 2-site MPO to T1 and T2 tensors connected through weight L
  *
  */
+void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L);
+
 void applyH_T1_L_T2(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L);
 
