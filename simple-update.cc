@@ -291,10 +291,12 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	Index iSV_L12_T2 = commonIndex(SV_L12, T2);
 
 	T1 = T1 * delta(iT1_SV_L12, iT1_L);
+	
 	for (int i=1; i<=iT1_L.m(); i++) {
 		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
 	}
 	L = L / norm(L);
+
 	T2 = T2 * delta(iSV_L12_T2, iL_T2);
 
 	Print(T1);

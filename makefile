@@ -42,6 +42,7 @@ GOBJECTS=$(patsubst %,.debug_objs/%, $(OBJECTS))
 OBJECTS2=$(patsubst %.cc,%.o, $(CCFILES2))
 OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
 OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
+GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -71,6 +72,9 @@ $(APP3): $(OBJECTS3) $(ITENSOR_LIBS)
 
 $(APP4): $(OBJECTS4) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS4) -o $(APP4).x $(LIBFLAGS)
+
+$(APP4)-g: mkdebugdir $(GOBJECTS4) $(ITENSOR_GLIBS)
+	$(CCCOM) $(CCGFLAGS) $(GOBJECTS4) -o $(APP4)-g.x $(LIBGFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
