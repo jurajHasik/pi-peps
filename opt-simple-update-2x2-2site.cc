@@ -10,13 +10,27 @@ int main( int argc, char *argv[] ) {
 
     //OP2S_TYPE arg_op2s_type;
     //F_MPO3S arg_f_mpo3s;
-    std::string arg_outClusterFile;
+    std::string arg_inClusterFile, arg_outClusterFile;
     int arg_auxBondDim, arg_nIter;
     double arg_tau, arg_J, arg_h;
+    bool init_from_file = false;
     
-    if( argc >= 7) { 
-        // minimal: [executable name], arg_outClusterFile, arg_auxBondDim,
-        //          arg_nIter
+    // If first arg is --input="input_cluster_file"
+    arg_inClusterFile = std::string(argv[1]);
+    int found = arg_inClusterFile.find("--input=");
+    if( (found >= 0) && (argc >= 7) ) {
+        init_from_file = true;
+        arg_inClusterFile  = arg_inClusterFile.substr(8);
+        arg_outClusterFile = argv[2];
+        arg_nIter          = std::stoi(argv[3]);
+        arg_tau            = std::stod(argv[4]);
+        arg_J              = std::stod(argv[5]);
+        arg_h              = std::stod(argv[6]);
+
+        std::cout <<"Initializing from file ? "<< init_from_file <<" File: "
+            << arg_inClusterFile << std::endl;
+    // otherwise we start with random cluster 
+    } else if( (found < 0) && (argc >= 7) ) {
         arg_outClusterFile = argv[1];
         arg_auxBondDim     = std::stoi(argv[2]);
         arg_nIter          = std::stoi(argv[3]);
@@ -25,42 +39,64 @@ int main( int argc, char *argv[] ) {
         arg_h              = std::stod(argv[6]);
         //arg_op2s_type   = toOP2S_TYPE(std::string(argv[2]));
         //arg_f_mpo3s     = toF_MPO3S(std::string(argv[3]));
+        std::cout <<"Initializing from file ? "<< init_from_file << std::endl;
     } else {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
     }
+    std::cout <<"Simulation parameters"<< std::endl;
+    std::cout <<"imag time tau: "<< arg_tau << std::endl;
+    std::cout <<"J            : "<< arg_J << std::endl;
+    std::cout <<"h            : "<< arg_h << std::endl;
+    std::cout <<"nIterations  : "<< arg_nIter << std::endl;
 
-    // Define cluster
-    Cluster cls = Cluster();
-    cls.sizeN = 2;
-    cls.sizeM = 2;
-    cls.auxBondDim = arg_auxBondDim;
-    cls.physDim    = 2;
+    Cluster cls;
+    Index aIA, aIB, pIA, pIB;
+    ITensor A, B;
 
-    cls.siteIds = std::vector< std::string >(4);
-    cls.siteIds = { "A", "B", "C", "D" };
+    if( init_from_file ) {
+        cls = readCluster(arg_inClusterFile);
 
-    cls.cToS  = {
-        {std::make_pair(0,0),"A"},
-        {std::make_pair(1,0),"B"},
-        {std::make_pair(0,1),"C"},
-        {std::make_pair(1,1),"D"}
-    };
+        A = cls.sites[cls.cToS.at(std::make_pair(0,0))];
+        B = cls.sites[cls.cToS.at(std::make_pair(1,0))];
 
-    Index aIA(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-    Index aIB(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-    Index pIA(TAG_I_PHYS, cls.physDim, PHYS);
-    Index pIB(TAG_I_PHYS, cls.physDim, PHYS);
+        aIA = noprime(findtype(A.inds(), AUXLINK));
+        aIB = noprime(findtype(B.inds(), AUXLINK));
+        pIA = noprime(findtype(A.inds(), PHYS));
+        pIB = noprime(findtype(B.inds(), PHYS));
+    } else {
+        // ----- DEFINE BLANK CLUSTER ----------------------------------
+        cls = Cluster();
+        cls.sizeN = 2;
+        cls.sizeM = 2;
+        cls.auxBondDim = arg_auxBondDim;
+        cls.physDim    = 2;
 
-    ITensor A(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
-    ITensor B(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
+        cls.siteIds = std::vector< std::string >(4);
+        cls.siteIds = { "A", "B", "C", "D" };
 
-    // Randomize
-    randomize(A);
-    randomize(B);
+        cls.cToS  = {
+            {std::make_pair(0,0),"A"},
+            {std::make_pair(1,0),"B"},
+            {std::make_pair(0,1),"C"},
+            {std::make_pair(1,1),"D"}
+        };
 
-    cls.sites = {{"A", A}, {"B", B}, {"C",B}, {"D",A}};
+        aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        pIA = Index(TAG_I_PHYS, cls.physDim, PHYS);
+        pIB = Index(TAG_I_PHYS, cls.physDim, PHYS);
 
+        A = ITensor(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
+        B = ITensor(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
+
+        // Randomize
+        randomize(A);
+        randomize(B);
+
+        cls.sites = {{"A", A}, {"B", B}, {"C",B}, {"D",A}};
+        // ----- END DEFINE CLUSTER ------------------------------------
+    }
     std::cout << cls; //DBG
 
     // Define 2-site operators
