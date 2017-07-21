@@ -2220,6 +2220,26 @@ CtmData CtmEnv::getCtmData_DBG() const {
     return ctmData;
 }
 
+CtmData_Full CtmEnv::getCtmData_Full_DBG() const {
+    // Indexing of T_* and C_* arrays wrt environment
+    // of non-equivalent sites
+
+    std::cout <<"sites: ["<< std::endl;
+    for( std::size_t i=0; i<sites.size(); i++) {
+        std::cout << WS4 << siteIds[i] <<" -> "<< i << std::endl;
+    }
+    std::cout <<"]"<< std::endl;
+
+    CtmData_Full ctmDataFull = {
+        x, d, sizeN, sizeM,
+        sites, cToS,
+        T_U, T_R, T_D, T_L,
+        C_LU, C_RU, C_RD, C_LD,
+        I_U, I_R, I_D, I_L,
+        I_XH, I_XV };
+    return ctmDataFull;
+}
+
 // ############################################################################
 // IO toString methods
 

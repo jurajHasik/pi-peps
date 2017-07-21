@@ -30,6 +30,7 @@ class EVBuilder {
 
     // With Environment Data one can compute expectation values
     CtmData cd;
+    CtmData_Full cd_f;
 
     public:
 
@@ -98,9 +99,12 @@ class EVBuilder {
 
     void setCtmData(CtmData const& new_cd);
 
+    void setCtmData_Full(CtmData_Full const& new_cd_f);
+
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
-    // spaced by "dist" sites in horizontal direction
+    // where O1 is applied on "site" and O2 "dist" sites to the right
+    // in horizontal direction
     /*  _    _    _         _    _    _
      * |C|--|T|--|T|--...--|T|--|T|--|C|
      *  |    |    |         |    |    |
@@ -112,8 +116,8 @@ class EVBuilder {
      * Hence "dist" = 0, means adjacent sites 
      *
      */
-   // std::complex<double> expVal_1sO1sO_H(int dist, 
-    //        itensor::ITensor const& op1, itensor::ITensor const& op2);
+    std::complex<double> expVal_1sO1sO_H(MPO_1S o1, 
+        MPO_1S o2, std::pair< int, int > site, int dist);
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2

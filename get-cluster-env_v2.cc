@@ -262,5 +262,10 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_Id, EVBuilder::MPO_Id,
+        std::make_pair(2, 0), 4);
+
     return 0;
 }

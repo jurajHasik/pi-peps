@@ -695,3 +695,37 @@ ostream& operator<<(ostream& s, CtmData const& d) {
         s << endl;
     return s;
 }
+
+ostream& operator<<(ostream& s, CtmData_Full const& d) {
+    s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
+        << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl;
+        
+    s <<"----- CORNER MATRICES --------------------------------------"<< endl;
+        for( size_t i=0; i<d.C_LU.size(); i++ ) {
+            s << TAG_C_LU << to_string(i) <<" "<< d.C_LU[i];
+        }
+        for( size_t i=0; i<d.C_RU.size(); i++ ) {
+            s << TAG_C_RU << to_string(i) <<" "<< d.C_RU[i];
+        }
+        for( size_t i=0; i<d.C_RD.size(); i++ ) {
+            s << TAG_C_RD << to_string(i) <<" "<< d.C_RD[i];
+        }
+        for( size_t i=0; i<d.C_LD.size(); i++ ) {
+            s << TAG_C_LD << to_string(i) <<" "<< d.C_LD[i];
+        }
+    s <<"----- HALF ROW/COLUMN TENSORS ------------------------------"<< endl;
+        for( size_t i=0; i<d.T_U.size(); i++ ) {
+            s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
+        }
+        for( size_t i=0; i<d.T_R.size(); i++ ) {
+            s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
+        }
+        for( size_t i=0; i<d.T_D.size(); i++ ) {
+            s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
+        }
+        for( size_t i=0; i<d.T_L.size(); i++ ) {
+            s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
+        }
+        s << endl;
+    return s;
+}
