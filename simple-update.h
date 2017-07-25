@@ -21,7 +21,8 @@ typedef enum ID_TYPE {
 
 typedef enum OP2S_TYPE {
     ID_OP,
-    NNH_OP
+    NNH_OP,
+    NNH_OP_STAG
 } op2s_type;
 
 // string to enum conversion

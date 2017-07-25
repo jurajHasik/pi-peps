@@ -243,15 +243,15 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
     nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
     	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(-tau*J/4.0) );
 
-    double arg = tau*sqrt(J*J/16.0 + h*h/(4.0*z*z))
+    double arg = tau*sqrt(J*J/16.0 + h*h/(4.0*z*z));
     nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
-    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*(cosh(2.0*arg)-(h/2.0*z)*sinh(2.0*arg)/arg) );
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*(cosh(2.0*arg)-(0.5*h/z)*sinh(2.0*arg)/arg) );
     nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(2),
-    	mpo2s.Is2(2), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*((-J/4.0)*sinh(2.0*arg)/arg) );
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*(-J/4.0)*sinh(2.0*arg)/arg );
     nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(1),
-    	mpo2s.Is2(1), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*((-J/4.0)*sinh(2.0*arg)/arg) );
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*(-J/4.0)*sinh(2.0*arg)/arg ) ;
     nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
-    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*(cosh(2.0*arg)-(h/2.0*z)*sinh(2.0*arg)/arg) );
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*(cosh(2.0*arg)-(0.5*h/z)*sinh(2.0*arg)/arg) );
 
     nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
     	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(-tau*J/4.0) );
