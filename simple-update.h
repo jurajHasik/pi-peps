@@ -123,6 +123,8 @@ MPO_2site getMPO2s_Id(int physDim);
  */
 MPO_2site getMPO2s_NNH(int z, double tau, double J, double h);
 
+MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h);
+
 /*
  * Apply 2-site MPO to T1 and T2 tensors connected through weight L
  *
