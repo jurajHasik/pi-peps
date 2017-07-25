@@ -1,8 +1,148 @@
 #include "ctm-cluster-io.h"
+#include "cluster-ev-builder.h"
 #include "simple-update.h"
 #include <chrono>
 
 using namespace itensor;
+
+std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s, 
+    ITensor const& A, ITensor const& B, 
+    ITensor const& l1, ITensor const& l2, ITensor const& l3, ITensor const& l4) {
+
+    // Set new sites to cluster
+    auto squareT = [](double r) { return r*r; };
+
+    auto aIA = noprime(findtype(A.inds(), AUXLINK));
+    auto aIB = noprime(findtype(B.inds(), AUXLINK));
+    auto pIA = noprime(findtype(A.inds(), PHYS));
+    auto pIB = noprime(findtype(B.inds(), PHYS));
+
+    /*
+     * A--l2--B
+     */
+    auto Bra = A * l2 * B;  
+    //Print(Bra);
+
+    auto lTemp = l1;
+    lTemp.apply(squareT);
+
+    //PrintData(l1);
+    //PrintData(lTemp);
+
+    /*
+     * l1--A--l2--B--l1
+     */
+    Bra = (Bra * lTemp).prime(AUXLINK,4);
+    //Print(Bra);
+
+    /*
+     * l1--A--l2--B--l1
+     *            |
+     *            l3
+     *            |
+     *            A
+     *  
+     */
+    Bra = Bra * (l3*delta(prime(aIB,7),prime(aIB,3))) * prime(A, PHYS, 1);
+    //Print(Bra);
+
+    lTemp = l4;
+    lTemp.apply(squareT);
+
+    /*
+     *            l4 
+     *            |
+     * l1--A--l2--B--l1
+     *            |
+     *            l3
+     *            |
+     *            A
+     *            |
+     *            l4
+     */
+    Bra = Bra * (lTemp*delta(prime(aIB,1),prime(aIB,5)));
+    //Print(Bra);
+
+
+    /*
+     *            l4 
+     *            |
+     * l1--A--l2--B--l1
+     *     |      |
+     *     l4     l3
+     *            |
+     *        l1--A
+     *            |
+     *            l4
+     */
+    Bra = (Bra * l1) * (l4*delta(prime(aIA,7),prime(aIA,3)));
+    //Print(Bra);
+
+    /*
+     *            l4 
+     *            |
+     * l1--A--l2--B--l1
+     *     |      |
+     *     l4     l3
+     *     |      |
+     *     B--l1--A
+     *            |
+     *            l4
+     */
+    Bra = Bra * prime(B, PHYS, 1);
+    //Print(Bra);
+
+    lTemp = l2;
+    lTemp.apply(squareT);
+
+    /*
+     *            l4 
+     *            |
+     * l1--A--l2--B--l1
+     *     |      |
+     *     l4     l3
+     *     |      |
+     * l2--B--l1--A--l2
+     *            |
+     *            l4
+     */
+    Bra = Bra * lTemp;
+    //Print(Bra);
+
+    lTemp = l3;
+    lTemp.apply(squareT);
+
+    /*
+     *     l3     l4 
+     *     |      |
+     * l1--A--l2--B--l1
+     *     |      |
+     *     l4     l3
+     *     |      |
+     * l2--B--l1--A--l2
+     *     |      |
+     *     l3     l4
+     */
+    Bra = Bra * (lTemp*delta(prime(aIA,5),prime(aIA,1)));
+    //Print(Bra);
+
+    auto Ket = prime(conj(Bra),1);
+
+    //Print(iPs1);
+    //Print(iPs2);
+
+    Ket = Ket * op2s.first * op2s.second;
+    //Print(Ket);
+
+    Ket = Ket.mapprime(PHYS,0,1);
+    Ket = Ket.prime(-1);
+    //Print(Ket);
+
+    double cls_norm = norm(Bra);
+    auto ev_op2s    = sumels(Ket * Bra);
+
+    return ev_op2s/cls_norm;
+}
 
 int main( int argc, char *argv[] ) {
     // ########################################################################
@@ -44,11 +184,17 @@ int main( int argc, char *argv[] ) {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
     }
+    
+    double eps_threshold = 1.0e-8;
+    double tau_threshold = 1.0e-10;
+
     std::cout <<"Simulation parameters"<< std::endl;
     std::cout <<"imag time tau: "<< arg_tau << std::endl;
     std::cout <<"J            : "<< arg_J << std::endl;
     std::cout <<"h            : "<< arg_h << std::endl;
     std::cout <<"nIterations  : "<< arg_nIter << std::endl;
+    std::cout <<"eps_threshold: "<< eps_threshold << std::endl;
+    std::cout <<"tau_threshold: "<< tau_threshold << std::endl;
 
     Cluster cls;
     Index aIA, aIB, pIA, pIB;
@@ -99,6 +245,9 @@ int main( int argc, char *argv[] ) {
     }
     std::cout << cls; //DBG
 
+    // Prepare nnH Hamiltonian
+    auto H_nnh = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIB);
+
     // Define 2-site operators
     // NN-Heisenberg in external mag-field
     MPO_2site nnh;
@@ -143,6 +292,11 @@ int main( int argc, char *argv[] ) {
     auto l2I = l2;
     auto l3I = l3;
     auto l4I = l4;    
+
+    // Compute Initial value of APPROX(!) energy
+    auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
+    std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() << std::endl;
+    auto e_nnh_prev = e_nnh;
 
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
@@ -220,11 +374,33 @@ int main( int argc, char *argv[] ) {
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
-            PrintData(l1);
-            PrintData(l2);
-            PrintData(l3);
-            PrintData(l4);
+            //PrintData(l1);
+            //PrintData(l2);
+            //PrintData(l3);
+            //PrintData(l4);
             t_iso_begin = std::chrono::steady_clock::now();
+        
+            auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
+            std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() 
+                << std::endl;
+            
+            // Check difference against previous value of energy
+            if ( abs(e_nnh.real() - e_nnh_prev.real()) < eps_threshold ) {
+                std::cout << "Energy difference < "<< eps_threshold 
+                    << std::endl;
+                std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
+                    << arg_tau/2.0 << std::endl;
+                arg_tau = arg_tau/2.0;
+
+                if (arg_tau < tau_threshold) {
+                    std::cout << "tau too small - stopping optimization" 
+                        << std::endl;
+                    break;
+                }    
+
+                nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+            }
+            e_nnh_prev = e_nnh;
         }
     }
 

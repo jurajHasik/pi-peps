@@ -3,7 +3,6 @@
 
 #include <string>
 #include <iostream>
-#include "ctm-cluster-env.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
@@ -179,13 +178,16 @@ class EVBuilder {
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
 
+    static std::pair< itensor::ITensor, itensor::ITensor > 
+        get2SiteSpinOP(OP_2S op2s,
+        itensor::Index const& sA, itensor::Index const& sB);
 
     /*
      * wrapper around SU2_getSpinOp(SU2O su2o, itensor::Index const& s)
      * from su2.h
      *
      */
-    itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s) const;
+    static itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s);
 
     std::ostream& print(std::ostream& s) const;
 };

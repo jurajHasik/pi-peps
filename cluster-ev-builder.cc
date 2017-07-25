@@ -1475,8 +1475,175 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
 //     return sumelsC(ccBare)/sumelsC(ccNorm);
 // }
 
+std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
+    Index const& sA, Index const& sB) {
+    /*
+     * 2-site operator acts on 2 physical indices
+     * 
+     *           A      B
+     *   <bar|   s'     s'''
+     *          _|______|_   
+     *         |____OP____|
+     *           |      |
+     *           s      s''  |ket>    
+     *
+     */ 
+    //auto s0 = findtype(TA.inds(), PHYS);
+    auto s0 = sA;
+    auto s1 = prime(s0,1);
+    //auto s2 = prime(findtype(TB.inds(), PHYS), 2);
+    auto s2 = sB;
+    auto s3 = prime(s2,1);
+
+    // Assume s0 is different then s2
+    if( s0 == s2 ) {
+        std::cout <<"On-site PHYS indices sA and sB are identitcal"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    // check dimensions of phys indices on TA and TB
+    if( s0.m() != s2.m() ) {
+        std::cout <<"On-site tensors TA and TB have different dimension of"
+            <<" phys index"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+    int dimS = s0.m();
+
+    auto Op = ITensor(s0, s1, s2, s3);
+    switch(op2s) {
+        case OP2S_Id: { // Identity operator
+            std::cout <<">>>>> 2) Constructing OP2S_Id <<<<<"<< std::endl;  
+            for(int i=1;i<=dimS;i++) {
+                for(int j=1;j<=dimS;j++){
+                    Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
+                }
+            }
+            break;
+        }
+        case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
+            std::cout <<">>>>> 2) Constructing OP2S_AKLT-S2-H <<<<<"
+                << std::endl;
+            // Loop over <bra| indices
+            int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
+            int mbA, mbB, mkA, mkB;
+            double hVal;
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                    // Use Dynkin notation to specify irreps
+                    mbA = -(rS) + 2*(bA-1);
+                    mbB = -(rS) + 2*(bB-1);
+                    mkA = -(rS) + 2*(kA-1);
+                    mkB = -(rS) + 2*(kB-1);
+                    // Loop over possible values of m given by tensor product
+                    // of 2 spin (dimS-1) irreps (In Dynkin notation)
+                    hVal = 0.0;
+                    for(int m=-2*(rS);m<=2*(rS);m=m+2) {
+                        if ((mbA+mbB == m) && (mkA+mkB == m)) {
+                            
+                            //DEBUG
+                            std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
+                                <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
+                                <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
+                                <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
+                                << std::endl;
+
+                        hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
+                            *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
+                        }
+                    }
+                    if((bA == kA) && (bB == kB)) {
+                        // add 2*Id(bA,kA;bB,kB) == 
+                        //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+sqrt(2.0));
+                    } else {
+                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                    }
+                }}
+            }}
+            break;
+        }
+        case OP2S_SS: { 
+            // S^vec_i * S^vec_i+1 =
+            // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
+            std::cout <<">>>>> 2) Constructing OP2S_SS <<<<<"<< std::endl;
+    
+            Index sBra = Index("sBra", dimS);
+            Index sKet = prime(sBra);
+            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
+            ITensor Sp = getSpinOp(MPO_S_P, sBra);
+            ITensor Sm = getSpinOp(MPO_S_M, sBra);
+            
+            double hVal;
+            // Loop over <bra| indices
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                
+                    hVal = Sz.real(sBra(bA),sKet(kA))
+                        *Sz.real(sBra(bB),sKet(kB))+0.5*(
+                        Sp.real(sBra(bA),sKet(kA))
+                        *Sm.real(sBra(bB),sKet(kB))+
+                        Sm.real(sBra(bA),sKet(kA))
+                        *Sp.real(sBra(bB),sKet(kB)));
+
+                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                }}
+            }}
+            break;
+        }
+        default: {
+            std::cout <<"Invalid OP_2S selection"<< std::endl;
+            exit(EXIT_FAILURE);
+            break;
+        }
+    }
+
+    // Perform SVD
+    /*         __
+     * I(s)---|  |--I(s)''    =>
+     *        |OP|            =>
+     * I(s)'--|__|--I(s)'''   =>
+     *            ___                      ___  
+     * => I(s)---|   |         _          |   |--I(s)''
+     * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
+     * => I(s)'--|___|                    |___|--I(s)'''
+     *
+     */
+    auto OpA = ITensor(s0, s1);
+    ITensor OpB, S; 
+
+    std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
+        << std::endl;
+    svd(Op, OpA, S, OpB);
+    
+    Print(OpA);
+    PrintData(S);
+    Print(OpB);
+    
+    //create a lambda function
+    //which returns the square of its argument
+    auto sqrt_T = [](Real r) { return sqrt(r); };
+    S.apply(sqrt_T);
+
+    // Absorb singular values (symmetrically) into OpA, OpB
+    OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
+    OpB = S*OpB;
+    
+    std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
+        << std::endl;
+    PrintData(OpA);
+    PrintData(OpB);
+
+    return std::make_pair(OpA, OpB);
+}
+
 // TODO use getSpinOp defined in su2.h to get spin operator
-ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s) const {
+ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s) {
 
     SU2O su2o;
     switch(mpo) {

@@ -22,7 +22,7 @@ HEADERS =cluster-ev-builder.h ctm-cluster-env.h ctm-cluster-io.h \
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
-HEADERS4=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
+HEADERS4=cluster-ev-builder.h simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -32,7 +32,7 @@ CCFILES2=$(APP2).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
 	su2.cc
 CCFILES3=$(APP3).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
-CCFILES4=$(APP4).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
+CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
 	su2.cc
 
 #Mappings --------------
