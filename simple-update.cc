@@ -222,6 +222,111 @@ MPO_2site getMPO2s_NNH(int z, double tau, double J, double h) {
 	return mpo2s;
 }
 
+MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
+	MPO_2site mpo2s;
+	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+	
+	// Define physical indices
+	mpo2s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo2s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+
+	//create a lambda function
+	//which returns the square of its argument
+	auto sqrt_T = [](double r) { return sqrt(r); };
+
+	// Define the individual tensor elements
+	// The values of index enumerate local spin s=1/2 basis as follows
+	// Is1 AND Is2 {1 -> s_z=-1/2, 2 -> s_z=1/2}
+    // Thus tensor product of indices Is1(x)Is2 gives
+    // {1->-1/2 -1/2, 2->-1/2 1/2, 3->1/2 -1/2, 4->1/2 1/2}
+    ITensor nnhT(mpo2s.Is1, prime(mpo2s.Is1), mpo2s.Is2, prime(mpo2s.Is2));
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(-tau*J/4.0) );
+
+    double arg = tau*sqrt(J*J/16.0 + h*h/(4.0*z*z))
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*(cosh(2.0*arg)-(h/2.0*z)*sinh(2.0*arg)/arg) );
+    nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*((-J/4.0)*sinh(2.0*arg)/arg) );
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(1),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(2), exp(tau*J/4.0)*((-J/4.0)*sinh(2.0*arg)/arg) );
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(1), prime(mpo2s.Is2)(1), exp(tau*J/4.0)*(cosh(2.0*arg)-(h/2.0*z)*sinh(2.0*arg)/arg) );
+
+    nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
+    	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(-tau*J/4.0) );
+
+    PrintData(nnhT);
+
+    /*
+     *  s1'                    s2' 
+     *   |                      |
+     *  |H1|--a1--<SV_12>--a2--|H2|
+     *   |                      |
+     *  s1                     s2
+     *
+     */
+    mpo2s.H1 = ITensor(mpo2s.Is1,prime(mpo2s.Is1));
+    ITensor SV_12;
+    svd(nnhT, mpo2s.H1,SV_12,mpo2s.H2);
+
+    PrintData(mpo2s.H1);
+    PrintData(SV_12);
+    Print(mpo2s.H2);
+
+    Index a1 = commonIndex(mpo2s.H1,SV_12);
+    Index a2 = commonIndex(SV_12,mpo2s.H2);
+
+    // Define aux indices linking the on-site MPOs
+	Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
+
+	/*
+	 * Split obtained SVD values symmetricaly and absorb to obtain
+	 * final tensor H1 and intermediate tensor temp
+	 *
+     *  s1'                                     s2' 
+     *   |                                       |
+     *  |H1|--a1--<SV_12>^1/2--<SV_12>^1/2--a2--|H2|
+     *   |                                       |
+     *  s1                                      s2
+     *
+     */
+    SV_12.apply(sqrt_T);
+    mpo2s.H1 = ( mpo2s.H1 * SV_12 )*delta(a2,iMPO3s12);
+    mpo2s.H2 = ( mpo2s.H2 * SV_12 )*delta(a1,iMPO3s12);
+    
+    // ----- analyze signs of largest elements in H1, H2 and switch to 
+    // positive sign -1 * -1 => +1 * +1 --------------------------------
+ //    double m1, m2;
+	// double m = 0.;
+	// double sign = 0.;
+ //    auto max_m = [&m, &sign](double d) {
+ //        if(std::abs(d) > m) {
+ //        	sign = (d > 0) ? 1 : ((d < 0) ? -1 : 0);
+ //         	m = std::abs(d);
+ //        }
+ //    };
+
+ //    mpo2s.H1.visit(max_m);
+ //    m1 = m*sign;
+ //    m = 0.;
+ //    mpo2s.H2.visit(max_m);
+ //    m2 = m*sign;
+
+ //    std::cout <<"m1: "<< m1 <<" m2: "<< m2 << std::endl;
+
+	// if ( m1*m2 > 0 ) {
+	// 	mpo2s.H1 /= m1;
+	// 	mpo2s.H2 /= m2;
+	// }
+	// ----- end sign analysis ----------------------------------------
+
+    PrintData(mpo2s.H1);
+    PrintData(mpo2s.H2);
+
+	return mpo2s;
+}
+
 void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s, 
 	ITensor & T1, ITensor & T2, ITensor & L) {
 	std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;

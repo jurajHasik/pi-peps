@@ -252,7 +252,8 @@ int main( int argc, char *argv[] ) {
     // NN-Heisenberg in external mag-field
     MPO_2site nnh;
     // coordination, tau, J, h
-    nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+    //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+    nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
 
     // Prepare Sites (from cluster) + weights to begin optimization 
     // procedure
@@ -398,7 +399,8 @@ int main( int argc, char *argv[] ) {
                     break;
                 }    
 
-                nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+                //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+                nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
             }
             e_nnh_prev = e_nnh;
         }
