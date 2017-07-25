@@ -20,7 +20,7 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
         case SU2_S_Z: {
             std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<< std::endl;
             for(int i=1;i<=dimS;i++)
-                Op.set(s1(i), s(i), 0.5*(-(dimS-1) 
+                Op.set(s1(i), s(i), -0.5*(-(dimS-1) 
                     + (i-1)*2));
             break;
         }

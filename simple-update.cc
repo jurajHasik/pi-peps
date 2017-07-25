@@ -246,7 +246,7 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
     double arg = tau*sqrt(J*J/16.0 + h*h/(4.0*z*z));
     nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(1),
     	mpo2s.Is2(2), prime(mpo2s.Is2)(2), 
-    	exp(tau*J/4.0)*(cosh(2.0*arg)-(tau*0.5*h/z)*sinh(2.0*arg)/arg) );
+    	exp(tau*J/4.0)*(cosh(2.0*arg)+(-tau*0.5*h/z)*sinh(2.0*arg)/arg) );
     nnhT.set(mpo2s.Is1(1), prime(mpo2s.Is1)(2),
     	mpo2s.Is2(2), prime(mpo2s.Is2)(1), 
     	exp(tau*J/4.0)*(-tau*J/4.0)*sinh(2.0*arg)/arg );
@@ -255,7 +255,7 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
     	exp(tau*J/4.0)*(-tau*J/4.0)*sinh(2.0*arg)/arg ) ;
     nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
     	mpo2s.Is2(1), prime(mpo2s.Is2)(1), 
-    	exp(tau*J/4.0)*(cosh(2.0*arg)-(tau*0.5*h/z)*sinh(2.0*arg)/arg) );
+    	exp(tau*J/4.0)*(cosh(2.0*arg)-(-tau*0.5*h/z)*sinh(2.0*arg)/arg) );
 
     nnhT.set(mpo2s.Is1(2), prime(mpo2s.Is1)(2),
     	mpo2s.Is2(2), prime(mpo2s.Is2)(2), exp(-tau*J/4.0) );
@@ -392,7 +392,7 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 
 	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m()});
+	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
 	PrintData(SV_L12);
 
 	// Set proper indices to resulting tensors from SVD routine
@@ -462,7 +462,7 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	 */
 	//std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m()});
+	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
 
 	// Set proper indices to resulting tensors from SVD routine
 	Index iT1_SV_L12 = commonIndex(T1, SV_L12);

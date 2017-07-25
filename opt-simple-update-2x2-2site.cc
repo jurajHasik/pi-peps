@@ -299,6 +299,9 @@ int main( int argc, char *argv[] ) {
     std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() << std::endl;
     auto e_nnh_prev = e_nnh;
 
+    auto regT = [](double r) { 
+        return ((abs(r) > 1.0e10) ? 0.0 : r); };
+
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
@@ -314,7 +317,8 @@ int main( int argc, char *argv[] ) {
         for (int i=1; i<=aIA.m(); i++ ) {
             l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
         }
-        // PrintData(l2I);
+        l2I.apply(regT);
+        //PrintData(l2I);
         // std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
         // Print(A);
         // Print(l2);
@@ -323,14 +327,16 @@ int main( int argc, char *argv[] ) {
         // Apply 2-site op along bond B--l1--A
         A = A*l3*l2*l4;
         B = B*l2*l4*l3;
-        applyH_T1_L_T2(nnh, B, A, l1);
+        applyH_T1_L_T2(nnh, A, B, l1);
+        //applyH_T1_L_T2_DBG(nnh, A, B, l1);
         A = A*l3I*l2I*l4I;
         B = B*l2I*l4I*l3I;
 
         for (int i=1; i<=aIA.m(); i++ ) {
             l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
         }
-        // PrintData(l1I);
+        l1I.apply(regT);
+        //PrintData(l1I);
         // std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
         // Print(B);
         // Print(l1);
@@ -347,7 +353,8 @@ int main( int argc, char *argv[] ) {
             l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
                 1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
         }
-        // PrintData(l4I);
+        l4I.apply(regT);
+        //PrintData(l4I);
         // std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
         // Print(A);
         // Print(l4);
@@ -356,7 +363,8 @@ int main( int argc, char *argv[] ) {
         // Apply 2-site op along bond B--l3--A
         A = A*l2*l4*l1;
         B = B*l2*l4*l1;
-        applyH_T1_L_T2(nnh, B, A, l3);
+        applyH_T1_L_T2(nnh, A, B, l3);
+        //applyH_T1_L_T2_DBG(nnh, A, B, l3);
         A = A*l2I*l4I*l1I;
         B = B*l2I*l4I*l1I;
 
@@ -364,7 +372,8 @@ int main( int argc, char *argv[] ) {
             l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
                 1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
         }
-        // PrintData(l3I);
+        l3I.apply(regT);
+        //PrintData(l3I);
         // std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
         // Print(B);
         // Print(l3);
@@ -386,7 +395,8 @@ int main( int argc, char *argv[] ) {
                 << std::endl;
             
             // Check difference against previous value of energy
-            if ( abs(e_nnh.real() - e_nnh_prev.real()) < eps_threshold ) {
+            //if ( abs(e_nnh.real() - e_nnh_prev.real()) < eps_threshold ) {
+            if ( (e_nnh_prev.real() - e_nnh.real()) < eps_threshold ) {
                 std::cout << "Energy difference < "<< eps_threshold 
                     << std::endl;
                 std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
