@@ -273,10 +273,22 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
-    // ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-    // ev.expVal_1sO1sO_H( 
-    //     EVBuilder::MPO_Id, EVBuilder::MPO_Id,
-    //     std::make_pair(2, 0), 20);
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_Id, EVBuilder::MPO_Id,
+        std::make_pair(0, 0), 20);
+
+    ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z,
+        std::make_pair(0, 0), 20);
+
+    ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_S_P, EVBuilder::MPO_S_M,
+        std::make_pair(0, 0), 20);
+
+    ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_S_M, EVBuilder::MPO_S_P,
+        std::make_pair(0, 0), 20);
 
     return 0;
 }

@@ -1152,25 +1152,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
      *
      */
     for(int i=0;i<dist;i++) {
-        site.first = site.first + 1;
-        std::cout <<"Inserting T_U--X["<< site.first <<
-            ","<< site.second <<"]";
-        site.first = site.first % cd_f.sizeM;
-        std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
-            << cls.cToS[site] <<" --T_D"<< std::endl; 
-
-        idOp = getTOT_DBG(MPO_Id, cls.cToS[site], 0);
-        
-        L = ((L * cd_f.T_U[cd_f.cToS[site]] )
-            * idOp.mpo[0] ) 
-            * cd_f.T_D[cd_f.cToS[site]];
-        LId = ((LId * cd_f.T_U[cd_f.cToS[site]])
-            * idOp.mpo[0] )
-            * cd_f.T_D[cd_f.cToS[site]];
-        L.noprime();
-        LId.noprime();
-
-        // compute correlation at current distance i
+        // (1) compute correlation at current distance i
         site_op2 = site;
         site_op2.first = site_op2.first + 1;
         std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
@@ -1210,6 +1192,25 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
 
         // Assign value
         ccVal.push_back(sumelsC(N)/sumelsC(NId));
+
+        // (2) Contract with single "transfer" matrix
+        site.first = site.first + 1;
+        std::cout <<"Inserting T_U--X["<< site.first <<
+            ","<< site.second <<"]";
+        site.first = site.first % cd_f.sizeM;
+        std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
+            << cls.cToS[site] <<" --T_D"<< std::endl; 
+
+        idOp = getTOT_DBG(MPO_Id, cls.cToS[site], 0);
+        
+        L = ((L * cd_f.T_U[cd_f.cToS[site]] )
+            * idOp.mpo[0] ) 
+            * cd_f.T_D[cd_f.cToS[site]];
+        LId = ((LId * cd_f.T_U[cd_f.cToS[site]])
+            * idOp.mpo[0] )
+            * cd_f.T_D[cd_f.cToS[site]];
+        L.noprime();
+        LId.noprime();
     }
 
     for(int i=0;i<ccVal.size();i++) {
