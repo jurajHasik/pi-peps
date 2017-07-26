@@ -5,17 +5,28 @@
 
 using namespace itensor;
 
+// Compupte expectation value of 2site OP over 2x2 supercell {{A,B},{B,A}} 
+// with weights lambda1..lambda4
+//
+// <bra|    A    B   
+//        B |  A | 
+//        | |  | |
+//       | OP2s ||
+//        | |  | |  
+//        | A  | B
+//        B    A    |ket>
+//
 std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s, 
-    ITensor const& A, ITensor const& B, 
-    ITensor const& l1, ITensor const& l2, ITensor const& l3, ITensor const& l4) {
+    ITensor const& A, ITensor const& B, ITensor const& l1, ITensor const& l2,
+    ITensor const& l3, ITensor const& l4) {
 
     // Set new sites to cluster
     auto squareT = [](double r) { return r*r; };
 
     auto aIA = noprime(findtype(A.inds(), AUXLINK));
     auto aIB = noprime(findtype(B.inds(), AUXLINK));
-    auto pIA = noprime(findtype(A.inds(), PHYS));
-    auto pIB = noprime(findtype(B.inds(), PHYS));
+    //auto pIA = noprime(findtype(A.inds(), PHYS));
+    //auto pIB = noprime(findtype(B.inds(), PHYS));
 
     /*
      * A--l2--B
@@ -150,36 +161,39 @@ int main( int argc, char *argv[] ) {
 
     //OP2S_TYPE arg_op2s_type;
     //F_MPO3S arg_f_mpo3s;
-    std::string arg_inClusterFile, arg_outClusterFile;
+    std::string arg_initType, arg_inClusterFile, arg_outClusterFile;
     int arg_auxBondDim, arg_nIter;
     double arg_tau, arg_J, arg_h;
-    bool init_from_file = false;
     
-    // If first arg is --input="input_cluster_file"
-    arg_inClusterFile = std::string(argv[1]);
-    int found = arg_inClusterFile.find("--input=");
-    if( (found >= 0) && (argc >= 7) ) {
-        init_from_file = true;
-        arg_inClusterFile  = arg_inClusterFile.substr(8);
-        arg_outClusterFile = argv[2];
-        arg_nIter          = std::stoi(argv[3]);
-        arg_tau            = std::stod(argv[4]);
-        arg_J              = std::stod(argv[5]);
-        arg_h              = std::stod(argv[6]);
+    arg_initType = std::string(argv[1]);
+    if( (arg_initType == "FILE") && (argc >= 8) ) {
+        arg_inClusterFile  = argv[2];
+        arg_outClusterFile = argv[3];
+        arg_nIter          = std::stoi(argv[4]);
+        arg_tau            = std::stod(argv[5]);
+        arg_J              = std::stod(argv[6]);
+        arg_h              = std::stod(argv[7]);
 
-        std::cout <<"Initializing from file ? "<< init_from_file <<" File: "
-            << arg_inClusterFile << std::endl;
+        std::cout <<"Initializing from File: "<< arg_inClusterFile << std::endl;
     // otherwise we start with random cluster 
-    } else if( (found < 0) && (argc >= 7) ) {
-        arg_outClusterFile = argv[1];
-        arg_auxBondDim     = std::stoi(argv[2]);
-        arg_nIter          = std::stoi(argv[3]);
-        arg_tau            = std::stod(argv[4]);
-        arg_J              = std::stod(argv[5]);
-        arg_h              = std::stod(argv[6]);
-        //arg_op2s_type   = toOP2S_TYPE(std::string(argv[2]));
-        //arg_f_mpo3s     = toF_MPO3S(std::string(argv[3]));
-        std::cout <<"Initializing from file ? "<< init_from_file << std::endl;
+    } else if( (arg_initType == "RANDOM") && (argc >= 8) ) {
+        arg_outClusterFile = argv[2];
+        arg_auxBondDim     = std::stoi(argv[3]);
+        arg_nIter          = std::stoi(argv[4]);
+        arg_tau            = std::stod(argv[5]);
+        arg_J              = std::stod(argv[6]);
+        arg_h              = std::stod(argv[7]);
+
+        std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
+    } else if( (arg_initType == "AFM") && (argc >= 8) ) {
+        arg_outClusterFile = argv[2];
+        arg_auxBondDim     = std::stoi(argv[3]);
+        arg_nIter          = std::stoi(argv[4]);
+        arg_tau            = std::stod(argv[5]);
+        arg_J              = std::stod(argv[6]);
+        arg_h              = std::stod(argv[7]);
+
+        std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;        
     } else {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
@@ -200,7 +214,7 @@ int main( int argc, char *argv[] ) {
     Index aIA, aIB, pIA, pIB;
     ITensor A, B;
 
-    if( init_from_file ) {
+    if( arg_initType == "FILE" ) {
         cls = readCluster(arg_inClusterFile);
 
         A = cls.sites[cls.cToS.at(std::make_pair(0,0))];
@@ -236,24 +250,31 @@ int main( int argc, char *argv[] ) {
         A = ITensor(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
         B = ITensor(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
 
-        // Randomize
-        randomize(A);
-        randomize(B);
+        if (arg_initType == "RANDOM") {
+            // Randomize
+            randomize(A);
+            randomize(B);
+        } else if (arg_initType == "AFM") {
+            // Spin DOWN on site A, spin UP on site B
+            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
+                pIA(2), 1.0);
+            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
+                pIB(1), 1.0);
+        }
 
         cls.sites = {{"A", A}, {"B", B}, {"C",B}, {"D",A}};
         // ----- END DEFINE CLUSTER ------------------------------------
     }
     std::cout << cls; //DBG
 
-    // Prepare nnH Hamiltonian
+    // Prepare nnH Hamiltonian as 2-site MPO, with indices 
+    // H_nnh.first[pIA,pIA'] and H_nnh.second[pIB,pIB']
     auto H_nnh = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIB);
 
-    // Define 2-site operators
-    // NN-Heisenberg in external mag-field
-    MPO_2site nnh;
-    // coordination, tau, J, h
-    //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
-    nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
+    // Get Exp of 2-site operator - building block of Trotter Decomposition
+    // NN-Heisenberg in external (uniform or staggered) mag-field
+    //MPO_2site nnh(getMPO2s_NNH(4, arg_tau, arg_J, arg_h));        // uniform mag field
+    MPO_2site nnh(getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h));   // staggered mag field
 
     // Prepare Sites (from cluster) + weights to begin optimization 
     // procedure
@@ -299,6 +320,8 @@ int main( int argc, char *argv[] ) {
     std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() << std::endl;
     auto e_nnh_prev = e_nnh;
 
+    // Define "regulator" function to cut-off large values after inversion
+    // of weight matrices
     auto regT = [](double r) { 
         return ((abs(r) > 1.0e10) ? 0.0 : r); };
 
@@ -306,7 +329,6 @@ int main( int argc, char *argv[] ) {
     t_iso_begin = std::chrono::steady_clock::now();
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
-
         // Apply 2-site op along bond A--l2--B
         A = A*l1*l3*l4;
         B = B*l4*l1*l3;
@@ -409,6 +431,7 @@ int main( int argc, char *argv[] ) {
                     break;
                 }    
 
+                // Get new evolution op with decreased arg_tau
                 //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
                 nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
             }

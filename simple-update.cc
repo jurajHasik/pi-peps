@@ -444,7 +444,6 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
 	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
 
-	
 	/*
 	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
 	 * along diagonal matrix with weights
