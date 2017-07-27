@@ -358,31 +358,55 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 	Print(T1);
 	Print(L);
 	Print(T2);
-	Index iT1_L = commonIndex(T1, L);
-	Index iL_T2 = commonIndex(L, T2);
+	auto ipT1 = findtype(T1.inds(), PHYS);
+	auto ipT2 = findtype(T2.inds(), PHYS);  
+	auto iT1_L = commonIndex(T1, L);
+	auto iL_T2 = commonIndex(L, T2);
+	auto dT1T2 = delta(iT1_L, iL_T2);
 
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo2s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+	auto sqrt_T = [](double r) { return sqrt(r); };
+	L.apply(sqrt_T);
+	/*
+	 * Extract reduced tensors from on-site tensor to apply 2-site 
+	 * gate 
+	 *
+	 *        | /        | /       =>     |      /     /    |
+	 *  --|1*L^1/2|--|2*L^1/2|--   =>  --|1X|--|1R|--|2R|--|2X|-- 
+	 *        |          |         =>     |                 |
+	 *
+	 */
 
-	std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
-	Print(T1);
-    Print(T2);
+	ITensor T1R(ipT1, iT1_L);
+	ITensor T2R(ipT2, iL_T2);
+	ITensor T1X, T2X, sv1XR, sv2XR;
+	auto spec = svd( (T1*L)*dT1T2, T1R, sv1XR, T1X);
+	Print(spec);
+	spec = svd( (T2*L)*dT1T2, T2R, sv2XR, T2X);
+	Print(spec);
+	T1R = T1R * sv1XR;
+	T2R = T2R * sv2XR;
+
+	// D^2 x s x auxD_mpo3s
+	auto kd_phys1 = delta(ipT1, mpo2s.Is1);
+	T1R = (T1R * kd_phys1) * mpo2s.H1;
+	T1R = (T1R * kd_phys1.prime()).prime(PHYS,-1);
+	// D^2 x s x auxD_mpo3s^2
+	auto kd_phys2 = delta(ipT2, mpo2s.Is2);
+	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
+	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
+
+	std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
+	Print(T1R);
+    Print(T2R);
 
 	/*
-	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
+	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
 	 * along diagonal matrix with weights
 	 *
 	 *       _______               s1                       s2
 	 *  s1~~|       |~~s2           |                        |
-	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
-	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
-	 *    --|_______|--         --|___|                    |___|--
+	 *    --| 1~ 2~ |--    ==>      |                        |
+	 *      |_______|      ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
 	 *
 	 * where 1~~ and 2~~ are now holding singular vectors wrt
 	 * to SVD and SV_L12 holds a new weights
@@ -392,21 +416,23 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 
 	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
-	PrintData(SV_L12);
+	spec = svd(T1R*dT1T2*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	Print(T1R);
+	Print(spec);
+	Print(T2R);
 
 	// Set proper indices to resulting tensors from SVD routine
-	Index iT1_SV_L12 = commonIndex(T1, SV_L12);
-	Index iSV_L12_T2 = commonIndex(SV_L12, T2);
+	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
 
-	T1 = T1 * delta(iT1_SV_L12, iT1_L);
+	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
 	
 	for (int i=1; i<=iT1_L.m(); i++) {
 		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
 	}
 	L = L / norm(L);
 
-	T2 = T2 * delta(iSV_L12_T2, iL_T2);
+	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
 
 	Print(T1);
 	PrintData(L);
@@ -431,28 +457,49 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	 * original sites 1 and 2 after applying MPO.
 	 *
 	 */
-	Index iT1_L = commonIndex(T1, L);
-	Index iL_T2 = commonIndex(L, T2);
+	auto ipT1 = findtype(T1.inds(), PHYS);
+	auto ipT2 = findtype(T2.inds(), PHYS);  
+	auto iT1_L = commonIndex(T1, L);
+	auto iL_T2 = commonIndex(L, T2);
+	auto dT1T2 = delta(iT1_L, iL_T2);
 
-	//std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo2s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+	auto sqrt_T = [](double r) { return sqrt(r); };
+	L.apply(sqrt_T);
+	/*
+	 * Extract reduced tensors from on-site tensor to apply 2-site 
+	 * gate 
+	 *
+	 *     | /       | /    =>     |      /          /    |
+	 *  --|1|--|L|--|2|--   =>  --|1X|--|1R|--|L|--|2R|--|2X|-- 
+	 *     |         |      =>     |                      |
+	 *
+	 */
+	ITensor T1R(ipT1, iT1_L);
+	ITensor T2R(ipT2, iL_T2);
+	ITensor T1X, T2X, sv1XR, sv2XR;
+	svd( (T1*L)*dT1T2, T1R, sv1XR, T1X);
+	svd( (T2*L)*dT1T2, T2R, sv2XR, T2X);
+	T1R = T1R * sv1XR;
+	T2R = T2R * sv2XR;
+
+	//std::cout <<"----- Appyling H1-H2 to |1R--L--2R> -----"<< std::endl;
+	// D^2 x s x auxD_mpo3s
+	auto kd_phys1 = delta(ipT1, mpo2s.Is1);
+	T1R = (T1R * kd_phys1) * mpo2s.H1;
+	T1R = (T1R * kd_phys1.prime()).prime(PHYS,-1);
+	// D^2 x s x auxD_mpo3s^2
+	auto kd_phys2 = delta(ipT2, mpo2s.Is2);
+	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
+	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
 
 	/*
-	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
+	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
 	 * along diagonal matrix with weights
 	 *
 	 *       _______               s1                       s2
 	 *  s1~~|       |~~s2           |                        |
-	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
-	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
-	 *    --|_______|--         --|___|                    |___|--
+	 *    --| 1~ 2~ |--    ==>      |                        |
+	 *      |_______|      ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--                   
 	 *
 	 * where 1~~ and 2~~ are now holding singular vectors wrt
 	 * to SVD and SV_L12 holds a new weights
@@ -461,20 +508,20 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	 */
 	//std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	svd(T1*L*T2, T1, SV_L12, T2, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	svd(T1R*dT1T2*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
 
 	// Set proper indices to resulting tensors from SVD routine
-	Index iT1_SV_L12 = commonIndex(T1, SV_L12);
-	Index iSV_L12_T2 = commonIndex(SV_L12, T2);
+	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
 
-	T1 = T1 * delta(iT1_SV_L12, iT1_L);
+	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
 	
 	for (int i=1; i<=iT1_L.m(); i++) {
 		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
 	}
 	L = L / norm(L);
 
-	T2 = T2 * delta(iSV_L12_T2, iL_T2);
+	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
 }
 
 void applyH_12(MPO_2site const& mpo2s, 
