@@ -132,6 +132,7 @@ int main( int argc, char *argv[] ) {
     // Build expectation value builder
     std::cout << ctmEnv.getCtmData_DBG();
     EVBuilder ev("TEST_ENV_2x2", cluster, ctmEnv.getCtmData_DBG());
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
     // Prepare rotated on-site tensor
     auto RA = cluster.sites.at("A");
@@ -162,13 +163,13 @@ int main( int argc, char *argv[] ) {
         cluster.sites.at("D"));
 
     // energy with initial environment
-    e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
+    e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
         std::make_pair(0,0), std::make_pair(1,0)) );
-    e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
+    e_nnH_AC.push_back( ev.eV_2sO_Rectangle(op2s_ssAC,
         std::make_pair(0,0), std::make_pair(0,1)) );
-    e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
+    e_nnH_BD.push_back( ev.eV_2sO_Rectangle(op2s_ssBD,
         std::make_pair(1,0), std::make_pair(1,1)) );
-    e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
+    e_nnH_CD.push_back( ev.eV_2sO_Rectangle(op2s_ssCD,
         std::make_pair(0,1), std::make_pair(1,1)) );
 
     // ##### randomization of directional CTM moves ###################
@@ -194,17 +195,14 @@ int main( int argc, char *argv[] ) {
         std::cout << "STEP " << iter << std::endl;
 
         if ( iter % 1 == 0 ) {
-        //if ( iter > 100 ) {
-            // ctmEnv.computeSVDspec();
-            // ctmEnv.printSVDspec();
-            ev.setCtmData(ctmEnv.getCtmData_DBG());
-            e_nnH.push_back( ev.eV_2sO_DBG(op2s_ss,
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+            e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
                 std::make_pair(0,0), std::make_pair(1,0)) );
-            e_nnH_AC.push_back( ev.eV_2sO_DBG(op2s_ssAC,
+            e_nnH_AC.push_back( ev.eV_2sO_Rectangle(op2s_ssAC,
                 std::make_pair(0,0), std::make_pair(0,1)) );
-            e_nnH_BD.push_back( ev.eV_2sO_DBG(op2s_ssBD,
+            e_nnH_BD.push_back( ev.eV_2sO_Rectangle(op2s_ssBD,
                 std::make_pair(1,0), std::make_pair(1,1)) );
-            e_nnH_CD.push_back( ev.eV_2sO_DBG(op2s_ssCD,
+            e_nnH_CD.push_back( ev.eV_2sO_Rectangle(op2s_ssCD,
                 std::make_pair(0,1), std::make_pair(1,1)) );
         }
     }
@@ -226,10 +224,10 @@ int main( int argc, char *argv[] ) {
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, "A", 0);
+    auto mpo_id  = ev.getTOT_DBG(EVBuilder::MPO_Id, "A", 0);
     auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, "A", 0);
 
-    auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "A", 0);
+    auto mpo_sz  = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "A", 0);
     auto mpo_szB = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "B", 0);
     auto mpo_szC = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "C", 0);
     auto mpo_szD = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "D", 0);
@@ -237,8 +235,8 @@ int main( int argc, char *argv[] ) {
     auto mpo_sp  = ev.getTOT_DBG(EVBuilder::MPO_S_P, "A", 0);
     auto mpo_sm  = ev.getTOT_DBG(EVBuilder::MPO_S_M, "A", 0);
 
-    auto mpo_spB  = ev.getTOT_DBG(EVBuilder::MPO_S_P, "B", 0);
-    auto mpo_smB  = ev.getTOT_DBG(EVBuilder::MPO_S_M, "B", 0);
+    auto mpo_spB = ev.getTOT_DBG(EVBuilder::MPO_S_P, "B", 0);
+    auto mpo_smB = ev.getTOT_DBG(EVBuilder::MPO_S_M, "B", 0);
 
     std::cout <<"ID: "<< ev.eV_1sO_1sENV(mpo_id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(mpo_sz2, std::make_pair(0,0)) << std::endl;
@@ -288,15 +286,6 @@ int main( int argc, char *argv[] ) {
     ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_S_M, EVBuilder::MPO_S_P,
         std::make_pair(0, 0), 20);*/
-
-    std::cout<<"AB: "<< ev.eV_2sO_Rectangle(op2s_ss,
-        std::make_pair(0,0), std::make_pair(1,0)) << std::endl;
-    std::cout<<"AC: "<< ev.eV_2sO_Rectangle(op2s_ssAC,
-        std::make_pair(0,0), std::make_pair(0,1)) << std::endl;
-    std::cout<<"BD: "<< ev.eV_2sO_Rectangle(op2s_ssBD,
-        std::make_pair(1,0), std::make_pair(1,1)) << std::endl;
-    std::cout<<"CD: "<< ev.eV_2sO_Rectangle(op2s_ssCD,
-        std::make_pair(0,1), std::make_pair(1,1)) << std::endl;
 
     return 0;
 }
