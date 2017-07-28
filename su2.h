@@ -19,7 +19,8 @@ enum SU2O {
     SU2_S_M     // S_minus
 };
 
-itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s);
+itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s,
+	bool DBG = false);
 
 double SU2_getCG(int j1, int j2, int j, int m1, int m2, int m);
 

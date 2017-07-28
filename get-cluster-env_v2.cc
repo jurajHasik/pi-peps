@@ -224,15 +224,15 @@ int main( int argc, char *argv[] ) {
     std::cout << ctmEnv;
 
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
     auto mpo_id = ev.getTOT_DBG(EVBuilder::MPO_Id, "A", 0);
+    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, "A", 0);
 
     auto mpo_sz = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "A", 0);
     auto mpo_szB = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "B", 0);
     auto mpo_szC = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "C", 0);
     auto mpo_szD = ev.getTOT_DBG(EVBuilder::MPO_S_Z, "D", 0);
-
-    auto mpo_sz2 = ev.getTOT_DBG(EVBuilder::MPO_S_Z2, "A", 0);
 
     auto mpo_sp  = ev.getTOT_DBG(EVBuilder::MPO_S_P, "A", 0);
     auto mpo_sm  = ev.getTOT_DBG(EVBuilder::MPO_S_M, "A", 0);
@@ -240,19 +240,18 @@ int main( int argc, char *argv[] ) {
     auto mpo_spB  = ev.getTOT_DBG(EVBuilder::MPO_S_P, "B", 0);
     auto mpo_smB  = ev.getTOT_DBG(EVBuilder::MPO_S_M, "B", 0);
 
-    std::cout <<"ID: "<< ev.eV_1sO_DBG(mpo_id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"ID: "<< ev.eV_1sO_1sENV(mpo_id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(mpo_sz2, std::make_pair(0,0)) << std::endl;
 
-    std::cout <<"SZ: "<< ev.eV_1sO(mpo_sz, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szB, std::make_pair(1,0)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szC, std::make_pair(0,1)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO(mpo_szD, std::make_pair(1,1)) << std::endl;
-    
-    std::cout <<"SZ2: "<< ev.eV_1sO(mpo_sz2, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(mpo_sz, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(mpo_szB, std::make_pair(1,0)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(mpo_szC, std::make_pair(0,1)) << std::endl;
+    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(mpo_szD, std::make_pair(1,1)) << std::endl;
 
-    std::cout <<"SP A: "<< ev.eV_1sO(mpo_sp, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SP B: "<< ev.eV_1sO(mpo_spB, std::make_pair(1,0)) << std::endl;
-    std::cout <<"SM A: "<< ev.eV_1sO(mpo_sm, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SM B: "<< ev.eV_1sO(mpo_smB, std::make_pair(1,0)) << std::endl;
+    std::cout <<"SP A: "<< ev.eV_1sO_1sENV(mpo_sp, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SP B: "<< ev.eV_1sO_1sENV(mpo_spB, std::make_pair(1,0)) << std::endl;
+    std::cout <<"SM A: "<< ev.eV_1sO_1sENV(mpo_sm, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SM B: "<< ev.eV_1sO_1sENV(mpo_smB, std::make_pair(1,0)) << std::endl;
 
     // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
     // std::cout <<"Constructing 2-site MPO on sites: "<< cluster.siteIds[0]
@@ -273,8 +272,8 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-    ev.expVal_1sO1sO_H( 
+    
+    /*ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_Id, EVBuilder::MPO_Id,
         std::make_pair(0, 0), 20);
 
@@ -288,7 +287,16 @@ int main( int argc, char *argv[] ) {
 
     ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_S_M, EVBuilder::MPO_S_P,
-        std::make_pair(0, 0), 20);
+        std::make_pair(0, 0), 20);*/
+
+    std::cout<<"AB: "<< ev.eV_2sO_Rectangle(op2s_ss,
+        std::make_pair(0,0), std::make_pair(1,0)) << std::endl;
+    std::cout<<"AC: "<< ev.eV_2sO_Rectangle(op2s_ssAC,
+        std::make_pair(0,0), std::make_pair(0,1)) << std::endl;
+    std::cout<<"BD: "<< ev.eV_2sO_Rectangle(op2s_ssBD,
+        std::make_pair(1,0), std::make_pair(1,1)) << std::endl;
+    std::cout<<"CD: "<< ev.eV_2sO_Rectangle(op2s_ssCD,
+        std::make_pair(0,1), std::make_pair(1,1)) << std::endl;
 
     return 0;
 }

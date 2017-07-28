@@ -50,7 +50,8 @@ class EVBuilder {
 
     // Get on-site contracted tensor <T(bra)|MPO|T(ket)>,
     // with prime level "l"
-    MpoNS getTOT_DBG(MPO_1S mpo, std::string siteId, int primeLvl) const;
+    MpoNS getTOT_DBG(MPO_1S mpo, std::string siteId, int primeLvl,
+        bool DBG = false) const;
         
     // Compute expectation value of 1-site operator O
     /*
@@ -60,6 +61,11 @@ class EVBuilder {
      *             tensor is replaced with tensor op
      *  
      */
+
+    // compute ev_1sO using environment of a single site
+    double eV_1sO_1sENV(MpoNS const& op, std::pair<int,int> site,
+        bool DBG = false) const;
+
     double eV_1sO(MpoNS const& op, std::pair<int,int> site) const;
 
     double eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const;
@@ -82,6 +88,13 @@ class EVBuilder {
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment
+    
+    // compute ev_2sO using minimal rectangle defined by s1 and s2
+    double eV_2sO_Rectangle(
+        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2,
+        bool DBG = false) const;
+
     double eV_2sO_DBG(
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> siteA, std::pair<int,int> siteB) const;
@@ -89,6 +102,16 @@ class EVBuilder {
     double eV_2sO(
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> siteA, std::pair<int,int> siteB) const;
+
+    // compute norm of TN defined by sites s1, s2 (with ID operators)
+    double getNorm_Rectangle(bool DBG, std::pair<int,int> s1, 
+        std::pair<int,int> s2) const;
+
+    // contract network using minimal rectangle defined by s1 and s2
+    // with Op.first inserted on s1 and Op.second inserted in s2
+    double get2SOPTN(bool DBG,
+        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2) const;
 
     // compute norm (contract TN) of NxM==(N,M) copies of cluster
     // surrounded by environment
@@ -187,7 +210,8 @@ class EVBuilder {
      * from su2.h
      *
      */
-    static itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s);
+    static itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s,
+        bool DBG = false);
 
     std::ostream& print(std::ostream& s) const;
 };

@@ -2,7 +2,7 @@
 
 using namespace std;
 
-itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
+itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s, bool DBG) {
 
     auto s1 = prime(s);
     int dimS = s.m();
@@ -12,20 +12,20 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
 
     switch(su2o) {
         case SU2_Id: {
-            std::cout <<">>>>> Constructing 1sO: Id <<<<<"<< std::endl;
+            if(DBG) std::cout <<">>>>> Constructing 1sO: Id <<<<<"<<std::endl;
             for(int i=1;i<=dimS;i++)
                 Op.set(s1(i), s(i), 1.0);
             break;
         }
         case SU2_S_Z: {
-            std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<< std::endl;
+            if(DBG) std::cout <<">>>>> Constructing 1sO: Sz <<<<<"<<std::endl;
             for(int i=1;i<=dimS;i++)
                 Op.set(s1(i), s(i), -0.5*(-(dimS-1) 
                     + (i-1)*2));
             break;
         }
         case SU2_S_Z2: {
-            std::cout <<">>>>> Constructing 1sO: Sz^2 <<<<<"<< std::endl;
+            if(DBG) std::cout <<">>>>> Constructing 1sO: Sz^2 <<<<<"<<std::endl;
             for(int i=1;i<=dimS;i++)
                 Op.set(s1(i), s(i), pow(0.5*(-(dimS-1) 
                     + (i-1)*2), 2.0));
@@ -47,7 +47,7 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
          *
          */
         case SU2_S_P: {
-            std::cout <<">>>>> Constructing 1sO: S^+ <<<<<"<< std::endl;
+            if(DBG) std::cout <<">>>>> Constructing 1sO: S^+ <<<<<"<< std::endl;
             for(int i=1;i<=dimS-1;i++)
                 Op.set(s1(i), s(i+1), pow( 0.5*(dimS-1)
                     *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
@@ -70,7 +70,7 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
          *
          */
         case SU2_S_M: {
-            std::cout <<">>>>> Constructing 1sO: S^- <<<<<"<< std::endl;
+            if(DBG) std::cout <<">>>>> Constructing 1sO: S^- <<<<<"<< std::endl;
             for(int i=2;i<=dimS;i++)
                 Op.set(s1(i), s(i-1), pow( 0.5*(dimS-1)
                     *(0.5*(dimS-1)+1) - (-0.5*(dimS-1)+(i-1))
@@ -84,7 +84,7 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s) {
         }
     }
 
-    PrintData(Op);
+    if(DBG) PrintData(Op);
 
     return Op;
 }
