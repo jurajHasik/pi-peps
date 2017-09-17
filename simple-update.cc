@@ -966,6 +966,31 @@ MPO_3site getMPO3s_Id_v2(int physDim) {
 	return mpo3s;
 }
 
+MPO_3site getMPO3s_Uj1j2(double tau, double J2) {
+	MPO_3site mpo3s;
+	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+
+	// Define physical indices
+	mpo3s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo3s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+	mpo3s.Is3 = Index(TAG_MPO3S_PHYS3,physDim,PHYS);
+
+	Index s1 = Index("S1", physDim, PHYS);
+	Index s2 = Index("S2", physDim, PHYS);
+	Index s3 = Index("S3", physDim, PHYS);
+	Index s1p = prime(s1);
+	Index s2p = prime(s2);
+	Index s3p = prime(s3);
+
+	// define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
+	double a,b;
+	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+	double el1 = exp(2.0*a + b);
+	u123.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el1);
+	u123.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el1);
+	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))
+}
+
 void applyH_123(MPO_3site const& mpo3s, 
 	ITensor & T1, ITensor & T2, ITensor & T3, 
 	std::pair<Index, Index> const& link12, 

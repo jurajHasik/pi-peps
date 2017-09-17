@@ -164,6 +164,14 @@ MPO_3site getMPO3s_Id(int physDim);
 // Splits SVD values S^1/3 : S^1/3 : S^1/3
 MPO_3site getMPO3s_Id_v2(int physDim);
 
+/*
+ * construct U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
+ * operator from exact expression on square lattice
+ * fixing J1 = 1
+ *
+ */
+MPO_3site getMPO3s_Uj1j2(double tau, double J2);
+
 typedef enum F_MPO3S {
     F_MPO3S_1,
     F_MPO3S_2,
