@@ -170,7 +170,7 @@ MPO_3site getMPO3s_Id_v2(int physDim);
  * fixing J1 = 1
  *
  */
-MPO_3site getMPO3s_Uj1j2(double tau, double J2);
+MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
 typedef enum F_MPO3S {
     F_MPO3S_1,

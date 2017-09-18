@@ -966,7 +966,7 @@ MPO_3site getMPO3s_Id_v2(int physDim) {
 	return mpo3s;
 }
 
-MPO_3site getMPO3s_Uj1j2(double tau, double J2) {
+MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	MPO_3site mpo3s;
 	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
 
@@ -983,12 +983,133 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J2) {
 	Index s3p = prime(s3);
 
 	// define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
-	double a,b;
+	double a = -tau*J1/8.0;
+	double b = -tau*J2/4.0;
 	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
 	double el1 = exp(2.0*a + b);
 	u123.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el1);
 	u123.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el1);
-	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))
+	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))+3.0);
+	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el2);
+	u123.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el2);
+	u123.set(s1(2),s2(1),s3(1),s1p(2),s2p(1),s3p(1),el2);
+	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(2),s3p(1),el2);
+	double el3 = (1.0/3.0)*exp(b-4.0*a)*(-1.0+exp(6.0*a));
+	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(2),s3p(1),el3);
+	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(1),s3p(2),el3);
+	u123.set(s1(1),s2(2),s3(1),s1p(2),s2p(1),s3p(1),el3);
+	u123.set(s1(1),s2(2),s3(2),s1p(2),s2p(1),s3p(2),el3);
+	u123.set(s1(2),s2(1),s3(1),s1p(1),s2p(2),s3p(1),el3);
+	u123.set(s1(2),s2(1),s3(2),s1p(1),s2p(2),s3p(2),el3);
+	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(2),s3p(1),el3);
+	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(1),s3p(2),el3);
+	double el4 = (1.0/3.0)*exp(b-4.0*a)*(2.0+exp(6.0*a));
+	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el4);
+	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el4);
+	double el5 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))-3.0);
+	u123.set(s1(1),s2(1),s3(2),s1p(2),s2p(1),s3p(1),el5);
+	u123.set(s1(1),s2(2),s3(2),s1p(2),s2p(2),s3p(1),el5);
+	u123.set(s1(2),s2(1),s3(1),s1p(1),s2p(1),s3p(2),el5);
+	u123.set(s1(2),s2(2),s3(1),s1p(1),s2p(2),s3p(2),el5);
+	// definition of U_123 done
+
+	PrintData(u123);
+
+	ITensor SV_12_LR, SV_23_LR, O1_LR, O2_LR, O3_LR, tempLR;
+	ITensor SV_12_RL, SV_23_RL, O1_RL, O2_RL, O3_RL, tempRL;
+
+    double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+	// u123 = (u123 * delta(mpo3s.Is1,s1)) * delta(prime(mpo3s.Is1),s1p);
+	// u123 = (u123 * delta(mpo3s.Is2,s2)) * delta(prime(mpo3s.Is2),s2p);
+	// u123 = (u123 * delta(mpo3s.Is3,s3)) * delta(prime(mpo3s.Is3),s3p);
+	// mpo3s.H1 = ITensor(mpo3s.Is1,prime(mpo3s.Is1));
+ //    ITensor SV_12,temp;
+    svd(u123,mpo3s.H1,SV_12,temp);
+    /*
+     *  s1'                    s2' s3' 
+     *   |                      |  |
+     *  |H1|--a1--<SV_12>--a2--|temp|
+     *   |                      |  |
+     *  s1                     s2  s3
+     *
+     */
+    PrintData(SV_12);
+
+    Index a1 = commonIndex(mpo3s.H1,SV_12);
+    Index a2 = commonIndex(SV_12,temp);
+
+    // Define aux indices linking the on-site MPOs
+	// Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
+	
+	// pw = 2.0/3.0;
+	// SV_12.apply(pow_T); // x^2/3
+	// temp = ( temp * SV_12 )*delta(a1,iMPO3s12);
+
+	// pw = 1.0/2.0; 
+	// SV_12.apply(pow_T); // x^(2/3*1/2) = x^1/3
+ //    mpo3s.H1 = ( mpo3s.H1 * SV_12 )*delta(a2,iMPO3s12);
+    
+	// mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),iMPO3s12);
+	mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),a2);
+	ITensor SV_23;
+    svd(temp,mpo3s.H2,SV_23,mpo3s.H3);
+    /*
+     *  s1'                    s2'                    s3' 
+     *   |                      |                      |
+     *  |H1|--a1--<SV_12>--a2--|H2|--a3--<SV_23>--a4--|H3|
+     *   |                      |                      |
+     *  s1                     s2                     s3
+     *
+     */
+    PrintData(SV_23); 
+
+	// pw = 1.0/2.0; 
+	// SV_23.apply(pow_T);
+	
+	// Index a3 = commonIndex(mpo3s.H2,SV_23);
+	// Index a4 = commonIndex(SV_23,mpo3s.H3);
+	// Index iMPO3s23(TAG_MPO3S_23LINK,a3.m(),MPOLINK);
+	// mpo3s.H2 = (mpo3s.H2 * SV_23)*delta(a4,iMPO3s23);
+	// mpo3s.H3 = (mpo3s.H3 * SV_23)*delta(a3,iMPO3s23);
+
+	// PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+
+	// double m1, m2, m3;
+	// double sign1, sign2, sign3;
+	// double m = 0.;
+	// double sign = 0.;
+ //    auto max_m = [&m, &sign](double d) {
+ //        if(std::abs(d) > m) {
+ //        	sign = (d > 0) ? 1 : ((d < 0) ? -1 : 0);
+ //         	m = std::abs(d);
+ //        }
+ //    };
+
+ //    mpo3s.H1.visit(max_m);
+ //    sign1 = sign;
+ //    m1 = m*sign;
+ //    m = 0.;
+ //    mpo3s.H2.visit(max_m);
+ //    m2 = m*sign;
+ //    m = 0.;
+ //    mpo3s.H3.visit(max_m);
+ //    m3 = m*sign;
+
+ //    std::cout <<"m1: "<< m1 <<" m2: "<< m2 <<" m3: "<< m3 << std::endl;
+
+	// if ( m1*m2*m3 > 0 ) {
+	// 	mpo3s.H1 /= m1;
+	// 	mpo3s.H2 /= m2;
+	// 	mpo3s.H3 /= m3;	
+	// }
+	 
+	PrintData(mpo3s.H1);
+	PrintData(mpo3s.H2);
+	PrintData(mpo3s.H3);
+
+	return mpo3s;
 }
 
 void applyH_123(MPO_3site const& mpo3s, 

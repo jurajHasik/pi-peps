@@ -1,6 +1,6 @@
 # Link to Itensor lib
 
-ITENSOR_DIR=/home/urza/Software/ITensor
+ITENSOR_DIR=/home/urza/Software/ITensor-gcc
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 
@@ -14,6 +14,7 @@ APP =get-cluster-env
 APP2=opt-simple-update
 APP3=get-cluster-env_v2
 APP4=opt-simple-update-2x2-2site
+APP5=opt-simple-update-2x2-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
@@ -22,7 +23,10 @@ HEADERS =cluster-ev-builder.h ctm-cluster-env.h ctm-cluster-io.h \
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
-HEADERS4=cluster-ev-builder.h simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
+HEADERS4=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
+	ctm-cluster.h su2.h json.hpp
+HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
+	ctm-cluster.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -32,8 +36,10 @@ CCFILES2=$(APP2).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
 	su2.cc
 CCFILES3=$(APP3).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
-CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
-	su2.cc
+CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
+	ctm-cluster.cc su2.cc
+CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
+	ctm-cluster.cc su2.cc
 
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
@@ -43,6 +49,7 @@ OBJECTS2=$(patsubst %.cc,%.o, $(CCFILES2))
 OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
 OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
+OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -75,6 +82,9 @@ $(APP4): $(OBJECTS4) $(ITENSOR_LIBS)
 
 $(APP4)-g: mkdebugdir $(GOBJECTS4) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS4) -o $(APP4)-g.x $(LIBGFLAGS)
+
+$(APP5): $(OBJECTS5) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTS5) -o $(APP5).x $(LIBFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
