@@ -1026,7 +1026,10 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	// u123 = (u123 * delta(mpo3s.Is3,s3)) * delta(prime(mpo3s.Is3),s3p);
 	// mpo3s.H1 = ITensor(mpo3s.Is1,prime(mpo3s.Is1));
  //    ITensor SV_12,temp;
-    svd(u123,mpo3s.H1,SV_12,temp);
+	O1_LR = ITensor(s1,s1p);
+	O3_RL = ITensor(s3,s3p);
+    svd(u123,O1_LR,SV_12_LR,tempLR);
+    svd(u123,O3_RL,SV_23_RL,tempRL);
     /*
      *  s1'                    s2' s3' 
      *   |                      |  |
@@ -1035,10 +1038,22 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
      *  s1                     s2  s3
      *
      */
-    PrintData(SV_12);
 
-    Index a1 = commonIndex(mpo3s.H1,SV_12);
-    Index a2 = commonIndex(SV_12,temp);
+    /*
+     *  s1' s2'                   s3' 
+     *   |  |                     |
+     *  |temp|--a3--<SV_23>--a4--|H3|
+     *   |  |                     |
+     *  s1  s2                    s3
+     *
+     */
+    PrintData(SV_12_LR);
+    PrintData(SV_23_RL);
+
+    //Index a1 = commonIndex(mpo3s.H1,SV_12);
+    //Index a2 = commonIndex(SV_12,temp);
+    Index a2 = commonIndex(SV_12_LR,tempLR);
+    Index a3 = commonIndex(SV_23_RL,tempRL);
 
     // Define aux indices linking the on-site MPOs
 	// Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
@@ -1052,9 +1067,12 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
  //    mpo3s.H1 = ( mpo3s.H1 * SV_12 )*delta(a2,iMPO3s12);
     
 	// mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),iMPO3s12);
-	mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),a2);
-	ITensor SV_23;
-    svd(temp,mpo3s.H2,SV_23,mpo3s.H3);
+	//mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),a2);
+	//ITensor SV_23;
+    O2_LR = ITensor(s2,s2p,a2);
+    O2_RL = ITensor(s2,s2p,a3);
+    svd(tempLR,O2_LR,SV_23_LR,O3_LR);
+    svd(tempRL,O2_RL,SV_12_RL,O1_RL);
     /*
      *  s1'                    s2'                    s3' 
      *   |                      |                      |
@@ -1063,7 +1081,8 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
      *  s1                     s2                     s3
      *
      */
-    PrintData(SV_23); 
+    PrintData(SV_23_LR);
+    PrintData(SV_12_RL); 
 
 	// pw = 1.0/2.0; 
 	// SV_23.apply(pow_T);
@@ -1105,9 +1124,13 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	// 	mpo3s.H3 /= m3;	
 	// }
 	 
-	PrintData(mpo3s.H1);
-	PrintData(mpo3s.H2);
-	PrintData(mpo3s.H3);
+	PrintData(O1_LR);
+	PrintData(O2_LR);
+	PrintData(O3_LR);
+
+	PrintData(O1_RL);
+	PrintData(O2_RL);
+	PrintData(O3_RL);
 
 	return mpo3s;
 }
