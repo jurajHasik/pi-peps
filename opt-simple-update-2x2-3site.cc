@@ -413,7 +413,7 @@ int main( int argc, char *argv[] ) {
         for (int i=1; i<=aIA.m(); i++ ) {
             l5I.set(prime(aIC,3)(i), prime(aIA,1)(i), 
                 1.0/l5.real(prime(aIC,3)(i), prime(aIA,1)(i)));
-            l1I.set(prime(aIB,3)(i), aIA(i), 1.0/l1.real(prime(aIB,3)(i), aIA(i)));
+            l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
         }
         l5I.apply(regT);
         l1I.apply(regT);
