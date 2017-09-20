@@ -5,7 +5,7 @@
 
 using namespace itensor;
 
-// Compupte expectation value of 2site OP over 2x2 supercell {{A,B},{B,A}} 
+// Compute expectation value of 2site OP over 2x2 supercell {{A,B},{B,A}} 
 // with weights lambda1..lambda4
 //
 // <bra|    A    B   
@@ -291,7 +291,7 @@ int main( int argc, char *argv[] ) {
     // auto H_nnh = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIB);
 
     // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
-    MPO_3site uJ1J2(getMPO3s_Uj1j2(arg_tau, arg_J1, arg_J2));
+    MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2));
 
     // Prepare Sites (from cluster) + weights to begin optimization 
     // procedure
@@ -354,80 +354,96 @@ int main( int argc, char *argv[] ) {
 
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
-    // for (int nStep=1; nStep<=arg_nIter; nStep++) {
-        
-    //     // Apply 2-site op along bond A--l2--B
-    //     A = A*l1*l3*l4;
-    //     B = B*l4*l1*l3;
-    //     applyH_T1_L_T2(nnh, A, B, l2);
-    //     A = A*l1I*l3I*l4I;
-    //     B = B*l4I*l1I*l3I;
-
-    //     for (int i=1; i<=aIA.m(); i++ ) {
-    //         l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
-    //     }
-    //     l2I.apply(regT);
-    //     //PrintData(l2I);
-    //     // std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
-    //     // Print(A);
-    //     // Print(l2);
-    //     // Print(B);
-
-    //     // Apply 2-site op along bond B--l1--A
-    //     A = A*l3*l2*l4;
-    //     B = B*l2*l4*l3;
-    //     applyH_T1_L_T2(nnh, A, B, l1);
-    //     //applyH_T1_L_T2_DBG(nnh, A, B, l1);
-    //     A = A*l3I*l2I*l4I;
-    //     B = B*l2I*l4I*l3I;
-
-    //     for (int i=1; i<=aIA.m(); i++ ) {
-    //         l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
-    //     }
-    //     l1I.apply(regT);
-    //     //PrintData(l1I);
-    //     // std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
-    //     // Print(B);
-    //     // Print(l1);
-    //     // Print(A);
-
-    //     // Apply 2-site op along bond A--l4--B
-    //     A = A*l1*l3*l2;
-    //     B = B*l1*l3*l2;
-    //     applyH_T1_L_T2(nnh, A, B, l4);
-    //     A = A*l1I*l3I*l2I;
-    //     B = B*l1I*l3I*l2I;
-
-    //     for (int i=1; i<=aIA.m(); i++ ) {
-    //         l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
-    //             1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
-    //     }
-    //     l4I.apply(regT);
-    //     //PrintData(l4I);
-    //     // std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
-    //     // Print(A);
-    //     // Print(l4);
-    //     // Print(B);
-
-    //     // Apply 2-site op along bond B--l3--A
-    //     A = A*l2*l4*l1;
-    //     B = B*l2*l4*l1;
-    //     applyH_T1_L_T2(nnh, A, B, l3);
-    //     //applyH_T1_L_T2_DBG(nnh, A, B, l3);
-    //     A = A*l2I*l4I*l1I;
-    //     B = B*l2I*l4I*l1I;
-
-    //     for (int i=1; i<=aIA.m(); i++ ) {
-    //         l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
-    //             1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
-    //     }
-    //     l3I.apply(regT);
-    //     //PrintData(l3I);
-    //     // std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
-    //     // Print(B);
-    //     // Print(l3);
-    //     // Print(A);
     
+    for (int nStep=1; nStep<=arg_nIter; nStep++) {
+        // Apply 3-site op along bond A--l2--B--l8--D
+        std::cout << "##### APPLYING U123 A--l2--B--l8--D #####" << std::endl;
+        A = A*l1*l5*l6;
+        B = B*l7*l1;
+        D = D*l3*l7*l4;
+        applyH_123_X(uJ1J2, A, B, D, l2, l8);
+        A = A*l1I*l5I*l6I;
+        B = B*l7I*l1I;
+        D = D*l3I*l7I*l4I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
+            l8I.set(prime(aIB,3)(i), prime(aID,1)(i), 
+                1.0/l8.real(prime(aIB,3)(i), prime(aID,1)(i)));
+        }
+        l2I.apply(regT);
+        l8I.apply(regT);
+        std::cout << "##### DONE A--l2--B--l8--D #####" << std::endl;
+        Print(A);
+        Print(B);
+        Print(D);
+
+        // Apply 3-site op along bond A--l6--C--l4--D
+        std::cout << "##### APPLYING U123 A--l6--C--l4--D #####" << std::endl;
+        A = A*l1*l5*l2;
+        C = C*l3*l5;
+        D = D*l8*l3*l7;
+        applyH_123_X(uJ1J2, A, C, D, l6, l4);
+        A = A*l1I*l5I*l2I;
+        C = C*l3I*l5I;
+        D = D*l8I*l3I*l7I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l6I.set(prime(aIA,3)(i), prime(aIC,1)(i), 
+                1.0/l6.real(prime(aIA,3)(i), prime(aIC,1)(i)));
+            l4I.set(prime(aIC,2)(i), aID(i), 1.0/l4.real(prime(aIC,2)(i), aID(i)));
+        }
+        l6I.apply(regT);
+        l4I.apply(regT);
+        std::cout << "##### DONE A--l6--C--l4--D #####" << std::endl;
+        Print(A);
+        Print(C);
+        Print(D);
+
+        // Apply 3-site op along bond C--l5--A--l1--B
+        std::cout << "##### APPLYING U123 C--l5--A--l1--B #####" << std::endl;
+        C = C*l3*l6*l4;
+        A = A*l2*l6;
+        B = B*l2*l7*l8;
+        applyH_123_X(uJ1J2, C, A, B, l5, l1);
+        C = C*l3I*l6I*l4I;
+        A = A*l2I*l6I;
+        B = B*l2I*l7I*l8I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l5I.set(prime(aIC,3)(i), prime(aIA,1)(i), 
+                1.0/l5.real(prime(aIC,3)(i), prime(aIA,1)(i)));
+            l1I.set(prime(aIB,3)(i), aIA(i), 1.0/l1.real(prime(aIB,3)(i), aIA(i)));
+        }
+        l5I.apply(regT);
+        l1I.apply(regT);
+        std::cout << "##### DONE C--l5--A--l1--B #####" << std::endl;
+        Print(C);
+        Print(A);
+        Print(B);
+
+        // Apply 3-site op along bond C--l3--D--l7--B
+        std::cout << "##### APPLYING U123 C--l3--D--l7--B #####" << std::endl;
+        C = C*l6*l4*l5;
+        D = D*l4*l8;
+        B = B*l1*l8*l2;
+        applyH_123_X(uJ1J2, C, D, B, l3, l7);
+        C = C*l6I*l4I*l5I;
+        D = D*l4I*l8I;
+        B = B*l1I*l8I*l2I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l3I.set(prime(aID,2)(i), aIC(i), 1.0/l3.real(prime(aID,2)(i), aIC(i)));
+            l7I.set(prime(aID,3)(i), prime(aIB,1)(i),
+                1.0/l7.real(prime(aID,3)(i), prime(aIB,1)(i)));
+        }
+        l3I.apply(regT);
+        l7I.apply(regT);
+        std::cout << "##### DONE C--l3--D--l7--B #####" << std::endl;
+        Print(C);
+        Print(D);
+        Print(B);
+
     //     if ( nStep % 1000 == 0 ) { 
     //         t_iso_end = std::chrono::steady_clock::now();
     //         std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
@@ -464,7 +480,7 @@ int main( int argc, char *argv[] ) {
     //         }
     //         e_nnh_prev = e_nnh;
     //     }
-    // }
+    }
 
     // Set new sites to cluster
     auto sqrtT = [](double r) { return sqrt(r); };
@@ -479,20 +495,20 @@ int main( int argc, char *argv[] ) {
     l8.apply(sqrtT);
 
     A = A * l1 * l2 * l5 * l6;
-    A = swapPrime(A, 0, 2);
-    A = swapPrime(A, 1, 3);
+    A = ( ( (A*delta(aIA, prime(aIB,2))) *delta(prime(aIA,1), prime(aIC,3))) 
+            *delta(prime(aIA,2), aIB) ) *delta(prime(aIA,3), prime(aIC,1));
 
     B = B * l2 * l1 * l7 * l8;
-    B = swapPrime(B, 0, 2);
-    B = swapPrime(B, 1, 3);
+    B = ( ( (B*delta(aIB, prime(aIA,2))) *delta(prime(aIB,1), prime(aID,3)))
+            *delta(prime(aIB,2), aIA)) *delta(prime(aIB,3), prime(aID,1));
 
     C = C * l3 * l4 * l6 * l5;
-    C = swapPrime(C, 0, 2);
-    C = swapPrime(C, 1, 3);
+    C = ( ( (C*delta(aIC, prime(aID,2))) *delta(prime(aIC,1), prime(aIA,3)))
+            *delta(prime(aIC,2), aID)) *delta(prime(aIC,3), prime(aIA,1));
 
     D = D * l4 * l3 * l8 * l7;
-    D = swapPrime(D, 0, 2);
-    D = swapPrime(D, 1, 3);
+    D = ( ( (D*delta(aID, prime(aIC,2))) *delta(prime(aID,1), prime(aIB,3)))
+            *delta(prime(aID,2), aIC)) *delta(prime(aID,3), prime(aIB,1));
 
     // Build new cluster
     cls.sites = {{"A",A}, {"B",B}, {"C",C}, {"D",D}};

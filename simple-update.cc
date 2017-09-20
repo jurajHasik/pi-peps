@@ -967,13 +967,8 @@ MPO_3site getMPO3s_Id_v2(int physDim) {
 }
 
 MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
-	MPO_3site mpo3s;
 	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
-
-	// Define physical indices
-	mpo3s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
-	mpo3s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
-	mpo3s.Is3 = Index(TAG_MPO3S_PHYS3,physDim,PHYS);
+	std::cout.precision(10);
 
 	Index s1 = Index("S1", physDim, PHYS);
 	Index s2 = Index("S2", physDim, PHYS);
@@ -982,7 +977,7 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	Index s2p = prime(s2);
 	Index s3p = prime(s3);
 
-	// define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
+	// STEP1 define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
 	double a = -tau*J1/8.0;
 	double b = -tau*J2/4.0;
 	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
@@ -1015,21 +1010,15 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 
 	PrintData(u123);
 
+	// STEP2 decompose u123 from Left to Right (LR) and RL
 	ITensor SV_12_LR, SV_23_LR, O1_LR, O2_LR, O3_LR, tempLR;
-	ITensor SV_12_RL, SV_23_RL, O1_RL, O2_RL, O3_RL, tempRL;
 
     double pw;
 	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
 
-	// u123 = (u123 * delta(mpo3s.Is1,s1)) * delta(prime(mpo3s.Is1),s1p);
-	// u123 = (u123 * delta(mpo3s.Is2,s2)) * delta(prime(mpo3s.Is2),s2p);
-	// u123 = (u123 * delta(mpo3s.Is3,s3)) * delta(prime(mpo3s.Is3),s3p);
-	// mpo3s.H1 = ITensor(mpo3s.Is1,prime(mpo3s.Is1));
- //    ITensor SV_12,temp;
+	// first SVD
 	O1_LR = ITensor(s1,s1p);
-	O3_RL = ITensor(s3,s3p);
     svd(u123,O1_LR,SV_12_LR,tempLR);
-    svd(u123,O3_RL,SV_23_RL,tempRL);
     /*
      *  s1'                    s2' s3' 
      *   |                      |  |
@@ -1038,62 +1027,51 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
      *  s1                     s2  s3
      *
      */
+    //PrintData(SV_12_LR);
+
+    Index a1_LR = commonIndex(SV_12_LR,O1_LR);
+    Index a2_LR = commonIndex(SV_12_LR,tempLR);
+
+    pw = 2.0/3.0;
+    SV_12_LR.apply(pow_T);
 
     /*
-     *  s1' s2'                   s3' 
-     *   |  |                     |
-     *  |temp|--a3--<SV_23>--a4--|H3|
-     *   |  |                     |
-     *  s1  s2                    s3
+     *  s1'                                     s2' s3' 
+     *   |                                       |  |
+     *  |H1|--a1--<SV_12>^1/3--<SV_12>^2/3--a2--|temp|
+     *   |                                       |  |
+     *  s1                                      s2  s3
      *
      */
-    PrintData(SV_12_LR);
-    PrintData(SV_23_RL);
-
-    //Index a1 = commonIndex(mpo3s.H1,SV_12);
-    //Index a2 = commonIndex(SV_12,temp);
-    Index a2 = commonIndex(SV_12_LR,tempLR);
-    Index a3 = commonIndex(SV_23_RL,tempRL);
-
-    // Define aux indices linking the on-site MPOs
-	// Index iMPO3s12(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
-	
-	// pw = 2.0/3.0;
-	// SV_12.apply(pow_T); // x^2/3
-	// temp = ( temp * SV_12 )*delta(a1,iMPO3s12);
-
-	// pw = 1.0/2.0; 
-	// SV_12.apply(pow_T); // x^(2/3*1/2) = x^1/3
- //    mpo3s.H1 = ( mpo3s.H1 * SV_12 )*delta(a2,iMPO3s12);
+    tempLR = (tempLR * SV_12_LR); // --a1_LR
     
-	// mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),iMPO3s12);
-	//mpo3s.H2 = ITensor(mpo3s.Is2,prime(mpo3s.Is2,1),a2);
-	//ITensor SV_23;
-    O2_LR = ITensor(s2,s2p,a2);
-    O2_RL = ITensor(s2,s2p,a3);
+    // apply(pow_T); // x^(2/3*1/2) = x^1/3
+	pw = 1.0/2.0;
+	SV_12_LR.apply(pow_T);
+
+	O1_LR = O1_LR * SV_12_LR; // --a2_LR 
+
+	// second SVD
+    O2_LR = ITensor(s2,s2p,a1_LR);
     svd(tempLR,O2_LR,SV_23_LR,O3_LR);
-    svd(tempRL,O2_RL,SV_12_RL,O1_RL);
     /*
      *  s1'                    s2'                    s3' 
      *   |                      |                      |
-     *  |H1|--a1--<SV_12>--a2--|H2|--a3--<SV_23>--a4--|H3|
+     *  |H1|--a2 		   a1--|H2|--a3--<SV_23>--a4--|H3|
      *   |                      |                      |
      *  s1                     s2                     s3
      *
      */
-    PrintData(SV_23_LR);
-    PrintData(SV_12_RL); 
+    // PrintData(SV_23_LR);
 
-	// pw = 1.0/2.0; 
-	// SV_23.apply(pow_T);
-	
-	// Index a3 = commonIndex(mpo3s.H2,SV_23);
-	// Index a4 = commonIndex(SV_23,mpo3s.H3);
-	// Index iMPO3s23(TAG_MPO3S_23LINK,a3.m(),MPOLINK);
-	// mpo3s.H2 = (mpo3s.H2 * SV_23)*delta(a4,iMPO3s23);
-	// mpo3s.H3 = (mpo3s.H3 * SV_23)*delta(a3,iMPO3s23);
+    Index a3_LR = commonIndex(SV_23_LR,O2_LR);
+    Index a4_LR = commonIndex(SV_23_LR,O3_LR);
 
-	// PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+	pw = 1.0/2.0;
+	SV_23_LR.apply(pow_T);
+
+	O2_LR = O2_LR * SV_23_LR; // --a4_LR
+	O3_LR = O3_LR * SV_23_LR; // --a3_LR
 
 	// double m1, m2, m3;
 	// double sign1, sign2, sign3;
@@ -1128,9 +1106,167 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	PrintData(O2_LR);
 	PrintData(O3_LR);
 
-	PrintData(O1_RL);
-	PrintData(O2_RL);
-	PrintData(O3_RL);
+	MPO_3site mpo3s;
+	// Define physical indices
+	mpo3s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo3s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+	mpo3s.Is3 = Index(TAG_MPO3S_PHYS3,physDim,PHYS);
+
+	// Define aux indices linking the on-site MPOs
+	Index iMPO3s12(TAG_MPO3S_12LINK,a1_LR.m(),MPOLINK);
+	Index iMPO3s23(TAG_MPO3S_23LINK,a3_LR.m(),MPOLINK);
+
+	/*
+     *  s1'                    s2'                    s3' 
+     *   |                      |                      |
+     *  |H1|--a2 		   a1--|H2|--a4           a3--|H3|
+     *   |                      |                      |
+     *  s1                     s2                     s3
+     *
+     */
+	O1_LR = O1_LR * delta(a2_LR,iMPO3s12);
+	O2_LR = (O2_LR * delta(a1_LR,iMPO3s12)) *delta(a4_LR,iMPO3s23);
+	O3_LR = O3_LR * delta(a3_LR,iMPO3s23);
+
+	mpo3s.H1 = (O1_LR*delta(s1,mpo3s.Is1))*delta(s1p,prime(mpo3s.Is1));
+	mpo3s.H2 = (O2_LR*delta(s2,mpo3s.Is2))*delta(s2p,prime(mpo3s.Is2));
+	mpo3s.H3 = (O3_LR*delta(s3,mpo3s.Is3))*delta(s3p,prime(mpo3s.Is3));
+
+	PrintData(mpo3s.H1);
+	PrintData(mpo3s.H2);
+	PrintData(mpo3s.H3);
+	PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+
+	return mpo3s;
+}
+
+MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
+	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+	std::cout.precision(10);
+
+	Index s1 = Index("S1", physDim, PHYS);
+	Index s2 = Index("S2", physDim, PHYS);
+	Index s3 = Index("S3", physDim, PHYS);
+	Index s1p = prime(s1);
+	Index s2p = prime(s2);
+	Index s3p = prime(s3);
+
+	// STEP1 define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
+	double a = -tau*J1/8.0;
+	double b = -tau*J2/4.0;
+	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+	double el1 = exp(2.0*a + b);
+	u123.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el1);
+	u123.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el1);
+	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))+3.0);
+	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el2);
+	u123.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el2);
+	u123.set(s1(2),s2(1),s3(1),s1p(2),s2p(1),s3p(1),el2);
+	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(2),s3p(1),el2);
+	double el3 = (1.0/3.0)*exp(b-4.0*a)*(-1.0+exp(6.0*a));
+	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(2),s3p(1),el3);
+	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(1),s3p(2),el3);
+	u123.set(s1(1),s2(2),s3(1),s1p(2),s2p(1),s3p(1),el3);
+	u123.set(s1(1),s2(2),s3(2),s1p(2),s2p(1),s3p(2),el3);
+	u123.set(s1(2),s2(1),s3(1),s1p(1),s2p(2),s3p(1),el3);
+	u123.set(s1(2),s2(1),s3(2),s1p(1),s2p(2),s3p(2),el3);
+	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(2),s3p(1),el3);
+	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(1),s3p(2),el3);
+	double el4 = (1.0/3.0)*exp(b-4.0*a)*(2.0+exp(6.0*a));
+	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el4);
+	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el4);
+	double el5 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))-3.0);
+	u123.set(s1(1),s2(1),s3(2),s1p(2),s2p(1),s3p(1),el5);
+	u123.set(s1(1),s2(2),s3(2),s1p(2),s2p(2),s3p(1),el5);
+	u123.set(s1(2),s2(1),s3(1),s1p(1),s2p(1),s3p(2),el5);
+	u123.set(s1(2),s2(2),s3(1),s1p(1),s2p(2),s3p(2),el5);
+	// definition of U_123 done
+	//PrintData(u123);
+
+	// STEP2 decompose u123 from Left to Right (LR) and RL
+	ITensor O1t, O3t, SVt, O1, O2, O3, SV1t, SV3t, O2Lt, O2Rt;
+
+    double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+	// first SVD
+	O1t = ITensor(s1,s1p,s2);
+    svd(u123,O1t,SVt,O3t);
+    /*
+     *  s1'                  s2' s3' 
+     *   |                    \  |
+     *  |O1t|--a1--<SVt>--a2--|O3t|
+     *   |  \                    |
+     *  s1  s2                   s3
+     *
+     */
+    Index a1 = commonIndex(O1t,SVt);
+    Index a2 = commonIndex(SVt,O3t);
+
+    pw = 0.5;
+    SVt.apply(pow_T);
+
+    O1t = O1t*SVt;
+    O3t = O3t*SVt;
+
+    O1 = ITensor(s1,s1p);
+    svd(O1t,O1,SV1t,O2Lt);
+    /*
+     *  s1'
+     *   |
+     *  |O1|--a1L--<SV1t>--a2L--|O2Lt|--a1
+     *   |                        |
+     *  s1                        s2
+     *
+     */
+    Index a1L = commonIndex(O1,SV1t);
+    Index a2L = commonIndex(SV1t,O2Lt);
+
+    O3 = ITensor(s3,s3p);
+    svd(O3t,O3,SV3t,O2Rt);
+    /*
+     *        s2'                      s3'
+     *        |                        | 
+     *  a2--|O2Rt|--a1R--<SV3t>--a2R--|O3|
+     *                                 |
+     *                                 s3
+     *
+     */
+    Index a1R = commonIndex(O2Rt,SV3t);
+    Index a2R = commonIndex(SV3t,O3);
+
+    // PrintData(SV1t);
+    // PrintData(SV3t);
+
+    pw = 0.5;
+    SV1t.apply(pow_T);
+	SV3t.apply(pow_T);
+
+	O1 = O1*SV1t;
+	O3 = O3*SV3t;
+	O2 = SV1t * (O2Lt*delta(a1,a2)) * O2Rt * SV3t;
+
+	MPO_3site mpo3s;
+	// Define physical indices
+	mpo3s.Is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+	mpo3s.Is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+	mpo3s.Is3 = Index(TAG_MPO3S_PHYS3,physDim,PHYS);
+
+	// Define aux indices linking the on-site MPOs
+	Index iMPO3s12(TAG_MPO3S_12LINK,a1L.m(),MPOLINK);
+	Index iMPO3s23(TAG_MPO3S_23LINK,a2R.m(),MPOLINK);
+
+	mpo3s.H1 = ((O1*delta(s1,mpo3s.Is1)) *delta(s1p,prime(mpo3s.Is1)))
+		*delta(a2L,iMPO3s12);
+	mpo3s.H2 = ( ((O2*delta(s2,mpo3s.Is2)) *delta(s2p,prime(mpo3s.Is2)))
+		*delta(a1L,iMPO3s12)) *delta(a2R,iMPO3s23);
+	mpo3s.H3 = ((O3*delta(s3,mpo3s.Is3)) *delta(s3p,prime(mpo3s.Is3)))
+		*delta(iMPO3s23,a1R);
+
+	PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+	// PrintData(mpo3s.H1);
+    // PrintData(mpo3s.H2);
+    // PrintData(mpo3s.H3);
 
 	return mpo3s;
 }
@@ -1288,6 +1424,185 @@ void applyH_123(MPO_3site const& mpo3s,
 	PrintData(SV_L23);
 	PrintData(T2);
 	PrintData(T3);
+}
+
+void applyH_123_X(MPO_3site const& mpo3s, 
+	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23) {
+	/* Input is assumed to define following TN
+	 *
+	 *        s1                 s2                 s3 
+	 *     | /                | /                | /
+     *  --|T1|--a1--l12--a2--|T2|--a3--l23--a4--|T3|
+     *     |                  |                  |   
+     *
+     */
+    Print(T1);
+    Print(T2);
+    Print(T3); 
+
+    Index s1 = noprime(findtype(T1.inds(), PHYS));
+    Index s2 = noprime(findtype(T2.inds(), PHYS));
+    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index a1 = commonIndex(T1,l12);
+    Index a2 = commonIndex(l12,T2);
+    Index a3 = commonIndex(T2,l23);
+    Index a4 = commonIndex(l23,T3);
+    Print(a1);
+    Print(a4);
+
+	std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
+	std::cout << mpo3s;
+	Print(mpo3s.H1);
+    Print(mpo3s.H2);
+    Print(mpo3s.H3);
+
+	Print(l12);
+	Print(l23);
+
+	double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+	// STEP 1 Absorb sqrt of l12 and l23 to tensor T1, T2, T3
+	pw = 0.5;
+	l12.apply(pow_T);
+	l23.apply(pow_T);
+
+	T1 = (T1 * l12) *delta(a2, a1); //--a1
+	T2 = (l12 * T2 * l23); // a1-- --a4
+	T3 = (T3 * l23) *delta(a3, a4); //--a4
+	
+	Print(T1);
+	Print(T2);
+	Print(T3);
+
+    // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
+	/*
+	 * First we decompose the on-site tensors T1, T2, T3 to simpler 
+	 * objects containing only the links over which H1--H2--H3 acts
+	 * 
+	 * 
+	 *
+	 *      s1                          s1
+	 *    | /            |             / 
+	 * --|T1|--a1 => --|rT1|--<SV1>--|mT1|--a1
+	 *    |              |
+	 *
+	 *         s2              s2
+	 *      | /               /
+	 * a1--|T2|--a4 => a1--|mT2|--a2 
+	 *      |                | 
+     *                    <SV2>
+     *                       | /
+     *                     |rT2|
+     *                      /
+     *                
+     *         s3           s3
+     *      | /            /             |
+     * a4--|T3|-- => a4--|mT3|--<SV3>--|rT3|--
+     *      |                            |
+     *
+     */
+
+    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+    mT1 = ITensor(s1, a1);
+    mT2 = ITensor(s2, a1, a4);
+    mT3 = ITensor(s3, a4);
+    factor(T1, mT1, rT1);
+	factor(T2, mT2, rT2);
+	factor(T3, mT3, rT3);
+
+	Index am1 = commonIndex(rT1, mT1);
+	Index am2 = commonIndex(rT2, mT2);
+	Index am3 = commonIndex(rT3, mT3);
+
+	Print(mT1);
+	Print(mT2);
+	Print(mT3);
+
+	/*
+	 * Applying 3-site MPO leads to a new tensor network of the form
+	 *
+	 *        am1 
+	 *         |     __                   s1 s2  s3
+	 *       |mT1|~~|H1|~~s1             __|__|__|__
+	 *         |     |        ==        |           |
+	 *  am2--|mT2|~~|H2|~~s2  ==   am1--|1~  2~  3~ |--am3  
+	 *         |     |        ==        |___________|
+	 *       |mT3|~~|H3|~~s3                 |
+	 *         |                            am2
+	 *        am3
+	 *
+	 * Indices s1,s2,s3 are relabeled back to physical indices of 
+	 * original sites 1,2 and 3 after applying MPO.
+	 *
+	 */
+	// std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
+	ITensor res = (mT1*delta(s1,mpo3s.Is1))*(mT2*delta(s2,mpo3s.Is2))
+		*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
+	Print(res);
+	res = ((res.noprime(PHYS)*delta(s1,mpo3s.Is1))*delta(s2,mpo3s.Is2))
+		*delta(s3,mpo3s.Is3);
+	Print(res);
+
+	/*
+	 * Perform SVD to extract the tensor associated to s1 and truncate
+	 * the resulting SVD matrices back to auxBond dimension 
+	 *
+	 *          s1 s2 s3
+	 *        __|__|__|__                   s1                 s2  s3
+	 *       |           |      ==>         |                  |   |
+	 *  am1--|1~  2~  3~ |--am3 ==>  am1--|mT1|--n1--l12--n2--|2~ 3~|--am3  
+	 *       |___________|      ==>                            |
+	 *             |                                          am2 
+	 *            am2
+	 *
+	 */
+	mT1 = ITensor(s1,am1);
+	svd(res, mT1, sv1, res, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n1 = commonIndex(mT1,sv1);
+	Index n2 = commonIndex(sv1,res);
+
+	Print(mT1);
+	Print(sv1);
+
+	//PRB 82, 245119, 2010
+	/*
+	 * Perform SVD of tensor obtained by contrating result from previous SVD
+	 * with matrix of singular values and again reduce the resulting SV matrix
+	 *
+	 *            s2  s3                    s2                 s3
+	 *        ____|___|__                   |                  |
+	 *   n1--|l12 2~  3~ |--am3  ==>  n1--|mT2|--n3--l23--n4--|mT3|--am3
+     *            |                         |
+	 *           am2                       am2
+	 *
+	 */
+	mT2 = ITensor(n1,s2,am2);
+	svd(res*sv1, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n3 = commonIndex(mT2,sv2);
+	Index n4 = commonIndex(sv2,mT3);
+
+	Print(mT2);
+	Print(sv2);
+	Print(mT3);
+
+	// Reconstruct on-site tensors by contraction with remainders
+	T1 = (rT1*mT1) *delta(n1,a1);
+	T2 = ((rT2*mT2) *delta(n1,a2)) *delta(n3,a3);
+	T3 = (rT3*mT3) *delta(n4,a4);
+
+	for (int i=1; i<=a1.m(); i++) {
+		l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
+		l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
+	}
+	l12 = l12 / norm(l12);
+	l23 = l23 / norm(l23);
+
+	Print(T1);
+	Print(T2);
+	Print(T3);
+	Print(l12);
+	Print(l23);
 }
 
 void applyH_123_v2(MPO_3site const& mpo3s, 
