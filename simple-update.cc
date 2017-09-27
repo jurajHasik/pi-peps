@@ -1579,6 +1579,8 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	 */
 	mT2 = ITensor(n1,s2,am2);
 	svd(res*sv1, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
+	//mT2 = ITensor(n2,s2,am2);
+	//svd(res, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
 	Index n3 = commonIndex(mT2,sv2);
 	Index n4 = commonIndex(sv2,mT3);
 
@@ -1589,6 +1591,7 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	// Reconstruct on-site tensors by contraction with remainders
 	T1 = (rT1*mT1) *delta(n1,a1);
 	T2 = ((rT2*mT2) *delta(n1,a2)) *delta(n3,a3);
+	//T2 = ((rT2*mT2) *delta(n2,a2)) *delta(n3,a3);
 	T3 = (rT3*mT3) *delta(n4,a4);
 
 	for (int i=1; i<=a1.m(); i++) {

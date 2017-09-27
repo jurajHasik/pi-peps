@@ -444,6 +444,94 @@ int main( int argc, char *argv[] ) {
         Print(D);
         Print(B);
 
+        // Apply 3-site op along bond C--l4--D--l8--B
+        std::cout << "##### APPLYING U123 C--l4--D--l8--B #####" << std::endl;
+        C = C*l6*l5*l3;
+        D = D*l7*l3;
+        B = B*l2*l7*l1;
+        applyH_123_X(uJ1J2, C, D, B, l4, l8);
+        C = C*l6I*l5I*l3I;
+        D = D*l7I*l3I;
+        B = B*l2I*l7I*l1I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l4I.set(prime(aIC,2)(i), aID(i), 1.0/l4.real(prime(aIC,2)(i), aID(i)));
+            l8I.set(prime(aIB,3)(i), prime(aID,1)(i),
+                1.0/l8.real(prime(aIB,3)(i), prime(aID,1)(i)));
+        }
+        l4I.apply(regT);
+        l8I.apply(regT);
+        std::cout << "##### DONE C--l4--D--l8--B #####" << std::endl;
+        Print(C);
+        Print(D);
+        Print(B);
+
+        // Apply 3-site op along bond C--l6--A--l2--B
+        std::cout << "##### APPLYING U123 C--l6--A--l2--B #####" << std::endl;
+        C = C*l4*l5*l3;
+        A = A*l1*l5;
+        B = B*l7*l1*l8;
+        applyH_123_X(uJ1J2, C, A, B, l6, l2);
+        C = C*l4I*l5I*l3I;
+        A = A*l1I*l5I;
+        B = B*l7I*l1I*l8I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l6I.set(prime(aIA,3)(i), prime(aIC,1)(i), 
+                1.0/l6.real(prime(aIA,3)(i), prime(aIC,1)(i)));
+            l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
+        }
+        l6I.apply(regT);
+        l2I.apply(regT);
+        std::cout << "##### DONE C--l6--A--l2--B #####" << std::endl;
+        Print(C);
+        Print(A);
+        Print(B);
+
+        // Apply 3-site op along bond D--l3--C--l5--A
+        std::cout << "##### APPLYING U123 D--l3--C--l5--A #####" << std::endl;
+        D = D*l8*l7*l4;
+        C = C*l6*l4;
+        A = A*l2*l6*l1;
+        applyH_123_X(uJ1J2, D, C, A, l3, l5);
+        D = D*l8I*l7I*l4I;
+        C = C*l6I*l4I;
+        A = A*l2I*l6I*l1I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l5I.set(prime(aIC,3)(i), prime(aIA,1)(i), 
+                1.0/l5.real(prime(aIC,3)(i), prime(aIA,1)(i)));
+            l3I.set(prime(aID,2)(i), aIC(i), 1.0/l3.real(prime(aID,2)(i), aIC(i)));
+        }
+        l3I.apply(regT);
+        l5I.apply(regT);
+        std::cout << "##### DONE D--l3--C--l5--A #####" << std::endl;
+        Print(A);
+        Print(C);
+        Print(D);
+
+        // Apply 3-site op along bond D--l7--B--l1--A
+        std::cout << "##### APPLYING U123 D--l7--B--l1--A #####" << std::endl;
+        D = D*l4*l8*l3;
+        B = B*l8*l2;
+        A = A*l5*l2*l6;
+        applyH_123_X(uJ1J2, D, B, A, l7, l1);
+        D = D*l4I*l8I*l3I;
+        B = B*l8I*l2I;
+        A = A*l5I*l2I*l6I;
+
+        for (int i=1; i<=aIA.m(); i++ ) {
+            l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
+            l7I.set(prime(aID,3)(i), prime(aIB,1)(i), 
+                1.0/l7.real(prime(aID,3)(i), prime(aIB,1)(i)));
+        }
+        l1I.apply(regT);
+        l7I.apply(regT);
+        std::cout << "##### DONE D--l7--B--l1--A #####" << std::endl;
+        Print(D);
+        Print(B);
+        Print(A);
+
     //     if ( nStep % 1000 == 0 ) { 
     //         t_iso_end = std::chrono::steady_clock::now();
     //         std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast

@@ -1651,7 +1651,6 @@ std::pair<ITensor, ITensor> CtmEnv::build_halves(char ctmMove, int col,
     return std::make_pair(upper_h, lower_h);
 }
 
-
 ITensor CtmEnv::build_corner(char corner, int col, int row) const {
     ITensor ct;
     int siteIndex = cToS.at(std::make_pair(col,row));
