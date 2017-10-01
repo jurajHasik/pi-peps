@@ -16,17 +16,17 @@ using namespace itensor;
 //        | A  | B
 //        B    A    |ket>
 //
-std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s, 
-    ITensor const& A, ITensor const& B, ITensor const& l1, ITensor const& l2,
-    ITensor const& l3, ITensor const& l4) {
+std::vector< std::complex<double> > getEV2Site(
+    std::pair< ITensor, ITensor > const& op2s, ITensor const& A, ITensor const& B,
+    ITensor const& l1, ITensor const& l2, ITensor const& l3, ITensor const& l4) {
 
     // Set new sites to cluster
     auto squareT = [](double r) { return r*r; };
 
     auto aIA = noprime(findtype(A.inds(), AUXLINK));
     auto aIB = noprime(findtype(B.inds(), AUXLINK));
-    //auto pIA = noprime(findtype(A.inds(), PHYS));
-    //auto pIB = noprime(findtype(B.inds(), PHYS));
+    auto pIA  = noprime(findtype(A.inds(), PHYS));
+    auto pIB  = noprime(findtype(B.inds(), PHYS));
 
     /*
      * A--l2--B
@@ -47,11 +47,11 @@ std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s,
     //Print(Bra);
 
     /*
-     * l1--A--l2--B--l1
-     *            |
-     *            l3
-     *            |
-     *            A
+     * l1--A--l2--B--l1     pA0--pB0       
+     *            |               |
+     *            l3              |
+     *            |               |
+     *            A              pA1
      *  
      */
     Bra = Bra * (l3*delta(prime(aIB,7),prime(aIB,3))) * prime(A, PHYS, 1);
@@ -92,11 +92,11 @@ std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s,
     /*
      *            l4 
      *            |
-     * l1--A--l2--B--l1
-     *     |      |
-     *     l4     l3
-     *     |      |
-     *     B--l1--A
+     * l1--A--l2--B--l1     pA0--pB0
+     *     |      |          |    |
+     *     l4     l3         |    |
+     *     |      |          |    |
+     *     B--l1--A         pB1--pA1
      *            |
      *            l4
      */
@@ -135,24 +135,48 @@ std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s,
      *     l3     l4
      */
     Bra = Bra * (lTemp*delta(prime(aIA,5),prime(aIA,1)));
+    double cls_norm = norm(Bra);
+    
     //Print(Bra);
 
     auto Ket = prime(conj(Bra),1);
+    /*
+     * pA1--pB1       A--B
+     *  |    |   <=>  |  |
+     * pB2--pA2       C--D
+     *
+     */
 
-    //Print(iPs1);
-    //Print(iPs2);
-
-    Ket = Ket * op2s.first * op2s.second;
+    // op2s.f[pIA 0,1] & op2s.s[pIB 0,1]
+    auto KetAB = Ket * op2s.first * op2s.second;
     //Print(Ket);
 
-    Ket = Ket.mapprime(PHYS,0,1);
-    Ket = Ket.prime(-1);
+    KetAB = KetAB.mapprime(PHYS,0,1);
+    KetAB.prime(-1);
     //Print(Ket);
 
-    double cls_norm = norm(Bra);
-    auto ev_op2s    = sumels(Ket * Bra);
+    // pA1, pB1, pB2, pA2 => op2s => pA0, pB1, pB3, pA2
+    auto KetAC = Ket * op2s.first * prime(op2s.second,PHYS,2); 
+    KetAC.mapprime(pIA,0,1, pIB,3,2); 
+    KetAC.prime(-1);
+    
+    // pA1, pB1, pB2, pA2 => op2s => pA1, pB1, pB3, pA3
+    auto KetCD = Ket * prime(op2s.first,PHYS,2) * prime(op2s.second,PHYS,2); 
+    KetCD.mapprime(PHYS,3,2);
+    KetCD.prime(-1);
 
-    return ev_op2s/cls_norm;
+    // pA1, pB1, pB2, pA2 => op2s => pA1, pB0, pB2, pA3
+    auto KetBD = Ket * prime(op2s.first,PHYS,2) * op2s.second; 
+    KetBD.mapprime(pIA,3,2, pIB,0,1);
+    KetBD.prime(-1);
+
+    std::vector< std::complex<double> > evs = {
+        sumels(KetAB * Bra)/cls_norm, sumels(KetAC * Bra)/cls_norm,
+        sumels(KetCD * Bra)/cls_norm, sumels(KetBD * Bra)/cls_norm };
+
+    std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
+
+    return evs;
 }
 
 int main( int argc, char *argv[] ) {
@@ -317,14 +341,16 @@ int main( int argc, char *argv[] ) {
 
     // Compute Initial value of APPROX(!) energy
     auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
-    std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() << std::endl;
-    auto e_nnh_prev = e_nnh;
+    auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+    std::cout <<"E: "<< avgE.real() <<" + "<< avgE.imag() << std::endl;
+    auto e_nnh_prev = avgE;
 
     // Define "regulator" function to cut-off large values after inversion
     // of weight matrices
     auto regT = [](double r) { 
         return ((abs(r) > 1.0e10) ? 0.0 : r); };
 
+    std::cout.precision(10);
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
@@ -413,29 +439,34 @@ int main( int argc, char *argv[] ) {
             t_iso_begin = std::chrono::steady_clock::now();
         
             auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
-            std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() 
-                << std::endl;
+
+            auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+            // auto aniDist = abs(avgE-e_nnh[0])+abs(avgE-e_nnh[1])+abs(avgE-e_nnh[2])
+            //     +abs(avgE-e_nnh[3]);
+
+            std::cout <<"E: "<< avgE.real() <<" + "<< avgE.imag() 
+                << std::endl;//<<" ani: "<< aniDist << std::endl;
             
             // Check difference against previous value of energy
             //if ( abs(e_nnh.real() - e_nnh_prev.real()) < eps_threshold ) {
-            if ( (e_nnh_prev.real() - e_nnh.real()) < eps_threshold ) {
-                std::cout << "Energy difference < "<< eps_threshold 
-                    << std::endl;
-                std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
-                    << arg_tau/2.0 << std::endl;
-                arg_tau = arg_tau/2.0;
+            // if ( (e_nnh_prev.real() - avgE.real()) < eps_threshold ) {
+            //     std::cout << "Energy difference < "<< eps_threshold 
+            //         << std::endl;
+            //     std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
+            //         << arg_tau/2.0 << std::endl;
+            //     arg_tau = arg_tau/2.0;
 
-                if (arg_tau < tau_threshold) {
-                    std::cout << "tau too small - stopping optimization" 
-                        << std::endl;
-                    break;
-                }    
+            //     if (arg_tau < tau_threshold) {
+            //         std::cout << "tau too small - stopping optimization" 
+            //             << std::endl;
+            //         break;
+            //     }    
 
-                // Get new evolution op with decreased arg_tau
-                //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
-                nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
-            }
-            e_nnh_prev = e_nnh;
+            //     // Get new evolution op with decreased arg_tau
+            //     //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+            //     nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
+            // }
+            e_nnh_prev = avgE;
         }
     }
 
