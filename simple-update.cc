@@ -1426,8 +1426,9 @@ void applyH_123(MPO_3site const& mpo3s,
 	PrintData(T3);
 }
 
-void applyH_123_X(MPO_3site const& mpo3s, 
-	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23) {
+void applyH_123_v1(MPO_3site const& mpo3s, 
+	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
+	bool dbg) {
 	/* Input is assumed to define following TN
 	 *
 	 *        s1                 s2                 s3 
@@ -1436,9 +1437,9 @@ void applyH_123_X(MPO_3site const& mpo3s,
      *     |                  |                  |   
      *
      */
-    Print(T1);
-    Print(T2);
-    Print(T3); 
+    if(dbg) { Print(T1);
+	    Print(T2);
+	    Print(T3); } 
 
     Index s1 = noprime(findtype(T1.inds(), PHYS));
     Index s2 = noprime(findtype(T2.inds(), PHYS));
@@ -1447,17 +1448,17 @@ void applyH_123_X(MPO_3site const& mpo3s,
     Index a2 = commonIndex(l12,T2);
     Index a3 = commonIndex(T2,l23);
     Index a4 = commonIndex(l23,T3);
-    Print(a1);
-    Print(a4);
+    if(dbg) {Print(a1);
+	    Print(a4);
 
-	std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
-	std::cout << mpo3s;
-	Print(mpo3s.H1);
-    Print(mpo3s.H2);
-    Print(mpo3s.H3);
+		std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
+		std::cout << mpo3s;
+		Print(mpo3s.H1);
+	    Print(mpo3s.H2);
+	    Print(mpo3s.H3);
 
-	Print(l12);
-	Print(l23);
+		Print(l12);
+		Print(l23); }	
 
 	double pw;
 	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
@@ -1471,9 +1472,9 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	T2 = (l12 * T2 * l23); // a1-- --a4
 	T3 = (T3 * l23) *delta(a3, a4); //--a4
 	
-	Print(T1);
-	Print(T2);
-	Print(T3);
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3); }
 
     // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
 	/*
@@ -1515,9 +1516,9 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	Index am2 = commonIndex(rT2, mT2);
 	Index am3 = commonIndex(rT3, mT3);
 
-	Print(mT1);
-	Print(mT2);
-	Print(mT3);
+	if(dbg) {Print(mT1);
+		Print(mT2);
+		Print(mT3); }
 
 	/*
 	 * Applying 3-site MPO leads to a new tensor network of the form
@@ -1539,10 +1540,11 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	// std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
 	ITensor res = (mT1*delta(s1,mpo3s.Is1))*(mT2*delta(s2,mpo3s.Is2))
 		*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
-	Print(res);
+	//Print(res);
 	res = ((res.noprime(PHYS)*delta(s1,mpo3s.Is1))*delta(s2,mpo3s.Is2))
 		*delta(s3,mpo3s.Is3);
-	Print(res);
+	//Print(res);
+	ITensor orig = res;
 
 	/*
 	 * Perform SVD to extract the tensor associated to s1 and truncate
@@ -1562,8 +1564,188 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	Index n1 = commonIndex(mT1,sv1);
 	Index n2 = commonIndex(sv1,res);
 
-	Print(mT1);
-	Print(sv1);
+	if(dbg) {Print(mT1);
+		Print(sv1); }
+
+	/*
+	 * Perform SVD of tensor res from previous SVD and again reduce
+	 * the resulting SV matrix
+	 *
+	 *            s2  s3                    s2                 s3
+	 *           __|___|_                   |                  |
+	 *      n2--| 2~  3~ |--am3  ==>  n2--|mT2|--n3--l23--n4--|mT3|--am3
+     *            |                         |
+	 *           am2                       am2
+	 *
+	 */
+	mT2 = ITensor(n2,s2,am2);
+	svd(res, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n3 = commonIndex(mT2,sv2);
+	Index n4 = commonIndex(sv2,mT3);
+
+	if(dbg) {Print(mT2);
+		Print(sv2);
+		Print(mT3); }
+
+	// Reconstruct on-site tensors by contraction with remainders
+	T1 = (rT1*mT1) *delta(n1,a1);
+	T2 = ((rT2*mT2) *delta(n2,a2)) *delta(n3,a3);
+	T3 = (rT3*mT3) *delta(n4,a4);
+
+	for (int i=1; i<=a1.m(); i++) {
+		l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
+		l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
+	}
+	l12 = l12 / norm(l12);
+	l23 = l23 / norm(l23);
+
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3);
+		Print(l12);
+		Print(l23); }
+}
+
+void applyH_123_v2(MPO_3site const& mpo3s, 
+	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
+	bool dbg) {
+	/* Input is assumed to define following TN
+	 *
+	 *        s1                 s2                 s3 
+	 *     | /                | /                | /
+     *  --|T1|--a1--l12--a2--|T2|--a3--l23--a4--|T3|
+     *     |                  |                  |   
+     *
+     */
+    if(dbg) { Print(T1);
+	    Print(T2);
+	    Print(T3); } 
+
+    Index s1 = noprime(findtype(T1.inds(), PHYS));
+    Index s2 = noprime(findtype(T2.inds(), PHYS));
+    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index a1 = commonIndex(T1,l12);
+    Index a2 = commonIndex(l12,T2);
+    Index a3 = commonIndex(T2,l23);
+    Index a4 = commonIndex(l23,T3);
+    if(dbg) {Print(a1);
+	    Print(a4);
+
+		std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
+		std::cout << mpo3s;
+		Print(mpo3s.H1);
+	    Print(mpo3s.H2);
+	    Print(mpo3s.H3);
+
+		Print(l12);
+		Print(l23); }	
+
+	double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+	// STEP 1 Absorb sqrt of l12 and l23 to tensor T1, T2, T3
+	pw = 0.5;
+	l12.apply(pow_T);
+	l23.apply(pow_T);
+
+	T1 = (T1 * l12) *delta(a2, a1); //--a1
+	T2 = (l12 * T2 * l23); // a1-- --a4
+	T3 = (T3 * l23) *delta(a3, a4); //--a4
+	
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3); }
+
+    // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
+	/*
+	 * First we decompose the on-site tensors T1, T2, T3 to simpler 
+	 * objects containing only the links over which H1--H2--H3 acts
+	 * 
+	 * 
+	 *
+	 *      s1                          s1
+	 *    | /            |             / 
+	 * --|T1|--a1 => --|rT1|--<SV1>--|mT1|--a1
+	 *    |              |
+	 *
+	 *         s2              s2
+	 *      | /               /
+	 * a1--|T2|--a4 => a1--|mT2|--a2 
+	 *      |                | 
+     *                    <SV2>
+     *                       | /
+     *                     |rT2|
+     *                      /
+     *                
+     *         s3           s3
+     *      | /            /             |
+     * a4--|T3|-- => a4--|mT3|--<SV3>--|rT3|--
+     *      |                            |
+     *
+     */
+
+    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+    mT1 = ITensor(s1, a1);
+    mT2 = ITensor(s2, a1, a4);
+    mT3 = ITensor(s3, a4);
+    factor(T1, mT1, rT1);
+	factor(T2, mT2, rT2);
+	factor(T3, mT3, rT3);
+
+	Index am1 = commonIndex(rT1, mT1);
+	Index am2 = commonIndex(rT2, mT2);
+	Index am3 = commonIndex(rT3, mT3);
+
+	if(dbg) {Print(mT1);
+		Print(mT2);
+		Print(mT3); }
+
+	/*
+	 * Applying 3-site MPO leads to a new tensor network of the form
+	 *
+	 *        am1 
+	 *         |     __                   s1 s2  s3
+	 *       |mT1|~~|H1|~~s1             __|__|__|__
+	 *         |     |        ==        |           |
+	 *  am2--|mT2|~~|H2|~~s2  ==   am1--|1~  2~  3~ |--am3  
+	 *         |     |        ==        |___________|
+	 *       |mT3|~~|H3|~~s3                 |
+	 *         |                            am2
+	 *        am3
+	 *
+	 * Indices s1,s2,s3 are relabeled back to physical indices of 
+	 * original sites 1,2 and 3 after applying MPO.
+	 *
+	 */
+	// std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
+	ITensor res = (mT1*delta(s1,mpo3s.Is1))*(mT2*delta(s2,mpo3s.Is2))
+		*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
+	//Print(res);
+	res = ((res.noprime(PHYS)*delta(s1,mpo3s.Is1))*delta(s2,mpo3s.Is2))
+		*delta(s3,mpo3s.Is3);
+	//Print(res);
+	ITensor orig = res;
+
+	/*
+	 * Perform SVD to extract the tensor associated to s1 and truncate
+	 * the resulting SVD matrices back to auxBond dimension 
+	 *
+	 *          s1 s2 s3
+	 *        __|__|__|__                   s1                 s2  s3
+	 *       |           |      ==>         |                  |   |
+	 *  am1--|1~  2~  3~ |--am3 ==>  am1--|mT1|--n1--l12--n2--|2~ 3~|--am3  
+	 *       |___________|      ==>                            |
+	 *             |                                          am2 
+	 *            am2
+	 *
+	 */
+	mT1 = ITensor(s1,am1);
+	svd(res, mT1, sv1, res, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n1 = commonIndex(mT1,sv1);
+	Index n2 = commonIndex(sv1,res);
+
+	if(dbg) {Print(mT1);
+		Print(sv1); }
 
 	//PRB 82, 245119, 2010
 	/*
@@ -1582,9 +1764,193 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	Index n3 = commonIndex(mT2,sv2);
 	Index n4 = commonIndex(sv2,mT3);
 
-	Print(mT2);
-	Print(sv2);
-	Print(mT3);
+	if(dbg) {Print(mT2);
+		Print(sv2);
+		Print(mT3); }
+
+	ITensor sv1I(n1,n2);
+	for (int i=1; i<=a1.m(); i++) {
+		sv1I.set(n1(i),n2(i), 1.0/sv1.real(n1(i),n2(i)));
+	}
+
+	// Reconstruct on-site tensors by contraction with remainders
+	T1 = (rT1*mT1) *delta(n1,a1);
+	T2 = (((rT2*mT2) *sv1I) *delta(n2,a2)) *delta(n3,a3);
+	T3 = (rT3*mT3) *delta(n4,a4);
+
+	for (int i=1; i<=a1.m(); i++) {
+		l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
+		l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
+	}
+	l12 = l12 / norm(l12);
+	l23 = l23 / norm(l23);
+
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3);
+		Print(l12);
+		Print(l23); }
+}
+
+void applyH_123_v3(MPO_3site const& mpo3s, 
+	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
+	bool dbg) {
+	/* Input is assumed to define following TN
+	 *
+	 *        s1                 s2                 s3 
+	 *     | /                | /                | /
+     *  --|T1|--a1--l12--a2--|T2|--a3--l23--a4--|T3|
+     *     |                  |                  |   
+     *
+     */
+    if(dbg) { Print(T1);
+	    Print(T2);
+	    Print(T3); } 
+
+    Index s1 = noprime(findtype(T1.inds(), PHYS));
+    Index s2 = noprime(findtype(T2.inds(), PHYS));
+    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index a1 = commonIndex(T1,l12);
+    Index a2 = commonIndex(l12,T2);
+    Index a3 = commonIndex(T2,l23);
+    Index a4 = commonIndex(l23,T3);
+    if(dbg) {Print(a1);
+	    Print(a4);
+
+		std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
+		std::cout << mpo3s;
+		Print(mpo3s.H1);
+	    Print(mpo3s.H2);
+	    Print(mpo3s.H3);
+
+		Print(l12);
+		Print(l23); }	
+
+	double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+	// STEP 1 Absorb sqrt of l12 and l23 to tensor T1, T2, T3
+	pw = 0.5;
+	l12.apply(pow_T);
+	l23.apply(pow_T);
+
+	T1 = (T1 * l12) *delta(a2, a1); //--a1
+	T2 = (l12 * T2 * l23); // a1-- --a4
+	T3 = (T3 * l23) *delta(a3, a4); //--a4
+	
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3); }
+
+    // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
+	/*
+	 * First we decompose the on-site tensors T1, T2, T3 to simpler 
+	 * objects containing only the links over which H1--H2--H3 acts
+	 * 
+	 * 
+	 *
+	 *      s1                          s1
+	 *    | /            |             / 
+	 * --|T1|--a1 => --|rT1|--<SV1>--|mT1|--a1
+	 *    |              |
+	 *
+	 *         s2              s2
+	 *      | /               /
+	 * a1--|T2|--a4 => a1--|mT2|--a2 
+	 *      |                | 
+     *                    <SV2>
+     *                       | /
+     *                     |rT2|
+     *                      /
+     *                
+     *         s3           s3
+     *      | /            /             |
+     * a4--|T3|-- => a4--|mT3|--<SV3>--|rT3|--
+     *      |                            |
+     *
+     */
+
+    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+    mT1 = ITensor(s1, a1);
+    mT2 = ITensor(s2, a1, a4);
+    mT3 = ITensor(s3, a4);
+    factor(T1, mT1, rT1);
+	factor(T2, mT2, rT2);
+	factor(T3, mT3, rT3);
+
+	Index am1 = commonIndex(rT1, mT1);
+	Index am2 = commonIndex(rT2, mT2);
+	Index am3 = commonIndex(rT3, mT3);
+
+	if(dbg) {Print(mT1);
+		Print(mT2);
+		Print(mT3); }
+
+	/*
+	 * Applying 3-site MPO leads to a new tensor network of the form
+	 *
+	 *        am1 
+	 *         |     __                   s1 s2  s3
+	 *       |mT1|~~|H1|~~s1             __|__|__|__
+	 *         |     |        ==        |           |
+	 *  am2--|mT2|~~|H2|~~s2  ==   am1--|1~  2~  3~ |--am3  
+	 *         |     |        ==        |___________|
+	 *       |mT3|~~|H3|~~s3                 |
+	 *         |                            am2
+	 *        am3
+	 *
+	 * Indices s1,s2,s3 are relabeled back to physical indices of 
+	 * original sites 1,2 and 3 after applying MPO.
+	 *
+	 */
+	// std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
+	ITensor res = (mT1*delta(s1,mpo3s.Is1))*(mT2*delta(s2,mpo3s.Is2))
+		*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
+	res = ((res.noprime(PHYS)*delta(s1,mpo3s.Is1))*delta(s2,mpo3s.Is2))
+		*delta(s3,mpo3s.Is3);
+	ITensor orig = res;
+
+	/*
+	 * Perform SVD to extract the tensor associated to s1 and truncate
+	 * the resulting SVD matrices back to auxBond dimension 
+	 *
+	 *          s1 s2 s3
+	 *        __|__|__|__                   s1                 s2  s3
+	 *       |           |      ==>         |                  |   |
+	 *  am1--|1~  2~  3~ |--am3 ==>  am1--|mT1|--n1--l12--n2--|2~ 3~|--am3  
+	 *       |___________|      ==>                            |
+	 *             |                                          am2 
+	 *            am2
+	 *
+	 */
+	mT1 = ITensor(s1,am1);
+	svd(res, mT1, sv1, res, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n1 = commonIndex(mT1,sv1);
+	Index n2 = commonIndex(sv1,res);
+
+	if(dbg) {Print(mT1);
+		Print(sv1); }
+
+	//PRB 82, 245119, 2010
+	/*
+	 * Perform SVD of tensor obtained by contrating result from previous SVD
+	 * with matrix of singular values and again reduce the resulting SV matrix
+	 *
+	 *            s2  s3                    s2                 s3
+	 *        ____|___|__                   |                  |
+	 *   n1--|l12 2~  3~ |--am3  ==>  n1--|mT2|--n3--l23--n4--|mT3|--am3
+     *            |                         |
+	 *           am2                       am2
+	 *
+	 */
+	mT2 = ITensor(n1,s2,am2);
+	svd(res*sv1, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
+	Index n3 = commonIndex(mT2,sv2);
+	Index n4 = commonIndex(sv2,mT3);
+
+	if(dbg) {Print(mT2);
+		Print(sv2);
+		Print(mT3); }
 
 	// Reconstruct on-site tensors by contraction with remainders
 	T1 = (rT1*mT1) *delta(n1,a1);
@@ -1598,339 +1964,11 @@ void applyH_123_X(MPO_3site const& mpo3s,
 	l12 = l12 / norm(l12);
 	l23 = l23 / norm(l23);
 
-	Print(T1);
-	Print(T2);
-	Print(T3);
-	Print(l12);
-	Print(l23);
-}
-
-void applyH_123_v2(MPO_3site const& mpo3s, 
-	ITensor & T1, ITensor & T2, ITensor & T3, 
-	std::pair<Index, Index> const& link12, 
-	std::pair<Index, Index> const& link23) {
-
-	std::cout <<">>>>> applyH_123_v2 called <<<<<"<< std::endl;
-	std::cout << mpo3s;
-	PrintData(mpo3s.H1);
-    PrintData(mpo3s.H2);
-    PrintData(mpo3s.H3);
-
-	int auxBondDim = link12.first.m();
-	std::cout <<"link12 "<< link12.first <<" "<< link12.second << std::endl;
-	std::cout <<"link23 "<< link23.first <<" "<< link23.second << std::endl;
-
-	// Take the square-root of SV's
-	auto sqrtT = [](double r) { return sqrt(r); };
-
-	/*
-	 * Applying 3-site MPO leads to a new tensor network of the form
-	 * 
-	 *    \ |    __               s1    s2    s3
-	 *   --|1|~~|H1|~~s1          |_    |_    |_
-	 *    \ |     |       ==   --|  |  |  |  |  |--
-	 *   --|2|~~|H2|~~s2  ==   --|1~|==|2~|==|3~|--  
-	 *    \ |     |       ==   --|__|  |__|  |__|--
-	 *   --|3|~~|H3|~~s3                ||
-	 *      |                       
-	 *
-	 * Indices s1,s2,s3 are relabeled back to physical indices of 
-	 * original sites 1,2 and 3 after applying MPO.
-	 * Now auxiliary index linking sites 1,2 & 3 have dimension increased 
-	 * from D to D*auxDim of applied 3-site MPO. To obtain the network 
-	 * of the original size, we have to reduce dimensions of these links 
-	 * back to D by performing SVDs along links 12 and 23.
-	 *
-	 */
-
-	std::cout <<"----- Initial |123> -----"<< std::endl;
-	Print(T1);
-	Print(T2);
-	Print(T3);
-
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo3s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo3s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo3s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo3s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys3 = delta(findtype(T3.inds(),PHYS), mpo3s.Is3);
-	T3 = ( T3 * kd_phys3 ) * mpo3s.H3;
-	T3 = (T3 * kd_phys3.prime()).prime(PHYS,-1);
-
-	std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
-	PrintData(T1);
-    PrintData(T2);
-    PrintData(T3);
-
-	/*
-	 * Obtain new on-site tensors |1~~| by contrating tensors 1~,2~ and 3~
-	 * along common indices
-	 *
-	 *       _________                  s1              s2 s3 
-	 *  s1~~|         |~~s2            _|_              _|__|_
-	 *    --| 1~ 2~ 3~|~~s3    ==>  --|   |            |      |--
-	 *    --|         |--      ==>  --|1~~|++|SV_L12|++|2~3~  |--
-	 *    --|_________|--           --|___|            |______|--
-	 *          | |                                     | |
-	 *
-	 * where 1~~ and 2~3~ are now holding singular vectors wrt
-	 * to SVD done along "link" between sites 1 and "rest"
-	 *
-	 */
-	ITensor temp = ((( T1*delta(link12.first, link12.second) )*T2 )
-		*delta(link23.first, link23.second) )*T3;
-
-	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
-	
-	ITensor SV_L12, temp2;
-	Args args = Args::global();
-    args.add("Maxm", auxBondDim);
-	auto spec = svd(temp, T1, SV_L12, temp2, args);
-	Print(spec);
-
-	Print(T1);
-	PrintData(SV_L12);
-	Print(temp2);
-
-	/*
-	 * Perform SVD of new on-site tensors |2~~| and |3~| by contrating them
-	 * along common index
-	 *
-	 *       ______               s2               s3
-	 *  s2~~|      |~~s3           |                |
-	 *    ++| 2~ 3~|--    ==>    |    |            |   |--
-	 *      |      |--    ==>  ++|2~~ |++|SV_L23|++|3~~|--
-	 *      |______|--           |____|            |___|--
-	 *       | |                   | |
-	 *
-	 * where 1~~ and 2~~ are now holding singular vectors wrt
-	 * to SVD done along link between sites 1 and 2
-	 *
-	 */
-	std::cout <<"----- Perform SVD along link23 -----"<< std::endl;
-	ITensor SV_L23;
-	spec = svd(temp2, T3, SV_L23, T2, args);
-	Print(spec);
-
-	Print(T2);
-	PrintData(SV_L23);
-	Print(T3);
-
-	/*
-	 * We absorb SV matrices into new on-site tensors in symmetric fashion,
-	 * absorbing square root of SV matrix of the link to both on-site
-	 * tensors which it connects. Then we discard the excess SV values
-	 * to reduce back to the auxBond dimension D
-	 *
-	 * ++|SV_L12|++ => ++|SV_L12^1/2|++|SV_L12^1/2|++
-	 *
-	 *     s1
-	 *     |
-	 *  --|   |                                     ==>    \ |
-	 *  --|1~~|++|SV_L12^1/2|++|dR1|--link12.first  ==>  --|1n|~~s1
-	 *  --|___|                                     ==>      |
-	 *
-	 *  where dR is a reduction tensor, which discards all the SV values
-	 *  except the first D. Analogous operation is performed on the |2~~~|
-	 *  on-site tensor
-	 *
-	 *                                        s2
-     *                                        |       
-	 *                                      |    |    ==>   \ |
-	 *  link12.second--|dR2|++|SV_L12^1/2|++|2~~~|++  ==> --|2n|~~s2
-	 *                                      |____|    ==>     |
-	 *                                        ||
-	 */
-
-	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
-	SV_L12.apply(sqrtT);
-	auto a1 = commonIndex(T1,SV_L12);
-	auto a2 = commonIndex(T2,SV_L12);
-	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
-	T2 = ( T2*SV_L12 )*delta( a1, link12.second );
-
-	PrintData(SV_L12);
-	PrintData(T1);
-	Print(T2);
-
-	std::cout <<"----- (NOT)Reducing dimension of link23 -----"<< std::endl;
-	SV_L23.apply(sqrtT);
-	auto a3 = commonIndex(T2,SV_L23);
-	auto a4 = commonIndex(T3,SV_L23);
-	T2 = ( T2*SV_L23 )*delta( a4, link23.first );
-	T3 = ( T3*SV_L23 )*delta( a3, link23.second );
-
-	PrintData(SV_L23);
-	PrintData(T2);
-	PrintData(T3);
-}
-
-void applyH_123_v3(MPO_3site const& mpo3s, 
-	ITensor & T1, ITensor & T2, ITensor & T3, 
-	std::pair<Index, Index> const& link12, 
-	std::pair<Index, Index> const& link23) {
-
-	std::cout <<">>>>> applyH_123_v3 called <<<<<"<< std::endl;
-	std::cout << mpo3s;
-	PrintData(mpo3s.H1);
-    PrintData(mpo3s.H2);
-    PrintData(mpo3s.H3);
-
-    int auxBondDim = link12.first.m();
-	std::cout <<"link12 "<< link12.first <<" "<< link12.second << std::endl;
-	std::cout <<"link23 "<< link23.first <<" "<< link23.second << std::endl;
-
-	// Take the square-root of SV's
-	auto sqrtT = [](double r) { return sqrt(r); };
-
-	/*
-	 * Applying 3-site MPO leads to a new tensor network of the form
-	 * 
-	 *    \ |    __               s1    s2    s3
-	 *   --|1|~~|H1|~~s1          |_    |_    |_
-	 *    \ |     |       ==   --|  |  |  |  |  |--
-	 *   --|2|~~|H2|~~s2  ==   --|1~|==|2~|==|3~|--  
-	 *    \ |     |       ==   --|__|  |__|  |__|--
-	 *   --|3|~~|H3|~~s3                ||
-	 *      |                       
-	 *
-	 * Indices s1,s2,s3 are relabeled back to physical indices of 
-	 * original sites 1,2 and 3 after applying MPO.
-	 * Now auxiliary index linking sites 1,2 & 3 have dimension increased 
-	 * from D to D*auxDim of applied 3-site MPO. To obtain the network 
-	 * of the original size, we have to reduce dimensions of these links 
-	 * back to D by performing SVDs along links 12 and 23.
-	 *
-	 */
-
-	std::cout <<"----- Initial |123> -----"<< std::endl;
-	Print(T1);
-	Print(T2);
-	Print(T3);
-
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo3s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo3s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo3s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo3s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys3 = delta(findtype(T3.inds(),PHYS), mpo3s.Is3);
-	T3 = ( T3 * kd_phys3 ) * mpo3s.H3;
-	T3 = (T3 * kd_phys3.prime()).prime(PHYS,-1);
-
-	std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
-	PrintData(T1);
-    PrintData(T2);
-    PrintData(T3);
-
-	/*
-	 * Obtain new on-site tensors |1~~| by contrating tensors 1~,2~ and 3~
-	 * along common indices
-	 *
-	 *       _________                  s1              s2 s3 
-	 *  s1~~|         |~~s2            _|_              _|__|_
-	 *    --| 1~ 2~ 3~|~~s3    ==>  --|   |            |      |--
-	 *    --|         |--      ==>  --|1~~|++|SV_L12|++|2~3~  |--
-	 *    --|_________|--           --|___|            |______|--
-	 *          | |                                     | |
-	 *
-	 * where 1~~ and 2~3~ are now holding singular vectors wrt
-	 * to SVD done along "link" between sites 1 and "rest"
-	 *
-	 */
-	ITensor temp = ((( T1*delta(link12.first, link12.second) )*T2 )
-		*delta(link23.first, link23.second) )*T3;
-
-	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
-	
-	ITensor SV_L12,temp2;
-	Args args = Args::global();
-    args.add("Maxm", auxBondDim);
-	auto spec = svd(temp, T1, SV_L12, temp2, args);
-	Print(spec);
-
-	Print(T1);
-	PrintData(SV_L12);
-	Print(temp2);
-
-	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
-	SV_L12.apply(sqrtT);
-	auto a1 = commonIndex(T1,SV_L12);
-	auto a2 = commonIndex(temp2,SV_L12);
-	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
-	temp2 = ( temp2*SV_L12 )*delta( a1, link12.second );
-
-	PrintData(T1);
-	PrintData(SV_L12);
-	Print(temp2);
-
-	/*
-	 * Perform SVD of new on-site tensors |2~~| and |3~| by contrating them
-	 * along common index
-	 *
-	 *       ______               s2               s3
-	 *  s2~~|      |~~s3           |                |
-	 *    ++| 2~ 3~|--    ==>    |    |            |   |--
-	 *      |      |--    ==>  ++|2~~ |++|SV_L23|++|3~~|--
-	 *      |______|--           |____|            |___|--
-	 *       | |                   | |
-	 *
-	 * where 1~~ and 2~~ are now holding singular vectors wrt
-	 * to SVD done along link between sites 1 and 2
-	 *
-	 */
-	std::cout <<"----- Perform SVD along link23 -----"<< std::endl;
-	ITensor SV_L23;
-	spec = svd(temp2, T3, SV_L23, T2, args);
-	Print(spec);
-
-	Print(T2);
-	PrintData(SV_L23);
-	Print(T3);
-
-	/*
-	 * We absorb SV matrices into new on-site tensors in symmetric fashion,
-	 * absorbing square root of SV matrix of the link to both on-site
-	 * tensors which it connects. Then we discard the excess SV values
-	 * to reduce back to the auxBond dimension D
-	 *
-	 * ++|SV_L12|++ => ++|SV_L12^1/2|++|SV_L12^1/2|++
-	 *
-	 *     s1
-	 *     |
-	 *  --|   |                                     ==>    \ |
-	 *  --|1~~|++|SV_L12^1/2|++|dR1|--link12.first  ==>  --|1n|~~s1
-	 *  --|___|                                     ==>      |
-	 *
-	 *  where dR is a reduction tensor, which discards all the SV values
-	 *  except the first D. Analogous operation is performed on the |2~~~|
-	 *  on-site tensor
-	 *
-	 *                                        s2
-     *                                        |       
-	 *                                      |    |    ==>   \ |
-	 *  link12.second--|dR2|++|SV_L12^1/2|++|2~~~|++  ==> --|2n|~~s2
-	 *                                      |____|    ==>     |
-	 *                                        ||
-	 */
-
-	std::cout <<"----- (NOT)Reducing dimension of link23 -----"<< std::endl;
-	SV_L23.apply(sqrtT);
-	auto a3 = commonIndex(T2,SV_L23);
-	auto a4 = commonIndex(T3,SV_L23);
-	T2 = ( T2*SV_L23 )*delta( a4, link23.first );
-	T3 = ( T3*SV_L23 )*delta( a3, link23.second );
-
-	PrintData(SV_L23);
-	PrintData(T2);
-	PrintData(T3);
+	if(dbg) {Print(T1);
+		Print(T2);
+		Print(T3);
+		Print(l12);
+		Print(l23); }
 }
 
 void applyH_123_v4(MPO_3site const& mpo3s, 
