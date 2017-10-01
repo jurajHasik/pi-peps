@@ -195,19 +195,17 @@ void applyH_123(MPO_3site const& mpo3s,
 	std::pair<itensor::Index, itensor::Index> const& link12,
 	std::pair<itensor::Index, itensor::Index> const& link23);
 
-void applyH_123_X(MPO_3site const& mpo3s, 
+void applyH_123_v1(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	itensor::ITensor & l12, itensor::ITensor & l23);
+	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);
 
 void applyH_123_v2(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	std::pair<itensor::Index, itensor::Index> const& link12,
-	std::pair<itensor::Index, itensor::Index> const& link23);
+	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);;
 
 void applyH_123_v3(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	std::pair<itensor::Index, itensor::Index> const& link12,
-	std::pair<itensor::Index, itensor::Index> const& link23);
+	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);;
 
 void applyH_123_v4(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 

@@ -357,11 +357,11 @@ int main( int argc, char *argv[] ) {
     
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         // Apply 3-site op along bond A--l2--B--l8--D
-        std::cout << "##### APPLYING U123 A--l2--B--l8--D #####" << std::endl;
+        //std::cout << "##### APPLYING U123 A--l2--B--l8--D #####" << std::endl;
         A = A*l1*l5*l6;
         B = B*l7*l1;
         D = D*l3*l7*l4;
-        applyH_123_X(uJ1J2, A, B, D, l2, l8);
+        applyH_123_v3(uJ1J2, A, B, D, l2, l8);
         A = A*l1I*l5I*l6I;
         B = B*l7I*l1I;
         D = D*l3I*l7I*l4I;
@@ -373,17 +373,17 @@ int main( int argc, char *argv[] ) {
         }
         l2I.apply(regT);
         l8I.apply(regT);
-        std::cout << "##### DONE A--l2--B--l8--D #####" << std::endl;
-        Print(A);
-        Print(B);
-        Print(D);
+        // std::cout << "##### DONE A--l2--B--l8--D #####" << std::endl;
+        // Print(A);
+        // Print(B);
+        // Print(D);
 
         // Apply 3-site op along bond A--l6--C--l4--D
-        std::cout << "##### APPLYING U123 A--l6--C--l4--D #####" << std::endl;
+        //std::cout << "##### APPLYING U123 A--l6--C--l4--D #####" << std::endl;
         A = A*l1*l5*l2;
         C = C*l3*l5;
         D = D*l8*l3*l7;
-        applyH_123_X(uJ1J2, A, C, D, l6, l4);
+        applyH_123_v3(uJ1J2, A, C, D, l6, l4);
         A = A*l1I*l5I*l2I;
         C = C*l3I*l5I;
         D = D*l8I*l3I*l7I;
@@ -395,17 +395,17 @@ int main( int argc, char *argv[] ) {
         }
         l6I.apply(regT);
         l4I.apply(regT);
-        std::cout << "##### DONE A--l6--C--l4--D #####" << std::endl;
-        Print(A);
-        Print(C);
-        Print(D);
+        // std::cout << "##### DONE A--l6--C--l4--D #####" << std::endl;
+        // Print(A);
+        // Print(C);
+        // Print(D);
 
         // Apply 3-site op along bond C--l5--A--l1--B
-        std::cout << "##### APPLYING U123 C--l5--A--l1--B #####" << std::endl;
+        //std::cout << "##### APPLYING U123 C--l5--A--l1--B #####" << std::endl;
         C = C*l3*l6*l4;
         A = A*l2*l6;
         B = B*l2*l7*l8;
-        applyH_123_X(uJ1J2, C, A, B, l5, l1);
+        applyH_123_v3(uJ1J2, C, A, B, l5, l1);
         C = C*l3I*l6I*l4I;
         A = A*l2I*l6I;
         B = B*l2I*l7I*l8I;
@@ -417,17 +417,17 @@ int main( int argc, char *argv[] ) {
         }
         l5I.apply(regT);
         l1I.apply(regT);
-        std::cout << "##### DONE C--l5--A--l1--B #####" << std::endl;
-        Print(C);
-        Print(A);
-        Print(B);
+        // std::cout << "##### DONE C--l5--A--l1--B #####" << std::endl;
+        // Print(C);
+        // Print(A);
+        // Print(B);
 
         // Apply 3-site op along bond C--l3--D--l7--B
-        std::cout << "##### APPLYING U123 C--l3--D--l7--B #####" << std::endl;
+        //std::cout << "##### APPLYING U123 C--l3--D--l7--B #####" << std::endl;
         C = C*l6*l4*l5;
         D = D*l4*l8;
         B = B*l1*l8*l2;
-        applyH_123_X(uJ1J2, C, D, B, l3, l7);
+        applyH_123_v3(uJ1J2, C, D, B, l3, l7);
         C = C*l6I*l4I*l5I;
         D = D*l4I*l8I;
         B = B*l1I*l8I*l2I;
@@ -439,17 +439,17 @@ int main( int argc, char *argv[] ) {
         }
         l3I.apply(regT);
         l7I.apply(regT);
-        std::cout << "##### DONE C--l3--D--l7--B #####" << std::endl;
-        Print(C);
-        Print(D);
-        Print(B);
+        // std::cout << "##### DONE C--l3--D--l7--B #####" << std::endl;
+        // Print(C);
+        // Print(D);
+        // Print(B);
 
         // Apply 3-site op along bond C--l4--D--l8--B
-        std::cout << "##### APPLYING U123 C--l4--D--l8--B #####" << std::endl;
+        // std::cout << "##### APPLYING U123 C--l4--D--l8--B #####" << std::endl;
         C = C*l6*l5*l3;
         D = D*l7*l3;
         B = B*l2*l7*l1;
-        applyH_123_X(uJ1J2, C, D, B, l4, l8);
+        applyH_123_v3(uJ1J2, C, D, B, l4, l8);
         C = C*l6I*l5I*l3I;
         D = D*l7I*l3I;
         B = B*l2I*l7I*l1I;
@@ -461,17 +461,17 @@ int main( int argc, char *argv[] ) {
         }
         l4I.apply(regT);
         l8I.apply(regT);
-        std::cout << "##### DONE C--l4--D--l8--B #####" << std::endl;
-        Print(C);
-        Print(D);
-        Print(B);
+        // std::cout << "##### DONE C--l4--D--l8--B #####" << std::endl;
+        // Print(C);
+        // Print(D);
+        // Print(B);
 
         // Apply 3-site op along bond C--l6--A--l2--B
-        std::cout << "##### APPLYING U123 C--l6--A--l2--B #####" << std::endl;
+//        std::cout << "##### APPLYING U123 C--l6--A--l2--B #####" << std::endl;
         C = C*l4*l5*l3;
         A = A*l1*l5;
         B = B*l7*l1*l8;
-        applyH_123_X(uJ1J2, C, A, B, l6, l2);
+        applyH_123_v3(uJ1J2, C, A, B, l6, l2);
         C = C*l4I*l5I*l3I;
         A = A*l1I*l5I;
         B = B*l7I*l1I*l8I;
@@ -483,17 +483,17 @@ int main( int argc, char *argv[] ) {
         }
         l6I.apply(regT);
         l2I.apply(regT);
-        std::cout << "##### DONE C--l6--A--l2--B #####" << std::endl;
-        Print(C);
-        Print(A);
-        Print(B);
+        // std::cout << "##### DONE C--l6--A--l2--B #####" << std::endl;
+        // Print(C);
+        // Print(A);
+        // Print(B);
 
         // Apply 3-site op along bond D--l3--C--l5--A
-        std::cout << "##### APPLYING U123 D--l3--C--l5--A #####" << std::endl;
+        // std::cout << "##### APPLYING U123 D--l3--C--l5--A #####" << std::endl;
         D = D*l8*l7*l4;
         C = C*l6*l4;
         A = A*l2*l6*l1;
-        applyH_123_X(uJ1J2, D, C, A, l3, l5);
+        applyH_123_v3(uJ1J2, D, C, A, l3, l5);
         D = D*l8I*l7I*l4I;
         C = C*l6I*l4I;
         A = A*l2I*l6I*l1I;
@@ -505,17 +505,17 @@ int main( int argc, char *argv[] ) {
         }
         l3I.apply(regT);
         l5I.apply(regT);
-        std::cout << "##### DONE D--l3--C--l5--A #####" << std::endl;
-        Print(A);
-        Print(C);
-        Print(D);
+        // std::cout << "##### DONE D--l3--C--l5--A #####" << std::endl;
+        // Print(A);
+        // Print(C);
+        // Print(D);
 
         // Apply 3-site op along bond D--l7--B--l1--A
-        std::cout << "##### APPLYING U123 D--l7--B--l1--A #####" << std::endl;
+        // std::cout << "##### APPLYING U123 D--l7--B--l1--A #####" << std::endl;
         D = D*l4*l8*l3;
         B = B*l8*l2;
         A = A*l5*l2*l6;
-        applyH_123_X(uJ1J2, D, B, A, l7, l1);
+        applyH_123_v3(uJ1J2, D, B, A, l7, l1);
         D = D*l4I*l8I*l3I;
         B = B*l8I*l2I;
         A = A*l5I*l2I*l6I;
@@ -527,21 +527,21 @@ int main( int argc, char *argv[] ) {
         }
         l1I.apply(regT);
         l7I.apply(regT);
-        std::cout << "##### DONE D--l7--B--l1--A #####" << std::endl;
-        Print(D);
-        Print(B);
-        Print(A);
+        // std::cout << "##### DONE D--l7--B--l1--A #####" << std::endl;
+        // Print(D);
+        // Print(B);
+        // Print(A);
 
-    //     if ( nStep % 1000 == 0 ) { 
-    //         t_iso_end = std::chrono::steady_clock::now();
-    //         std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
-    //         <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
-    //         << std::endl;
+        if ( nStep % 1000 == 0 ) { 
+            t_iso_end = std::chrono::steady_clock::now();
+            std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
+            <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
+            << std::endl;
     //         //PrintData(l1);
     //         //PrintData(l2);
     //         //PrintData(l3);
     //         //PrintData(l4);
-    //         t_iso_begin = std::chrono::steady_clock::now();
+            t_iso_begin = std::chrono::steady_clock::now();
         
     //         auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
     //         std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() 
@@ -567,7 +567,7 @@ int main( int argc, char *argv[] ) {
     //             nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
     //         }
     //         e_nnh_prev = e_nnh;
-    //     }
+        }
     }
 
     // Set new sites to cluster
