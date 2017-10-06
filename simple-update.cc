@@ -1504,13 +1504,16 @@ void applyH_123_v1(MPO_3site const& mpo3s,
      *
      */
 
-    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+    ITensor rT1, mT1, svT1, rT2, mT2, svT2, rT3, mT3, svT3, sv1, sv2; 
     mT1 = ITensor(s1, a1);
     mT2 = ITensor(s2, a1, a4);
     mT3 = ITensor(s3, a4);
-    factor(T1, mT1, rT1);
-	factor(T2, mT2, rT2);
-	factor(T3, mT3, rT3);
+    svd(T1, mT1, svT1, rT1);
+	svd(T2, mT2, svT2, rT2);
+	svd(T3, mT3, svT3, rT3);
+	mT1 = mT1 * svT1;
+	mT2 = mT2 * svT2;
+	mT3 = mT3 * svT3;
 
 	Index am1 = commonIndex(rT1, mT1);
 	Index am2 = commonIndex(rT2, mT2);
@@ -1684,13 +1687,16 @@ void applyH_123_v2(MPO_3site const& mpo3s,
      *
      */
 
-    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+	ITensor rT1, mT1, svT1, rT2, mT2, svT2, rT3, mT3, svT3, sv1, sv2;  
     mT1 = ITensor(s1, a1);
     mT2 = ITensor(s2, a1, a4);
     mT3 = ITensor(s3, a4);
-    factor(T1, mT1, rT1);
-	factor(T2, mT2, rT2);
-	factor(T3, mT3, rT3);
+    svd(T1, mT1, svT1, rT1);
+	svd(T2, mT2, svT2, rT2);
+	svd(T3, mT3, svT3, rT3);
+	mT1 = mT1 * svT1;
+	mT2 = mT2 * svT2;
+	mT3 = mT3 * svT3;
 
 	Index am1 = commonIndex(rT1, mT1);
 	Index am2 = commonIndex(rT2, mT2);
@@ -1870,13 +1876,16 @@ void applyH_123_v3(MPO_3site const& mpo3s,
      *
      */
 
-    ITensor rT1, mT1, rT2, mT2, rT3, mT3, sv1, sv2; 
+    ITensor rT1, mT1, svT1, rT2, mT2, svT2, rT3, mT3, svT3, sv1, sv2;
     mT1 = ITensor(s1, a1);
     mT2 = ITensor(s2, a1, a4);
     mT3 = ITensor(s3, a4);
-    factor(T1, mT1, rT1);
-	factor(T2, mT2, rT2);
-	factor(T3, mT3, rT3);
+    svd(T1, mT1, svT1, rT1);
+	svd(T2, mT2, svT2, rT2);
+	svd(T3, mT3, svT3, rT3);
+	mT1 = mT1 * svT1;
+	mT2 = mT2 * svT2;
+	mT3 = mT3 * svT3;
 
 	Index am1 = commonIndex(rT1, mT1);
 	Index am2 = commonIndex(rT2, mT2);

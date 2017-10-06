@@ -361,7 +361,7 @@ int main( int argc, char *argv[] ) {
         A = A*l1*l5*l6;
         B = B*l7*l1;
         D = D*l3*l7*l4;
-        applyH_123_v3(uJ1J2, A, B, D, l2, l8);
+        applyH_123_v2(uJ1J2, A, B, D, l2, l8);
         A = A*l1I*l5I*l6I;
         B = B*l7I*l1I;
         D = D*l3I*l7I*l4I;
@@ -383,7 +383,7 @@ int main( int argc, char *argv[] ) {
         A = A*l1*l5*l2;
         C = C*l3*l5;
         D = D*l8*l3*l7;
-        applyH_123_v3(uJ1J2, A, C, D, l6, l4);
+        applyH_123_v2(uJ1J2, A, C, D, l6, l4);
         A = A*l1I*l5I*l2I;
         C = C*l3I*l5I;
         D = D*l8I*l3I*l7I;
@@ -405,7 +405,7 @@ int main( int argc, char *argv[] ) {
         C = C*l3*l6*l4;
         A = A*l2*l6;
         B = B*l2*l7*l8;
-        applyH_123_v3(uJ1J2, C, A, B, l5, l1);
+        applyH_123_v2(uJ1J2, C, A, B, l5, l1);
         C = C*l3I*l6I*l4I;
         A = A*l2I*l6I;
         B = B*l2I*l7I*l8I;
@@ -427,7 +427,7 @@ int main( int argc, char *argv[] ) {
         C = C*l6*l4*l5;
         D = D*l4*l8;
         B = B*l1*l8*l2;
-        applyH_123_v3(uJ1J2, C, D, B, l3, l7);
+        applyH_123_v2(uJ1J2, C, D, B, l3, l7);
         C = C*l6I*l4I*l5I;
         D = D*l4I*l8I;
         B = B*l1I*l8I*l2I;
@@ -449,7 +449,7 @@ int main( int argc, char *argv[] ) {
         C = C*l6*l5*l3;
         D = D*l7*l3;
         B = B*l2*l7*l1;
-        applyH_123_v3(uJ1J2, C, D, B, l4, l8);
+        applyH_123_v2(uJ1J2, C, D, B, l4, l8);
         C = C*l6I*l5I*l3I;
         D = D*l7I*l3I;
         B = B*l2I*l7I*l1I;
@@ -471,7 +471,7 @@ int main( int argc, char *argv[] ) {
         C = C*l4*l5*l3;
         A = A*l1*l5;
         B = B*l7*l1*l8;
-        applyH_123_v3(uJ1J2, C, A, B, l6, l2);
+        applyH_123_v2(uJ1J2, C, A, B, l6, l2);
         C = C*l4I*l5I*l3I;
         A = A*l1I*l5I;
         B = B*l7I*l1I*l8I;
@@ -493,7 +493,7 @@ int main( int argc, char *argv[] ) {
         D = D*l8*l7*l4;
         C = C*l6*l4;
         A = A*l2*l6*l1;
-        applyH_123_v3(uJ1J2, D, C, A, l3, l5);
+        applyH_123_v2(uJ1J2, D, C, A, l3, l5);
         D = D*l8I*l7I*l4I;
         C = C*l6I*l4I;
         A = A*l2I*l6I*l1I;
@@ -515,7 +515,7 @@ int main( int argc, char *argv[] ) {
         D = D*l4*l8*l3;
         B = B*l8*l2;
         A = A*l5*l2*l6;
-        applyH_123_v3(uJ1J2, D, B, A, l7, l1);
+        applyH_123_v2(uJ1J2, D, B, A, l7, l1);
         D = D*l4I*l8I*l3I;
         B = B*l8I*l2I;
         A = A*l5I*l2I*l6I;
@@ -537,10 +537,16 @@ int main( int argc, char *argv[] ) {
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
-    //         //PrintData(l1);
-    //         //PrintData(l2);
-    //         //PrintData(l3);
-    //         //PrintData(l4);
+
+            PrintData(l1);
+            PrintData(l2);
+            PrintData(l3);
+            PrintData(l4);
+            PrintData(l5);
+            PrintData(l6);
+            PrintData(l7);
+            PrintData(l8);
+
             t_iso_begin = std::chrono::steady_clock::now();
         
     //         auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);

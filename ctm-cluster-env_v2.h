@@ -28,7 +28,8 @@ class CtmEnv
 
     typedef enum ISOMETRY {
         ISOMETRY_T1,
-        ISOMETRY_T2
+        ISOMETRY_T2,
+        ISOMETRY_T3
     } isometry_type;
 
     typedef enum NORMALIZATION {
@@ -163,22 +164,22 @@ class CtmEnv
 
     // Insert, Absorb & Renormalize U(p) row 
     void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
-        std::vector<double> & accT);
+        std::vector<double> & accT, bool dbg = false);
     // void insURow(ISOMETRY iso_type, NORMALIZATION norm_type);
     
     // -||- R(ight) column
     void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT);
+        std::vector<double> & accT, bool dbg = false);
     // void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
     // -||- D(own) row
     void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT);
+        std::vector<double> & accT, bool dbg = false);
     // void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
     
     // Insert, Absorb & Renormalize L(eft) column
     void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT);
+        std::vector<double> & accT, bool dbg = false);
     // void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
     // ########################################################################
@@ -186,7 +187,9 @@ class CtmEnv
     
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
     std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,
-        std::vector<double> & accT);
+        std::vector<double> & accT, bool dbg = false);
+    std::vector<itensor::ITensor> isoT3(char ctmMove, int col, int row,
+        std::vector<double> & accT, bool dbg = false);
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from
@@ -196,12 +199,13 @@ class CtmEnv
     itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
 
     std::pair<itensor::ITensor, itensor::ITensor> build_halves(
-        char ctmMove, int col, int row) const;
+        char ctmMove, int col, int row, bool dbg = false) const;
 
     // builds the corner of environment of site (col,row) + site where 
     // corner is 1,2,3 or 4 according to following key 1|2
     //                                                 4|3
-    itensor::ITensor build_corner(char corner, int col, int row) const;
+    itensor::ITensor build_corner(char corner, int col, int row,
+        bool dbg = false) const;
 
     // ########################################################################
     // environment normalization methods
@@ -210,7 +214,7 @@ class CtmEnv
 
     void normalizeBLE();
 
-    void normalizeBLE_ctmStep(char ctmMove, int col, int row);
+    void normalizeBLE_ctmStep(char ctmMove, int col, int row, bool dbg = false);
 
     void normalizePTN();
 
