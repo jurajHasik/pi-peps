@@ -155,6 +155,32 @@ std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s,
     return ev_op2s/cls_norm;
 }
 
+// Apply simple update over sites A,B connected by link with
+// weight l1. The weights l2,...,l4 are used to construct on-site tensors A,B 
+void simpUp(MPO_2site const& nnh, ITensor & A, ITensor & B,
+    ITensor & l1, ITensor const& l2, ITensor const& l3, ITensor const& l4,
+    ITensor & l1I, ITensor const& l2I, ITensor const& l3I, ITensor const& l4I) {
+    
+    // Define "regulator" function to cut-off large values after inversion
+    // of weight matrices
+    // auto regT = [](double r) { 
+    //     return ((abs(r) > 1.0e10) ? 0.0 : r); };
+
+    auto aIA = noprime(findtype(A.inds(), AUXLINK));
+
+    A = A*l2*l3*l4;
+    B = B*l2*l3*l4;
+    applyH_T1_L_T2(nnh, A, B, l1);
+    A = A*l2I*l3I*l4I;
+    B = B*l2I*l3I*l4I;
+
+    auto l1IS = l1.inds();
+    for (int i=1; i<=l1IS[0].m(); i++ ) {
+        l1I.set(l1IS[0](i), l1IS[1](i), 1.0/l1.real(l1IS[0](i), l1IS[0](i)));
+    }
+    //l2I.apply(regT);
+}
+
 int main( int argc, char *argv[] ) {
     // ########################################################################
     // Handle command-line arguments
@@ -275,6 +301,7 @@ int main( int argc, char *argv[] ) {
     // NN-Heisenberg in external (uniform or staggered) mag-field
     //MPO_2site nnh(getMPO2s_NNH(4, arg_tau, arg_J, arg_h));        // uniform mag field
     MPO_2site nnh(getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h));   // staggered mag field
+    MPO_2site nnh2(getMPO2s_NNHstagh(4, 2.0*arg_tau, arg_J, arg_h));
 
     // Prepare Sites (from cluster) + weights to begin optimization 
     // procedure
@@ -294,7 +321,7 @@ int main( int argc, char *argv[] ) {
 
     ITensor l1(prime(aIB,2), aIA);
     ITensor l2(prime(aIA,2), aIB);
-    ITensor l3(prime(aIB,3), prime(aIA,1)); 
+    ITensor l3(prime(aIB,3), prime(aIA,1));
     ITensor l4(prime(aIA,3), prime(aIB,1));
 
     // Initially set all weights to 1
@@ -313,7 +340,7 @@ int main( int argc, char *argv[] ) {
     auto l1I = l1;
     auto l2I = l2;
     auto l3I = l3;
-    auto l4I = l4;    
+    auto l4I = l4;
 
     // Compute Initial value of APPROX(!) energy
     auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
@@ -330,16 +357,17 @@ int main( int argc, char *argv[] ) {
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
         // Apply 2-site op along bond A--l2--B
-        A = A*l1*l3*l4;
-        B = B*l4*l1*l3;
-        applyH_T1_L_T2(nnh, A, B, l2);
-        A = A*l1I*l3I*l4I;
-        B = B*l4I*l1I*l3I;
+        //simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I);
+        // A = A*l1*l3*l4;
+        // B = B*l4*l1*l3;
+        // applyH_T1_L_T2(nnh, A, B, l2);
+        // A = A*l1I*l3I*l4I;
+        // B = B*l4I*l1I*l3I;
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
-        }
-        l2I.apply(regT);
+        // for (int i=1; i<=aIA.m(); i++ ) {
+        //     l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
+        // }
+        // l2I.apply(regT);
         //PrintData(l2I);
         // std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
         // Print(A);
@@ -347,17 +375,17 @@ int main( int argc, char *argv[] ) {
         // Print(B);
 
         // Apply 2-site op along bond B--l1--A
-        A = A*l3*l2*l4;
-        B = B*l2*l4*l3;
-        applyH_T1_L_T2(nnh, A, B, l1);
-        //applyH_T1_L_T2_DBG(nnh, A, B, l1);
-        A = A*l3I*l2I*l4I;
-        B = B*l2I*l4I*l3I;
+        //simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I);
+        // A = A*l3*l2*l4;
+        // B = B*l2*l4*l3;
+        // applyH_T1_L_T2(nnh, A, B, l1);
+        // A = A*l3I*l2I*l4I;
+        // B = B*l2I*l4I*l3I;
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
-        }
-        l1I.apply(regT);
+        // for (int i=1; i<=aIA.m(); i++ ) {
+        //     l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
+        // }
+        // l1I.apply(regT);
         //PrintData(l1I);
         // std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
         // Print(B);
@@ -365,17 +393,18 @@ int main( int argc, char *argv[] ) {
         // Print(A);
 
         // Apply 2-site op along bond A--l4--B
-        A = A*l1*l3*l2;
-        B = B*l1*l3*l2;
-        applyH_T1_L_T2(nnh, A, B, l4);
-        A = A*l1I*l3I*l2I;
-        B = B*l1I*l3I*l2I;
+        //simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I);
+        // A = A*l1*l3*l2;
+        // B = B*l1*l3*l2;
+        // applyH_T1_L_T2(nnh, A, B, l4);
+        // A = A*l1I*l3I*l2I;
+        // B = B*l1I*l3I*l2I;
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
-                1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
-        }
-        l4I.apply(regT);
+        // for (int i=1; i<=aIA.m(); i++ ) {
+        //     l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
+        //         1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
+        // }
+        // l4I.apply(regT);
         //PrintData(l4I);
         // std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
         // Print(A);
@@ -383,24 +412,36 @@ int main( int argc, char *argv[] ) {
         // Print(B);
 
         // Apply 2-site op along bond B--l3--A
-        A = A*l2*l4*l1;
-        B = B*l2*l4*l1;
-        applyH_T1_L_T2(nnh, A, B, l3);
-        //applyH_T1_L_T2_DBG(nnh, A, B, l3);
-        A = A*l2I*l4I*l1I;
-        B = B*l2I*l4I*l1I;
+        //simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I);
+        // A = A*l2*l4*l1;
+        // B = B*l2*l4*l1;
+        // applyH_T1_L_T2(nnh, A, B, l3);
+        // A = A*l2I*l4I*l1I;
+        // B = B*l2I*l4I*l1I;
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
-                1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
-        }
-        l3I.apply(regT);
+        // for (int i=1; i<=aIA.m(); i++ ) {
+        //     l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
+        //         1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
+        // }
+        // l3I.apply(regT);
         //PrintData(l3I);
         // std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
         // Print(B);
         // Print(l3);
         // Print(A);
     
+        simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
+        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B
+        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
+        
+        simpUp(nnh2, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
+        //simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
+        
+        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
+        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B
+        simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
+        
+
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
@@ -418,24 +459,24 @@ int main( int argc, char *argv[] ) {
             
             // Check difference against previous value of energy
             //if ( abs(e_nnh.real() - e_nnh_prev.real()) < eps_threshold ) {
-            if ( (e_nnh_prev.real() - e_nnh.real()) < eps_threshold ) {
-                std::cout << "Energy difference < "<< eps_threshold 
-                    << std::endl;
-                std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
-                    << arg_tau/2.0 << std::endl;
-                arg_tau = arg_tau/2.0;
+            // if ( (e_nnh_prev.real() - e_nnh.real()) < eps_threshold ) {
+            //     std::cout << "Energy difference < "<< eps_threshold 
+            //         << std::endl;
+            //     std::cout << "Changing tau -> tau/2: "<< arg_tau <<" -> "
+            //         << arg_tau/2.0 << std::endl;
+            //     arg_tau = arg_tau/2.0;
 
-                if (arg_tau < tau_threshold) {
-                    std::cout << "tau too small - stopping optimization" 
-                        << std::endl;
-                    break;
-                }    
+            //     if (arg_tau < tau_threshold) {
+            //         std::cout << "tau too small - stopping optimization" 
+            //             << std::endl;
+            //         break;
+            //     }    
 
-                // Get new evolution op with decreased arg_tau
-                //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
-                nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
-            }
-            e_nnh_prev = e_nnh;
+            //     // Get new evolution op with decreased arg_tau
+            //     //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
+            //     nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
+            // }
+            // e_nnh_prev = e_nnh;
         }
     }
 
