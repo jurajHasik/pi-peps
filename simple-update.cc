@@ -334,9 +334,9 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
 void applyH_T1_L_T2(MPO_2site const& mpo2s, 
 	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
 	if(dbg) {std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
-	std::cout << mpo2s;
-	PrintData(mpo2s.H1);
-    PrintData(mpo2s.H2);}
+		std::cout << mpo2s;
+		PrintData(mpo2s.H1);
+    	PrintData(mpo2s.H2);}
 
 	/*
 	 * Applying 2-site MPO leads to a new tensor network of the form
@@ -355,9 +355,9 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	 */
 
 	if(dbg) {std::cout <<"----- Initial |12> -----"<< std::endl;
-	Print(T1);
-	Print(L);
-	Print(T2);}
+		Print(T1);
+		Print(L);
+		Print(T2);}
 	auto ipT1 = findtype(T1.inds(), PHYS);
 	auto ipT2 = findtype(T2.inds(), PHYS);  
 	auto iT1_L = commonIndex(T1, L);
@@ -392,8 +392,8 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
 
 	if(dbg) {std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
-	Print(T1R);
-    Print(T2R);}
+		Print(T1R);
+    	Print(T2R);}
 
 	/*
 	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
@@ -414,8 +414,8 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	ITensor SV_L12;
 	spec = svd(T1R*L*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
 	if(dbg) {Print(T1R);
-	Print(spec);
-	Print(T2R);}
+		Print(spec);
+		Print(T2R);}
 
 	// Set proper indices to resulting tensors from SVD routine
 	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
@@ -431,8 +431,8 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
 
 	if(dbg) {Print(T1);
-	PrintData(L);
-	Print(T2);}
+		PrintData(L);
+		Print(T2);}
 }
 
 // 3 SITE OPS #########################################################

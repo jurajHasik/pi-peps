@@ -2,7 +2,7 @@
 
 using namespace itensor; 
 
-ITensor contractCluster(Cluster const& c) {
+ITensor contractCluster(Cluster const& c, bool dbg) {
     std::cout <<">>>> contractCluster called <<<<<"<< std::endl;
 
     // Contract cluster
@@ -12,24 +12,24 @@ ITensor contractCluster(Cluster const& c) {
 
     // First on-site tensor
     initPlaq = c.sites.at( c.cToS.at(std::make_pair(0,0)) );
-    std::cout << c.cToS.at(std::make_pair(0,0));
+    if(dbg) std::cout << c.cToS.at(std::make_pair(0,0));
     aI.push_back( noprime( 
         findtype(initPlaq.inds(), AUXLINK) ) );
 
     for (int col = 1; col < c.sizeM; col ++) {        
         siteT = c.sites.at( c.cToS.at(std::make_pair(col,0)) );
-        std::cout << c.cToS.at(std::make_pair(col,0));
+        if(dbg) std::cout << c.cToS.at(std::make_pair(col,0));
         aI.push_back( noprime( 
             findtype(siteT.inds(), AUXLINK) ) );
         initPlaq *= ( delta( 
             prime(aI[col-1],2), aI[col] ) * siteT );
     }
 
-    std::cout <<" >>>> row 0 contrated <<<<<"<< std::endl;
+    if(dbg) std::cout <<" >>>> row 0 contrated <<<<<"<< std::endl;
 
     for (int row = 1; row < c.sizeN; row ++) {
         siteT = c.sites.at( c.cToS.at(std::make_pair(0,row)) );
-        std::cout << c.cToS.at(std::make_pair(0,row));
+        if(dbg) std::cout << c.cToS.at(std::make_pair(0,row));
         tempI = noprime( 
             findtype(siteT.inds(), AUXLINK) );
         initPlaq *= ( siteT * delta( 
@@ -38,7 +38,7 @@ ITensor contractCluster(Cluster const& c) {
 
         for (int col = 1; col < c.sizeM; col ++) {
             auto siteT = c.sites.at( c.cToS.at(std::make_pair(col,row)) );
-            std::cout << c.cToS.at(std::make_pair(col,row));
+            if(dbg) std::cout << c.cToS.at(std::make_pair(col,row));
             tempI = noprime( 
                 findtype(siteT.inds(), AUXLINK) );
             initPlaq *= ( siteT 
@@ -47,10 +47,10 @@ ITensor contractCluster(Cluster const& c) {
             aI[col] = tempI;
         }
 
-        std::cout <<" >>>> row "<< row <<" contrated <<<<<"<< std::endl;
+        if(dbg) std::cout <<" >>>> row "<< row <<" contrated <<<<<"<< std::endl;
     }
 
-    std::cout <<">>>> contractCluster done <<<<<"<< std::endl;
+    if(dbg) std::cout <<">>>> contractCluster done <<<<<"<< std::endl;
     return initPlaq;
 }
 

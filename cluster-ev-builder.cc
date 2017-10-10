@@ -1816,7 +1816,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
 // }
 
 std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
-    Index const& sA, Index const& sB) {
+    Index const& sA, Index const& sB, bool dbg) {
     /*
      * 2-site operator acts on 2 physical indices
      * 
@@ -1852,7 +1852,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     auto Op = ITensor(s0, s1, s2, s3);
     switch(op2s) {
         case OP2S_Id: { // Identity operator
-            std::cout <<">>>>> 2) Constructing OP2S_Id <<<<<"<< std::endl;  
+            if(dbg) std::cout <<">>>>> 2) Constructing OP2S_Id <<<<<"<< std::endl;  
             for(int i=1;i<=dimS;i++) {
                 for(int j=1;j<=dimS;j++){
                     Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
@@ -1861,7 +1861,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
             break;
         }
         case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
-            std::cout <<">>>>> 2) Constructing OP2S_AKLT-S2-H <<<<<"
+            if(dbg) std::cout <<">>>>> 2) Constructing OP2S_AKLT-S2-H <<<<<"
                 << std::endl;
             // Loop over <bra| indices
             int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
@@ -1884,7 +1884,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
                         if ((mbA+mbB == m) && (mkA+mkB == m)) {
                             
                             //DEBUG
-                            std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
+                            if(dbg) std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
                                 <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
                                 <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
                                 <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
@@ -1908,7 +1908,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
         case OP2S_SS: { 
             // S^vec_i * S^vec_i+1 =
             // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
-            std::cout <<">>>>> 2) Constructing OP2S_SS <<<<<"<< std::endl;
+            if(dbg) std::cout <<">>>>> 2) Constructing OP2S_SS <<<<<"<< std::endl;
     
             Index sBra = Index("sBra", dimS);
             Index sKet = prime(sBra);
@@ -1937,7 +1937,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
             break;
         }
         default: {
-            std::cout <<"Invalid OP_2S selection"<< std::endl;
+            if(dbg) std::cout <<"Invalid OP_2S selection"<< std::endl;
             exit(EXIT_FAILURE);
             break;
         }
@@ -1957,13 +1957,13 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     auto OpA = ITensor(s0, s1);
     ITensor OpB, S; 
 
-    std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
+    if(dbg) std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
         << std::endl;
     svd(Op, OpA, S, OpB);
     
-    Print(OpA);
-    PrintData(S);
-    Print(OpB);
+    if(dbg) { Print(OpA);
+        PrintData(S);
+        Print(OpB); }
     
     //create a lambda function
     //which returns the square of its argument
@@ -1974,10 +1974,10 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
     OpB = S*OpB;
     
-    std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
+    if(dbg) { std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
         << std::endl;
-    PrintData(OpA);
-    PrintData(OpB);
+        PrintData(OpA);
+        PrintData(OpB); }
 
     return std::make_pair(OpA, OpB);
 }

@@ -5,155 +5,125 @@
 
 using namespace itensor;
 
-// Compute expectation value of 2site OP over 2x2 supercell {{A,B},{B,A}} 
-// with weights lambda1..lambda4
+// Prepare cluster - by contracting the weights with on-site tensors
+//      
+//      l5     l7               The site aux indices are as follows
+//       |      | 
+// --l1--A--l2--B--l1--                    auxI1 
+//       |      |                           | 
+//      l6     l8                   auxI0-- A --auxI2
+//       |      |                           | 
+// --l3--C--l4--D--l3--                    auxI3
+//       |      | 
+//      l5     l7
+void formCluster(Cluster & cls, std::vector< ITensor > const& ts,
+    std::vector< ITensor > ls) {
+
+    // Set new sites to cluster
+    auto sqrtT = [](double r) { return sqrt(r); };
+
+    for(size_t i=0; i<=7; ++i) {
+        ls[i].apply(sqrtT);
+    }
+
+    auto aIA = noprime(findtype(ts[0].inds(), AUXLINK));
+    auto aIB = noprime(findtype(ts[1].inds(), AUXLINK));
+    auto aIC = noprime(findtype(ts[2].inds(), AUXLINK));
+    auto aID = noprime(findtype(ts[3].inds(), AUXLINK));
+
+    auto tA = ts[0] * ls[0] * ls[1] * ls[4] * ls[5];
+    tA = ( ( (tA*delta(aIA, prime(aIB,2))) *delta(prime(aIA,1), prime(aIC,3))) 
+            *delta(prime(aIA,2), aIB) ) *delta(prime(aIA,3), prime(aIC,1));
+
+    auto tB = ts[1] * ls[1] * ls[0] * ls[6] * ls[7];
+    tB = ( ( (tB*delta(aIB, prime(aIA,2))) *delta(prime(aIB,1), prime(aID,3)))
+            *delta(prime(aIB,2), aIA)) *delta(prime(aIB,3), prime(aID,1));
+
+    auto tC = ts[2] * ls[2] * ls[3] * ls[5] * ls[4];
+    tC = ( ( (tC*delta(aIC, prime(aID,2))) *delta(prime(aIC,1), prime(aIA,3)))
+            *delta(prime(aIC,2), aID)) *delta(prime(aIC,3), prime(aIA,1));
+
+    auto tD = ts[3] * ls[3] * ls[2] * ls[7] * ls[6];
+    tD = ( ( (tD*delta(aID, prime(aIC,2))) *delta(prime(aID,1), prime(aIB,3)))
+            *delta(prime(aID,2), aIC)) *delta(prime(aID,3), prime(aIB,1));
+
+    // Build new cluster
+    cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
+    std::cout << cls; //DBG
+}
+
+// Compute expectation value of 2site OP over 2x2 supercell {{A,B},{C,D}}
 //
 // <bra|    A    B   
-//        B |  A | 
+//        C |  D | 
 //        | |  | |
 //       | OP2s ||
 //        | |  | |  
 //        | A  | B
-//        B    A    |ket>
+//        C    D    |ket>
 //
-// std::complex< double > getEV2Site(std::pair< ITensor, ITensor > const& op2s, 
-//     ITensor const& A, ITensor const& B, ITensor const& l1, ITensor const& l2,
-//     ITensor const& l3, ITensor const& l4) {
+std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 
-//     // Set new sites to cluster
-//     auto squareT = [](double r) { return r*r; };
+    auto aIA  = noprime(findtype(cls.sites.at("A").inds(), AUXLINK));
+    auto aIB  = noprime(findtype(cls.sites.at("B").inds(), AUXLINK));
+    auto aIC  = noprime(findtype(cls.sites.at("C").inds(), AUXLINK));
+    auto aID  = noprime(findtype(cls.sites.at("D").inds(), AUXLINK));
 
-//     auto aIA = noprime(findtype(A.inds(), AUXLINK));
-//     auto aIB = noprime(findtype(B.inds(), AUXLINK));
-//     //auto pIA = noprime(findtype(A.inds(), PHYS));
-//     //auto pIB = noprime(findtype(B.inds(), PHYS));
+    auto pIA  = noprime(findtype(cls.sites.at("A").inds(), PHYS));
+    auto pIB  = noprime(findtype(cls.sites.at("B").inds(), PHYS));
+    auto pIC  = noprime(findtype(cls.sites.at("C").inds(), PHYS));
+    auto pID  = noprime(findtype(cls.sites.at("D").inds(), PHYS));
 
-//     /*
-//      * A--l2--B
-//      */
-//     auto Bra = A * l2 * B;  
-//     //Print(Bra);
+    auto H_nnhAB = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIB);
+    auto H_nnhAC = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIC);
+    auto H_nnhBD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pID);
+    auto H_nnhCD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIC, pID);
 
-//     auto lTemp = l1;
-//     lTemp.apply(squareT);
+    auto Bra = contractCluster(cls);
+    // apply PBC
+    Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
+    Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
 
-//     //PrintData(l1);
-//     //PrintData(lTemp);
+    Print(Bra);
 
-//     /*
-//      * l1--A--l2--B--l1
-//      */
-//     Bra = (Bra * lTemp).prime(AUXLINK,4);
-//     //Print(Bra);
-
-//     /*
-//      * l1--A--l2--B--l1
-//      *            |
-//      *            l3
-//      *            |
-//      *            A
-//      *  
-//      */
-//     Bra = Bra * (l3*delta(prime(aIB,7),prime(aIB,3))) * prime(A, PHYS, 1);
-//     //Print(Bra);
-
-//     lTemp = l4;
-//     lTemp.apply(squareT);
-
-//     /*
-//      *            l4 
-//      *            |
-//      * l1--A--l2--B--l1
-//      *            |
-//      *            l3
-//      *            |
-//      *            A
-//      *            |
-//      *            l4
-//      */
-//     Bra = Bra * (lTemp*delta(prime(aIB,1),prime(aIB,5)));
-//     //Print(Bra);
-
-
+    double cls_norm = norm(Bra);
     
-//      *            l4 
-//      *            |
-//      * l1--A--l2--B--l1
-//      *     |      |
-//      *     l4     l3
-//      *            |
-//      *        l1--A
-//      *            |
-//      *            l4
-     
-//     Bra = (Bra * l1) * (l4*delta(prime(aIA,7),prime(aIA,3)));
-//     //Print(Bra);
+    //Print(Bra);
 
-//     /*
-//      *            l4 
-//      *            |
-//      * l1--A--l2--B--l1
-//      *     |      |
-//      *     l4     l3
-//      *     |      |
-//      *     B--l1--A
-//      *            |
-//      *            l4
-//      */
-//     Bra = Bra * prime(B, PHYS, 1);
-//     //Print(Bra);
+    auto Ket = prime(conj(Bra),1);
 
-//     lTemp = l2;
-//     lTemp.apply(squareT);
+    auto KetAB = Ket * H_nnhAB.first * H_nnhAB.second;
+    KetAB.mapprime(PHYS,1,0);
+    KetAB = KetAB * Bra;
 
-//     /*
-//      *            l4 
-//      *            |
-//      * l1--A--l2--B--l1
-//      *     |      |
-//      *     l4     l3
-//      *     |      |
-//      * l2--B--l1--A--l2
-//      *            |
-//      *            l4
-//      */
-//     Bra = Bra * lTemp;
-//     //Print(Bra);
+    // pA1, pB1, pB2, pA2 => op2s => pA0, pB1, pB3, pA2
+    auto KetAC = Ket * H_nnhAC.first * H_nnhAC.second; 
+    KetAC.mapprime(PHYS,1,0);
+    KetAC = KetAC * Bra;
 
-//     lTemp = l3;
-//     lTemp.apply(squareT);
+    // pA1, pB1, pB2, pA2 => op2s => pA1, pB1, pB3, pA3
+    auto KetCD = Ket * H_nnhCD.first * H_nnhCD.second; 
+    KetCD.mapprime(PHYS,1,0);
+    KetCD = KetCD * Bra;
 
-//     /*
-//      *     l3     l4 
-//      *     |      |
-//      * l1--A--l2--B--l1
-//      *     |      |
-//      *     l4     l3
-//      *     |      |
-//      * l2--B--l1--A--l2
-//      *     |      |
-//      *     l3     l4
-//      */
-//     Bra = Bra * (lTemp*delta(prime(aIA,5),prime(aIA,1)));
-//     //Print(Bra);
+    // pA1, pB1, pB2, pA2 => op2s => pA1, pB0, pB2, pA3
+    auto KetBD = Ket * H_nnhBD.first * H_nnhBD.second; 
+    KetBD.mapprime(PHYS,1,0);
+    KetBD = KetBD * Bra;
 
-//     auto Ket = prime(conj(Bra),1);
+    if( KetBD.r() > 0 || KetAB.r() > 0 || KetCD.r() >0 || KetAC.r() > 0 ) {
+        std::cout <<"Expectation value not a tensor rank 0"<< std::endl;
+        exit(EXIT_FAILURE);    
+    }
 
-//     //Print(iPs1);
-//     //Print(iPs2);
+    std::vector< std::complex<double> > evs = {
+        sumels(KetAB)/cls_norm, sumels(KetAC)/cls_norm,
+        sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm };
 
-//     Ket = Ket * op2s.first * op2s.second;
-//     //Print(Ket);
+    std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
 
-//     Ket = Ket.mapprime(PHYS,0,1);
-//     Ket = Ket.prime(-1);
-//     //Print(Ket);
-
-//     double cls_norm = norm(Bra);
-//     auto ev_op2s    = sumels(Ket * Bra);
-
-//     return ev_op2s/cls_norm;
-// }
+    return evs;
+}
 
 int main( int argc, char *argv[] ) {
     // ########################################################################
@@ -343,12 +313,11 @@ int main( int argc, char *argv[] ) {
     auto l8I = l8;
 
     // Compute Initial value of APPROX(!) energy
-    //auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
-    //std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() << std::endl;
-    //auto e_nnh_prev = e_nnh;
+    formCluster(cls, {A,B,C,D}, {l1, l2, l3, l4, l5, l6, l7, l8});
+    auto e_nnh = getEV2Site(cls);
+    auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+    auto e_avgE_prev = avgE;
 
-    // Define "regulator" function to cut-off large values after inversion
-    // of weight matrices
     auto regT = [](double r) { 
         return ((abs(r) > 1.0e10) ? 0.0 : r); };
 
@@ -543,7 +512,10 @@ int main( int argc, char *argv[] ) {
     //         //PrintData(l4);
             t_iso_begin = std::chrono::steady_clock::now();
         
-    //         auto e_nnh = getEV2Site(H_nnh, A, B, l1, l2, l3, l4);
+            formCluster(cls, {A,B,C,D}, {l1, l2, l3, l4, l5, l6, l7, l8});
+            e_nnh = getEV2Site(cls);
+            avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+            
     //         std::cout <<"E: "<< e_nnh.real() <<" + "<< e_nnh.imag() 
     //             << std::endl;
             
@@ -566,7 +538,7 @@ int main( int argc, char *argv[] ) {
     //             //nnh = getMPO2s_NNH(4, arg_tau, arg_J, arg_h);
     //             nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
     //         }
-    //         e_nnh_prev = e_nnh;
+                e_avgE_prev = avgE;
         }
     }
 
