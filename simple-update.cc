@@ -331,12 +331,12 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
 	return mpo2s;
 }
 
-void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s, 
-	ITensor & T1, ITensor & T2, ITensor & L) {
-	std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
+void applyH_T1_L_T2(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
+	if(dbg) {std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
 	std::cout << mpo2s;
 	PrintData(mpo2s.H1);
-    PrintData(mpo2s.H2);
+    PrintData(mpo2s.H2);}
 
 	/*
 	 * Applying 2-site MPO leads to a new tensor network of the form
@@ -354,18 +354,15 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 	 *
 	 */
 
-	std::cout <<"----- Initial |12> -----"<< std::endl;
+	if(dbg) {std::cout <<"----- Initial |12> -----"<< std::endl;
 	Print(T1);
 	Print(L);
-	Print(T2);
+	Print(T2);}
 	auto ipT1 = findtype(T1.inds(), PHYS);
 	auto ipT2 = findtype(T2.inds(), PHYS);  
 	auto iT1_L = commonIndex(T1, L);
 	auto iL_T2 = commonIndex(L, T2);
-	auto dT1T2 = delta(iT1_L, iL_T2);
 
-	auto sqrt_T = [](double r) { return sqrt(r); };
-	L.apply(sqrt_T);
 	/*
 	 * Extract reduced tensors from on-site tensor to apply 2-site 
 	 * gate 
@@ -375,14 +372,13 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 	 *        |          |         =>     |                 |
 	 *
 	 */
-
 	ITensor T1R(ipT1, iT1_L);
 	ITensor T2R(ipT2, iL_T2);
 	ITensor T1X, T2X, sv1XR, sv2XR;
-	auto spec = svd( (T1*L)*dT1T2, T1R, sv1XR, T1X);
-	Print(spec);
-	spec = svd( (T2*L)*dT1T2, T2R, sv2XR, T2X);
-	Print(spec);
+	auto spec = svd( T1, T1R, sv1XR, T1X);
+	if(dbg) Print(spec);
+	spec = svd( T2, T2R, sv2XR, T2X);
+	if(dbg) Print(spec);
 	T1R = T1R * sv1XR;
 	T2R = T2R * sv2XR;
 
@@ -395,9 +391,9 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
 	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
 
-	std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
+	if(dbg) {std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
 	Print(T1R);
-    Print(T2R);
+    Print(T2R);}
 
 	/*
 	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
@@ -414,12 +410,12 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 	 *
 	 */
 
-	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	if(dbg) std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	spec = svd(T1R*dT1T2*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
-	Print(T1R);
+	spec = svd(T1R*L*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	if(dbg) {Print(T1R);
 	Print(spec);
-	Print(T2R);
+	Print(T2R);}
 
 	// Set proper indices to resulting tensors from SVD routine
 	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
@@ -434,309 +430,9 @@ void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s,
 
 	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
 
-	Print(T1);
+	if(dbg) {Print(T1);
 	PrintData(L);
-	Print(T2);
-}
-
-void applyH_T1_L_T2(MPO_2site const& mpo2s, 
-	ITensor & T1, ITensor & T2, ITensor & L) {
-
-	/*
-	 * Applying 2-site MPO leads to a new tensor network of the form
-	 * 
-	 *    \ |    __               
-	 *   --|1|~~|H1|~~s1           
-	 *      |     |               s1       s2
-	 *      L     |               |_       |_ 
-	 *    \ |     |       ==   --|  |-----|  |--
-	 *   --|2|~~|H2|~~s2  ==   --|1~|     |2~|--  
-	 *      |             ==   --|__|--L--|__|--
-     *
-	 * Indices s1,s2 are relabeled back to physical indices of 
-	 * original sites 1 and 2 after applying MPO.
-	 *
-	 */
-	auto ipT1 = findtype(T1.inds(), PHYS);
-	auto ipT2 = findtype(T2.inds(), PHYS);  
-	auto iT1_L = commonIndex(T1, L);
-	auto iL_T2 = commonIndex(L, T2);
-	auto dT1T2 = delta(iT1_L, iL_T2);
-
-	auto sqrt_T = [](double r) { return sqrt(r); };
-	L.apply(sqrt_T);
-	/*
-	 * Extract reduced tensors from on-site tensor to apply 2-site 
-	 * gate 
-	 *
-	 *     | /       | /    =>     |      /          /    |
-	 *  --|1|--|L|--|2|--   =>  --|1X|--|1R|--|L|--|2R|--|2X|-- 
-	 *     |         |      =>     |                      |
-	 *
-	 */
-	ITensor T1R(ipT1, iT1_L);
-	ITensor T2R(ipT2, iL_T2);
-	ITensor T1X, T2X, sv1XR, sv2XR;
-	svd( (T1*L)*dT1T2, T1R, sv1XR, T1X);
-	svd( (T2*L)*dT1T2, T2R, sv2XR, T2X);
-	T1R = T1R * sv1XR;
-	T2R = T2R * sv2XR;
-
-	//std::cout <<"----- Appyling H1-H2 to |1R--L--2R> -----"<< std::endl;
-	// D^2 x s x auxD_mpo3s
-	auto kd_phys1 = delta(ipT1, mpo2s.Is1);
-	T1R = (T1R * kd_phys1) * mpo2s.H1;
-	T1R = (T1R * kd_phys1.prime()).prime(PHYS,-1);
-	// D^2 x s x auxD_mpo3s^2
-	auto kd_phys2 = delta(ipT2, mpo2s.Is2);
-	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
-	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
-
-	/*
-	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
-	 * along diagonal matrix with weights
-	 *
-	 *       _______               s1                       s2
-	 *  s1~~|       |~~s2           |                        |
-	 *    --| 1~ 2~ |--    ==>      |                        |
-	 *      |_______|      ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--                   
-	 *
-	 * where 1~~ and 2~~ are now holding singular vectors wrt
-	 * to SVD and SV_L12 holds a new weights
-	 * We keep only auxBondDim largest singular values
-	 *
-	 */
-	//std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
-	ITensor SV_L12;
-	svd(T1R*dT1T2*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
-
-	// Set proper indices to resulting tensors from SVD routine
-	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
-	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
-
-	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
-	
-	for (int i=1; i<=iT1_L.m(); i++) {
-		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
-	}
-	L = L / norm(L);
-
-	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
-}
-
-void applyH_12(MPO_2site const& mpo2s, 
-	ITensor & T1, ITensor & T2, 
-	std::pair<Index, Index> const& link12) {
-
-	std::cout <<">>>>> applyH_12_v1 called <<<<<"<< std::endl;
-	std::cout << mpo2s;
-	PrintData(mpo2s.H1);
-    PrintData(mpo2s.H2);
-
-	std::cout <<"link12 "<< link12.first <<" "<< link12.second << std::endl;
-
-	// Take the square-root of SV's
-	auto sqrtT = [](double r) { return sqrt(r); };
-
-	/*
-	 * Applying 3-site MPO leads to a new tensor network of the form
-	 * 
-	 *    \ |    __               s1    s2
-	 *   --|1|~~|H1|~~s1          |_    |_ 
-	 *    \ |     |       ==   --|  |  |  |--
-	 *   --|2|~~|H2|~~s2  ==   --|1~|==|2~|--  
-	 *      |     |       ==   --|__|  |__|--
-              
-	 *
-	 * Indices s1,s2 are relabeled back to physical indices of 
-	 * original sites 1 and 2 after applying MPO.
-	 * Now auxiliary index linking sites 1 & 2 have dimension increased 
-	 * from D to D*auxDim of applied 2-site MPO. To obtain the network 
-	 * of the original size, we have to reduce dimensions of these links 
-	 * back to D by performing SVDs along link12.
-	 *
-	 */
-
-	std::cout <<"----- Initial |12> -----"<< std::endl;
-	Print(T1);
-	Print(T2);
-
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo2s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
-
-	std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
-	PrintData(T1);
-    PrintData(T2);
-
-	/*
-	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
-	 * along common index
-	 *
-	 *       _______               s1                       s2
-	 *  s1~~|       |~~s2           |                        |
-	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
-	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
-	 *    --|_______|--         --|___|                    |___|--
-	 *
-	 * where 1~~ and 2~~ are now holding singular vectors wrt
-	 * to SVD done along link between sites 1 and 2
-	 *
-	 */
-	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
-	ITensor SV_L12;
-	svd(T1*delta(link12.first, link12.second)*T2, T1, SV_L12, T2);
-
-	Print(T1);
-	PrintData(SV_L12);
-	Print(T2);
-
-	/*
-	 * We absorb SV matrices into new on-site tensors in symmetric fashion,
-	 * absorbing square root of SV matrix of the link to both on-site
-	 * tensors which it connects. Then we discard the excess SV values
-	 * to reduce back to the auxBond dimension D
-	 *
-	 * ++|SV_L12|++ => ++|SV_L12^1/2|++|SV_L12^1/2|++
-	 *
-	 *     s1
-	 *     |
-	 *  --|   |                                    ==>    \ |
-	 *  --|1~~|++|SV_L12^1/2|++a2>>--link12.first  ==>  --|1n|~~s1
-	 *  --|___|                                    ==>      |
-	 *
-	 *  where dR is a reduction tensor, which discards all the SV values
-	 *  except the first D. Analogous operation is performed on the |2~~~|
-	 *  on-site tensor
-	 *
-	 *                                       s2
-     *                                       |       
-	 *                                     |    |--  ==>   \ |
-	 *  link12.second--<<a1++|SV_L12^1/2|++|2~~~|--  ==> --|2n|~~s2
-	 *                                     |____|--  ==>     |
-	 *                                       
-	 */
-
-	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
-	SV_L12.apply(sqrtT);
-	auto a1 = commonIndex(T1,SV_L12);
-	auto a2 = commonIndex(T2,SV_L12);
-	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
-	T2 = ( T2*SV_L12 )*delta( a1, link12.second );
-
-	PrintData(SV_L12);
-	PrintData(T1);
-	PrintData(T2);
-}
-
-void applyH_12_v2(MPO_2site const& mpo2s, 
-	ITensor & T1, ITensor & T2, 
-	std::pair<Index, Index> const& link12) {
-
-	std::cout <<">>>>> applyH_12_v1 called <<<<<"<< std::endl;
-	std::cout << mpo2s;
-	PrintData(mpo2s.H1);
-    PrintData(mpo2s.H2);
-
-	std::cout <<"link12 "<< link12.first <<" "<< link12.second << std::endl;
-
-	// Take the square-root of SV's
-	auto sqrtT = [](double r) { return sqrt(r); };
-
-	/*
-	 * Applying 3-site MPO leads to a new tensor network of the form
-	 * 
-	 *    \ |    __               s1    s2
-	 *   --|1|~~|H1|~~s1          |_    |_ 
-	 *    \ |     |       ==   --|  |  |  |--
-	 *   --|2|~~|H2|~~s2  ==   --|1~|==|2~|--  
-	 *      |     |       ==   --|__|  |__|--
-              
-	 *
-	 * Indices s1,s2 are relabeled back to physical indices of 
-	 * original sites 1 and 2 after applying MPO.
-	 * Now auxiliary index linking sites 1 & 2 have dimension increased 
-	 * from D to D*auxDim of applied 2-site MPO. To obtain the network 
-	 * of the original size, we have to reduce dimensions of these links 
-	 * back to D by performing SVDs along link12.
-	 *
-	 */
-
-	std::cout <<"----- Initial |12> -----"<< std::endl;
-	Print(T1);
-	Print(T2);
-
-	// D^4 x Ds x auxD_mpo3s
-	ITensor kd_phys1 = delta(findtype(T1.inds(),PHYS), mpo2s.Is1);
-	T1 = ( T1 * kd_phys1) * mpo2s.H1;
-	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
-	// D^4 x Ds x auxD_mpo3s^2
-	ITensor kd_phys2 = delta(findtype(T2.inds(),PHYS), mpo2s.Is2);
-	T2 = ( T2 * kd_phys2 ) * mpo2s.H2;
-	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
-
-	std::cout <<"----- Appyling H1-H2 to |12> -----"<< std::endl;
-	PrintData(T1);
-    PrintData(T2);
-
-	/*
-	 * Perform SVD of new on-site tensors |1~| and |2~| by contrating them
-	 * along common index
-	 *
-	 *       _______               s1                       s2
-	 *  s1~~|       |~~s2           |                        |
-	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
-	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
-	 *    --|_______|--         --|___|                    |___|--
-	 *
-	 * where 1~~ and 2~~ are now holding singular vectors wrt
-	 * to SVD done along link between sites 1 and 2
-	 *
-	 */
-	std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
-	ITensor SV_L12;
-	svd(T1*delta(link12.first, link12.second)*T2, T1, SV_L12, T2);
-
-	Print(T1);
-	PrintData(SV_L12);
-	Print(T2);
-
-	/*
-	 * We absorb SV matrices into new on-site tensors in asymmetric fashion,
-	 * absorbing SV matrix of the link to, say, H1.
-	 * Then we discard the excessive SV values to reduce back to the auxBond
-	 * dimension D
-	 *
-	 *     s1
-	 *     |
-	 *  --|   |                                  ==>    \ |
-	 *  --|1~~|++|SV_L12^|++a2>>link12.first     ==>  --|1n|~~s1
-	 *  --|___|                                  ==>      |
-	 *
-     * On the |2~~~| on-site tensor we reduce the dimension of aux index
-	 * back to D
-	 *                                       s2
-     *                                       |       
-	 *                                     |    |--  ==>   \ |
-	 *                  link12.second<<a1++|2~~~|--  ==> --|2n|~~s2
-	 *                                     |____|--  ==>     |
-	 *                                       
-	 */
-
-	std::cout <<"----- (NOT)Reducing dimension of link12 -----"<< std::endl;
-	auto a1 = commonIndex(T1,SV_L12);
-	auto a2 = commonIndex(T2,SV_L12);
-	T1 = ( T1*SV_L12 )*delta( a2, link12.first );
-	T2 = T2*delta( a2, link12.second );
-
-	PrintData(SV_L12);
-	PrintData(T1);
-	PrintData(T2);
+	Print(T2);}
 }
 
 // 3 SITE OPS #########################################################
