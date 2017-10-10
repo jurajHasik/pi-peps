@@ -203,7 +203,7 @@ class EVBuilder {
 
     static std::pair< itensor::ITensor, itensor::ITensor > 
         get2SiteSpinOP(OP_2S op2s,
-        itensor::Index const& sA, itensor::Index const& sB);
+        itensor::Index const& sA, itensor::Index const& sB, bool dbg = false);
 
     /*
      * wrapper around SU2_getSpinOp(SU2O su2o, itensor::Index const& s)

@@ -93,27 +93,9 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h);
  * Apply 2-site MPO to T1 and T2 tensors connected through weight L
  *
  */
-void applyH_T1_L_T2_DBG(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L);
-
 void applyH_T1_L_T2(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L);
-
-/*
- * Apply MPO SYMMETRICALY by splitting sing. values as S^1/2 : S^1/2
- *
- */
-void applyH_12(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, 
-	std::pair<itensor::Index, itensor::Index> const& link12);
-
-/*
- * Apply MPO by splitting sing. values as S^1 : S^0
- *
- */
-void applyH_12_v2(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, 
-	std::pair<itensor::Index, itensor::Index> const& link12);
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
+	bool dbg = false);
 
 // ----- 2-Site operator functions ------------------------------------
 
