@@ -27,6 +27,8 @@ HEADERS4=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
+HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
+	ctm-cluster.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -50,6 +52,7 @@ OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
 OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
+GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -85,6 +88,9 @@ $(APP4)-g: mkdebugdir $(GOBJECTS4) $(ITENSOR_GLIBS)
 
 $(APP5): $(OBJECTS5) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS5) -o $(APP5).x $(LIBFLAGS)
+
+$(APP5)-g: mkdebugdir $(GOBJECTS5) $(ITENSOR_GLIBS)
+	$(CCCOM) $(CCGFLAGS) $(GOBJECTS5) -o $(APP5)-g.x $(LIBGFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)

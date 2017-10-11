@@ -2002,7 +2002,7 @@ std::pair<ITensor, ITensor> CtmEnv::build_halves(char ctmMove, int col,
         }
     }
 
-    std::cout << std::endl;
+    if(dbg) std::cout << std::endl;
     return std::make_pair(upper_h, lower_h);
 }
 

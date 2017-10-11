@@ -48,7 +48,7 @@ void formCluster(Cluster & cls, ITensor const& A, ITensor const& B,
 
     // Build new cluster
     cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
-    std::cout << cls; //DBG
+    // std::cout << cls; //DBG
 }
 
 // Compupte expectation value of 2site OP over 2x2 supercell {{A,B},{B,A}}
@@ -116,8 +116,8 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     }
 
     std::vector< std::complex<double> > evs = {
-        sumels(KetAB)/cls_norm, sumels(KetAC)/cls_norm,
-        sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm };
+        sumels(KetAB)/cls_norm, sumels(KetCD)/cls_norm,
+        sumels(KetAC)/cls_norm, sumels(KetBD)/cls_norm };
 
     std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
 
@@ -397,14 +397,15 @@ int main( int argc, char *argv[] ) {
         // Print(A);
     
         simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
+        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
+        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B    
+
+        //simpUp(nnh2, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
+        simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
+        simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
+
         simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B
         simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
-        
-        simpUp(nnh2, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
-        //simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
-        
-        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
-        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B
         simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
         
 

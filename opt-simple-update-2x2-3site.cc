@@ -49,7 +49,7 @@ void formCluster(Cluster & cls, std::vector< ITensor > const& ts,
 
     // Build new cluster
     cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
-    std::cout << cls; //DBG
+    //std::cout << cls; //DBG
 }
 
 // Compute expectation value of 2site OP over 2x2 supercell {{A,B},{C,D}}
@@ -123,6 +123,27 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
 
     return evs;
+}
+
+void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pA, 
+    std::vector<ITensor*> const& pB, std::vector<ITensor*> const& pC,
+    ITensor & l1, ITensor & l2, ITensor & l1I, ITensor & l2I) {
+
+    (*pA[0]) = (*pA[0]) * (*pA[1]) * (*pA[2]) * (*pA[3]);
+    (*pB[0]) = (*pB[0]) * (*pB[1]) * (*pB[2]);
+    (*pC[0]) = (*pC[0]) * (*pC[1]) * (*pC[2]) * (*pC[3]);
+    applyH_123_v2(uJ1J2, *pA[0], *pB[0], *pC[0], l1, l2);
+    (*pA[0]) = (*pA[0]) * (*pA[4]) * (*pA[5]) * (*pA[6]);
+    (*pB[0]) = (*pB[0]) * (*pB[3]) * (*pB[4]);
+    (*pC[0]) = (*pC[0]) * (*pC[4]) * (*pC[5]) * (*pC[6]);
+
+    auto l1Is = l1.inds();
+    auto l2Is = l2.inds();
+    for (int i=1; i<=l1Is[0].m(); ++i ) {
+        l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
+        l2I.set(l2Is[0](i), l2Is[1](i), 
+            1.0/l2.real(l2Is[0](i), l2Is[1](i)));
+    }
 }
 
 int main( int argc, char *argv[] ) {
@@ -325,181 +346,66 @@ int main( int argc, char *argv[] ) {
     t_iso_begin = std::chrono::steady_clock::now();
     
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
-        // Apply 3-site op along bond A--l2--B--l8--D
-        //std::cout << "##### APPLYING U123 A--l2--B--l8--D #####" << std::endl;
-        A = A*l1*l5*l6;
-        B = B*l7*l1;
-        D = D*l3*l7*l4;
-        applyH_123_v2(uJ1J2, A, B, D, l2, l8);
-        A = A*l1I*l5I*l6I;
-        B = B*l7I*l1I;
-        D = D*l3I*l7I*l4I;
+        
+        simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
+            {&B, &l7, &l1, &l7I, &l1I},
+            {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
+            l2, l8, l2I, l8I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
-            l8I.set(prime(aIB,3)(i), prime(aID,1)(i), 
-                1.0/l8.real(prime(aIB,3)(i), prime(aID,1)(i)));
-        }
-        l2I.apply(regT);
-        l8I.apply(regT);
-        // std::cout << "##### DONE A--l2--B--l8--D #####" << std::endl;
-        // Print(A);
-        // Print(B);
-        // Print(D);
+        simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
+            {&C, &l3, &l5, &l3I, &l5I},
+            {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
+            l6, l4, l6I, l4I);
 
-        // Apply 3-site op along bond A--l6--C--l4--D
-        //std::cout << "##### APPLYING U123 A--l6--C--l4--D #####" << std::endl;
-        A = A*l1*l5*l2;
-        C = C*l3*l5;
-        D = D*l8*l3*l7;
-        applyH_123_v2(uJ1J2, A, C, D, l6, l4);
-        A = A*l1I*l5I*l2I;
-        C = C*l3I*l5I;
-        D = D*l8I*l3I*l7I;
+        simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
+            {&A, &l2, &l6, &l2I, &l6I},
+            {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
+            l5, l1, l5I, l1I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l6I.set(prime(aIA,3)(i), prime(aIC,1)(i), 
-                1.0/l6.real(prime(aIA,3)(i), prime(aIC,1)(i)));
-            l4I.set(prime(aIC,2)(i), aID(i), 1.0/l4.real(prime(aIC,2)(i), aID(i)));
-        }
-        l6I.apply(regT);
-        l4I.apply(regT);
-        // std::cout << "##### DONE A--l6--C--l4--D #####" << std::endl;
-        // Print(A);
-        // Print(C);
-        // Print(D);
+        simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
+            {&D, &l4, &l8, &l4I, &l8I},
+            {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
+            l3, l7, l3I, l7I);
 
-        // Apply 3-site op along bond C--l5--A--l1--B
-        //std::cout << "##### APPLYING U123 C--l5--A--l1--B #####" << std::endl;
-        C = C*l3*l6*l4;
-        A = A*l2*l6;
-        B = B*l2*l7*l8;
-        applyH_123_v2(uJ1J2, C, A, B, l5, l1);
-        C = C*l3I*l6I*l4I;
-        A = A*l2I*l6I;
-        B = B*l2I*l7I*l8I;
+        simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
+            {&D, &l7, &l3, &l7I, &l3I},
+            {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
+            l4, l8, l4I, l8I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l5I.set(prime(aIC,3)(i), prime(aIA,1)(i), 
-                1.0/l5.real(prime(aIC,3)(i), prime(aIA,1)(i)));
-            l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
-        }
-        l5I.apply(regT);
-        l1I.apply(regT);
-        // std::cout << "##### DONE C--l5--A--l1--B #####" << std::endl;
-        // Print(C);
-        // Print(A);
-        // Print(B);
+        simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
+            {&A, &l1, &l5, &l1I, &l5I},
+            {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
+            l6, l2, l6I, l2I);
 
-        // Apply 3-site op along bond C--l3--D--l7--B
-        //std::cout << "##### APPLYING U123 C--l3--D--l7--B #####" << std::endl;
-        C = C*l6*l4*l5;
-        D = D*l4*l8;
-        B = B*l1*l8*l2;
-        applyH_123_v2(uJ1J2, C, D, B, l3, l7);
-        C = C*l6I*l4I*l5I;
-        D = D*l4I*l8I;
-        B = B*l1I*l8I*l2I;
+        simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
+            {&C, &l6, &l4, &l6I, &l4I},
+            {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
+            l3, l5, l3I, l5I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l3I.set(prime(aID,2)(i), aIC(i), 1.0/l3.real(prime(aID,2)(i), aIC(i)));
-            l7I.set(prime(aID,3)(i), prime(aIB,1)(i),
-                1.0/l7.real(prime(aID,3)(i), prime(aIB,1)(i)));
-        }
-        l3I.apply(regT);
-        l7I.apply(regT);
-        // std::cout << "##### DONE C--l3--D--l7--B #####" << std::endl;
-        // Print(C);
-        // Print(D);
-        // Print(B);
+        simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
+            {&B, &l8, &l2, &l8I, &l2I},
+            {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
+            l7, l1, l7I, l1I);
 
-        // Apply 3-site op along bond C--l4--D--l8--B
-        // std::cout << "##### APPLYING U123 C--l4--D--l8--B #####" << std::endl;
-        C = C*l6*l5*l3;
-        D = D*l7*l3;
-        B = B*l2*l7*l1;
-        applyH_123_v2(uJ1J2, C, D, B, l4, l8);
-        C = C*l6I*l5I*l3I;
-        D = D*l7I*l3I;
-        B = B*l2I*l7I*l1I;
+        // simpUp(uJ1J2, {&B, &l8, &l2, &l7, &l8I, &l2I, &l7I}, 
+        //     {&A, &l5, &l2, &l5I, &l2I},
+        //     {&C, &l5, &l3, &l4, &l5I, &l3I, &l4I},
+        //     l1, l6, l1I, l6I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l4I.set(prime(aIC,2)(i), aID(i), 1.0/l4.real(prime(aIC,2)(i), aID(i)));
-            l8I.set(prime(aIB,3)(i), prime(aID,1)(i),
-                1.0/l8.real(prime(aIB,3)(i), prime(aID,1)(i)));
-        }
-        l4I.apply(regT);
-        l8I.apply(regT);
-        // std::cout << "##### DONE C--l4--D--l8--B #####" << std::endl;
-        // Print(C);
-        // Print(D);
-        // Print(B);
+        // simpUp(uJ1J2, {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I}, 
+        //     {&D, &l4, &l7, &l4I, &l7I},
+        //     {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I},
+        //     l8, l3, l8I, l3I);
 
-        // Apply 3-site op along bond C--l6--A--l2--B
-//        std::cout << "##### APPLYING U123 C--l6--A--l2--B #####" << std::endl;
-        C = C*l4*l5*l3;
-        A = A*l1*l5;
-        B = B*l7*l1*l8;
-        applyH_123_v2(uJ1J2, C, A, B, l6, l2);
-        C = C*l4I*l5I*l3I;
-        A = A*l1I*l5I;
-        B = B*l7I*l1I*l8I;
+        // simpUp(uJ1J2, {&D, &l8, &l3, &l7, &l8I, &l3I, &l7I}, 
+        //     {&C, &l6, &l3, &l6I, &l3I},
+        //     {&A, &l1, &l6, &l2, &l1I, &l6I, &l2I},
+        //     l4, l5, l4I, l5I);
 
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l6I.set(prime(aIA,3)(i), prime(aIC,1)(i), 
-                1.0/l6.real(prime(aIA,3)(i), prime(aIC,1)(i)));
-            l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
-        }
-        l6I.apply(regT);
-        l2I.apply(regT);
-        // std::cout << "##### DONE C--l6--A--l2--B #####" << std::endl;
-        // Print(C);
-        // Print(A);
-        // Print(B);
-
-        // Apply 3-site op along bond D--l3--C--l5--A
-        // std::cout << "##### APPLYING U123 D--l3--C--l5--A #####" << std::endl;
-        D = D*l8*l7*l4;
-        C = C*l6*l4;
-        A = A*l2*l6*l1;
-        applyH_123_v2(uJ1J2, D, C, A, l3, l5);
-        D = D*l8I*l7I*l4I;
-        C = C*l6I*l4I;
-        A = A*l2I*l6I*l1I;
-
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l5I.set(prime(aIC,3)(i), prime(aIA,1)(i), 
-                1.0/l5.real(prime(aIC,3)(i), prime(aIA,1)(i)));
-            l3I.set(prime(aID,2)(i), aIC(i), 1.0/l3.real(prime(aID,2)(i), aIC(i)));
-        }
-        l3I.apply(regT);
-        l5I.apply(regT);
-        // std::cout << "##### DONE D--l3--C--l5--A #####" << std::endl;
-        // Print(A);
-        // Print(C);
-        // Print(D);
-
-        // Apply 3-site op along bond D--l7--B--l1--A
-        // std::cout << "##### APPLYING U123 D--l7--B--l1--A #####" << std::endl;
-        D = D*l4*l8*l3;
-        B = B*l8*l2;
-        A = A*l5*l2*l6;
-        applyH_123_v2(uJ1J2, D, B, A, l7, l1);
-        D = D*l4I*l8I*l3I;
-        B = B*l8I*l2I;
-        A = A*l5I*l2I*l6I;
-
-        for (int i=1; i<=aIA.m(); i++ ) {
-            l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
-            l7I.set(prime(aID,3)(i), prime(aIB,1)(i), 
-                1.0/l7.real(prime(aID,3)(i), prime(aIB,1)(i)));
-        }
-        l1I.apply(regT);
-        l7I.apply(regT);
-        // std::cout << "##### DONE D--l7--B--l1--A #####" << std::endl;
-        // Print(D);
-        // Print(B);
-        // Print(A);
+        // simpUp(uJ1J2, {&D, &l8, &l3, &l4, &l8I, &l3I, &l4I}, 
+        //     {&B, &l1, &l8, &l1I, &l8I},
+        //     {&A, &l1, &l6, &l5, &l1I, &l6I, &l5I},
+        //     l7, l2, l7I, l2I);
 
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
@@ -507,14 +413,14 @@ int main( int argc, char *argv[] ) {
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
 
-            PrintData(l1);
-            PrintData(l2);
-            PrintData(l3);
-            PrintData(l4);
-            PrintData(l5);
-            PrintData(l6);
-            PrintData(l7);
-            PrintData(l8);
+            // PrintData(l1);
+            // PrintData(l2);
+            // PrintData(l3);
+            // PrintData(l4);
+            // PrintData(l5);
+            // PrintData(l6);
+            // PrintData(l7);
+            // PrintData(l8);
 
             t_iso_begin = std::chrono::steady_clock::now();
         
@@ -575,6 +481,24 @@ int main( int argc, char *argv[] ) {
     D = D * l4 * l3 * l8 * l7;
     D = ( ( (D*delta(aID, prime(aIC,2))) *delta(prime(aID,1), prime(aIB,3)))
             *delta(prime(aID,2), aIC)) *delta(prime(aID,3), prime(aIB,1));
+
+    auto normalizeBLE_T = [](ITensor& t)
+    {
+        double m = 0.;
+        auto max_m = [&m](double d)
+        {
+            if(std::abs(d) > m) m = std::abs(d);
+        };
+
+        t.visit(max_m);
+        std::cout << "MAX elem = "<< m << std::endl;
+        t /= m;
+    };
+
+    normalizeBLE_T(A);
+    normalizeBLE_T(B);
+    normalizeBLE_T(C);
+    normalizeBLE_T(D);
 
     // Build new cluster
     cls.sites = {{"A",A}, {"B",B}, {"C",C}, {"D",D}};
