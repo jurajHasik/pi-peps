@@ -97,6 +97,11 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
 	bool dbg = false);
 
+void applyH_T1_L_T2_v2(MPO_2site const& mpo2s, 
+	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
+	bool dbg = false);
+
+
 // ----- 2-Site operator functions ------------------------------------
 
 /*

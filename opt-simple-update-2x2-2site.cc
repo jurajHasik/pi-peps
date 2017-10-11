@@ -85,7 +85,7 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 
     Print(Bra);
 
-    double cls_norm = norm(Bra);
+    double cls_norm = std::pow(norm(Bra),2.0);
     
     //Print(Bra);
 
@@ -420,9 +420,8 @@ int main( int argc, char *argv[] ) {
             t_iso_begin = std::chrono::steady_clock::now();
         
             formCluster(cls, A, B, {l1, l2, l3, l4});
-            auto e_nnh = getEV2Site(cls);
-
-            auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+            e_nnh = getEV2Site(cls);
+            avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
             // auto aniDist = abs(avgE-e_nnh[0])+abs(avgE-e_nnh[1])+abs(avgE-e_nnh[2])
             //     +abs(avgE-e_nnh[3]);
 

@@ -86,7 +86,7 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 
     Print(Bra);
 
-    double cls_norm = norm(Bra);
+    double cls_norm = std::pow(norm(Bra), 2.0);
     
     //Print(Bra);
 

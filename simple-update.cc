@@ -368,7 +368,7 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	 * gate 
 	 *
 	 *        | /        | /       =>     |      /     /    |
-	 *  --|1*L^1/2|--|2*L^1/2|--   =>  --|1X|--|1R|--|2R|--|2X|-- 
+	 *     --|1*|-------|2*|--     =>  --|1X|--|1R|--|2R|--|2X|-- 
 	 *        |          |         =>     |                 |
 	 *
 	 */
@@ -413,6 +413,113 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 	if(dbg) std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
 	spec = svd(T1R*L*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	if(dbg) {Print(T1R);
+		Print(spec);
+		Print(T2R);}
+
+	// Set proper indices to resulting tensors from SVD routine
+	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
+
+	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
+	
+	for (int i=1; i<=iT1_L.m(); i++) {
+		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
+	}
+	L = L / norm(L);
+
+	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
+
+	if(dbg) {Print(T1);
+		PrintData(L);
+		Print(T2);}
+}
+
+void applyH_T1_L_T2_v2(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
+	if(dbg) {std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
+		std::cout << mpo2s;
+		PrintData(mpo2s.H1);
+    	PrintData(mpo2s.H2);}
+
+    auto sqrtT = [](double r) { return std::sqrt(r); };
+	/*
+	 * Applying 2-site MPO leads to a new tensor network of the form
+	 * 
+	 *    \ |    __               
+	 *   --|1|~~|H1|~~s1           
+	 *      |     |               s1       s2
+	 *      L     |               |_       |_ 
+	 *    \ |     |       ==   --|  |-----|  |--
+	 *   --|2|~~|H2|~~s2  ==   --|1~|     |2~|--  
+	 *      |             ==   --|__|--L--|__|--
+     *
+	 * Indices s1,s2 are relabeled back to physical indices of 
+	 * original sites 1 and 2 after applying MPO.
+	 *
+	 */
+
+	if(dbg) {std::cout <<"----- Initial |12> -----"<< std::endl;
+		Print(T1);
+		Print(L);
+		Print(T2);}
+	auto ipT1 = findtype(T1.inds(), PHYS);
+	auto ipT2 = findtype(T2.inds(), PHYS);  
+	auto iT1_L = commonIndex(T1, L);
+	auto iL_T2 = commonIndex(L, T2);
+	L.apply(sqrtT);
+
+	/*
+	 * Extract reduced tensors from on-site tensor to apply 2-site 
+	 * gate 
+	 *
+	 *        | /        | /       =>     |      /     /    |
+	 *  --|1*L^1/2|--|2*L^1/2|--   =>  --|1X|--|1R|--|2R|--|2X|-- 
+	 *        |          |         =>     |                 |
+	 *
+	 */
+	ITensor T1R(ipT1, iT1_L);
+	ITensor T2R(ipT2, iL_T2);
+	ITensor T1X, T2X, sv1XR, sv2XR;
+	auto spec = svd( (T1*L)*delta(iT1_L, iL_T2), T1R, sv1XR, T1X);
+	if(dbg) Print(spec);
+	spec = svd( (T2*L)*delta(iT1_L, iL_T2), T2R, sv2XR, T2X);
+	if(dbg) Print(spec);
+	T1R = T1R * sv1XR;
+	T2R = T2R * sv2XR;
+
+	// D^2 x s x auxD_mpo3s
+	auto kd_phys1 = delta(ipT1, mpo2s.Is1);
+	T1R = (T1R * kd_phys1) * mpo2s.H1;
+	T1R = (T1R * kd_phys1.prime()).prime(PHYS,-1);
+	// D^2 x s x auxD_mpo3s^2
+	auto kd_phys2 = delta(ipT2, mpo2s.Is2);
+	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
+	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
+
+	if(dbg) {std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
+		Print(T1R);
+    	Print(T2R);}
+
+	/*
+	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
+	 * along diagonal matrix with weights
+	 *
+	 *       _______               s1                       s2
+	 *  s1~~|       |~~s2           |                        |
+	 *    --| 1~ 2~ |--    ==>      |                        |
+	 *      |_______|      ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
+	 *
+	 * where 1~~ and 2~~ are now holding singular vectors wrt
+	 * to SVD and SV_L12 holds a new weights
+	 * We keep only auxBondDim largest singular values
+	 *
+	 */
+
+	if(dbg) std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	ITensor SV_L12;
+	spec = svd(T1R*delta(iT1_L, iL_T2)*T2R, T1R, SV_L12, T2R, 
+		{"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
 	if(dbg) {Print(T1R);
 		Print(spec);
 		Print(T2R);}
@@ -1327,7 +1434,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
     Index a2 = commonIndex(l12,T2);
     Index a3 = commonIndex(T2,l23);
     Index a4 = commonIndex(l23,T3);
-    if(dbg) {Print(a1);
+    if(dbg) { Print(a1);
 	    Print(a4);
 
 		std::cout <<">>>>> applyH_123_v1 called <<<<<"<< std::endl;
@@ -1338,22 +1445,6 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 
 		Print(l12);
 		Print(l23); }	
-
-	double pw;
-	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
-
-	// STEP 1 Absorb sqrt of l12 and l23 to tensor T1, T2, T3
-	pw = 0.5;
-	l12.apply(pow_T);
-	l23.apply(pow_T);
-
-	T1 = (T1 * l12) *delta(a2, a1); //--a1
-	T2 = (l12 * T2 * l23); // a1-- --a4
-	T3 = (T3 * l23) *delta(a3, a4); //--a4
-	
-	if(dbg) {Print(T1);
-		Print(T2);
-		Print(T3); }
 
     // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
 	/*
@@ -1385,7 +1476,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 
 	ITensor rT1, mT1, svT1, rT2, mT2, svT2, rT3, mT3, svT3, sv1, sv2;  
     mT1 = ITensor(s1, a1);
-    mT2 = ITensor(s2, a1, a4);
+    mT2 = ITensor(s2, a2, a3);
     mT3 = ITensor(s3, a4);
     svd(T1, mT1, svT1, rT1);
 	svd(T2, mT2, svT2, rT2);
@@ -1398,7 +1489,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	Index am2 = commonIndex(rT2, mT2);
 	Index am3 = commonIndex(rT3, mT3);
 
-	if(dbg) {Print(mT1);
+	if(dbg) { Print(mT1);
 		Print(mT2);
 		Print(mT3); }
 
@@ -1420,8 +1511,8 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	 *
 	 */
 	// std::cout <<"----- Appyling H1-H2-H3 to |123> -----"<< std::endl;
-	ITensor res = (mT1*delta(s1,mpo3s.Is1))*(mT2*delta(s2,mpo3s.Is2))
-		*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
+	ITensor res = (mT1*delta(s1,mpo3s.Is1))*l12*(mT2*delta(s2,mpo3s.Is2))
+		*l23*(mT3*delta(s3,mpo3s.Is3))*mpo3s.H1*mpo3s.H2*mpo3s.H3;
 	//Print(res);
 	res = ((res.noprime(PHYS)*delta(s1,mpo3s.Is1))*delta(s2,mpo3s.Is2))
 		*delta(s3,mpo3s.Is3);
@@ -1446,7 +1537,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	Index n1 = commonIndex(mT1,sv1);
 	Index n2 = commonIndex(sv1,res);
 
-	if(dbg) {Print(mT1);
+	if(dbg) { Print(mT1);
 		Print(sv1); }
 
 	//PRB 82, 245119, 2010
@@ -1487,7 +1578,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	l12 = l12 / norm(l12);
 	l23 = l23 / norm(l23);
 
-	if(dbg) {Print(T1);
+	if(dbg) { Print(T1);
 		Print(T2);
 		Print(T3);
 		Print(l12);
@@ -1657,9 +1748,14 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 		Print(sv2);
 		Print(mT3); }
 
+	ITensor sv1I(n1,n2);
+	for (int i=1; i<=a1.m(); i++) {
+		sv1I.set(n1(i),n2(i), 1.0/sv1.real(n1(i),n2(i)));
+	}
+
 	// Reconstruct on-site tensors by contraction with remainders
 	T1 = (rT1*mT1) *delta(n1,a1);
-	T2 = ((rT2*mT2) *delta(n1,a2)) *delta(n3,a3);
+	T2 = (((rT2*mT2)* sv1I) *delta(n2,a2)) *delta(n3,a3);
 	T3 = (rT3*mT3) *delta(n4,a4);
 
 	for (int i=1; i<=a1.m(); i++) {
