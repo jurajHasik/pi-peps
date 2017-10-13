@@ -7,11 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
-#pragma GCC diagnostic pop
 
 // ############################################################################
 // IO for cluster definition using JSON data format

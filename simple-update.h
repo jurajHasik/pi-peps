@@ -10,11 +10,7 @@
 #include "su2.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
-
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
-#pragma GCC diagnostic pop
 
 typedef enum ID_TYPE {
     ID_TYPE_1,

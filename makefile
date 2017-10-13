@@ -58,7 +58,7 @@ GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
 # see https://www.gnu.org/software/make/manual/make.html#Automatic-Variables
 %.o: %.cc $(HEADERS) $(TENSOR_HEADERS)
-	$(CCCOM) -c $(CCFLAGS) -o $@ $<
+	$(CCCOM) -c $(CCFLAGS) -Wno-unused-function -o $@ $<
 
 .debug_objs/%.o: %.cc $(HEADERS) $(TENSOR_HEADERS)
 	$(CCCOM) -c $(CCGFLAGS) -o $@ $<

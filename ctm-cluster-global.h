@@ -2,11 +2,7 @@
 #define __CTM_CLS_GLOBAL_
 
 #include <string>
-
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
-#pragma GCC diagnostic pop
 
 /*
  * ENVironment of nxm cluster 

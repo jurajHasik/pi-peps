@@ -6,16 +6,19 @@
 
 using namespace itensor;
 
-// t3 <=> {T1,l12,T2,l23,T3}
+// obtain weights for each of 3 sites T1,T2,T3 without weights on links
+// connecting T1--l12--T2 and T2--l23--T3
+// p3s: {&T1,&l12,&T2,&l23,&T3} holds pointers to on-site tensors and
+//      weights on connecting links 
 const std::map< ITensor *, const std::vector< ITensor *> > get3siteTN(
     std::map< ITensor *, const std::vector< ITensor *> > const& tn,
-    std::vector< ITensor* > const& tn3s) 
+    std::vector< ITensor* > const& p3s) 
 {
 
-    std::vector<ITensor*> mock_l12 = {tn3s[1]};
-    std::vector<ITensor*> mock_l12l23 = {tn3s[1],tn3s[3]};
+    std::vector<ITensor*> mock_l12 = {p3s[1]};
+    std::vector<ITensor*> mock_l12l23 = {p3s[1],p3s[3]};
     std::sort(mock_l12l23.begin(), mock_l12l23.end());
-    std::vector<ITensor*> mock_l23 = {tn3s[3]};
+    std::vector<ITensor*> mock_l23 = {p3s[3]};
     
     std::vector<ITensor*> wt1({}), wt2({}), wt3({});
     
@@ -28,17 +31,17 @@ const std::map< ITensor *, const std::vector< ITensor *> > get3siteTN(
     //     std::cout << std::endl;
     // }
 
-    std::set_difference(tn.at(tn3s[0]).begin(),tn.at(tn3s[0]).end(),
+    std::set_difference(tn.at(p3s[0]).begin(),tn.at(p3s[0]).end(),
         mock_l12.begin(),mock_l12.end(), std::back_inserter(wt1));
 
-    std::set_difference(tn.at(tn3s[2]).begin(),tn.at(tn3s[2]).end(),
+    std::set_difference(tn.at(p3s[2]).begin(),tn.at(p3s[2]).end(),
         mock_l12l23.begin(),mock_l12l23.end(), std::back_inserter(wt2));
 
-    std::set_difference(tn.at(tn3s[4]).begin(),tn.at(tn3s[4]).end(),
+    std::set_difference(tn.at(p3s[4]).begin(),tn.at(p3s[4]).end(),
         mock_l23.begin(),mock_l23.end(), std::back_inserter(wt3));
 
     const std::map<ITensor*, const std::vector< ITensor *> > res = 
-        {{tn3s[0],wt1},{tn3s[2],wt2},{tn3s[4],wt3}};
+        {{p3s[0],wt1},{p3s[2],wt2},{p3s[4],wt3}};
 
     return res;
 }
@@ -164,39 +167,46 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     return evs;
 }
 
-void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pA, 
-    std::vector<ITensor*> const& pB, std::vector<ITensor*> const& pC,
-    std::vector<ITensor*> const& tn3s)
+// perform 3-site simple update over sites T1,T2,T3 connected by links
+// with weights T1--l12--T2 and T2--l23--T3
+// p3s: {&T1,&l12,&T2,&l23,&T3} holds pointers to on-site tensors and
+//      weights on connecting links
+// pT1, pT2, pT3: {&l1,&l2,&l3}, {&l4,&l5}, {...} hold pointers to weights
+//      surrounding the on-site tensors T1,T2,T3
+void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pT1, 
+    std::vector<ITensor*> const& pT2, std::vector<ITensor*> const& pT3,
+    std::vector<ITensor*> const& p3s)
 {
-    std::cout << "SIMPUP" << std::endl;
-    (*tn3s[0]) = (((*tn3s[0]) * (*pA[0])) * (*pA[1])) * (*pA[2]);
-    (*tn3s[2]) = ((*tn3s[2]) * (*pB[0])) * (*pB[1]);
-    (*tn3s[4]) = (((*tn3s[4]) * (*pC[0])) * (*pC[1])) * (*pC[2]);
-    std::cout << "ENTERING APPLYH" << std::endl;
-    applyH_123_v2(uJ1J2, *tn3s[0], *tn3s[2], *tn3s[4], *tn3s[1], *tn3s[3], true);
+    (*p3s[0]) = (((*p3s[0]) * (*pT1[0])) * (*pT1[1])) * (*pT1[2]);
+    (*p3s[2]) = ((*p3s[2]) * (*pT2[0])) * (*pT2[1]);
+    (*p3s[4]) = (((*p3s[4]) * (*pT3[0])) * (*pT3[1])) * (*pT3[2]);
 
+    applyH_123_v2(uJ1J2, *p3s[0], *p3s[2], *p3s[4], *p3s[1], *p3s[3]);
+
+    // Invert weight tensors
     const double svCutoff = 1.0e-14;
-    auto inverseT = [&svCutoff](Cplx c) 
-        { return (std::abs(c) < svCutoff ? 0.0 : 1.0/c); };
+    auto inverseT = [&svCutoff](Real r) 
+        { return (std::abs(r) < svCutoff ? 0.0 : 1.0/r); };
 
     for(size_t i = 0; i<=2; ++i) {
-        (*pA[i]).apply(inverseT);
-        (*pC[i]).apply(inverseT);
+        (*pT1[i]).apply(inverseT);
+        (*pT3[i]).apply(inverseT);
     }
     for(size_t i = 0; i<=1; ++i) {
-        (*pB[i]).apply(inverseT);
+        (*pT2[i]).apply(inverseT);
     }
 
-    (*tn3s[0]) = (*tn3s[0]) * (*pA[0]) * (*pA[1]) * (*pA[2]);
-    (*tn3s[2]) = (*tn3s[2]) * (*pB[0]) * (*pB[1]);
-    (*tn3s[4]) = (*tn3s[4]) * (*pC[0]) * (*pC[1]) * (*pC[2]);
+    (*p3s[0]) = (*p3s[0]) * (*pT1[0]) * (*pT1[1]) * (*pT1[2]);
+    (*p3s[2]) = (*p3s[2]) * (*pT2[0]) * (*pT2[1]);
+    (*p3s[4]) = (*p3s[4]) * (*pT3[0]) * (*pT3[1]) * (*pT3[2]);
 
+    // Invert back weight tensors
     for(size_t i = 0; i<=2; ++i) {
-        (*pA[i]).apply(inverseT);
-        (*pC[i]).apply(inverseT);
+        (*pT1[i]).apply(inverseT);
+        (*pT3[i]).apply(inverseT);
     }
     for(size_t i = 0; i<=1; ++i) {
-        (*pB[i]).apply(inverseT);
+        (*pT2[i]).apply(inverseT);
     }
 
     // auto l1Is = l1.inds();
@@ -214,17 +224,23 @@ void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pA,
     // }
 }
 
+// perform 3-site simple update over sites T1,T2,T3 connected by weights l12,l23 as
+// follows T1--l12--T2 and T2--l23--T3 
+// tn: {&T1->{&l1,&l2,&l3,&4},&T2->{...},...} map from pointer to sites T1...T4 to
+//     vectors holding pointers to weights l1...l8  
+// p3s: {&T1,&l12,&T2,&23,&T3} vector of pointers to sites T1,T2,T3 
+//     and weights l12,l23 
+//
 void simpUp(MPO_3site const& uJ1J2, 
     std::map< ITensor *, const std::vector< ITensor *> > const& tn,
-    std::vector< ITensor* > const& tn3s) {
+    std::vector< ITensor* > const& p3s) {
 
-    auto tn3w = get3siteTN(tn, tn3s);
+    // obtain map of weight for sites T1,...,T3 without weights l12,l23
+    // {&T1->{&l1,&l2,&l3,&l4}/l12, &T2->{...}/{&l12,&l23},...} 
+    auto p3w = get3siteTN(tn, p3s);
 
-    simpUp(uJ1J2, tn3w.at(tn3s[0]), tn3w.at(tn3s[2]), tn3w.at(tn3s[4]),
-    tn3s);
+    simpUp(uJ1J2, p3w.at(p3s[0]), p3w.at(p3s[2]), p3w.at(p3s[4]), p3s);
 }
-
-
 
 int main( int argc, char *argv[] ) {
     // ########################################################################
@@ -449,49 +465,22 @@ int main( int argc, char *argv[] ) {
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
     
+    std::vector< std::vector<ITensor*> > opt_seq = {
+        {&A,&l2,&B,&l8,&D}, {&A,&l6,&C,&l4,&D},
+        {&C,&l5,&A,&l1,&B}, {&C,&l3,&D,&l7,&B},
+        {&C,&l4,&D,&l8,&B}, {&C,&l6,&A,&l2,&B},
+        {&D,&l3,&C,&l5,&A}, {&D,&l7,&B,&l1,&A}
+    };
+
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
-        simpUp(uJ1J2, tn, {&A,&l2,&B,&l8,&D});
-
-        // simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
-        //     {&B, &l7, &l1, &l7I, &l1I},
-        //     {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
-        //     l2, l8, l2I, l8I);
-
-        // simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
-        //     {&C, &l3, &l5, &l3I, &l5I},
-        //     {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
-        //     l6, l4, l6I, l4I);
-
-        // simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
-        //     {&A, &l2, &l6, &l2I, &l6I},
-        //     {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
-        //     l5, l1, l5I, l1I);
-
-        // simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
-        //     {&D, &l4, &l8, &l4I, &l8I},
-        //     {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
-        //     l3, l7, l3I, l7I);
-
-        // simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
-        //     {&D, &l7, &l3, &l7I, &l3I},
-        //     {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
-        //     l4, l8, l4I, l8I);
-
-        // simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
-        //     {&A, &l1, &l5, &l1I, &l5I},
-        //     {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
-        //     l6, l2, l6I, l2I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
-        //     {&C, &l6, &l4, &l6I, &l4I},
-        //     {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
-        //     l3, l5, l3I, l5I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
-        //     {&B, &l8, &l2, &l8I, &l2I},
-        //     {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
-        //     l7, l1, l7I, l1I);
+        for(size_t i=0; i<opt_seq.size(); ++i) {
+            simpUp(uJ1J2, tn, opt_seq[i]);    
+        }
+        for(auto it = opt_seq.end(); it-- != opt_seq.begin();) {
+            //std::cout << i <<" "<< std::endl;
+            simpUp(uJ1J2, tn, *it); 
+        }
 
         // ###
 

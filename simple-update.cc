@@ -1547,7 +1547,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	Index n4 = commonIndex(sv2,mT3);
 
 
-	auto inverseT = [](Cplx c) { return 1.0/c; };
+	auto inverseT = [](Real r) { return 1.0/r; };
 	ITensor sv1I = sv1;
 	sv1I.apply(inverseT);
 
@@ -1561,15 +1561,17 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	T2 = (((rT2*mT2) *sv1I) *delta(n2,a2)) *delta(n3,a3);
 	T3 = (rT3*mT3) *delta(n4,a4);
 
-	for (int i=1; i<=auxd; ++i) { l12.set(a1(i),a2(i), 0.0); };
+	std::vector<Real> temp_l12(auxd, 0.0);
+	std::vector<Real> temp_l23(auxd, 0.0);
 	for (int i=1; i<=n1.m(); ++i) {
-		l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
+		temp_l12[i-1] = sv1.real(n1(i),n2(i));
 	}
-	for (int i=1; i<=auxd; ++i) { l23.set(a3(i),a4(i), 0.0); };
 	for (int i=1; i<=n3.m(); ++i) {
-		l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
+		temp_l23[i-1] = sv2.real(n3(i),n4(i));
 	}
-	//l12 = l12 / norm(l12);
+	l12 = diagTensor(temp_l12, a1, a2);
+	l23 = diagTensor(temp_l23, a3, a4);
+	// l12 = l12 / norm(l12);
 	l23 = l23 / norm(l23);
 
 	if(dbg) { Print(T1);

@@ -12,11 +12,7 @@
 #include "json.hpp"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
-
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wunused-result"
 #include "itensor/all.h"
-#pragma GCC diagnostic pop
 
 const std::string WS4(4,' ');
 
