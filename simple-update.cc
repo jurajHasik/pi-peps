@@ -1524,6 +1524,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	Index n1 = commonIndex(mT1,sv1);
 	Index n2 = commonIndex(sv1,res);
 
+	// Normalize sv1
 	sv1 = sv1 / norm(sv1);
 	if(dbg) { Print(mT1);
 		PrintData(sv1); }
@@ -1545,10 +1546,10 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	Index n3 = commonIndex(mT2,sv2);
 	Index n4 = commonIndex(sv2,mT3);
 
-	ITensor sv1I(n1,n2);
-	for (int i=1; i<=n1.m(); ++i) {
-		sv1I.set(n1(i),n2(i), 1.0/sv1.real(n1(i),n2(i)));
-	}
+
+	auto inverseT = [](Cplx c) { return 1.0/c; };
+	ITensor sv1I = sv1;
+	sv1I.apply(inverseT);
 
 	if(dbg) { Print(mT2);
 		PrintData(sv1I);

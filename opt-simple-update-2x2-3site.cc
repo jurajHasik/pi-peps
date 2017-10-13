@@ -7,33 +7,17 @@
 using namespace itensor;
 
 // t3 <=> {T1,l12,T2,l23,T3}
-std::map< ITensor *, std::vector< ITensor *> > get3siteTN(
-    const std::map< ITensor *, const std::vector< ITensor *> > & tn,
-    const std::vector< ITensor* > & tn3s) {
+const std::map< ITensor *, const std::vector< ITensor *> > get3siteTN(
+    std::map< ITensor *, const std::vector< ITensor *> > const& tn,
+    std::vector< ITensor* > const& tn3s) 
+{
 
-    // std::cout << "CALLING get3siteTN" << std::endl;
-
-    // std::cout << "tn: ";
-    // for (const auto &p : tn) {
-    //     std::cout << "[" << p.first << "] => ";
-    //     for(const auto &e : p.second) {
-    //         std::cout << e << " ";
-    //     }
-    //     std::cout << std::endl;
-    // }
-
-    // std::cout << "t3: ";
-    // for(const auto &e : t3) {
-    //     std::cout << e << " ";
-    // }
-    // std::cout << std::endl;
-
-    const std::vector<ITensor*> mock_l12 = {tn3s[1]};
-    const std::vector<ITensor*> mock_l12l23 = {tn3s[1],tn3s[3]};
-    const std::vector<ITensor*> mock_l23 = {tn3s[3]};
+    std::vector<ITensor*> mock_l12 = {tn3s[1]};
+    std::vector<ITensor*> mock_l12l23 = {tn3s[1],tn3s[3]};
+    std::sort(mock_l12l23.begin(), mock_l12l23.end());
+    std::vector<ITensor*> mock_l23 = {tn3s[3]};
     
-    std::map<ITensor*, std::vector< ITensor *> > res = 
-        {{tn3s[0],{}},{tn3s[2],{}},{tn3s[4],{}}}; 
+    std::vector<ITensor*> wt1({}), wt2({}), wt3({});
     
     // std::cout << "res: ";
     // for (const auto &p : res) {
@@ -45,13 +29,16 @@ std::map< ITensor *, std::vector< ITensor *> > get3siteTN(
     // }
 
     std::set_difference(tn.at(tn3s[0]).begin(),tn.at(tn3s[0]).end(),
-        mock_l12.begin(),mock_l12.end(), std::back_inserter( res.at(tn3s[0]) ));
+        mock_l12.begin(),mock_l12.end(), std::back_inserter(wt1));
 
     std::set_difference(tn.at(tn3s[2]).begin(),tn.at(tn3s[2]).end(),
-        mock_l12l23.begin(),mock_l12l23.end(), std::back_inserter( res.at(tn3s[2]) ));
+        mock_l12l23.begin(),mock_l12l23.end(), std::back_inserter(wt2));
 
     std::set_difference(tn.at(tn3s[4]).begin(),tn.at(tn3s[4]).end(),
-        mock_l23.begin(),mock_l23.end(), std::back_inserter( res.at(tn3s[4]) ));
+        mock_l23.begin(),mock_l23.end(), std::back_inserter(wt3));
+
+    const std::map<ITensor*, const std::vector< ITensor *> > res = 
+        {{tn3s[0],wt1},{tn3s[2],wt2},{tn3s[4],wt3}};
 
     return res;
 }
@@ -177,44 +164,67 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     return evs;
 }
 
-// void simpUp(MPO_3site const& uJ1J2, 
-//     const std::map< ITensor *, const std::vector< ITensor *> > & tn,
-//     const std::vector< ITensor* > & tn3s) {
-
-//     auto tn3w = get3siteTN(tn, tn3s);
-
-//     simpUp(uJ1J2, tn3w.at(tn3s[0]), tn3w.at(tn3s[2]), tn3w.at(tn3s[4]),
-//     tn3s[1], tn3s[3], ITensor & l1I, ITensor & l2I)
-// }
-
 void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pA, 
     std::vector<ITensor*> const& pB, std::vector<ITensor*> const& pC,
-    ITensor & l1, ITensor & l2, ITensor & l1I, ITensor & l2I) {
-
-    (*pA[0]) = (*pA[0]) * (*pA[1]) * (*pA[2]) * (*pA[3]);
-    (*pB[0]) = (*pB[0]) * (*pB[1]) * (*pB[2]);
-    (*pC[0]) = (*pC[0]) * (*pC[1]) * (*pC[2]) * (*pC[3]);
-    applyH_123_v2(uJ1J2, *pA[0], *pB[0], *pC[0], l1, l2);
-    (*pA[0]) = (*pA[0]) * (*pA[4]) * (*pA[5]) * (*pA[6]);
-    (*pB[0]) = (*pB[0]) * (*pB[3]) * (*pB[4]);
-    (*pC[0]) = (*pC[0]) * (*pC[4]) * (*pC[5]) * (*pC[6]);
+    std::vector<ITensor*> const& tn3s)
+{
+    std::cout << "SIMPUP" << std::endl;
+    (*tn3s[0]) = (((*tn3s[0]) * (*pA[0])) * (*pA[1])) * (*pA[2]);
+    (*tn3s[2]) = ((*tn3s[2]) * (*pB[0])) * (*pB[1]);
+    (*tn3s[4]) = (((*tn3s[4]) * (*pC[0])) * (*pC[1])) * (*pC[2]);
+    std::cout << "ENTERING APPLYH" << std::endl;
+    applyH_123_v2(uJ1J2, *tn3s[0], *tn3s[2], *tn3s[4], *tn3s[1], *tn3s[3], true);
 
     const double svCutoff = 1.0e-14;
+    auto inverseT = [&svCutoff](Cplx c) 
+        { return (std::abs(c) < svCutoff ? 0.0 : 1.0/c); };
 
-    auto l1Is = l1.inds();
-    auto l2Is = l2.inds();
-    for (int i=1; i<=l1Is[0].m(); ++i ) {
-        if (std::abs(l1.real(l1Is[0](i), l1Is[1](i))) > svCutoff)
-            l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
-        else 
-            l1I.set(l1Is[0](i), l1Is[1](i), 0.0);
-
-        if (std::abs(l2.real(l2Is[0](i), l2Is[1](i))) > svCutoff)
-            l2I.set(l2Is[0](i), l2Is[1](i), 1.0/l2.real(l2Is[0](i), l2Is[1](i)));
-        else
-            l2I.set(l2Is[0](i), l2Is[1](i), 0.0);
+    for(size_t i = 0; i<=2; ++i) {
+        (*pA[i]).apply(inverseT);
+        (*pC[i]).apply(inverseT);
     }
+    for(size_t i = 0; i<=1; ++i) {
+        (*pB[i]).apply(inverseT);
+    }
+
+    (*tn3s[0]) = (*tn3s[0]) * (*pA[0]) * (*pA[1]) * (*pA[2]);
+    (*tn3s[2]) = (*tn3s[2]) * (*pB[0]) * (*pB[1]);
+    (*tn3s[4]) = (*tn3s[4]) * (*pC[0]) * (*pC[1]) * (*pC[2]);
+
+    for(size_t i = 0; i<=2; ++i) {
+        (*pA[i]).apply(inverseT);
+        (*pC[i]).apply(inverseT);
+    }
+    for(size_t i = 0; i<=1; ++i) {
+        (*pB[i]).apply(inverseT);
+    }
+
+    // auto l1Is = l1.inds();
+    // auto l2Is = l2.inds();
+    // for (int i=1; i<=l1Is[0].m(); ++i ) {
+    //     if (std::abs(l1.real(l1Is[0](i), l1Is[1](i))) > svCutoff)
+    //         l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
+    //     else 
+    //         l1I.set(l1Is[0](i), l1Is[1](i), 0.0);
+
+    //     if (std::abs(l2.real(l2Is[0](i), l2Is[1](i))) > svCutoff)
+    //         l2I.set(l2Is[0](i), l2Is[1](i), 1.0/l2.real(l2Is[0](i), l2Is[1](i)));
+    //     else
+    //         l2I.set(l2Is[0](i), l2Is[1](i), 0.0);
+    // }
 }
+
+void simpUp(MPO_3site const& uJ1J2, 
+    std::map< ITensor *, const std::vector< ITensor *> > const& tn,
+    std::vector< ITensor* > const& tn3s) {
+
+    auto tn3w = get3siteTN(tn, tn3s);
+
+    simpUp(uJ1J2, tn3w.at(tn3s[0]), tn3w.at(tn3s[2]), tn3w.at(tn3s[4]),
+    tn3s);
+}
+
+
 
 int main( int argc, char *argv[] ) {
     // ########################################################################
@@ -376,33 +386,25 @@ int main( int argc, char *argv[] ) {
     // define 
 
     // horizontal
-    ITensor l1(prime(aIB,2), aIA), l2(prime(aIA,2), aIB);
-    ITensor l3(prime(aID,2), aIC), l4(prime(aIC,2), aID);
+    auto l1 = delta(prime(aIB,2), aIA); 
+    auto l2 = delta(prime(aIA,2), aIB);
+    auto l3 = delta(prime(aID,2), aIC);
+    auto l4 = delta(prime(aIC,2), aID);
     // vertical
-    ITensor l5(prime(aIC,3), prime(aIA,1)), l6(prime(aIA,3), prime(aIC,1));
-    ITensor l7(prime(aID,3), prime(aIB,1)), l8(prime(aIB,3), prime(aID,1));
-
-    // Initially set all weights to 1
-    for (int i=1; i<=aIA.m(); i++) {
-        l1.set(prime(aIB,2)(i), aIA(i), 1.0);
-        l2.set(prime(aIA,2)(i), aIB(i), 1.0);
-        l3.set(prime(aID,2)(i), aIC(i), 1.0); 
-        l4.set(prime(aIC,2)(i), aID(i), 1.0);
-        l5.set(prime(aIC,3)(i), prime(aIA,1)(i), 1.0);
-        l6.set(prime(aIA,3)(i), prime(aIC,1)(i), 1.0);
-        l7.set(prime(aID,3)(i), prime(aIB,1)(i), 1.0);
-        l8.set(prime(aIB,3)(i), prime(aID,1)(i), 1.0);
-    }
+    auto l5 = delta(prime(aIC,3), prime(aIA,1));
+    auto l6 = delta(prime(aIA,3), prime(aIC,1));
+    auto l7 = delta(prime(aID,3), prime(aIB,1));
+    auto l8 = delta(prime(aIB,3), prime(aID,1));
 
     // Define set of inverse diag weights
-    auto l1I = l1;
-    auto l2I = l2;
-    auto l3I = l3;
-    auto l4I = l4;
-    auto l5I = l5;
-    auto l6I = l6;
-    auto l7I = l7;
-    auto l8I = l8;
+    // auto l1I = l1;
+    // auto l2I = l2;
+    // auto l3I = l3;
+    // auto l4I = l4;
+    // auto l5I = l5;
+    // auto l6I = l6;
+    // auto l7I = l7;
+    // auto l8I = l8;
 
     // Define weights sets for individual sites
     std::vector< ITensor * > pwA = {&l1, &l2, &l5, &l6};
@@ -410,7 +412,7 @@ int main( int argc, char *argv[] ) {
     std::vector< ITensor * > pwC = {&l3, &l4, &l6, &l5};
     std::vector< ITensor * > pwD = {&l3, &l4, &l7, &l8};
 
-    for (const auto &v : {&pwA, &pwB, &pwC, &pwD}) {
+    for (auto &v : {&pwA, &pwB, &pwC, &pwD}) {
         std::sort((*v).begin(), (*v).end());
         std::cout << std::is_sorted((*v).begin(),(*v).end()) << " ";
     }
@@ -420,23 +422,23 @@ int main( int argc, char *argv[] ) {
     const std::map< ITensor *, const std::vector<ITensor * > > tn = 
         {{&A, pwA}, {&B, pwB}, {&C, pwC}, {&D, pwD}};
 
-    for (const auto &p : tn) {
-        std::cout << "[" << p.first << "] => ";
-        for(const auto &e : p.second) {
-            std::cout << e << " ";
-        }
-        std::cout << std::endl;
-    }
+    // for (const auto &p : tn) {
+    //     std::cout << "[" << p.first << "] => ";
+    //     for(const auto &e : p.second) {
+    //         std::cout << e << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
-    auto res = get3siteTN(tn, {&A,&l2,&B,&l8,&D});
+    // auto res = get3siteTN(tn, {&A,&l2,&B,&l8,&D});
 
-    for (const auto &p : res) {
-        std::cout << "[" << p.first << "] => ";
-        for(const auto &e : p.second) {
-            std::cout << e << " ";
-        }
-        std::cout << std::endl;
-    }
+    // for (const auto &p : res) {
+    //     std::cout << "[" << p.first << "] => ";
+    //     for(const auto &e : p.second) {
+    //         std::cout << e << " ";
+    //     }
+    //     std::cout << std::endl;
+    // }
 
     // Compute Initial value of APPROX(!) energy
     formCluster(cls, {A,B,C,D}, {l1, l2, l3, l4, l5, l6, l7, l8});
@@ -449,80 +451,85 @@ int main( int argc, char *argv[] ) {
     
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
-        simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
-            {&B, &l7, &l1, &l7I, &l1I},
-            {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
-            l2, l8, l2I, l8I);
+        simpUp(uJ1J2, tn, {&A,&l2,&B,&l8,&D});
 
-        simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
-            {&C, &l3, &l5, &l3I, &l5I},
-            {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
-            l6, l4, l6I, l4I);
+        // simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
+        //     {&B, &l7, &l1, &l7I, &l1I},
+        //     {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
+        //     l2, l8, l2I, l8I);
 
-        simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
-            {&A, &l2, &l6, &l2I, &l6I},
-            {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
-            l5, l1, l5I, l1I);
+        // simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
+        //     {&C, &l3, &l5, &l3I, &l5I},
+        //     {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
+        //     l6, l4, l6I, l4I);
 
-        simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
-            {&D, &l4, &l8, &l4I, &l8I},
-            {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
-            l3, l7, l3I, l7I);
+        // simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
+        //     {&A, &l2, &l6, &l2I, &l6I},
+        //     {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
+        //     l5, l1, l5I, l1I);
 
-        simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
-            {&D, &l7, &l3, &l7I, &l3I},
-            {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
-            l4, l8, l4I, l8I);
+        // simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
+        //     {&D, &l4, &l8, &l4I, &l8I},
+        //     {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
+        //     l3, l7, l3I, l7I);
 
-        simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
-            {&A, &l1, &l5, &l1I, &l5I},
-            {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
-            l6, l2, l6I, l2I);
+        // simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
+        //     {&D, &l7, &l3, &l7I, &l3I},
+        //     {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
+        //     l4, l8, l4I, l8I);
 
-        simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
-            {&C, &l6, &l4, &l6I, &l4I},
-            {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
-            l3, l5, l3I, l5I);
+        // simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
+        //     {&A, &l1, &l5, &l1I, &l5I},
+        //     {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
+        //     l6, l2, l6I, l2I);
 
-        simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
-            {&B, &l8, &l2, &l8I, &l2I},
-            {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
-            l7, l1, l7I, l1I);
+        // simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
+        //     {&C, &l6, &l4, &l6I, &l4I},
+        //     {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
+        //     l3, l5, l3I, l5I);
+
+        // simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
+        //     {&B, &l8, &l2, &l8I, &l2I},
+        //     {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
+        //     l7, l1, l7I, l1I);
 
         // ###
 
-        simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
-            {&B, &l8, &l2, &l8I, &l2I},
-            {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
-            l7, l1, l7I, l1I);
-        simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
-            {&C, &l6, &l4, &l6I, &l4I},
-            {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
-            l3, l5, l3I, l5I);
-        simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
-            {&A, &l1, &l5, &l1I, &l5I},
-            {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
-            l6, l2, l6I, l2I);
-        simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
-            {&D, &l7, &l3, &l7I, &l3I},
-            {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
-            l4, l8, l4I, l8I);
-        simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
-            {&D, &l4, &l8, &l4I, &l8I},
-            {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
-            l3, l7, l3I, l7I);
-        simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
-            {&A, &l2, &l6, &l2I, &l6I},
-            {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
-            l5, l1, l5I, l1I);
-        simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
-            {&C, &l3, &l5, &l3I, &l5I},
-            {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
-            l6, l4, l6I, l4I);
-        simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
-            {&B, &l7, &l1, &l7I, &l1I},
-            {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
-            l2, l8, l2I, l8I);
+        // simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
+        //     {&B, &l8, &l2, &l8I, &l2I},
+        //     {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
+        //     l7, l1, l7I, l1I);
+        // simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
+        //     {&C, &l6, &l4, &l6I, &l4I},
+        //     {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
+        //     l3, l5, l3I, l5I);
+        // simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
+        //     {&A, &l1, &l5, &l1I, &l5I},
+        //     {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
+        //     l6, l2, l6I, l2I);
+        // simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
+        //     {&D, &l7, &l3, &l7I, &l3I},
+        //     {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
+        //     l4, l8, l4I, l8I);
+        // simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
+        //     {&D, &l4, &l8, &l4I, &l8I},
+        //     {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
+        //     l3, l7, l3I, l7I);
+        // simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
+        //     {&A, &l2, &l6, &l2I, &l6I},
+        //     {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
+        //     l5, l1, l5I, l1I);
+        // simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
+        //     {&C, &l3, &l5, &l3I, &l5I},
+        //     {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
+        //     l6, l4, l6I, l4I);
+        // simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
+        //     {&B, &l7, &l1, &l7I, &l1I},
+        //     {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
+        //     l2, l8, l2I, l8I);
+
+        // XXX
+
         // simpUp(uJ1J2, {&B, &l8, &l2, &l7, &l8I, &l2I, &l7I}, 
         //     {&A, &l5, &l2, &l5I, &l2I},
         //     {&C, &l5, &l3, &l4, &l5I, &l3I, &l4I},
