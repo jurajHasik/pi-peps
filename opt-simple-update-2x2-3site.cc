@@ -120,7 +120,8 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
         sumels(KetAB)/cls_norm, sumels(KetAC)/cls_norm,
         sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm };
 
-    std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
+    std::cout << evs[0].real() <<", "<< evs[1].real() <<", "
+        << evs[2].real() <<", "<< evs[3].real() << std::endl;
 
     return evs;
 }
@@ -137,13 +138,21 @@ void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pA,
     (*pB[0]) = (*pB[0]) * (*pB[3]) * (*pB[4]);
     (*pC[0]) = (*pC[0]) * (*pC[4]) * (*pC[5]) * (*pC[6]);
 
+    const double svCutoff = 1.0e-14;
+
     auto l1Is = l1.inds();
     auto l2Is = l2.inds();
     for (int i=1; i<=l1Is[0].m(); ++i ) {
-        l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
-        l2I.set(l2Is[0](i), l2Is[1](i), 
-            1.0/l2.real(l2Is[0](i), l2Is[1](i)));
-    }
+        if (std::abs(l1.real(l1Is[0](i), l1Is[1](i))) > svCutoff)
+            l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
+        else 
+            l1I.set(l1Is[0](i), l1Is[1](i), 0.0);
+
+        if (std::abs(l2.real(l2Is[0](i), l2Is[1](i))) > svCutoff)
+            l2I.set(l2Is[0](i), l2Is[1](i), 1.0/l2.real(l2Is[0](i), l2Is[1](i)));
+        else
+            l2I.set(l2Is[0](i), l2Is[1](i), 0.0);
+    }   
 }
 
 int main( int argc, char *argv[] ) {
@@ -167,24 +176,14 @@ int main( int argc, char *argv[] ) {
 
         std::cout <<"Initializing from File: "<< arg_inClusterFile << std::endl;
     // otherwise we start with random cluster 
-    } else if( (arg_initType == "RANDOM") && (argc >= 8) ) {
+    } else if( ((arg_initType == "RANDOM") || (arg_initType == "RND_AB")
+        || (arg_initType == "AFM")) && (argc >= 8) ) {
         arg_outClusterFile = argv[2];
         arg_auxBondDim     = std::stoi(argv[3]);
         arg_nIter          = std::stoi(argv[4]);
         arg_tau            = std::stod(argv[5]);
         arg_J1             = std::stod(argv[6]);
-        arg_J2             = std::stod(argv[7]);
-
-        std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
-    } else if( (arg_initType == "AFM") && (argc >= 8) ) {
-        arg_outClusterFile = argv[2];
-        arg_auxBondDim     = std::stoi(argv[3]);
-        arg_nIter          = std::stoi(argv[4]);
-        arg_tau            = std::stod(argv[5]);
-        arg_J1             = std::stod(argv[6]);
-        arg_J2             = std::stod(argv[7]);
-
-        std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;        
+        arg_J2             = std::stod(argv[7]);      
     } else {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
@@ -193,6 +192,7 @@ int main( int argc, char *argv[] ) {
     double eps_threshold = 1.0e-8;
     double tau_threshold = 1.0e-10;
 
+    std::cout.precision( std::numeric_limits< double >::max_digits10 );
     std::cout <<"Simulation parameters"<< std::endl;
     std::cout <<"imag time tau: "<< arg_tau << std::endl;
     std::cout <<"J1           : "<< arg_J1 << std::endl;
@@ -253,13 +253,25 @@ int main( int argc, char *argv[] ) {
         C = ITensor(aIC, prime(aIC,1), prime(aIC,2), prime(aIC,3), pIC);
         D = ITensor(aID, prime(aID,1), prime(aID,2), prime(aID,3), pID);
 
-        if (arg_initType == "RANDOM") {
+        if (arg_initType == "RND_AB") {
+            std::cout <<"Initializing by RANDOM TENSORS A,B,C=B,D=A"<< std::endl;
+            randomize(A);
+            randomize(B);
+            C = B * delta(pIB, pIC);
+            D = A * delta(pIA, pID);
+            for (int i=0; i<=3; ++i) {
+                C = C * delta(prime(aIB,i), prime(aIC,i));
+                D = D * delta(prime(aIA,i), prime(aID,i));
+            }
+        } else if(arg_initType == "RANDOM") {
+            std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
             // Randomize
             randomize(A);
             randomize(B);
             randomize(C);
             randomize(D);
         } else if (arg_initType == "AFM") {
+            std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;
             // Spin DOWN on site A, spin   UP on site B
             // Spin UP   on site C, spin DOWN on site D
             A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
@@ -339,8 +351,7 @@ int main( int argc, char *argv[] ) {
     auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
     auto e_avgE_prev = avgE;
 
-    auto regT = [](double r) { 
-        return ((abs(r) > 1.0e10) ? 0.0 : r); };
+    
 
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
@@ -387,6 +398,40 @@ int main( int argc, char *argv[] ) {
             {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
             l7, l1, l7I, l1I);
 
+        // ###
+
+simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
+            {&B, &l8, &l2, &l8I, &l2I},
+            {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
+            l7, l1, l7I, l1I);
+simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
+            {&C, &l6, &l4, &l6I, &l4I},
+            {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
+            l3, l5, l3I, l5I);
+simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
+            {&A, &l1, &l5, &l1I, &l5I},
+            {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
+            l6, l2, l6I, l2I);
+simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
+            {&D, &l7, &l3, &l7I, &l3I},
+            {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
+            l4, l8, l4I, l8I);
+simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
+            {&D, &l4, &l8, &l4I, &l8I},
+            {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
+            l3, l7, l3I, l7I);
+simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
+            {&A, &l2, &l6, &l2I, &l6I},
+            {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
+            l5, l1, l5I, l1I);
+simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
+            {&C, &l3, &l5, &l3I, &l5I},
+            {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
+            l6, l4, l6I, l4I);
+simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
+            {&B, &l7, &l1, &l7I, &l1I},
+            {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
+            l2, l8, l2I, l8I);
         // simpUp(uJ1J2, {&B, &l8, &l2, &l7, &l8I, &l2I, &l7I}, 
         //     {&A, &l5, &l2, &l5I, &l2I},
         //     {&C, &l5, &l3, &l4, &l5I, &l3I, &l4I},
@@ -500,9 +545,18 @@ int main( int argc, char *argv[] ) {
     normalizeBLE_T(C);
     normalizeBLE_T(D);
 
+    PrintData(l1);
+    PrintData(l2);
+    PrintData(l3);
+    PrintData(l4);
+    PrintData(l5);
+    PrintData(l6);
+    PrintData(l7);
+    PrintData(l8);
+
     // Build new cluster
     cls.sites = {{"A",A}, {"B",B}, {"C",C}, {"D",D}};
-    std::cout << cls; //DBG
+    //std::cout << cls; //DBG
 
     writeCluster(arg_outClusterFile, cls);
 }

@@ -6,6 +6,7 @@
 
 #include <iomanip>
 #include <cmath>
+#include <limits>
 #include "su2.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
@@ -186,7 +187,7 @@ void applyH_123_v1(MPO_3site const& mpo3s,
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
 	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);
 
-void applyH_123_v2(MPO_3site const& mpo3s, 
+void applyH_123_v2(MPO_3site const& mpo3s,
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
 	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);;
 
