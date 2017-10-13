@@ -55,7 +55,8 @@ ITensor contractCluster(Cluster const& c, bool dbg) {
 }
 
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
-    s <<"Cluster( sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 
+    s <<"Cluster( metaInfo: "<< c.metaInfo 
+        << "sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 
         <<", auxBondDim: "<< c.auxBondDim << std::endl;
 
     s <<"siteIds: [ ";

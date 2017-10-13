@@ -32,6 +32,9 @@ const auto PHYS    = itensor::IndexType(TAG_IT_PHYSSITE);
  * 
  */
 struct Cluster {
+    // meta information about the origin of cluster
+    std::string metaInfo;
+
     // size of n=Y(=rows) x m=X(=cols) cluster
     int sizeN, sizeM;
     
