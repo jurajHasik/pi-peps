@@ -1412,7 +1412,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
      *
      */
     if(dbg) { Print(T1);
-	    Print(T2);
+	    PrintData(T2);
 	    Print(T3); } 
 
     Index s1 = noprime(findtype(T1.inds(), PHYS));
@@ -1575,7 +1575,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	l23 = l23 / norm(l23);
 
 	if(dbg) { Print(T1);
-		Print(T2);
+		PrintData(T2);
 		Print(T3);
 		Print(l12);
 		Print(l23); }

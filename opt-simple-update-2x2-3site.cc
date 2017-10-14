@@ -183,6 +183,8 @@ void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pT1,
 
     applyH_123_v2(uJ1J2, *p3s[0], *p3s[2], *p3s[4], *p3s[1], *p3s[3], true);
 
+    PrintData(*p3s[2]);
+
     // Invert weight tensors
     const double svCutoff = 1.0e-14;
     auto inverseT = [&svCutoff](Real r) 
@@ -208,6 +210,8 @@ void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pT1,
     for(size_t i = 0; i<=1; ++i) {
         (*pT2[i]).apply(inverseT);
     }
+
+    PrintData(*p3s[2]);
 
     // auto l1Is = l1.inds();
     // auto l2Is = l2.inds();
@@ -477,14 +481,14 @@ int main( int argc, char *argv[] ) {
         for(size_t i=0; i<opt_seq.size(); ++i) {
             simpUp(uJ1J2, tn, opt_seq[i]);
 
-            PrintData(l1);
-            PrintData(l2);
-            PrintData(l3);
-            PrintData(l4);
-            PrintData(l5);
-            PrintData(l6);
-            PrintData(l7);
-            PrintData(l8);    
+            // PrintData(l1);
+            // PrintData(l2);
+            // PrintData(l3);
+            // PrintData(l4);
+            // PrintData(l5);
+            // PrintData(l6);
+            // PrintData(l7);
+            // PrintData(l8);    
         }
         // for(auto it = opt_seq.end(); it-- != opt_seq.begin();) {
         //     //std::cout << i <<" "<< std::endl;
