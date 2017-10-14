@@ -120,37 +120,35 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto H_nnhBD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pID);
     auto H_nnhCD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIC, pID);
 
-    auto Bra = contractCluster(cls);
-    // apply PBC
-    Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
-    Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
+    auto bra = contractCluster(cls);
+    Print(bra);
 
-    Print(Bra);
+    // form density matrix for phys DoFs of the cluster
+    // Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
+    // Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
 
-    double cls_norm = std::pow(norm(Bra), 2.0);
+    auto dnmat = bra*prime(conj(bra),PHYS,1);
+    Print(dnmat);
+
+    double cls_norm = norm(dnmat * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1))
+        * delta(pIC,prime(pIC,1)) * delta(pID,prime(pID,1)));
     
     //Print(Bra);
 
-    auto Ket = prime(conj(Bra),1);
-
-    auto KetAB = Ket * H_nnhAB.first * H_nnhAB.second;
-    KetAB.mapprime(PHYS,1,0);
-    KetAB = KetAB * Bra;
+    auto KetAB = dnmat * H_nnhAB.first * H_nnhAB.second;
+    KetAB = KetAB * delta(pIC,prime(pIC,1)) * delta(pID,prime(pID,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA0, pB1, pB3, pA2
-    auto KetAC = Ket * H_nnhAC.first * H_nnhAC.second; 
-    KetAC.mapprime(PHYS,1,0);
-    KetAC = KetAC * Bra;
+    auto KetAC = dnmat * H_nnhAC.first * H_nnhAC.second;
+    KetAC = KetAC * delta(pIB,prime(pIB,1)) * delta(pID,prime(pID,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA1, pB1, pB3, pA3
-    auto KetCD = Ket * H_nnhCD.first * H_nnhCD.second; 
-    KetCD.mapprime(PHYS,1,0);
-    KetCD = KetCD * Bra;
+    auto KetCD = dnmat * H_nnhCD.first * H_nnhCD.second;
+    KetCD = KetCD * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA1, pB0, pB2, pA3
-    auto KetBD = Ket * H_nnhBD.first * H_nnhBD.second; 
-    KetBD.mapprime(PHYS,1,0);
-    KetBD = KetBD * Bra;
+    auto KetBD = dnmat * H_nnhBD.first * H_nnhBD.second; 
+    KetBD = KetBD * delta(pIA,prime(pIA,1)) * delta(pIC,prime(pIC,1));
 
     if( KetBD.r() > 0 || KetAB.r() > 0 || KetCD.r() >0 || KetAC.r() > 0 ) {
         std::cout <<"Expectation value not a tensor rank 0"<< std::endl;
@@ -169,6 +167,8 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 
 // perform 3-site simple update over sites T1,T2,T3 connected by links
 // with weights T1--l12--T2 and T2--l23--T3
+// invWs: {&l1-&l1I, &l2->&l2I,...} map from pointers to weights to pointers 
+//     to inverse weights
 // p3s: {&T1,&l12,&T2,&l23,&T3} holds pointers to on-site tensors and
 //      weights on connecting links
 // pT1, pT2, pT3: {&l1,&l2,&l3}, {&l4,&l5}, {...} hold pointers to weights
@@ -195,14 +195,17 @@ void simpUp(MPO_3site const& uJ1J2,
 // perform 3-site simple update over sites T1,T2,T3 connected by weights l12,l23 as
 // follows T1--l12--T2 and T2--l23--T3 
 // tn: {&T1->{&l1,&l2,&l3,&4},&T2->{...},...} map from pointer to sites T1...T4 to
-//     vectors holding pointers to weights l1...l8  
+//     vectors holding pointers to weights l1...l8
+// invWs: {&l1-&l1I, &l2->&l2I,...} map from pointers to weights to pointers 
+//     to inverse weights  
 // p3s: {&T1,&l12,&T2,&23,&T3} vector of pointers to sites T1,T2,T3 
 //     and weights l12,l23 
 //
 void simpUp(MPO_3site const& uJ1J2, 
     std::map< ITensor *, const std::vector< ITensor *> > const& tn,
     std::map< ITensor *, ITensor * > const& invWs,
-    std::vector< ITensor* > const& p3s) {
+    std::vector< ITensor* > const& p3s) 
+{
 
     // obtain map of weight for sites T1,...,T3 without weights l12,l23
     // {&T1->{&l1,&l2,&l3,&l4}/l12, &T2->{...}/{&l12,&l23},...} 
@@ -467,77 +470,11 @@ int main( int argc, char *argv[] ) {
             simpUp(uJ1J2, tn, invWs, *it); 
         }
 
-        // ###
-
-        // simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
-        //     {&B, &l8, &l2, &l8I, &l2I},
-        //     {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
-        //     l7, l1, l7I, l1I);
-        // simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
-        //     {&C, &l6, &l4, &l6I, &l4I},
-        //     {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
-        //     l3, l5, l3I, l5I);
-        // simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
-        //     {&A, &l1, &l5, &l1I, &l5I},
-        //     {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
-        //     l6, l2, l6I, l2I);
-        // simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
-        //     {&D, &l7, &l3, &l7I, &l3I},
-        //     {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
-        //     l4, l8, l4I, l8I);
-        // simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
-        //     {&D, &l4, &l8, &l4I, &l8I},
-        //     {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
-        //     l3, l7, l3I, l7I);
-        // simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
-        //     {&A, &l2, &l6, &l2I, &l6I},
-        //     {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
-        //     l5, l1, l5I, l1I);
-        // simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
-        //     {&C, &l3, &l5, &l3I, &l5I},
-        //     {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
-        //     l6, l4, l6I, l4I);
-        // simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
-        //     {&B, &l7, &l1, &l7I, &l1I},
-        //     {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
-        //     l2, l8, l2I, l8I);
-
-        // XXX
-
-        // simpUp(uJ1J2, {&B, &l8, &l2, &l7, &l8I, &l2I, &l7I}, 
-        //     {&A, &l5, &l2, &l5I, &l2I},
-        //     {&C, &l5, &l3, &l4, &l5I, &l3I, &l4I},
-        //     l1, l6, l1I, l6I);
-
-        // simpUp(uJ1J2, {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I}, 
-        //     {&D, &l4, &l7, &l4I, &l7I},
-        //     {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I},
-        //     l8, l3, l8I, l3I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l3, &l7, &l8I, &l3I, &l7I}, 
-        //     {&C, &l6, &l3, &l6I, &l3I},
-        //     {&A, &l1, &l6, &l2, &l1I, &l6I, &l2I},
-        //     l4, l5, l4I, l5I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l3, &l4, &l8I, &l3I, &l4I}, 
-        //     {&B, &l1, &l8, &l1I, &l8I},
-        //     {&A, &l1, &l6, &l5, &l1I, &l6I, &l5I},
-        //     l7, l2, l7I, l2I);
-
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
-
-            // PrintData(l1);
-            // PrintData(l2);
-            // PrintData(l3);
-            // PrintData(l4);
-            // PrintData(l5);
-            // PrintData(l6);
-            // PrintData(l7);
-            // PrintData(l8);
 
             t_iso_begin = std::chrono::steady_clock::now();
         
@@ -625,17 +562,6 @@ int main( int argc, char *argv[] ) {
     PrintData(l6);
     PrintData(l7);
     PrintData(l8);
-
-    // std::vector<Real> l1diagElem;
-    // for(int i=1; i<=aIA(i).m(); ++i) 
-    //     { l1diagElem.push_back(l1.real(prime(aIB,2)(i), aIA(i))); }
-    // //auto testL1 = diagTensor(l1diagElem, prime(aIB,2), aIA);
-    // auto testL1 = delta(prime(aIB,2), aIA);
-    // PrintData(testL1);
-
-    // auto inverseT = [](Real r) { return 1.0/r; };
-    // testL1.apply(inverseT);
-    // PrintData(testL1);
 
     // Build new cluster
     cls.sites = {{"A",A}, {"B",B}, {"C",C}, {"D",D}};

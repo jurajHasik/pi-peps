@@ -5,7 +5,7 @@ using namespace itensor;
 ITensor contractCluster(Cluster const& c, bool dbg) {
     std::cout <<">>>> contractCluster called <<<<<"<< std::endl;
 
-    // Contract cluster
+    // Contract all inner links of the cluster
     ITensor initPlaq, siteT;
     Index tempI;
     std::vector<Index> aI; 
