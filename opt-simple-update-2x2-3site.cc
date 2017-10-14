@@ -400,57 +400,38 @@ int main( int argc, char *argv[] ) {
 
         // ###
 
-simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
-            {&B, &l8, &l2, &l8I, &l2I},
-            {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
-            l7, l1, l7I, l1I);
-simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
-            {&C, &l6, &l4, &l6I, &l4I},
-            {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
-            l3, l5, l3I, l5I);
-simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
-            {&A, &l1, &l5, &l1I, &l5I},
-            {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
-            l6, l2, l6I, l2I);
-simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
-            {&D, &l7, &l3, &l7I, &l3I},
-            {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
-            l4, l8, l4I, l8I);
-simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
-            {&D, &l4, &l8, &l4I, &l8I},
-            {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
-            l3, l7, l3I, l7I);
-simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
-            {&A, &l2, &l6, &l2I, &l6I},
-            {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
-            l5, l1, l5I, l1I);
-simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
-            {&C, &l3, &l5, &l3I, &l5I},
-            {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
-            l6, l4, l6I, l4I);
-simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
-            {&B, &l7, &l1, &l7I, &l1I},
-            {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
-            l2, l8, l2I, l8I);
-        // simpUp(uJ1J2, {&B, &l8, &l2, &l7, &l8I, &l2I, &l7I}, 
-        //     {&A, &l5, &l2, &l5I, &l2I},
-        //     {&C, &l5, &l3, &l4, &l5I, &l3I, &l4I},
-        //     l1, l6, l1I, l6I);
-
-        // simpUp(uJ1J2, {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I}, 
-        //     {&D, &l4, &l7, &l4I, &l7I},
-        //     {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I},
-        //     l8, l3, l8I, l3I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l3, &l7, &l8I, &l3I, &l7I}, 
-        //     {&C, &l6, &l3, &l6I, &l3I},
-        //     {&A, &l1, &l6, &l2, &l1I, &l6I, &l2I},
-        //     l4, l5, l4I, l5I);
-
-        // simpUp(uJ1J2, {&D, &l8, &l3, &l4, &l8I, &l3I, &l4I}, 
-        //     {&B, &l1, &l8, &l1I, &l8I},
-        //     {&A, &l1, &l6, &l5, &l1I, &l6I, &l5I},
-        //     l7, l2, l7I, l2I);
+        simpUp(uJ1J2, {&D, &l8, &l4, &l3, &l8I, &l4I, &l3I}, 
+                    {&B, &l8, &l2, &l8I, &l2I},
+                    {&A, &l5, &l2, &l6, &l5I, &l2I, &l6I},
+                    l7, l1, l7I, l1I);
+        simpUp(uJ1J2, {&D, &l8, &l4, &l7, &l8I, &l4I, &l7I}, 
+                    {&C, &l6, &l4, &l6I, &l4I},
+                    {&A, &l1, &l2, &l6, &l1I, &l2I, &l6I},
+                    l3, l5, l3I, l5I);
+        simpUp(uJ1J2, {&C, &l5, &l4, &l3, &l5I, &l4I, &l3I}, 
+                    {&A, &l1, &l5, &l1I, &l5I},
+                    {&B, &l1, &l8, &l7, &l1I, &l8I, &l7I},
+                    l6, l2, l6I, l2I);
+        simpUp(uJ1J2, {&C, &l5, &l6, &l3, &l5I, &l6I, &l3I}, 
+                    {&D, &l7, &l3, &l7I, &l3I},
+                    {&B, &l1, &l2, &l7, &l1I, &l2I, &l7I},
+                    l4, l8, l4I, l8I);
+        simpUp(uJ1J2, {&C, &l5, &l6, &l4, &l5I, &l6I, &l4I}, 
+                    {&D, &l4, &l8, &l4I, &l8I},
+                    {&B, &l1, &l2, &l8, &l1I, &l2I, &l8I},
+                    l3, l7, l3I, l7I);
+        simpUp(uJ1J2, {&C, &l3, &l6, &l4, &l3I, &l6I, &l4I}, 
+                    {&A, &l2, &l6, &l2I, &l6I},
+                    {&B, &l2, &l7, &l8, &l2I, &l7I, &l8I},
+                    l5, l1, l5I, l1I);
+        simpUp(uJ1J2, {&A, &l1, &l5, &l2, &l1I, &l5I, &l2I}, 
+                    {&C, &l3, &l5, &l3I, &l5I},
+                    {&D, &l3, &l7, &l8, &l3I, &l7I, &l8I},
+                    l6, l4, l6I, l4I);
+        simpUp(uJ1J2, {&A, &l1, &l5, &l6, &l1I, &l5I, &l6I}, 
+                    {&B, &l7, &l1, &l7I, &l1I},
+                    {&D, &l3, &l7, &l4, &l3I, &l7I, &l4I},
+                    l2, l8, l2I, l8I);
 
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
