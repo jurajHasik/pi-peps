@@ -173,59 +173,23 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 //      weights on connecting links
 // pT1, pT2, pT3: {&l1,&l2,&l3}, {&l4,&l5}, {...} hold pointers to weights
 //      surrounding the on-site tensors T1,T2,T3
-void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pT1, 
-    std::vector<ITensor*> const& pT2, std::vector<ITensor*> const& pT3,
+void simpUp(MPO_3site const& uJ1J2, 
+    std::map<ITensor*,ITensor*> const& invWs,
+    std::vector<ITensor*> const& pT1, 
+    std::vector<ITensor*> const& pT2, 
+    std::vector<ITensor*> const& pT3,
     std::vector<ITensor*> const& p3s)
 {
     (*p3s[0]) = (((*p3s[0]) * (*pT1[0])) * (*pT1[1])) * (*pT1[2]);
     (*p3s[2]) = ((*p3s[2]) * (*pT2[0])) * (*pT2[1]);
     (*p3s[4]) = (((*p3s[4]) * (*pT3[0])) * (*pT3[1])) * (*pT3[2]);
 
-    applyH_123_v2(uJ1J2, *p3s[0], *p3s[2], *p3s[4], *p3s[1], *p3s[3], true);
+    applyH_123_v2(uJ1J2, *p3s[0], *p3s[2], *p3s[4], *p3s[1], *p3s[3],
+        *invWs.at(p3s[1]), *invWs.at(p3s[3]));
 
-    PrintData(*p3s[2]);
-
-    // Invert weight tensors
-    const double svCutoff = 1.0e-14;
-    auto inverseT = [&svCutoff](Real r) 
-        { return (std::abs(r) < svCutoff ? 0.0 : 1.0/r); };
-
-    for(size_t i = 0; i<=2; ++i) {
-        (*pT1[i]).apply(inverseT);
-        (*pT3[i]).apply(inverseT);
-    }
-    for(size_t i = 0; i<=1; ++i) {
-        (*pT2[i]).apply(inverseT);
-    }
-
-    (*p3s[0]) = (*p3s[0]) * (*pT1[0]) * (*pT1[1]) * (*pT1[2]);
-    (*p3s[2]) = (*p3s[2]) * (*pT2[0]) * (*pT2[1]);
-    (*p3s[4]) = (*p3s[4]) * (*pT3[0]) * (*pT3[1]) * (*pT3[2]);
-
-    // Invert back weight tensors
-    for(size_t i = 0; i<=2; ++i) {
-        (*pT1[i]).apply(inverseT);
-        (*pT3[i]).apply(inverseT);
-    }
-    for(size_t i = 0; i<=1; ++i) {
-        (*pT2[i]).apply(inverseT);
-    }
-
-    PrintData(*p3s[2]);
-
-    // auto l1Is = l1.inds();
-    // auto l2Is = l2.inds();
-    // for (int i=1; i<=l1Is[0].m(); ++i ) {
-    //     if (std::abs(l1.real(l1Is[0](i), l1Is[1](i))) > svCutoff)
-    //         l1I.set(l1Is[0](i), l1Is[1](i), 1.0/l1.real(l1Is[0](i), l1Is[1](i)));
-    //     else 
-    //         l1I.set(l1Is[0](i), l1Is[1](i), 0.0);
-
-    //     if (std::abs(l2.real(l2Is[0](i), l2Is[1](i))) > svCutoff)
-    //         l2I.set(l2Is[0](i), l2Is[1](i), 1.0/l2.real(l2Is[0](i), l2Is[1](i)));
-    //     else
-    //         l2I.set(l2Is[0](i), l2Is[1](i), 0.0);
-    // }
+    (*p3s[0]) = (*p3s[0]) * (*invWs.at(pT1[0])) * (*invWs.at(pT1[1])) * (*invWs.at(pT1[2]));
+    (*p3s[2]) = (*p3s[2]) * (*invWs.at(pT2[0])) * (*invWs.at(pT2[1]));
+    (*p3s[4]) = (*p3s[4]) * (*invWs.at(pT3[0])) * (*invWs.at(pT3[1])) * (*invWs.at(pT3[2]));
 }
 
 // perform 3-site simple update over sites T1,T2,T3 connected by weights l12,l23 as
@@ -237,13 +201,14 @@ void simpUp(MPO_3site const& uJ1J2, std::vector<ITensor*> const& pT1,
 //
 void simpUp(MPO_3site const& uJ1J2, 
     std::map< ITensor *, const std::vector< ITensor *> > const& tn,
+    std::map< ITensor *, ITensor * > const& invWs,
     std::vector< ITensor* > const& p3s) {
 
     // obtain map of weight for sites T1,...,T3 without weights l12,l23
     // {&T1->{&l1,&l2,&l3,&l4}/l12, &T2->{...}/{&l12,&l23},...} 
     auto p3w = get3siteTN(tn, p3s);
 
-    simpUp(uJ1J2, p3w.at(p3s[0]), p3w.at(p3s[2]), p3w.at(p3s[4]), p3s);
+    simpUp(uJ1J2, invWs, p3w.at(p3s[0]), p3w.at(p3s[2]), p3w.at(p3s[4]), p3s);
 }
 
 int main( int argc, char *argv[] ) {
@@ -406,30 +371,42 @@ int main( int argc, char *argv[] ) {
     // define 
 
     // horizontal
-    auto l1 = delta(prime(aIB,2), aIA); 
-    auto l2 = delta(prime(aIA,2), aIB);
-    auto l3 = delta(prime(aID,2), aIC);
-    auto l4 = delta(prime(aIC,2), aID);
+    auto l1 = ITensor(prime(aIB,2), aIA); 
+    auto l2 = ITensor(prime(aIA,2), aIB);
+    auto l3 = ITensor(prime(aID,2), aIC);
+    auto l4 = ITensor(prime(aIC,2), aID);
     // vertical
-    auto l5 = delta(prime(aIC,3), prime(aIA,1));
-    auto l6 = delta(prime(aIA,3), prime(aIC,1));
-    auto l7 = delta(prime(aID,3), prime(aIB,1));
-    auto l8 = delta(prime(aIB,3), prime(aID,1));
+    auto l5 = ITensor(prime(aIC,3), prime(aIA,1));
+    auto l6 = ITensor(prime(aIA,3), prime(aIC,1));
+    auto l7 = ITensor(prime(aID,3), prime(aIB,1));
+    auto l8 = ITensor(prime(aIB,3), prime(aID,1));
+
+    // Initially set all weights to 1
+    for (int i=1; i<=aIA.m(); i++) {
+        l1.set(prime(aIB,2)(i), aIA(i), 1.0);
+        l2.set(prime(aIA,2)(i), aIB(i), 1.0);
+        l3.set(prime(aID,2)(i), aIC(i), 1.0); 
+        l4.set(prime(aIC,2)(i), aID(i), 1.0);
+        l5.set(prime(aIC,3)(i), prime(aIA,1)(i), 1.0);
+        l6.set(prime(aIA,3)(i), prime(aIC,1)(i), 1.0);
+        l7.set(prime(aID,3)(i), prime(aIB,1)(i), 1.0);
+        l8.set(prime(aIB,3)(i), prime(aID,1)(i), 1.0);
+    }
 
     // Define set of inverse diag weights
-    // auto l1I = l1;
-    // auto l2I = l2;
-    // auto l3I = l3;
-    // auto l4I = l4;
-    // auto l5I = l5;
-    // auto l6I = l6;
-    // auto l7I = l7;
-    // auto l8I = l8;
+    auto l1I = l1;
+    auto l2I = l2;
+    auto l3I = l3;
+    auto l4I = l4;
+    auto l5I = l5;
+    auto l6I = l6;
+    auto l7I = l7;
+    auto l8I = l8;
 
     // Define weights sets for individual sites
     std::vector< ITensor * > pwA = {&l1, &l2, &l5, &l6};
     std::vector< ITensor * > pwB = {&l1, &l2, &l7, &l8};
-    std::vector< ITensor * > pwC = {&l3, &l4, &l6, &l5};
+    std::vector< ITensor * > pwC = {&l3, &l4, &l5, &l6};
     std::vector< ITensor * > pwD = {&l3, &l4, &l7, &l8};
 
     for (auto &v : {&pwA, &pwB, &pwC, &pwD}) {
@@ -441,6 +418,11 @@ int main( int argc, char *argv[] ) {
     // Define map from sites to weight sets
     const std::map< ITensor *, const std::vector<ITensor * > > tn = 
         {{&A, pwA}, {&B, pwB}, {&C, pwC}, {&D, pwD}};
+    // Define map form weight tensors to inverse weight tensors
+    const std::map< ITensor *, ITensor * > invWs = {
+        {&l1,&l1I}, {&l2,&l2I}, {&l3,&l3I}, {&l4,&l4I},
+        {&l5,&l5I}, {&l6,&l6I}, {&l7,&l7I}, {&l8,&l8I}
+    };
 
     // for (const auto &p : tn) {
     //     std::cout << "[" << p.first << "] => ";
@@ -479,21 +461,11 @@ int main( int argc, char *argv[] ) {
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
         for(size_t i=0; i<opt_seq.size(); ++i) {
-            simpUp(uJ1J2, tn, opt_seq[i]);
-
-            // PrintData(l1);
-            // PrintData(l2);
-            // PrintData(l3);
-            // PrintData(l4);
-            // PrintData(l5);
-            // PrintData(l6);
-            // PrintData(l7);
-            // PrintData(l8);    
+            simpUp(uJ1J2, tn, invWs, opt_seq[i]);    
         }
-        // for(auto it = opt_seq.end(); it-- != opt_seq.begin();) {
-        //     //std::cout << i <<" "<< std::endl;
-        //     simpUp(uJ1J2, tn, *it); 
-        // }
+        for(auto it = opt_seq.end(); it-- != opt_seq.begin(); ) {
+            simpUp(uJ1J2, tn, invWs, *it); 
+        }
 
         // ###
 
@@ -551,15 +523,6 @@ int main( int argc, char *argv[] ) {
         //     {&B, &l1, &l8, &l1I, &l8I},
         //     {&A, &l1, &l6, &l5, &l1I, &l6I, &l5I},
         //     l7, l2, l7I, l2I);
-
-            PrintData(l1);
-            PrintData(l2);
-            PrintData(l3);
-            PrintData(l4);
-            PrintData(l5);
-            PrintData(l6);
-            PrintData(l7);
-            PrintData(l8);
 
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
