@@ -1432,7 +1432,7 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 	    Print(mpo3s.H3);
 
 		Print(l12);
-		Print(l23); }	
+		Print(l23); }
 
     // STEP 2 Decompose T1, T2, T3 to get subtensors upon which we act
 	/*
@@ -1591,7 +1591,11 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 
 void applyH_123_v3(MPO_3site const& mpo3s, 
 	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
-	bool dbg) {
+	ITensor & l12I, ITensor & l23I, bool dbg) {
+
+	const size_t auxd     = commonIndex(T1,l12).m();
+	const Real svCutoff   = 1.0e-14;
+
 	/* Input is assumed to define following TN
 	 *
 	 *        s1                 s2                 s3 
@@ -1724,10 +1728,11 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 	 *
 	 */
 	mT1 = ITensor(s1,am1);
-	svd(res, mT1, sv1, res, {"Maxm", a1.m(), "Minm", a1.m()});
+	svd(res, mT1, sv1, res, {"Maxm", a1.m(), "Cutoff", svCutoff});
 	Index n1 = commonIndex(mT1,sv1);
 	Index n2 = commonIndex(sv1,res);
 
+	sv1 = sv1 / norm(sv1);
 	if(dbg) {Print(mT1);
 		Print(sv1); }
 
@@ -1744,30 +1749,43 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 	 *
 	 */
 	mT2 = ITensor(n1,s2,am2);
-	svd(res*sv1, mT2, sv2, mT3, {"Maxm", a1.m(), "Minm", a1.m()});
+	svd(res*sv1, mT2, sv2, mT3, {"Maxm", a1.m(), "Cutoff", svCutoff});
 	Index n3 = commonIndex(mT2,sv2);
 	Index n4 = commonIndex(sv2,mT3);
 
+	sv2 = sv2 / norm(sv2);
 	if(dbg) {Print(mT2);
 		Print(sv2);
 		Print(mT3); }
-
-	ITensor sv1I(n1,n2);
-	for (int i=1; i<=a1.m(); i++) {
-		sv1I.set(n1(i),n2(i), 1.0/sv1.real(n1(i),n2(i)));
+	
+	// Prepare results
+	for (size_t i=1; i<=a1.m(); ++i) {
+		if(i <= n1.m()) {
+			l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
+			l12I.set(a1(i),a2(i), 1.0/sv1.real(n1(i),n2(i)));
+		} else {
+			l12.set(a1(i),a2(i), 0.0);
+			l12I.set(a1(i),a2(i), 0.0);
+		}
 	}
+
+	for (size_t i=1; i<=a3.m(); ++i) {
+		if(i <= n3.m()) {
+			l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
+			l23I.set(a3(i),a4(i), 1.0/sv2.real(n3(i),n4(i)));
+		} else {
+			l23.set(a3(i),a4(i), 0.0);
+			l23I.set(a3(i),a4(i), 0.0);
+		}
+	}
+
+	auto inverseT = [](Real r) { return 1.0/r; };
+	sv1.apply(inverseT);
 
 	// Reconstruct on-site tensors by contraction with remainders
 	T1 = (rT1*mT1) *delta(n1,a1);
-	T2 = (((rT2*mT2)* sv1I) *delta(n2,a2)) *delta(n3,a3);
+	T2 = (((rT2*mT2)* sv1) *delta(n2,a2)) *delta(n3,a3);
 	T3 = (rT3*mT3) *delta(n4,a4);
-
-	for (int i=1; i<=a1.m(); i++) {
-		l12.set(a1(i),a2(i), sv1.real(n1(i),n2(i)));
-		l23.set(a3(i),a4(i), sv2.real(n3(i),n4(i)));
-	}
-	l12 = l12 / norm(l12);
-	l23 = l23 / norm(l23);
 
 	if(dbg) {Print(T1);
 		Print(T2);

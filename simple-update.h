@@ -190,7 +190,8 @@ void applyH_123_v2(MPO_3site const& mpo3s,
 
 void applyH_123_v3(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);;
+	itensor::ITensor & l12, itensor::ITensor & l23,
+	itensor::ITensor & l12I, itensor::ITensor & l23I, bool dbg = false);
 
 void applyH_123_v4(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 

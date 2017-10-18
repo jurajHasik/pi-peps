@@ -63,9 +63,13 @@ void formCluster(Cluster & cls, std::vector< ITensor > const& ts,
     // Set new sites to cluster
     auto sqrtT = [](double r) { return sqrt(r); };
 
-    for(size_t i=0; i<=7; ++i) {
-        ls[i].apply(sqrtT);
-    }
+    // for(size_t i=0; i<=7; ++i) {
+    //     ls[i].apply(sqrtT);
+    // }
+    ls[1].apply(sqrtT);
+    ls[3].apply(sqrtT);
+    ls[5].apply(sqrtT);
+    ls[7].apply(sqrtT);
 
     auto aIA = noprime(findtype(ts[0].inds(), AUXLINK));
     auto aIB = noprime(findtype(ts[1].inds(), AUXLINK));
@@ -224,6 +228,8 @@ int main( int argc, char *argv[] ) {
     int arg_auxBondDim, arg_nIter;
     double arg_tau, arg_J1, arg_J2;
     
+    std::string metaInfo;
+
     arg_initType = std::string(argv[1]);
     if( (arg_initType == "FILE") && (argc >= 8) ) {
         arg_inClusterFile  = argv[2];
@@ -234,6 +240,7 @@ int main( int argc, char *argv[] ) {
         arg_J2             = std::stod(argv[7]);
 
         std::cout <<"Initializing from File: "<< arg_inClusterFile << std::endl;
+        metaInfo.append("Init "+arg_initType+" "+arg_inClusterFile+";");
     // otherwise we start with random cluster 
     } else if( ((arg_initType == "RANDOM") || (arg_initType == "RND_AB")
         || (arg_initType == "AFM")) && (argc >= 8) ) {
@@ -242,12 +249,15 @@ int main( int argc, char *argv[] ) {
         arg_nIter          = std::stoi(argv[4]);
         arg_tau            = std::stod(argv[5]);
         arg_J1             = std::stod(argv[6]);
-        arg_J2             = std::stod(argv[7]);      
+        arg_J2             = std::stod(argv[7]);
+        metaInfo.append("Init by: "+arg_initType+";");    
     } else {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
     }
     
+
+
     double eps_threshold = 1.0e-8;
     double tau_threshold = 1.0e-10;
 
@@ -255,10 +265,14 @@ int main( int argc, char *argv[] ) {
     std::cout <<"Simulation parameters"<< std::endl;
     std::cout <<"imag time tau: "<< arg_tau << std::endl;
     std::cout <<"J1           : "<< arg_J1 << std::endl;
-    std::cout <<"h2           : "<< arg_J2 << std::endl;
+    std::cout <<"J2           : "<< arg_J2 << std::endl;
     std::cout <<"nIterations  : "<< arg_nIter << std::endl;
-    std::cout <<"eps_threshold: "<< eps_threshold << std::endl;
-    std::cout <<"tau_threshold: "<< tau_threshold << std::endl;
+    //std::cout <<"eps_threshold: "<< eps_threshold << std::endl;
+    //std::cout <<"tau_threshold: "<< tau_threshold << std::endl;
+    metaInfo.append("nIterations: "+std::to_string(arg_nIter)
+        +";tau "+std::to_string(arg_tau)
+        +";J1 "+std::to_string(arg_J1)
+        +";J2 "+std::to_string(arg_J2)+";");
 
     Cluster cls;
     Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
@@ -346,6 +360,7 @@ int main( int argc, char *argv[] ) {
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
         // ----- END DEFINE CLUSTER ------------------------------------
     }
+    cls.metaInfo = metaInfo;
     std::cout << cls; //DBG
 
     // Prepare nnH Hamiltonian as 2-site MPO, with indices 
@@ -469,6 +484,8 @@ int main( int argc, char *argv[] ) {
         for(auto it = opt_seq.end(); it-- != opt_seq.begin(); ) {
             simpUp(uJ1J2, tn, invWs, *it); 
         }
+
+        //std::rotate(opt_seq.begin(),opt_seq.begin()+1,opt_seq.end());
 
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();

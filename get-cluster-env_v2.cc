@@ -146,21 +146,38 @@ int main( int argc, char *argv[] ) {
     PrintData(RA);
     // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
     auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at("A"), 
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"), 
         //RA);
-        cluster.sites.at("B"));
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); //cluster.sites.at("B"));
 
     auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at("A"),
-        cluster.sites.at("C"));
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); //cluster.sites.at("C"));
 
     auto op2s_ssBD = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at("B"),
-        cluster.sites.at("D"));
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
 
     auto op2s_ssCD = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at("C"),
-        cluster.sites.at("D"));
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("C"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
+
+    // second set of 2site ops
+    auto op2s_ssBA = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"), 
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); //cluster.sites.at("A"));
+
+    auto op2s_ssCA = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("C"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); // cluster.sites.at("A"));
+
+    auto op2s_ssDB = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("D"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); // cluster.sites.at("B"));
+
+    auto op2s_ssDC = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("D"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); // cluster.sites.at("C"));
 
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
@@ -269,6 +286,15 @@ int main( int argc, char *argv[] ) {
             <<" "<< e_nnH_CD[i]
             << std::endl;
     }
+
+    std::cout << "BA: " << ev.eV_2sO_Rectangle(op2s_ssBA,
+        std::make_pair(1,0), std::make_pair(2,0)) << 
+    " CA: "<< ev.eV_2sO_Rectangle(op2s_ssCA,
+        std::make_pair(0,1), std::make_pair(0,2)) <<
+    " DB: "<< ev.eV_2sO_Rectangle(op2s_ssDB,
+        std::make_pair(1,1), std::make_pair(1,2)) <<
+    " DC: "<< ev.eV_2sO_Rectangle(op2s_ssDC,
+        std::make_pair(1,1), std::make_pair(2,1)) << std::endl;
 
     
     /*ev.expVal_1sO1sO_H( 
