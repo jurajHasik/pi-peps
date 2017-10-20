@@ -92,7 +92,7 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h);
  */
 void applyH_T1_L_T2(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
-	bool dbg = false);
+	itensor::ITensor & LI, bool dbg = false);
 
 void applyH_T1_L_T2_v2(MPO_2site const& mpo2s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,

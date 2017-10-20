@@ -332,11 +332,14 @@ MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h) {
 }
 
 void applyH_T1_L_T2(MPO_2site const& mpo2s, 
-	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
+	ITensor & T1, ITensor & T2, ITensor & L, ITensor & LI, bool dbg) {
 	if(dbg) {std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
 		std::cout << mpo2s;
 		PrintData(mpo2s.H1);
     	PrintData(mpo2s.H2);}
+
+    const size_t auxd     = commonIndex(T1,L).m();
+	const Real svCutoff   = 1.0e-14;
 
 	/*
 	 * Applying 2-site MPO leads to a new tensor network of the form
@@ -412,23 +415,30 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 
 	if(dbg) std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
 	ITensor SV_L12;
-	spec = svd(T1R*L*T2R, T1R, SV_L12, T2R, {"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	spec = svd(T1R*L*T2R, T1R, SV_L12, T2R, {"Maxm", auxd, "svCutoff",svCutoff});
 	if(dbg) {Print(T1R);
 		Print(spec);
 		Print(T2R);}
 
 	// Set proper indices to resulting tensors from SVD routine
-	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
-	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
+	Index n1 = commonIndex(T1R, SV_L12);
+	Index n2 = commonIndex(SV_L12, T2R);
 
-	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
+	T1 = T1R * T1X * delta(n1, iT1_L);
 	
-	for (int i=1; i<=iT1_L.m(); i++) {
-		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
+	// Prepare results
+	SV_L12 = SV_L12 / norm(SV_L12);
+	for (size_t i=1; i<=auxd; ++i) {
+		if(i <= n1.m()) {
+			L.set(iT1_L(i),iL_T2(i), SV_L12.real(n1(i),n2(i)));
+			LI.set(iT1_L(i),iL_T2(i), 1.0/SV_L12.real(n1(i),n2(i)));
+		} else {
+			L.set(iT1_L(i),iL_T2(i), 0.0);
+			LI.set(iT1_L(i),iL_T2(i), 0.0);
+		}
 	}
-	L = L / norm(L);
 
-	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
+	T2 = T2R * T2X * delta(n2, iL_T2);
 
 	if(dbg) {Print(T1);
 		PrintData(L);

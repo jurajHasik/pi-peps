@@ -1,6 +1,7 @@
 #include "ctm-cluster-io.h"
 #include "cluster-ev-builder.h"
 #include "simple-update.h"
+#include <algorithm>
 #include <chrono>
 
 using namespace itensor;
@@ -19,35 +20,45 @@ void formCluster(Cluster & cls, ITensor const& A, ITensor const& B,
     ls[2].apply(sqrtT);
     ls[3].apply(sqrtT);
 
-    auto tA = A * ls[0] * ls[1] * ls[2] * ls[3];
-    tA = swapPrime(tA, 0, 2);
-    tA = swapPrime(tA, 1, 3);
-    tA.noprime(PHYS);
+    // Extract the IndexSet of individual weight tensors l1 ... l4
+    std::vector<IndexSet> wInds;
+    for(size_t i=0; i < ls.size(); ++i) wInds.push_back(ls[i].inds());
 
-    auto tB = B * ls[0] * ls[1] * ls[2] * ls[3];
-    tB = swapPrime(tB, 0, 2);
-    tB = swapPrime(tB, 1, 3);
-    tB.noprime(PHYS);
+    // contract with square roots of weights
+    cls.sites["A"] = A * ls[0] * ls[1] * ls[2] * ls[3];
+    for(auto const& is : wInds) cls.sites["A"] *= delta(is[0], is[1]);
+    cls.sites["B"] = B * ls[0] * ls[1] * ls[2] * ls[3];
+    for(auto const& is : wInds) cls.sites["B"] *= delta(is[0], is[1]);
 
-    auto pIA  = noprime(findtype(tA.inds(), PHYS));
-    auto pIB  = noprime(findtype(tB.inds(), PHYS));
+    auto pIA  = noprime(findtype(cls.sites["A"].inds(), PHYS));
+    auto pIB  = noprime(findtype(cls.sites["B"].inds(), PHYS));
     auto pIC = Index(TAG_I_PHYS, cls.physDim, PHYS);
     auto pID = Index(TAG_I_PHYS, cls.physDim, PHYS);
 
-    auto aIA  = noprime(findtype(tA.inds(), AUXLINK));
-    auto aIB  = noprime(findtype(tB.inds(), AUXLINK));
+    auto aIA  = noprime(findtype(cls.sites["A"].inds(), AUXLINK));
+    auto aIB  = noprime(findtype(cls.sites["B"].inds(), AUXLINK));
     auto aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
     auto aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
 
-    auto tC = tB * delta(pIB,pIC);
-    auto tD = tA * delta(pIA,pID);
-    for(int i=0; i<=3; i++) {
-        tC = tC * delta(prime(aIB,i), prime(aIC,i));
-        tD = tD * delta(prime(aIA,i), prime(aID,i));
+    cls.sites["C"] = cls.sites["B"] * delta(pIB,pIC);
+    cls.sites["D"] = cls.sites["A"] * delta(pIA,pID);
+
+    cls.sites["A"] = cls.sites["A"] * ls[0] * delta(wInds[0][0], wInds[0][1]) 
+        * ls[2]*delta(wInds[2][0], wInds[2][1]);
+    cls.sites["B"] = cls.sites["B"] * ls[3] * delta(wInds[3][0], wInds[3][1]) 
+        * ls[0]*delta(wInds[0][0], wInds[0][1]);
+    cls.sites["C"] = cls.sites["C"] * ls[1] * delta(wInds[1][0], wInds[1][1]) 
+        * ls[2]*delta(wInds[2][0], wInds[2][1]);
+    cls.sites["D"] = cls.sites["D"] * ls[1] * delta(wInds[1][0], wInds[1][1]) 
+        * ls[3]*delta(wInds[3][0], wInds[3][1]);
+
+    for(size_t i=0; i<=3; ++i) {
+        cls.sites["C"] *= delta(prime(aIB,i), prime(aIC,i));
+        cls.sites["D"] *= delta(prime(aIA,i), prime(aID,i));
     }
 
     // Build new cluster
-    cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
+    // cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
     // std::cout << cls; //DBG
 }
 
@@ -63,11 +74,6 @@ void formCluster(Cluster & cls, ITensor const& A, ITensor const& B,
 //
 std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
 
-    auto aIA  = noprime(findtype(cls.sites.at("A").inds(), AUXLINK));
-    auto aIB  = noprime(findtype(cls.sites.at("B").inds(), AUXLINK));
-    auto aIC  = noprime(findtype(cls.sites.at("C").inds(), AUXLINK));
-    auto aID  = noprime(findtype(cls.sites.at("D").inds(), AUXLINK));
-
     auto pIA  = noprime(findtype(cls.sites.at("A").inds(), PHYS));
     auto pIB  = noprime(findtype(cls.sites.at("B").inds(), PHYS));
     auto pIC  = noprime(findtype(cls.sites.at("C").inds(), PHYS));
@@ -78,37 +84,29 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto H_nnhBD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pID);
     auto H_nnhCD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIC, pID);
 
-    auto Bra = contractCluster(cls);
-    // apply PBC
-    Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
-    Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
+    auto bra = contractCluster(cls);
+    Print(bra);
 
-    Print(Bra);
+    auto dnmat = bra*prime(conj(bra),PHYS,1);
+    Print(dnmat);
 
-    double cls_norm = std::pow(norm(Bra),2.0);
-    
-    //Print(Bra);
+    double cls_norm = norm(dnmat * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1))
+        * delta(pIC,prime(pIC,1)) * delta(pID,prime(pID,1)));
 
-    auto Ket = prime(conj(Bra),1);
-
-    auto KetAB = Ket * H_nnhAB.first * H_nnhAB.second;
-    KetAB.mapprime(PHYS,1,0);
-    KetAB = KetAB * Bra;
+    auto KetAB = dnmat * H_nnhAB.first * H_nnhAB.second;
+    KetAB = KetAB * delta(pIC,prime(pIC,1)) * delta(pID,prime(pID,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA0, pB1, pB3, pA2
-    auto KetAC = Ket * H_nnhAC.first * H_nnhAC.second; 
-    KetAC.mapprime(PHYS,1,0);
-    KetAC = KetAC * Bra;
+    auto KetAC = dnmat * H_nnhAC.first * H_nnhAC.second;
+    KetAC = KetAC * delta(pIB,prime(pIB,1)) * delta(pID,prime(pID,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA1, pB1, pB3, pA3
-    auto KetCD = Ket * H_nnhCD.first * H_nnhCD.second; 
-    KetCD.mapprime(PHYS,1,0);
-    KetCD = KetCD * Bra;
+    auto KetCD = dnmat * H_nnhCD.first * H_nnhCD.second;
+    KetCD = KetCD * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1));
 
     // pA1, pB1, pB2, pA2 => op2s => pA1, pB0, pB2, pA3
-    auto KetBD = Ket * H_nnhBD.first * H_nnhBD.second; 
-    KetBD.mapprime(PHYS,1,0);
-    KetBD = KetBD * Bra;
+    auto KetBD = dnmat * H_nnhBD.first * H_nnhBD.second; 
+    KetBD = KetBD * delta(pIA,prime(pIA,1)) * delta(pIC,prime(pIC,1));
 
     if( KetBD.r() > 0 || KetAB.r() > 0 || KetCD.r() >0 || KetAC.r() > 0 ) {
         std::cout <<"Expectation value not a tensor rank 0"<< std::endl;
@@ -116,36 +114,37 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     }
 
     std::vector< std::complex<double> > evs = {
-        sumels(KetAB)/cls_norm, sumels(KetCD)/cls_norm,
-        sumels(KetAC)/cls_norm, sumels(KetBD)/cls_norm };
+        sumels(KetAB)/cls_norm, sumels(KetAC)/cls_norm,
+        sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm };
 
-    std::cout << evs[0] <<" "<< evs[1] <<" "<< evs[2] <<" "<< evs[3] << std::endl;
+    std::cout << evs[0].real() <<", "<< evs[1].real() <<", "
+        << evs[2].real() <<", "<< evs[3].real() << std::endl;
 
     return evs;
 }
 
 // Apply simple update over sites A,B connected by link with
 // weight l1. The weights l2,...,l4 are used to construct on-site tensors A,B 
-void simpUp(MPO_2site const& nnh, ITensor & A, ITensor & B,
-    ITensor & l1, ITensor const& l2, ITensor const& l3, ITensor const& l4,
-    ITensor & l1I, ITensor const& l2I, ITensor const& l3I, ITensor const& l4I) {
-    
-    // Define "regulator" function to cut-off large values after inversion
-    // of weight matrices
-    // auto regT = [](double r) { 
-    //     return ((abs(r) > 1.0e10) ? 0.0 : r); };
+void simpUp(
+    const std::map< ITensor *, const std::vector<ITensor * > > tn,
+    const std::map< ITensor *, ITensor * > invWs,
+    MPO_2site const& nnh, const std::vector<ITensor*> p2s) {
+ 
+    std::vector<ITensor*> mockA = {p2s[1]};
+    std::vector<ITensor*> mockB = {p2s[1]};
+    std::vector<ITensor*> wtA({}), wtB({});
 
-    A = A*l2*l3*l4;
-    B = B*l2*l3*l4;
-    applyH_T1_L_T2(nnh, A, B, l1);
-    A = A*l2I*l3I*l4I;
-    B = B*l2I*l3I*l4I;
+    std::set_difference(tn.at(p2s[0]).begin(),tn.at(p2s[0]).end(),
+        mockA.begin(),mockA.end(), std::back_inserter(wtA));
+    std::set_difference(tn.at(p2s[2]).begin(),tn.at(p2s[2]).end(),
+        mockB.begin(),mockB.end(), std::back_inserter(wtB));
 
-    auto l1IS = l1.inds();
-    for (int i=1; i<=l1IS[0].m(); i++ ) {
-        l1I.set(l1IS[0](i), l1IS[1](i), 1.0/l1.real(l1IS[0](i), l1IS[0](i)));
-    }
-    //l2I.apply(regT);
+    for (const auto& w : wtA) (*p2s[0]) *= (*w);
+    for (const auto& w : wtB) (*p2s[2]) *= (*w);
+    applyH_T1_L_T2(nnh, *p2s[0], *p2s[2], *p2s[1], *invWs.at(p2s[1]), true);
+    for (const auto& w : wtA) (*p2s[0]) *= (*invWs.at(w));
+    for (const auto& w : wtB) (*p2s[2]) *= (*invWs.at(w));
+
 }
 
 int main( int argc, char *argv[] ) {
@@ -157,6 +156,8 @@ int main( int argc, char *argv[] ) {
     std::string arg_initType, arg_inClusterFile, arg_outClusterFile;
     int arg_auxBondDim, arg_nIter;
     double arg_tau, arg_J, arg_h;
+
+    std::string metaInfo;
     
     arg_initType = std::string(argv[1]);
     if( (arg_initType == "FILE") && (argc >= 8) ) {
@@ -168,8 +169,10 @@ int main( int argc, char *argv[] ) {
         arg_h              = std::stod(argv[7]);
 
         std::cout <<"Initializing from File: "<< arg_inClusterFile << std::endl;
+        metaInfo.append("Init "+arg_initType+" "+arg_inClusterFile+";");
     // otherwise we start with random cluster 
-    } else if( (arg_initType == "RANDOM") && (argc >= 8) ) {
+    } else if( ((arg_initType == "RANDOM") || (arg_initType == "AFM")) 
+        && (argc >= 8) ) {
         arg_outClusterFile = argv[2];
         arg_auxBondDim     = std::stoi(argv[3]);
         arg_nIter          = std::stoi(argv[4]);
@@ -177,16 +180,8 @@ int main( int argc, char *argv[] ) {
         arg_J              = std::stod(argv[6]);
         arg_h              = std::stod(argv[7]);
 
-        std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
-    } else if( (arg_initType == "AFM") && (argc >= 8) ) {
-        arg_outClusterFile = argv[2];
-        arg_auxBondDim     = std::stoi(argv[3]);
-        arg_nIter          = std::stoi(argv[4]);
-        arg_tau            = std::stod(argv[5]);
-        arg_J              = std::stod(argv[6]);
-        arg_h              = std::stod(argv[7]);
-
-        std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;        
+        metaInfo.append("Init by: "+arg_initType+";");
+        std::cout <<"Initializing by "+arg_initType << std::endl;     
     } else {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
@@ -195,13 +190,18 @@ int main( int argc, char *argv[] ) {
     double eps_threshold = 1.0e-8;
     double tau_threshold = 1.0e-10;
 
+    std::cout.precision( std::numeric_limits< double >::max_digits10 );
     std::cout <<"Simulation parameters"<< std::endl;
     std::cout <<"imag time tau: "<< arg_tau << std::endl;
     std::cout <<"J            : "<< arg_J << std::endl;
     std::cout <<"h            : "<< arg_h << std::endl;
     std::cout <<"nIterations  : "<< arg_nIter << std::endl;
-    std::cout <<"eps_threshold: "<< eps_threshold << std::endl;
-    std::cout <<"tau_threshold: "<< tau_threshold << std::endl;
+    //std::cout <<"eps_threshold: "<< eps_threshold << std::endl;
+    //std::cout <<"tau_threshold: "<< tau_threshold << std::endl;
+    metaInfo.append("nIterations: "+std::to_string(arg_nIter)
+        +";tau "+std::to_string(arg_tau)
+        +";J "+std::to_string(arg_J)
+        +";h "+std::to_string(arg_h)+";");
 
     Cluster cls;
     Index aIA, aIB, pIA, pIB;
@@ -305,110 +305,40 @@ int main( int argc, char *argv[] ) {
     auto l3I = l3;
     auto l4I = l4;
 
+    std::vector< ITensor * > pwA = {&l1, &l2, &l3, &l4};
+    std::sort(pwA.begin(), pwA.end());
+
+    // Define map from sites to weight sets
+    const std::map< ITensor *, const std::vector<ITensor * > > tn = 
+        {{&A,pwA},{&B,pwA}};
+    // Define map form weight tensors to inverse weight tensors
+    const std::map< ITensor *, ITensor * > invWs = 
+        {{&l1,&l1I},{&l2,&l2I},{&l3,&l3I},{&l4,&l4I}};
+
     // Compute Initial value of APPROX(!) energy
     formCluster(cls, A, B, {l1, l2, l3, l4});
     auto e_nnh = getEV2Site(cls);
-    auto avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+    auto avgE = (e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/2.0;
     std::cout <<"E: "<< avgE.real() <<" + "<< avgE.imag() << std::endl;
     auto e_avgE_prev = avgE;
-
-    // Define "regulator" function to cut-off large values after inversion
-    // of weight matrices
-    auto regT = [](double r) { 
-        return ((abs(r) > 1.0e10) ? 0.0 : r); };
 
     std::cout.precision(10);
     std::chrono::steady_clock::time_point t_iso_begin, t_iso_end;
     t_iso_begin = std::chrono::steady_clock::now();
+
+    std::vector< std::vector<ITensor*> > opt_seq = {
+        {&A, &l2, &B}, {&A, &l1, &B}, {&A, &l4, &B}, {&A, &l3, &B}
+    };
+
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
-        
-        // Apply 2-site op along bond A--l2--B
-        //simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I);
-        // A = A*l1*l3*l4;
-        // B = B*l4*l1*l3;
-        // applyH_T1_L_T2(nnh, A, B, l2);
-        // A = A*l1I*l3I*l4I;
-        // B = B*l4I*l1I*l3I;
-
-        // for (int i=1; i<=aIA.m(); i++ ) {
-        //     l2I.set(prime(aIA,2)(i), aIB(i), 1.0/l2.real(prime(aIA,2)(i), aIB(i)));
-        // }
-        // l2I.apply(regT);
-        //PrintData(l2I);
-        // std::cout << "##### APPLIED nnh along A--l2--B #####" << std::endl;
-        // Print(A);
-        // Print(l2);
-        // Print(B);
-
-        // Apply 2-site op along bond B--l1--A
-        //simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I);
-        // A = A*l3*l2*l4;
-        // B = B*l2*l4*l3;
-        // applyH_T1_L_T2(nnh, A, B, l1);
-        // A = A*l3I*l2I*l4I;
-        // B = B*l2I*l4I*l3I;
-
-        // for (int i=1; i<=aIA.m(); i++ ) {
-        //     l1I.set(prime(aIB,2)(i), aIA(i), 1.0/l1.real(prime(aIB,2)(i), aIA(i)));
-        // }
-        // l1I.apply(regT);
-        //PrintData(l1I);
-        // std::cout << "##### APPLIED nnh along B--l1--A #####" << std::endl;
-        // Print(B);
-        // Print(l1);
-        // Print(A);
-
-        // Apply 2-site op along bond A--l4--B
-        //simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I);
-        // A = A*l1*l3*l2;
-        // B = B*l1*l3*l2;
-        // applyH_T1_L_T2(nnh, A, B, l4);
-        // A = A*l1I*l3I*l2I;
-        // B = B*l1I*l3I*l2I;
-
-        // for (int i=1; i<=aIA.m(); i++ ) {
-        //     l4I.set(prime(aIA,3)(i), prime(aIB,1)(i), 
-        //         1.0/l4.real(prime(aIA,3)(i), prime(aIB,1)(i)));
-        // }
-        // l4I.apply(regT);
-        //PrintData(l4I);
-        // std::cout << "##### APPLIED nnh along A--l4--B #####" << std::endl;
-        // Print(A);
-        // Print(l4);
-        // Print(B);
-
-        // Apply 2-site op along bond B--l3--A
-        //simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I);
-        // A = A*l2*l4*l1;
-        // B = B*l2*l4*l1;
-        // applyH_T1_L_T2(nnh, A, B, l3);
-        // A = A*l2I*l4I*l1I;
-        // B = B*l2I*l4I*l1I;
-
-        // for (int i=1; i<=aIA.m(); i++ ) {
-        //     l3I.set(prime(aIB,3)(i), prime(aIA,1)(i), 
-        //         1.0/l3.real(prime(aIB,3)(i), prime(aIA,1)(i)));
-        // }
-        // l3I.apply(regT);
-        //PrintData(l3I);
-        // std::cout << "##### APPLIED nnh along B--l3--A #####" << std::endl;
-        // Print(B);
-        // Print(l3);
-        // Print(A);
     
-        simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
-        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
-        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B    
-
-        //simpUp(nnh2, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
-        simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
-        simpUp(nnh, A, B, l3, l2,l4,l1, l3I, l2I,l4I,l1I); //B--l3--A
-
-        simpUp(nnh, A, B, l4, l1,l3,l2, l4I, l1I,l3I,l2I); //A--l4--B
-        simpUp(nnh, A, B, l1, l3,l2,l4, l1I, l3I,l2I,l4I); //B--l1--A
-        simpUp(nnh, A, B, l2, l1,l3,l4, l2I, l1I,l3I,l4I); //A--l2--B
+        for(size_t i=0; i<opt_seq.size(); ++i) {
+            simpUp(tn, invWs, nnh, opt_seq[i]);    
+        }
+        for(auto it = opt_seq.end(); it-- != opt_seq.begin(); ) {
+            simpUp(tn, invWs, nnh, *it); 
+        }
         
-
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
@@ -422,7 +352,7 @@ int main( int argc, char *argv[] ) {
         
             formCluster(cls, A, B, {l1, l2, l3, l4});
             e_nnh = getEV2Site(cls);
-            avgE = 2.0*(e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/4.0;
+            avgE = (e_nnh[0] + e_nnh[1] + e_nnh[2] + e_nnh[3])/2.0;
             // auto aniDist = abs(avgE-e_nnh[0])+abs(avgE-e_nnh[1])+abs(avgE-e_nnh[2])
             //     +abs(avgE-e_nnh[3]);
 
@@ -451,6 +381,36 @@ int main( int argc, char *argv[] ) {
         }
     }
 
-    formCluster(cls, A, B, {l1, l2, l3, l4});
+    auto sqrtT = [](double r) { return sqrt(r); };
+
+    l1.apply(sqrtT);
+    l2.apply(sqrtT);
+    l3.apply(sqrtT);
+    l4.apply(sqrtT);
+
+    std::vector<IndexSet> wInds = {l1.inds(), l2.inds(), l3.inds(), l4.inds()};
+
+    auto tA = A * l1 * l2 * l3 * l4;
+    for(auto const& is : wInds) tA = tA * delta(is[0], is[1]);
+    auto tB = B * l1 * l2 * l3 * l4;
+    for(auto const& is : wInds) tB = tB * delta(is[0], is[1]);
+
+    auto pIC = Index(TAG_I_PHYS, cls.physDim, PHYS);
+    auto pID = Index(TAG_I_PHYS, cls.physDim, PHYS);
+
+    auto aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+    auto aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+
+    auto tC = tB * delta(pIB,pIC);
+    auto tD = tA * delta(pIA,pID);
+    for(int i=0; i<=3; i++) {
+        tC = tC * delta(prime(aIB,i), prime(aIC,i));
+        tD = tD * delta(prime(aIA,i), prime(aID,i));
+    }
+
+    // Build new cluster
+    cls.sites = {{"A", tA}, {"B", tB}, {"C", tC}, {"D", tD}};
+    //std::cout << cls;
+
     writeCluster(arg_outClusterFile, cls);
 }
