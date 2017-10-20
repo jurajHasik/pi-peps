@@ -141,10 +141,9 @@ void simpUp(
 
     for (const auto& w : wtA) (*p2s[0]) *= (*w);
     for (const auto& w : wtB) (*p2s[2]) *= (*w);
-    applyH_T1_L_T2(nnh, *p2s[0], *p2s[2], *p2s[1], *invWs.at(p2s[1]), true);
+    applyH_T1_L_T2(nnh, *p2s[0], *p2s[2], *p2s[1], *invWs.at(p2s[1]));
     for (const auto& w : wtA) (*p2s[0]) *= (*invWs.at(w));
     for (const auto& w : wtB) (*p2s[2]) *= (*invWs.at(w));
-
 }
 
 int main( int argc, char *argv[] ) {
@@ -348,7 +347,6 @@ int main( int argc, char *argv[] ) {
             //PrintData(l2);
             //PrintData(l3);
             //PrintData(l4);
-            t_iso_begin = std::chrono::steady_clock::now();
         
             formCluster(cls, A, B, {l1, l2, l3, l4});
             e_nnh = getEV2Site(cls);
@@ -378,6 +376,8 @@ int main( int argc, char *argv[] ) {
             //     nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
             // }
             e_avgE_prev = avgE;
+
+            t_iso_begin = std::chrono::steady_clock::now();
         }
     }
 

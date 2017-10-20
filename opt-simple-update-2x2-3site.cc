@@ -492,8 +492,6 @@ int main( int argc, char *argv[] ) {
             std::cout <<"STEP "<< nStep <<" T= "<< std::chrono::duration_cast
             <std::chrono::microseconds>(t_iso_end - t_iso_begin).count()/1000.0 
             << std::endl;
-
-            t_iso_begin = std::chrono::steady_clock::now();
         
             formCluster(cls, {A,B,C,D}, {l1, l2, l3, l4, l5, l6, l7, l8});
             e_nnh = getEV2Site(cls);
@@ -522,6 +520,8 @@ int main( int argc, char *argv[] ) {
     //             nnh = getMPO2s_NNHstagh(4, arg_tau, arg_J, arg_h);
     //         }
                 e_avgE_prev = avgE;
+
+                t_iso_begin = std::chrono::steady_clock::now();
         }
     }
 
