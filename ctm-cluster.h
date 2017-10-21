@@ -51,6 +51,8 @@ struct Cluster {
 
 itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
 
+itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
+
 std::ostream& 
 operator<<(std::ostream& s, Cluster const& c);
 

@@ -131,7 +131,7 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     // Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
     // Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
 
-    auto dnmat = bra*prime(conj(bra),PHYS,1);
+    auto dnmat = clusterDenMat(cls);
     Print(dnmat);
 
     double cls_norm = norm(dnmat * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1))

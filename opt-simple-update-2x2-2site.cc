@@ -84,10 +84,7 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto H_nnhBD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pID);
     auto H_nnhCD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIC, pID);
 
-    auto bra = contractCluster(cls);
-    Print(bra);
-
-    auto dnmat = bra*prime(conj(bra),PHYS,1);
+    auto dnmat = clusterDenMat(cls);
     Print(dnmat);
 
     double cls_norm = norm(dnmat * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1))
