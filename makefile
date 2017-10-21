@@ -1,6 +1,6 @@
 # Link to Itensor lib
 
-ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc
+ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-intel
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 
@@ -10,18 +10,18 @@ TENSOR_HEADERS=$(ITENSOR_DIR)/itensor/core.h
 #    set APP to 'get-env'. Running 'make' will compile the app.
 #    Running 'make debug' will make a program called 'get-env-g'
 #    which includes debugging symbols and can be used in gdb (Gnu debugger);
-APP =get-cluster-env
+APP =get-cluster-env_v2
 APP2=opt-simple-update
-APP3=get-cluster-env_v2
+#APP3=get-cluster-env_v2
 APP4=opt-simple-update-2x2-2site
 APP5=opt-simple-update-2x2-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS =cluster-ev-builder.h ctm-cluster-env.h ctm-cluster-io.h \
+HEADERS =cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
-HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
+#HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 HEADERS4=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
@@ -32,11 +32,11 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
-CCFILES=$(APP).cc cluster-ev-builder.cc ctm-cluster-env.cc \
+CCFILES=$(APP).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
 CCFILES2=$(APP2).cc simple-update.cc ctm-cluster-io.cc ctm-cluster.cc \
 	su2.cc
-CCFILES3=$(APP3).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
+#CCFILES3=$(APP3).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
 CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
@@ -48,7 +48,7 @@ CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
 GOBJECTS=$(patsubst %,.debug_objs/%, $(OBJECTS))
 OBJECTS2=$(patsubst %.cc,%.o, $(CCFILES2))
-OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
+#OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
 OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
@@ -77,8 +77,8 @@ $(APP)-g: mkdebugdir $(GOBJECTS) $(ITENSOR_GLIBS)
 $(APP2): $(OBJECTS2) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS2) -o $(APP2).x $(LIBFLAGS)
 
-$(APP3): $(OBJECTS3) $(ITENSOR_LIBS)
-	$(CCCOM) $(CCFLAGS) $(OBJECTS3) -o $(APP3).x $(LIBFLAGS)
+#$(APP3): $(OBJECTS3) $(ITENSOR_LIBS)
+#	$(CCCOM) $(CCFLAGS) $(OBJECTS3) -o $(APP3).x $(LIBFLAGS)
 
 $(APP4): $(OBJECTS4) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS4) -o $(APP4).x $(LIBFLAGS)

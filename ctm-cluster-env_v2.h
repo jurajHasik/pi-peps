@@ -157,7 +157,7 @@ class CtmEnv
     // specified by IO_ENV_FMT
 //    void initFromFile(int chi, IO_ENV_FMT ioFmt, std::string TAG);
 
-    void initCtmrgEnv();
+    void initCtmrgEnv(bool dbg = false);
 
     // ########################################################################
     // CTM iterative methods

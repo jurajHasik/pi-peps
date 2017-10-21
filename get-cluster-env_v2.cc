@@ -6,6 +6,8 @@
 using namespace itensor;
 
 int main( int argc, char *argv[] ) {
+    std::cout.precision( std::numeric_limits< double >::max_digits10 );
+    
     // ########################################################################
     // Handle command-line arguments
 
@@ -204,10 +206,10 @@ int main( int argc, char *argv[] ) {
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
 
-        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT, true);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT, true);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT, true);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT, true);
 
         std::cout << "STEP " << iter << std::endl;
 
