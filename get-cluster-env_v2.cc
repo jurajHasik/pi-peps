@@ -181,6 +181,24 @@ int main( int argc, char *argv[] ) {
         cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("D"),
         cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); // cluster.sites.at("C"));
 
+    // NNN 2site ops
+    auto op2s_ssAD = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"), 
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
+
+    auto op2s_ssBC = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); // cluster.sites.at("C"));
+    // NNN 2site ops
+    auto op2s_ssDA = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("A"), 
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); //cluster.sites.at("D"));
+
+    auto op2s_ssCB = ev.get2STOT(EVBuilder::OP2S_SS,
+        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("B"),
+        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); // cluster.sites.at("C"));
+
+
     // energy with initial environment
     e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
         std::make_pair(0,0), std::make_pair(1,0)) );
@@ -297,6 +315,15 @@ int main( int argc, char *argv[] ) {
         std::make_pair(1,1), std::make_pair(1,2)) <<
     " DC: "<< ev.eV_2sO_Rectangle(op2s_ssDC,
         std::make_pair(1,1), std::make_pair(2,1)) << std::endl;
+
+    std::cout << "AD: " << ev.eV_2sO_Rectangle(op2s_ssAD,
+        std::make_pair(0,0), std::make_pair(1,1)) << 
+    " DA: "<< ev.eV_2sO_Rectangle(op2s_ssDA,
+        std::make_pair(1,1), std::make_pair(2,2)) <<
+    " BC: "<< ev.eV_2sO_Rectangle(op2s_ssBC,
+        std::make_pair(1,0), std::make_pair(2,1)) <<
+    " CB: "<< ev.eV_2sO_Rectangle(op2s_ssCB,
+        std::make_pair(0,1), std::make_pair(1,2)) << std::endl;
 
     
     /*ev.expVal_1sO1sO_H( 

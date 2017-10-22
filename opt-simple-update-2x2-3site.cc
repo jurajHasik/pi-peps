@@ -119,10 +119,14 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto pIC  = noprime(findtype(cls.sites.at("C").inds(), PHYS));
     auto pID  = noprime(findtype(cls.sites.at("D").inds(), PHYS));
 
+    // NN terms - very small objects (phys dim)^4
     auto H_nnhAB = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIB);
     auto H_nnhAC = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pIC);
     auto H_nnhBD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pID);
     auto H_nnhCD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIC, pID);
+    // NNN terms
+    auto H_nnnhAD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pID);
+    auto H_nnnhBC = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pIC);
 
     auto bra = contractCluster(cls);
     Print(bra);
@@ -154,17 +158,26 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto KetBD = dnmat * H_nnhBD.first * H_nnhBD.second; 
     KetBD = KetBD * delta(pIA,prime(pIA,1)) * delta(pIC,prime(pIC,1));
 
-    if( KetBD.r() > 0 || KetAB.r() > 0 || KetCD.r() >0 || KetAC.r() > 0 ) {
+    auto KetAD = dnmat * H_nnnhAD.first * H_nnnhAD.second;
+    KetAD = KetAD * delta(pIB,prime(pIB,1)) * delta(pIC,prime(pIC,1));
+
+    auto KetBC = dnmat * H_nnnhBC.first * H_nnnhBC.second;
+    KetBC = KetBC * delta(pIA,prime(pIA,1)) * delta(pID,prime(pID,1));
+
+    if( KetBD.r() > 0 || KetAB.r() > 0 || KetCD.r() >0 || KetAC.r() > 0 
+        || KetAD.r() > 0 || KetBC.r() > 0 ) {
         std::cout <<"Expectation value not a tensor rank 0"<< std::endl;
         exit(EXIT_FAILURE);    
     }
 
     std::vector< std::complex<double> > evs = {
         sumels(KetAB)/cls_norm, sumels(KetAC)/cls_norm,
-        sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm };
+        sumels(KetCD)/cls_norm, sumels(KetBD)/cls_norm,
+        sumels(KetAD)/cls_norm, sumels(KetBC)/cls_norm };
 
-    std::cout << evs[0].real() <<", "<< evs[1].real() <<", "
-        << evs[2].real() <<", "<< evs[3].real() << std::endl;
+    std::cout <<"NN: "<< evs[0].real() <<", "<< evs[1].real() <<", "
+        << evs[2].real() <<", "<< evs[3].real() <<" NNN: "<< evs[4].real()
+        <<", "<< evs[5].real() << std::endl;
 
     return evs;
 }
@@ -255,8 +268,6 @@ int main( int argc, char *argv[] ) {
         std::cout <<"Invalid amount of Agrs (< 7)"<< std::endl;
         exit(EXIT_FAILURE);
     }
-    
-
 
     double eps_threshold = 1.0e-8;
     double tau_threshold = 1.0e-10;
@@ -474,15 +485,20 @@ int main( int argc, char *argv[] ) {
         {&C,&l5,&A,&l1,&B}, {&C,&l3,&D,&l7,&B},
         {&C,&l4,&D,&l8,&B}, {&C,&l6,&A,&l2,&B},
         {&D,&l3,&C,&l5,&A}, {&D,&l7,&B,&l1,&A}
+        // {&B,&l2,&A,&l6,&C}, {&B,&l8,&D,&l4,&C},
+        // {&C,&l4,&D,&l7,&B}, {&C,&l5,&A,&l2,&B},
+        // {&D,&l3,&C,&l5,&A}, {&D,&l7,&B,&l1,&A},
+        // {&A,&l1,&B,&l8,&D}, {&A,&l6,&C,&l3,&D} 
     };
 
     for (int nStep=1; nStep<=arg_nIter; nStep++) {
         
-        for(size_t i=0; i<opt_seq.size(); ++i) {
-            simpUp(uJ1J2, tn, invWs, opt_seq[i]);    
-        }
         for(auto it = opt_seq.end(); it-- != opt_seq.begin(); ) {
             simpUp(uJ1J2, tn, invWs, *it); 
+        }
+        
+        for(size_t i=0; i<opt_seq.size(); ++i) {
+            simpUp(uJ1J2, tn, invWs, opt_seq[i]);    
         }
 
         //std::rotate(opt_seq.begin(),opt_seq.begin()+1,opt_seq.end());
