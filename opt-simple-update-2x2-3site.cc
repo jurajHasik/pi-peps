@@ -547,7 +547,6 @@ int main( int argc, char *argv[] ) {
             simpUp(uJ1J2, tn, invWs, opt_seq[i]);    
         }
 
-        //std::rotate(opt_seq.begin(),opt_seq.begin()+1,opt_seq.end());
 
         if ( nStep % 1000 == 0 ) { 
             t_iso_end = std::chrono::steady_clock::now();
