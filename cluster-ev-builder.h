@@ -63,11 +63,16 @@ class EVBuilder {
      */
 
     // compute ev_1sO using environment of a single site
+    double eV_1sO_1sENV(MPO_1S op1s, std::pair<int,int> site,
+        bool DBG = false) const;
+
     double eV_1sO_1sENV(MpoNS const& op, std::pair<int,int> site,
         bool DBG = false) const;
 
+    // DEPRECATED - SUBOPTIMAL
     double eV_1sO(MpoNS const& op, std::pair<int,int> site) const;
 
+    // DEPRECATED - SUBOPTIMAL
     double eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const;
 
     // Supported types of 2-site operators

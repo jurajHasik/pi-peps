@@ -128,15 +128,9 @@ std::vector< std::complex<double> > getEV2Site(Cluster const& cls) {
     auto H_nnnhAD = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIA, pID);
     auto H_nnnhBC = EVBuilder::get2SiteSpinOP(EVBuilder::OP2S_SS, pIB, pIC);
 
-    auto bra = contractCluster(cls);
-    Print(bra);
-
     // form density matrix for phys DoFs of the cluster
-    // Bra = (Bra * delta(aIA, prime(aIB,2))) * delta(aIC, prime(aID,2));
-    // Bra = (Bra * delta(prime(aIA,1), prime(aIC,3))) * delta(prime(aIB,1), prime(aID,3));
-
     auto dnmat = clusterDenMat(cls);
-    Print(dnmat);
+    // Print(dnmat);
 
     double cls_norm = norm(dnmat * delta(pIA,prime(pIA,1)) * delta(pIB,prime(pIB,1))
         * delta(pIC,prime(pIC,1)) * delta(pID,prime(pID,1)));
@@ -244,13 +238,14 @@ int main( int argc, char *argv[] ) {
     std::string metaInfo;
 
     arg_initType = std::string(argv[1]);
-    if( (arg_initType == "FILE") && (argc >= 8) ) {
+    if( (arg_initType == "FILE") && (argc >= 9) ) {
         arg_inClusterFile  = argv[2];
         arg_outClusterFile = argv[3];
-        arg_nIter          = std::stoi(argv[4]);
-        arg_tau            = std::stod(argv[5]);
-        arg_J1             = std::stod(argv[6]);
-        arg_J2             = std::stod(argv[7]);
+        arg_auxBondDim     = std::stoi(argv[4]);
+        arg_nIter          = std::stoi(argv[5]);
+        arg_tau            = std::stod(argv[6]);
+        arg_J1             = std::stod(argv[7]);
+        arg_J2             = std::stod(argv[8]);
 
         std::cout <<"Initializing from File: "<< arg_inClusterFile << std::endl;
         metaInfo.append("Init "+arg_initType+" "+arg_inClusterFile+";");
@@ -274,6 +269,7 @@ int main( int argc, char *argv[] ) {
 
     std::cout.precision( std::numeric_limits< double >::max_digits10 );
     std::cout <<"Simulation parameters"<< std::endl;
+    std::cout <<"auxBondDim   : "<< arg_auxBondDim << std::endl;
     std::cout <<"imag time tau: "<< arg_tau << std::endl;
     std::cout <<"J1           : "<< arg_J1 << std::endl;
     std::cout <<"J2           : "<< arg_J2 << std::endl;
@@ -291,20 +287,36 @@ int main( int argc, char *argv[] ) {
 
     if( arg_initType == "FILE" ) {
         cls = readCluster(arg_inClusterFile);
+        cls.auxBondDim = arg_auxBondDim;
 
         A = cls.sites[cls.cToS.at(std::make_pair(0,0))];
         B = cls.sites[cls.cToS.at(std::make_pair(1,0))];
         C = cls.sites[cls.cToS.at(std::make_pair(0,1))];
         D = cls.sites[cls.cToS.at(std::make_pair(1,1))];
 
-        aIA = noprime(findtype(A.inds(), AUXLINK));
-        aIB = noprime(findtype(B.inds(), AUXLINK));
-        aIC = noprime(findtype(C.inds(), AUXLINK));
-        aID = noprime(findtype(D.inds(), AUXLINK));
         pIA = noprime(findtype(A.inds(), PHYS));
         pIB = noprime(findtype(B.inds(), PHYS));
         pIC = noprime(findtype(C.inds(), PHYS));
         pID = noprime(findtype(D.inds(), PHYS));
+        aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        
+        // relabel original indices to take up desired bond dimensions
+        auto taIA = noprime(findtype(A.inds(), AUXLINK));
+        auto taIB = noprime(findtype(B.inds(), AUXLINK));
+        auto taIC = noprime(findtype(C.inds(), AUXLINK));
+        auto taID = noprime(findtype(D.inds(), AUXLINK));
+        
+        auto D_I = delta(taIA,aIA);
+        A = A*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
+        D_I = delta(taIB,aIB);
+        B = B*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
+        D_I = delta(taIC,aIC);
+        C = C*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
+        D_I = delta(taID,aID);
+        D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
     } else {
         // ----- DEFINE BLANK CLUSTER ----------------------------------
         cls = Cluster();
@@ -350,10 +362,18 @@ int main( int argc, char *argv[] ) {
         } else if(arg_initType == "RANDOM") {
             std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
             // Randomize
+
             randomize(A);
             randomize(B);
             randomize(C);
             randomize(D);
+
+            // auto shift05 = [](Real r){ return r-0.5; };
+            // A.apply(shift05);
+            // B.apply(shift05);
+            // C.apply(shift05);
+            // D.apply(shift05);
+
         } else if (arg_initType == "AFM") {
             std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;
             // Spin DOWN on site A, spin   UP on site B
@@ -481,14 +501,40 @@ int main( int argc, char *argv[] ) {
     t_iso_begin = std::chrono::steady_clock::now();
     
     std::vector< std::vector<ITensor*> > opt_seq = {
-        {&A,&l2,&B,&l8,&D}, {&A,&l6,&C,&l4,&D},
-        {&C,&l5,&A,&l1,&B}, {&C,&l3,&D,&l7,&B},
-        {&C,&l4,&D,&l8,&B}, {&C,&l6,&A,&l2,&B},
-        {&D,&l3,&C,&l5,&A}, {&D,&l7,&B,&l1,&A}
-        // {&B,&l2,&A,&l6,&C}, {&B,&l8,&D,&l4,&C},
-        // {&C,&l4,&D,&l7,&B}, {&C,&l5,&A,&l2,&B},
-        // {&D,&l3,&C,&l5,&A}, {&D,&l7,&B,&l1,&A},
-        // {&A,&l1,&B,&l8,&D}, {&A,&l6,&C,&l3,&D} 
+        //A-D link variant GREEN
+        {&A,&l2,&B,&l8,&D}, {&D,&l8,&B,&l2,&A},
+        {&A,&l6,&C,&l4,&D}, {&D,&l4,&C,&l6,&A},
+
+        //A-D link variant GREY
+        {&D,&l7,&B,&l1,&A}, {&A,&l1,&B,&l7,&D},
+        {&D,&l3,&C,&l5,&A}, {&A,&l5,&C,&l3,&D},         
+
+        //A-D link variant RED 
+        {&A,&l6,&C,&l3,&D}, {&D,&l3,&C,&l6,&A},
+        {&A,&l1,&B,&l8,&D}, {&D,&l8,&B,&l1,&A},
+         
+        //A-D link variant BLUE
+        {&D,&l4,&C,&l5,&A}, {&A,&l5,&C,&l4,&D},
+        {&D,&l7,&B,&l2,&A}, {&A,&l2,&B,&l7,&D},
+
+        //####################################
+
+        //B-C link variant GREEN
+        {&B,&l8,&D,&l4,&C}, {&C,&l4,&D,&l8,&B},
+        {&B,&l2,&A,&l6,&C}, {&C,&l6,&A,&l2,&B},
+
+        //B-C link variant GREY
+        {&C,&l5,&A,&l1,&B}, {&B,&l1,&A,&l5,&C}, 
+        {&C,&l3,&D,&l7,&B}, {&B,&l7,&D,&l3,&C},
+        
+        //B-C link variant RED
+        {&B,&l1,&A,&l6,&C}, {&C,&l6,&A,&l1,&B},
+        {&B,&l8,&D,&l3,&C}, {&C,&l3,&D,&l8,&B},
+
+        //B-C link variant BLUE
+        {&C,&l4,&D,&l7,&B}, {&B,&l7,&D,&l4,&C},
+        {&C,&l5,&A,&l2,&B}, {&B,&l2,&A,&l5,&C}
+
     };
 
     for (int nStep=1; nStep<=arg_nIter; nStep++) {

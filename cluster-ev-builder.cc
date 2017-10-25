@@ -123,8 +123,16 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
 
 /*
  * TODO consider imaginary part of the result as well
+ * TODO optimize memory usage (potentially)
  *
  */
+double EVBuilder::eV_1sO_1sENV(MPO_1S op1s, 
+    std::pair<int,int> site, bool DBG) const 
+{
+    auto mpo = getTOT_DBG(op1s, cls.cToS.at(site), 0, DBG);
+    return eV_1sO_1sENV(mpo, site, DBG);
+} 
+
 double EVBuilder::eV_1sO_1sENV(MpoNS const& op, 
     std::pair<int,int> site, bool DBG) const 
 {
@@ -1816,7 +1824,8 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
 // }
 
 std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
-    Index const& sA, Index const& sB, bool dbg) {
+    Index const& sA, Index const& sB, bool dbg) 
+{
     /*
      * 2-site operator acts on 2 physical indices
      * 

@@ -2497,15 +2497,15 @@ CtmData CtmEnv::getCtmData_DBG() const {
     return ctmData;
 }
 
-CtmData_Full CtmEnv::getCtmData_Full_DBG() const {
+CtmData_Full CtmEnv::getCtmData_Full_DBG(bool dbg) const {
     // Indexing of T_* and C_* arrays wrt environment
     // of non-equivalent sites
 
-    std::cout <<"sites: ["<< std::endl;
+    if(dbg) { std::cout <<"sites: ["<< std::endl;
     for( std::size_t i=0; i<sites.size(); i++) {
         std::cout << WS4 << siteIds[i] <<" -> "<< i << std::endl;
     }
-    std::cout <<"]"<< std::endl;
+    std::cout <<"]"<< std::endl; }
 
     CtmData_Full ctmDataFull = {
         x, d, sizeN, sizeM,

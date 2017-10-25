@@ -246,7 +246,7 @@ class CtmEnv
 
     CtmData getCtmData_DBG() const;
 
-    CtmData_Full getCtmData_Full_DBG() const;
+    CtmData_Full getCtmData_Full_DBG(bool dbg = false) const;
 
     std::ostream& print(std::ostream& s) const;
 };
