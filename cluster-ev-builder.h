@@ -50,9 +50,14 @@ class EVBuilder {
 
     // Get on-site contracted tensor <T(bra)|MPO|T(ket)>,
     // with prime level "l"
-    MpoNS getTOT_DBG(MPO_1S mpo, std::string siteId, int primeLvl,
+    MpoNS getTOT(MPO_1S mpo, std::string siteId, int primeLvl,
         bool DBG = false) const;
-        
+    
+    // Assume op to be tensor of at least rank 2 with exactly two copies
+    // of single PHYS index with primeLevel 0 and 1
+    MpoNS getTOT(itensor::ITensor const& op, std::string siteId,
+        int primeLvl, bool DBG = false) const;
+
     // Compute expectation value of 1-site operator O
     /*
      *  Arg op - result of getTOT = <bra|op|ket> with indices in accordance
@@ -68,12 +73,6 @@ class EVBuilder {
 
     double eV_1sO_1sENV(MpoNS const& op, std::pair<int,int> site,
         bool DBG = false) const;
-
-    // DEPRECATED - SUBOPTIMAL
-    double eV_1sO(MpoNS const& op, std::pair<int,int> site) const;
-
-    // DEPRECATED - SUBOPTIMAL
-    double eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const;
 
     // Supported types of 2-site operators
     enum OP_2S {
@@ -100,14 +99,6 @@ class EVBuilder {
         std::pair<int,int> s1, std::pair<int,int> s2,
         bool DBG = false) const;
 
-    double eV_2sO_DBG(
-        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> siteA, std::pair<int,int> siteB) const;
-
-    double eV_2sO(
-        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> siteA, std::pair<int,int> siteB) const;
-
     // compute norm of TN defined by sites s1, s2 (with ID operators)
     double getNorm_Rectangle(bool DBG, std::pair<int,int> s1, 
         std::pair<int,int> s2) const;
@@ -118,15 +109,14 @@ class EVBuilder {
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> s1, std::pair<int,int> s2) const;
 
-    // compute norm (contract TN) of NxM==(N,M) copies of cluster
-    // surrounded by environment
-    double getNormSupercell_DBG(std::pair<int,int> sc) const;
+    double eval2Smpo(OP_2S op2s,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
-    double getNormSupercell(std::pair<int,int> sc) const;
+    double contract2Smpo(OP_2S op2s,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
-    void setCtmData(CtmData const& new_cd);
-
-    void setCtmData_Full(CtmData_Full const& new_cd_f);
+    double contract2Smpo(std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
@@ -205,6 +195,10 @@ class EVBuilder {
      */
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
+
+    void setCtmData(CtmData const& new_cd);
+
+    void setCtmData_Full(CtmData_Full const& new_cd_f);
 
     static std::pair< itensor::ITensor, itensor::ITensor > 
         get2SiteSpinOP(OP_2S op2s,

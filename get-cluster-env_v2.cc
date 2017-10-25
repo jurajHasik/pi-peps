@@ -110,18 +110,17 @@ int main( int argc, char *argv[] ) {
         }
     }
 
-    std::cout << ctmEnv;
-    ctmEnv.printSVDspec(); //DBG
-
-    Print(ctmEnv.build_corner('1',0,0));
-    Print(ctmEnv.build_corner('2',0,0));
-    Print(ctmEnv.build_corner('3',0,0));
-    Print(ctmEnv.build_corner('4',0,0));
-
-    Print(ctmEnv.build_2x2_RDM('L',0,0));
-    Print(ctmEnv.build_2x2_RDM('U',0,0));
-    Print(ctmEnv.build_2x2_RDM('R',0,0));
-    Print(ctmEnv.build_2x2_RDM('D',0,0));
+    //DEBUG
+    //std::cout << ctmEnv;
+    //ctmEnv.printSVDspec();
+    // Print(ctmEnv.build_corner('1',0,0));
+    // Print(ctmEnv.build_corner('2',0,0));
+    // Print(ctmEnv.build_corner('3',0,0));
+    // Print(ctmEnv.build_corner('4',0,0));
+    // Print(ctmEnv.build_2x2_RDM('L',0,0));
+    // Print(ctmEnv.build_2x2_RDM('U',0,0));
+    // Print(ctmEnv.build_2x2_RDM('R',0,0));
+    // Print(ctmEnv.build_2x2_RDM('D',0,0));
 
     // holds timing for *_DBG mostves
     std::vector<double> accT(8,0.0);
@@ -137,76 +136,24 @@ int main( int argc, char *argv[] ) {
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
     // Prepare rotated on-site tensor
-    auto RA = cluster.sites.at("A");
-    auto physI = findtype(RA.inds(),PHYS);
-    auto R = ITensor(physI, prime(physI,1));
-    for ( int i=1; i<=physI.m(); i++ ) {
-        R.set( physI(physI.m()+1-i), prime(physI,1)(i), pow(-1,i-1) );
-    }
-    RA *= R;
-    RA.prime(PHYS, -1);
-    PrintData(RA);
-    // auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-    auto op2s_ss = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"), 
-        //RA);
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); //cluster.sites.at("B"));
-
-    auto op2s_ssAC = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); //cluster.sites.at("C"));
-
-    auto op2s_ssBD = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
-
-    auto op2s_ssCD = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("C"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
-
-    // second set of 2site ops
-    auto op2s_ssBA = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"), 
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); //cluster.sites.at("A"));
-
-    auto op2s_ssCA = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("C"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); // cluster.sites.at("A"));
-
-    auto op2s_ssDB = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("D"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); // cluster.sites.at("B"));
-
-    auto op2s_ssDC = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("D"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); // cluster.sites.at("C"));
-
-    // NNN 2site ops
-    auto op2s_ssAD = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0))), //cluster.sites.at("A"), 
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1)))); //cluster.sites.at("D"));
-
-    auto op2s_ssBC = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0))), //cluster.sites.at("B"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1)))); // cluster.sites.at("C"));
-    // NNN 2site ops
-    auto op2s_ssDA = ev.get2STOT_DBG(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,1))), //cluster.sites.at("A"), 
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,0)))); //cluster.sites.at("D"));
-
-    auto op2s_ssCB = ev.get2STOT(EVBuilder::OP2S_SS,
-        cluster.sites.at(cluster.cToS.at(std::make_pair(0,1))), //cluster.sites.at("B"),
-        cluster.sites.at(cluster.cToS.at(std::make_pair(1,0)))); // cluster.sites.at("C"));
-
+    // auto RA = cluster.sites.at("A");
+    // auto physI = findtype(RA.inds(),PHYS);
+    // auto R = ITensor(physI, prime(physI,1));
+    // for ( int i=1; i<=physI.m(); i++ ) {
+    //     R.set( physI(physI.m()+1-i), prime(physI,1)(i), pow(-1,i-1) );
+    // }
+    // RA *= R;
+    // RA.prime(PHYS, -1);
+    // PrintData(RA);
 
     // energy with initial environment
-    e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
+    e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,0), std::make_pair(1,0)) );
-    e_nnH_AC.push_back( ev.eV_2sO_Rectangle(op2s_ssAC,
+    e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,0), std::make_pair(0,1)) );
-    e_nnH_BD.push_back( ev.eV_2sO_Rectangle(op2s_ssBD,
+    e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(1,1)) );
-    e_nnH_CD.push_back( ev.eV_2sO_Rectangle(op2s_ssCD,
+    e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,1), std::make_pair(1,1)) );
 
     // ##### randomization of directional CTM moves ###################
@@ -233,13 +180,13 @@ int main( int argc, char *argv[] ) {
 
         if ( iter % 1 == 0 ) {
             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-            e_nnH.push_back( ev.eV_2sO_Rectangle(op2s_ss,
+            e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(0,0), std::make_pair(1,0)) );
-            e_nnH_AC.push_back( ev.eV_2sO_Rectangle(op2s_ssAC,
+            e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(0,0), std::make_pair(0,1)) );
-            e_nnH_BD.push_back( ev.eV_2sO_Rectangle(op2s_ssBD,
+            e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(1,0), std::make_pair(1,1)) );
-            e_nnH_CD.push_back( ev.eV_2sO_Rectangle(op2s_ssCD,
+            e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(0,1), std::make_pair(1,1)) );
         }
     }
@@ -255,8 +202,6 @@ int main( int argc, char *argv[] ) {
         <<" "<< accT[3] << std::endl;
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
-
-    //std::cout << ctmEnv;
 
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
@@ -274,16 +219,6 @@ int main( int argc, char *argv[] ) {
     std::cout <<"SM A: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0)) << std::endl;
     std::cout <<"SM B: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0)) << std::endl;
 
-    // auto op2s_id = ev.get2STOT_DBG(EVBuilder::OP2S_Id,
-    // std::cout <<"Constructing 2-site MPO on sites: "<< cluster.siteIds[0]
-    //     <<" and "<< cluster.siteIds[1] << std::endl;
-    // auto op2s_id = ev.get2STOT(EVBuilder::OP2S_Id,
-    //     cluster.sites.at(cluster.siteIds[0]),
-    //     cluster.sites.at(cluster.siteIds[1]));
-
-    // std::cout <<"ID: "<< ev.eV_2sO(op2s_id,
-    //     std::make_pair(0,0), std::make_pair(0,3)) << std::endl;
-
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
         std::cout << i <<" "<< e_nnH[i] 
@@ -293,25 +228,24 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
-    std::cout << "BA: " << ev.eV_2sO_Rectangle(op2s_ssBA,
+    std::cout << "BA: " << ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(2,0)) << 
-    " CA: "<< ev.eV_2sO_Rectangle(op2s_ssCA,
+    " CA: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,1), std::make_pair(0,2)) <<
-    " DB: "<< ev.eV_2sO_Rectangle(op2s_ssDB,
+    " DB: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(1,2)) <<
-    " DC: "<< ev.eV_2sO_Rectangle(op2s_ssDC,
+    " DC: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,1)) << std::endl;
 
-    std::cout << "AD: " << ev.eV_2sO_Rectangle(op2s_ssAD,
+    std::cout << "AD: " << ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,0), std::make_pair(1,1)) << 
-    " DA: "<< ev.eV_2sO_Rectangle(op2s_ssDA,
+    " DA: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,2)) <<
-    " BC: "<< ev.eV_2sO_Rectangle(op2s_ssBC,
+    " BC: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(2,1)) <<
-    " CB: "<< ev.eV_2sO_Rectangle(op2s_ssCB,
-        std::make_pair(0,1), std::make_pair(1,2)) << std::endl;
+    " CB: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
+         std::make_pair(0,1), std::make_pair(1,2)) << std::endl;
 
-    
     /*ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_Id, EVBuilder::MPO_Id,
         std::make_pair(0, 0), 20);

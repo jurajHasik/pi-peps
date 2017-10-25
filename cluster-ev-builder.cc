@@ -15,9 +15,31 @@ EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls,
  *      on-site tensor T as argument
  * 
  */
-MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
+MpoNS EVBuilder::getTOT(MPO_1S mpo, std::string siteId,
         int primeLvl, bool DBG) const 
 {
+    // Construct MPO
+    auto op = getSpinOp(mpo, 
+        noprime(findtype(cls.sites.at(siteId).inds(), PHYS)), DBG);
+
+    return getTOT(op, siteId, primeLvl, DBG);
+}
+
+
+MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
+        int primeLvl, bool DBG) const 
+{   
+    if(DBG) std::cout <<"===== getTOT called for site: "<< siteId 
+        <<" ====="<< std::endl;
+    if( op.r() < 2 ) {
+        std::cout <<"getTOT op.rank() < 2"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+    // TODO proper check 2 PHYS with prime level 0 and 1, everything else is AUX
+    // if ((op.inds()[0].type() != PHYS) || (op.inds()[1].type() != PHYS)) {
+    //     std::cout <<"getTOT op does not have two PHYS indices"<< std::endl;
+    //     exit(EXIT_FAILURE);
+    // }
     /*
      * Construct on-site MPO given by the contraction of bra & ket 
      * on-site tensor T^dag & T through physical index s
@@ -59,8 +81,6 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
     ITensor const& T = cls.sites.at(siteId);
     // Get auxBond index of T
     auto auxI = noprime(findtype(T.inds(), AUXLINK));
-    // Get physical index of T
-    auto s = noprime(findtype(T.inds(), PHYS));
 
     if(auxI.m()*auxI.m() != cd.auxDimSite) {
         std::cout <<"ctmData.auxDimSite does not agree with onSiteT.dimD^2"
@@ -73,9 +93,6 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
     auto C15 = prime(C04,1);
     auto C26 = prime(C04,2);
     auto C37 = prime(C04,3);
-
-    // Construct MPO
-    auto Op = getSpinOp(mpo, s, DBG);
 
     // if(isB) {
     //     std::cout << "site B - rotation on spin index" << "\n";
@@ -104,7 +121,15 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
     //     Op.prime(-2);
     // }
 
-    auto TOT = (T*Op*( conj(T).prime(AUXLINK,4).prime(PHYS,1) ))
+    // Get physical index of T and op
+    auto s   = noprime(findtype(T.inds(), PHYS));
+    auto opI = noprime(findtype(op.inds(), PHYS));
+
+    if(DBG) { Print(s);
+        Print(opI); }
+
+    ITensor D = (s==opI) ? ITensor(1.0) : delta(s,opI); 
+    auto TOT = (T* D*op*prime(D,1) * ( conj(T).prime(AUXLINK,4).prime(PHYS,1) ))
         *C04*C15*C26*C37;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
@@ -113,10 +138,14 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
     auto DH1 = delta(prime(cd.I_XH,1), commonIndex(TOT,C26));
     auto DV1 = delta(prime(cd.I_XV,1), commonIndex(TOT,C37));
 
+    TOT = TOT*DH0*DV0*DH1*DV1;
+
     MpoNS result;
     result.nSite = 1;
-    result.mpo.push_back(TOT*DH0*DV0*DH1*DV1);
+    result.mpo.push_back(TOT);
     result.siteIds.push_back(siteId);
+
+    if(DBG) std::cout <<"===== getTOT done ====="<< siteId << std::endl;
 
     return result;
 }
@@ -129,7 +158,7 @@ MpoNS EVBuilder::getTOT_DBG(MPO_1S mpo, std::string siteId,
 double EVBuilder::eV_1sO_1sENV(MPO_1S op1s, 
     std::pair<int,int> site, bool DBG) const 
 {
-    auto mpo = getTOT_DBG(op1s, cls.cToS.at(site), 0, DBG);
+    auto mpo = getTOT(op1s, cls.cToS.at(site), 0, DBG);
     return eV_1sO_1sENV(mpo, site, DBG);
 } 
 
@@ -167,226 +196,6 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
     ev *= cd_f.C_RD[cd_f.cToS.at(site)];
 
     return sumels(ev)/getNorm_Rectangle(DBG, site, site);
-}
-
-double EVBuilder::eV_1sO(MpoNS const& op, std::pair<int,int> site) const {
-    if ( op.nSite != 1) {
-        std::cout <<"MPO with #sites != 1 (#sites = "<< op.nSite 
-            << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    if ( !(op.siteIds[0] == cls.cToS.at(std::make_pair(
-        site.first % cls.sizeM, site.second % cls.sizeN)) ) ) {
-        std::cout <<"WARNING: MPO constructed on site "<< op.siteIds[0]
-            <<" inserted at site "<< cls.cToS.at(site) << std::endl;
-    }
-
-    auto ev = cd.C_LU;
-    /*
-     * Suppose sizeM >= sizeN, contract say left boundary of environment 
-     *
-     *   |C_LU|----I_U0
-     *     |
-     *   |T_L0|----I_XH(sizeN-1)*2
-     *     |
-     *    ...
-     *     |
-     * |T_Ln-1|----I_XH0
-     *     |
-     *   |C_LD|----I_D0 
-     *
-     */
-    for ( int row=0; row<=cd.sizeN-1; row++ ) {
-        ev.prime(HSLINK,2);
-        ev *= cd.T_L[row];
-    }
-    ev *= cd.C_LD;
-
-    /*
-     * Contract the cluster+environment column by column
-     *
-     *   |C_LU|----I_U0
-     *     |
-     *   |T_L0|----I_XH(n-1)*2
-     *     |
-     *    ...              I_XV
-     *     |                | 
-     * |T_Ln-1|----I_XH0--| X  |--I_XH1
-     *     |                |
-     *     |               I_XV1<<I_XVn (via mapprime)
-     *     |                |
-     *   |C_LD|----I_D0---|T_D0|--I_D1 
-     *
-     */
-    for ( int col=0; col<cd.sizeM; col++ ) {
-        ev *= cd.T_D[col];
-        ev.mapprime(cd.sizeN,1,VSLINK);
-
-        for ( int row=cd.sizeN-1; row>=0; row-- ) {
-            ev.mapprime(0,1,VSLINK);
-            // substitute original on-site tensor for op at position site
-            if ( site.first == col && site.second == row ) {
-                std::cout <<"OP inserted at ("<< col <<","<< row <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(col % cls.sizeM, 
-                        row % cls.sizeN)) << std::endl;
-                ev *= prime(op.mpo[0], HSLINK, 2*(cd.sizeN-1-row));
-            } else {
-                ev *= prime(cd.sites.at(cd.cToS.at(std::make_pair(col,row))),
-                    HSLINK, 2*(cd.sizeN-1-row));
-            }
-        }
-        /*
-         * After 1st full column insertion
-         *
-         *   |C_LU|----|T_U0|--I_U1
-         *     |         |         
-         *   |T_L0|----| X  |--I_XH(sizeN-1)*2+1
-         *     |         |
-         *    ...       ...
-         *     |         | 
-         * |T_LsizeN|--| X  |--I_XH1
-         *     |         |
-         *   |C_LD|----|T_D0|--I_D1 
-         *
-         */
-        ev.prime(HSLINK,-1);
-        ev *= cd.T_U[col];
-
-    }
-
-    /*
-     * Contract with right edge from bottom to top
-     *
-     *   |C_LU|--...--|T_Um-1|--I_Um
-     *     |            |         
-     *   |T_L0|--...--| X  |--I_XH(n-1)*2+m
-     *     |            |
-     *    ...          ...
-     *     |            |                      |
-     * |T_Ln-1|--...--| X  |---I_XH0>>I_XHm--|T_Rn-1|
-     *     |            |                      |
-     *   |C_LD|--...--|T_Dm-1|--I_Dm---------|C_RD| 
-     *
-     */
-    ev.prime(HSLINK,cd.sizeM);
-    ev *= cd.C_RD;
-    for ( int row=cd.sizeN-1; row>=0; row-- ) {
-        ev.mapprime(2*(cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-        ev *= cd.T_R[row];
-    }
-    ev *= cd.C_RU;
-
-    return sumels(ev)/getNormSupercell(std::make_pair(1,1));
-}
-
-double EVBuilder::eV_1sO_DBG(MpoNS const& op, std::pair<int,int> site) const {
-    if ( op.nSite != 1) {
-        std::cout <<"MPO with #sites != 1 (#sites = "<< op.nSite 
-            << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    if ( !(op.siteIds[0] == cls.cToS.at(std::make_pair(
-        site.first % cls.sizeM, site.second % cls.sizeN)) ) ) {
-        std::cout <<"WARNING: MPO constructed on site "<< op.siteIds[0]
-            <<" inserted at site "<< cls.cToS.at(site) << std::endl;
-    }
-
-    auto ev = cd.C_LU;
-    /*
-     * Suppose sizeM >= sizeN, contract say left boundary of environment 
-     *
-     *   |C_LU|----I_U0
-     *     |
-     *   |T_L0|----I_XH(sizeN-1)*2
-     *     |
-     *    ...
-     *     |
-     * |T_Ln-1|----I_XH0
-     *     |
-     *   |C_LD|----I_D0 
-     *
-     */
-    for ( int row=0; row<=cd.sizeN-1; row++ ) {
-        ev.prime(HSLINK,2);
-        ev *= cd.T_L[row];
-    }
-    ev *= cd.C_LD;
-
-    /*
-     * Contract the cluster+environment column by column
-     *
-     *   |C_LU|----I_U0
-     *     |
-     *   |T_L0|----I_XH(n-1)*2
-     *     |
-     *    ...              I_XV
-     *     |                | 
-     * |T_Ln-1|----I_XH0--| X  |--I_XH1
-     *     |                |
-     *     |               I_XV1<<I_XVn (via mapprime)
-     *     |                |
-     *   |C_LD|----I_D0---|T_D0|--I_D1 
-     *
-     */
-    for ( int col=0; col<cd.sizeM; col++ ) {
-        ev *= cd.T_D[col];
-        ev.mapprime(cd.sizeN,1,VSLINK);
-
-        for ( int row=cd.sizeN-1; row>=0; row-- ) {
-            ev.mapprime(0,1,VSLINK);
-            // substitute original on-site tensor for op at position site
-            if ( site.first == row && site.second == col ) {
-                std::cout <<"OP inserted at ("<< col <<","<< row <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(col % cls.sizeM, 
-                        row % cls.sizeN)) << std::endl;
-                ev *= prime(op.mpo[0], HSLINK, 2*(cd.sizeN-1-row));
-            } else {
-                ev *= prime(cd.sites.at(cd.cToS.at(std::make_pair(col,row))),
-                    HSLINK, 2*(cd.sizeN-1-row));
-            }
-        }
-        /*
-         * After 1st full column insertion
-         *
-         *   |C_LU|----|T_U0|--I_U1
-         *     |         |         
-         *   |T_L0|----| X  |--I_XH(sizeN-1)*2+1
-         *     |         |
-         *    ...       ...
-         *     |         | 
-         * |T_LsizeN|--| X  |--I_XH1
-         *     |         |
-         *   |C_LD|----|T_D0|--I_D1 
-         *
-         */
-        ev.prime(HSLINK,-1);
-        ev *= cd.T_U[col];
-
-    }
-
-    /*
-     * Contract with right edge from bottom to top
-     *
-     *   |C_LU|--...--|T_Um-1|--I_Um
-     *     |            |         
-     *   |T_L0|--...--| X  |--I_XH(n-1)*2+m
-     *     |            |
-     *    ...          ...
-     *     |            |                      |
-     * |T_Ln-1|--...--| X  |---I_XH0>>I_XHm--|T_Rn-1|
-     *     |            |                      |
-     *   |C_LD|--...--|T_Dm-1|--I_Dm---------|C_RD| 
-     *
-     */
-    ev.prime(HSLINK,cd.sizeM);
-    ev *= cd.C_RD;
-    for ( int row=cd.sizeN-1; row>=0; row-- ) {
-        ev.mapprime(2*(cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-        ev *= cd.T_R[row];
-    }
-    ev *= cd.C_RU;
-
-    return sumels(ev)/getNormSupercell_DBG(std::make_pair(1,1));
 }
 
 /* 
@@ -608,7 +417,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
 std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     ITensor const& TA, ITensor const& TB) const 
 {
-    std::cout <<"===== EVBuilder::get2STOT_DBG called ====="
+    std::cout <<"===== EVBuilder::get2STOT called ====="
         << std::string(30,'=') << std::endl;
     /*
      * 2-site operator acts on 2 physical indices
@@ -778,7 +587,7 @@ std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
     OpA = OpA*DH0A*DV0A*DH1A*DV1A;
     OpB = OpB*DH0B*DV0B*DH1B*DV1B;
 
-    std::cout <<"===== EVBuilder::get2STOT_DBG done ====="
+    std::cout <<"===== EVBuilder::get2STOT done ====="
         << std::string(32,'=') << std::endl;
     return std::make_pair(OpA, OpB);
 }
@@ -794,209 +603,14 @@ double EVBuilder::eV_2sO_Rectangle(
     return get2SOPTN(DBG, Op, s1, s2) / getNorm_Rectangle(DBG, s1, s2); 
 }
 
-double EVBuilder::eV_2sO_DBG(std::pair< ITensor,ITensor > const& Op,
-    std::pair<int,int> siteA, std::pair<int,int> siteB) const
-{
-    std::cout <<"===== EVBuilder::eV_2sO_DBG called ====="
-        << std::string(32,'=') << std::endl;
-    
-    // determine number of cells=clusters in row/col direction required
-    // to form the supercell
-    int nR = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)cd.sizeN));
-    int nC = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)cd.sizeM));
-
-    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
-
-    /*
-     * Get the size of "super"cell assuming span along "col" direction
-     * is bigger then along "row" direction
-     *
-     *   <-- col --> 
-     *  |   |_|_|_|..|_|
-     * row  |_|_|_|..|_|             _
-     *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
-     *
-     */
-    if ( nC < nR ) {
-        std::cout <<"Number of columns < number of rows in supercell"
-            << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    // Contract TN with Op inserted
-    auto tN = cd.C_LU;
-
-    for ( int row=0; row<nR*cd.sizeN; row++ ) {
-        tN.prime(HSLINK,2);
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(LLINK, -cd.sizeN);
-        }
-        tN *= cd.T_L[row % cd.sizeN];
-    }
-    tN *= cd.C_LD;
-    std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-    Print(tN);
-
-    for ( int col=0; col<nC*cd.sizeM; col++ ) {
-        if ( (col > 0) && (col % cd.sizeM == 0) ) {
-            tN.prime(DLINK, -cd.sizeM);
-            tN.prime(ULINK, -cd.sizeM);
-        }
-        tN *= cd.T_D[col % cd.sizeM];
-        tN.mapprime(cd.sizeN,1,VSLINK);
-
-        for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
-            tN.mapprime(0,1,VSLINK);
-            if ( siteA.first == col && siteA.second == row ) {
-                std::cout <<"OpA inserted at ("<< col <<","<< row <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(col % cls.sizeM,
-                     row % cls.sizeN)) << std::endl;
-                tN *= prime(Op.first, HSLINK, 2*(nR*cd.sizeN-1-row));
-            } else if ( siteB.first == col && siteB.second == row ) {
-                std::cout <<"OpB inserted at ("<< col <<","<< row <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(col % cls.sizeM,
-                     row % cls.sizeN)) << std::endl;
-                tN *= prime(Op.second, HSLINK, 2*(nR*cd.sizeN-1-row));
-            } else {
-                tN *= prime( cd.sites.at(cd.cToS.at(
-                    std::make_pair(col % cd.sizeM, row % cd.sizeN))),
-                    HSLINK, 2*(nR*cd.sizeN-1-row) );
-            }
-        }
-        tN.prime(HSLINK,-1);
-        tN *= cd.T_U[col % cd.sizeM];
-
-        std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
-            << col % cd.sizeM <<" <<<<<"<< std::endl;
-        Print(tN);
-    }
-    std::cout <<">>>>> 2) "<< nC*cd.sizeM 
-        << " cols appended <<<<<"<< std::endl;
-    Print(tN);
-
-    tN.prime(HSLINK,cd.sizeM);
-    tN *= cd.C_RD;
-    for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-        std::cout <<"HSLINK "<< 2*(nR*cd.sizeN-1-row)+cd.sizeM <<" -> "<<  
-            cd.sizeM << std::endl;
-        
-        tN *= cd.T_R[row % cd.sizeN];
-
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(RLINK, cd.sizeN);
-            std::cout <<"RLINK RESET +"<< cd.sizeN <<" prime"<< std::endl;
-        }
-    }
-    tN *= cd.C_RU;
-    std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
-    Print(tN);
-
-    std::cout <<"===== EVBuilder::eV_2sO_DBG done ====="
-        << std::string(34,'=') << std::endl;
-    return sumels(tN)/getNormSupercell_DBG(std::make_pair(nR,nC));
-}
-
-double EVBuilder::eV_2sO(std::pair< ITensor,ITensor > const& Op,
-    std::pair<int,int> siteA, std::pair<int,int> siteB) const
-{
-    std::cout <<"===== EVBuilder::eV_2sO called ====="<< std::string(36,'=')
-        << std::endl;
-    
-    // determine number of cells=clusters in row/col direction required
-    // to form the supercell
-    int nR = std::ceil(std::max(1+siteA.first,1+siteB.first)/
-        ((float)cd.sizeN));
-    int nC = std::ceil(std::max(1+siteA.second,1+siteB.second)/
-        ((float)cd.sizeM));
-
-    std::cout <<"Required supercell: "<< nR <<"x"<< nC << std::endl;
-
-    /*
-     * Get the size of "super"cell assuming span along "col" direction
-     * is bigger then along "row" direction
-     *
-     *   <-- col --> 
-     *  |   |_|_|_|..|_|
-     * row  |_|_|_|..|_|             _
-     *  |   |_|_|_|..|_| where each |_| cell is a copy of cluster
-     *
-     */
-    if ( nC < nR ) {
-        std::cout <<"Number of columns < number of rows in supercell"
-            << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    // Contract TN with Op inserted
-    auto tN = cd.C_LU;
-
-    for ( int row=0; row<nR*cd.sizeN; row++ ) {
-        tN.prime(HSLINK,2);
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(LLINK, -cd.sizeN);
-        }
-        tN *= cd.T_L[row % cd.sizeN];
-    }
-    tN *= cd.C_LD;
-
-    for ( int col=0; col<nC*cd.sizeM; col++ ) {
-        if ( (col > 0) && (col % cd.sizeM == 0) ) {
-            tN.prime(DLINK, -cd.sizeM);
-            tN.prime(ULINK, -cd.sizeM);
-        }
-        tN *= cd.T_D[col % cd.sizeM];
-        tN.mapprime(cd.sizeN,1,VSLINK);
-
-        for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
-            tN.mapprime(0,1,VSLINK);
-            if ( siteA.first == row && siteA.second == col ) {
-                std::cout <<"OpA inserted at ("<< row <<","<< col <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
-                     col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.first, HSLINK, 2*(nR*cd.sizeN-1-row));
-            } else if ( siteB.first == row && siteB.second == col ) {
-                std::cout <<"OpB inserted at ("<< row <<","<< col <<")"
-                    " -> "<< cls.cToS.at(std::make_pair(row % cls.sizeN,
-                     col % cls.sizeM)) << std::endl;
-                tN *= prime(Op.second, HSLINK, 2*(nR*cd.sizeN-1-row));
-            } else {
-                tN *= prime( cd.sites.at(cd.cToS.at(
-                    std::make_pair(row % cd.sizeN,col % cd.sizeM))),
-                    HSLINK, 2*(nR*cd.sizeN-1-row) );
-            }
-        }
-        tN.prime(HSLINK,-1);
-        tN *= cd.T_U[col % cd.sizeM];
-    }
-
-    tN.prime(HSLINK,cd.sizeM);
-    tN *= cd.C_RD;
-    for ( int row=nR*cd.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(nR*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-        tN *= cd.T_R[row % cd.sizeN];
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(RLINK, cd.sizeN);
-        }
-    }
-    tN *= cd.C_RU;
-
-    std::cout <<"===== EVBuilder::eV_2sO done ====="<< std::string(38,'=')
-        << std::endl;
-    return sumels(tN)/getNormSupercell(std::make_pair(nR,nC));
-}
-
-
 // TODO REDUNDANCY FOR HANDLING s1 = s2 case
 double EVBuilder::getNorm_Rectangle(bool DBG, std::pair<int,int> s1, 
         std::pair<int,int> s2) const 
 {
-    auto o1(getTOT_DBG(MPO_Id, cls.cToS.at(
-        std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN)), 0));
-    auto o2(getTOT_DBG(MPO_Id, cls.cToS.at(
-        std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN)), 0));
+    auto o1(getTOT(MPO_Id, cls.cToS.at(
+        std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN)), 0, DBG));
+    auto o2(getTOT(MPO_Id, cls.cToS.at(
+        std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN)), 0, DBG));
 
     return get2SOPTN(DBG, std::make_pair(o1.mpo[0], o2.mpo[0]), s1, s2);
 }
@@ -1284,162 +898,313 @@ double EVBuilder::get2SOPTN(bool DBG,
     return sumels(tN);
 }
 
-/* 
- * TODO implement for NxM supercell with N(rows)>M(cols)
- * 
- */
-double EVBuilder::getNormSupercell_DBG(std::pair<int,int> sc) const {
-    //  N x M == sc.first x sc.second supercell
-    std::cout <<"===== EVBuilder::getNormSupercell_DBG called ====="
-        << std::string(22,'=') << std::endl;
-    std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
-        << std::endl;
-    
-    // check N =< M condition
-    if ( sc.first > sc.second ) {
-        std::cout <<"Number of columns < number of rows in supercell"
-            << std::endl;
+double EVBuilder::eval2Smpo(OP_2S op2s,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const
+{
+    return contract2Smpo(op2s, s1, s2, DBG)/contract2Smpo(OP2S_Id, s1, s2, DBG);
+}
+
+double EVBuilder::contract2Smpo(OP_2S op2s,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
+{
+    // find corresponding sites in elementary cluster
+    auto e_s1{std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN)};
+    auto e_s2{std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN)};
+    // find the index of site given its elem position within cluster
+    auto pI1{noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS))};
+    auto pI2{noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS))};
+
+    auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
+
+    return contract2Smpo(op, s1, s2, DBG);
+}
+
+double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
+{
+    if(DBG) std::cout <<"===== EVBuilder::contract2Smpo called ====="
+        << std::string(34,'=') << std::endl;
+    /*
+     *  Contract network defined as a rectangle by sites s1 and s2 
+     *
+     *  C T  T  T  T  C 
+     *  T s1 .  .  .  T 
+     *  T .  .  .  s2 T
+     *  C T  T  T  T  C
+     *
+     */
+    bool singleSite = false; // Assume s1 != s2
+    bool wBEh       = true;  // Assume width of rectangle >= height 
+
+    // Perform some coord manipulation (assumed coords are >= 0) and
+    // s1.first <= s2.second && s1.second <= s2.second
+    if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
+        || (s1.first > s2.first) || (s1.second > s2.second) ) {
+        std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
         exit(EXIT_FAILURE);
     }
 
-    auto tN = cd.C_LU;
-
-    // Construct left edge
-    for ( int row=0; row<sc.first*cd.sizeN; row++ ) {
-        tN.prime(HSLINK,2);
-        // Reset index primeLevel when entering new cell=(copy of)cluster
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(LLINK, -cd.sizeN);
-        }
-        tN *= cd.T_L[row % cd.sizeN];
-    }
-    tN *= cd.C_LD;
-
-    std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-    Print(tN);
-
-    for ( int col=0; col<sc.second*cd.sizeM; col++ ) {
-        if ( (col > 0) && (col % cd.sizeM == 0) ) {
-            tN.prime(DLINK, -cd.sizeM);
-            tN.prime(ULINK, -cd.sizeM);
-        }
-        tN *= cd.T_D[col % cd.sizeM];
-        tN.mapprime(cd.sizeN,1,VSLINK);
-        std::cout<<"T_D["<< col % cd.sizeM <<"] inserted"<<std::endl;
-        Print(tN);
-
-        for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
-            tN.mapprime(0,1,VSLINK);
-            tN *= prime( cd.sites.at(cd.cToS.at(
-                std::make_pair(col % cd.sizeM,row % cd.sizeN))),
-                HSLINK, 2*(sc.first*cd.sizeN-1-row) );
-        }
-
-        tN.prime(HSLINK,-1);
-        tN *= cd.T_U[col % cd.sizeM];
-
-        std::cout << ">>>>> Appended col: "<< col <<" col mod sizeM: "
-            << col % cd.sizeM <<" <<<<<"<< std::endl;
-        Print(tN);
-    }
-
-    std::cout <<">>>>> 2) "<< sc.second*cd.sizeM 
-        << " cols appended <<<<<"<< std::endl;
-    Print(tN);
-
-    tN.prime(HSLINK,cd.sizeM);
-    tN *= cd.C_RD;
-    Print(tN);
-    for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-        std::cout <<"HSLINK "<< 2*(sc.first*cd.sizeN-1-row)+cd.sizeM <<" -> "<<  
-            cd.sizeM << std::endl;
-
-        tN *= cd.T_R[row % cd.sizeN];
-        Print(tN);
-
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(RLINK, cd.sizeN);
-        }
-    }
-    tN *= cd.C_RU;
-
-    std::cout <<">>>>> 3) contraction with right edge <<<<<"<< std::endl;
-    Print(tN);
-
-    std::cout <<"===== EVBuilder::getNormSupercell_DBG done ====="
-        << std::string(24,'=') << std::endl;
-    return sumels(tN);
-}
-
-double EVBuilder::getNormSupercell(std::pair<int,int> sc) const {
-    // check N =< M condition
-    // std::cout <<"===== EVBuilder::getNormSupercell called ====="
-    //     << std::string(26,'=') << std::endl;
-    // std::cout << "required supercell ("<< sc.first <<","<< sc.second <<")"
-    //     << std::endl;
-
-    if ( sc.first > sc.second ) {
-        std::cout <<"Number of columns < number of rows in supercell"
+    if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
+        if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
             << std::endl;
+        singleSite = true;
+    }
+
+    int sXdiff = s2.first - s1.first;
+    int sYdiff = s2.second - s1.second;
+    if ( !(sXdiff >= sYdiff) ) {
+        if(DBG) std::cout <<"TN Width < Height => contracting row by row"
+            << std::endl;
+        wBEh = false;
+    }
+
+    // shift s1 to supercell
+    s1.first  = s1.first % cls.sizeM;
+    s1.second = s1.second % cls.sizeN;
+    // shift s2 wrt to new position of s1
+    s2.first  = s1.first + sXdiff;
+    s2.second = s1.second + sYdiff;
+
+    std::pair< int, int > s(s1);
+    ITensor tN;
+
+    if (wBEh) {
+        // Construct LEFT edge
+        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+
+        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+            if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+            tN.prime(HSLINK,2);
+            tN.noprime(LLINK);
+            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+        }
+        s.second -= 1;
+        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
+            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+        s.second = s.second % cd_f.sizeN;
+        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+        if(DBG) Print(tN);
+
+        s = s1;
+        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+            s.second = s1.second;
+            if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN.noprime(ULINK, DLINK);
+            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+            
+            if(DBG) Print(tN);
+
+            for ( int row=s1.second; row<=s2.second; s.second = ++row ) {
+                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+                    <<std::endl;
+
+                s.second = s.second % cd_f.sizeN; 
+                tN.noprime(VSLINK);
+
+                if ((col==s1.first) && (row == s1.second)) {
+                    // contract Op.first with bra and ket on-site tensors of site s1
+                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+                    tN *= prime(mpo_s1.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+                } else if ((col==s2.first) && (row == s2.second)) {
+                    // contract Op.second with bra and ket on-site tensors of site s2
+                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+                        << std::endl;
+                    tN *= prime(mpo_s2.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+                } else {
+                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+                        HSLINK, 2*(sYdiff-row+s1.second) );
+                }
+                
+            }
+            tN.prime(HSLINK,-1);
+            
+            s.second -= 1;
+            if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        }
+
+        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+            << std::endl;
+
+        // Construct RIGHT edge
+        s = std::make_pair(s2.first, s1.second); 
+        if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
+            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+        s.first = s.first % cd_f.sizeM;
+        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+        if(DBG) Print(tN);
+        
+        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+            tN.noprime(RLINK);
+            tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
+            if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
+                1 << std::endl;
+
+            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+                    <<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+
+            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+        }
+
+        s.second -= 1;
+        if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+        
+        s.second = s.second % cd_f.sizeN;        
+        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+            << std::endl;
+        if(DBG) Print(tN);
+    } else {
+        // Construct UP edge
+        if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+
+        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+            if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN.prime(VSLINK,2);
+            tN.noprime(ULINK);
+            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+        }
+        s.first -= 1;
+        if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
+            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+        s.first = s.first % cd_f.sizeM;
+        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
+        if(DBG) Print(tN);
+
+        s = s1;
+        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+            s.first = s1.first;
+            if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+            tN.noprime(LLINK, RLINK);
+            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+            
+            if(DBG) Print(tN);
+
+            for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
+                if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+                    <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+                    <<std::endl;
+
+                s.first = s.first % cd_f.sizeM;
+                tN.noprime(HSLINK);
+
+                if ((col==s1.first) && (row == s1.second)) {
+                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+                    tN *= prime(mpo_s1.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+                } else if ((col==s2.first) && (row == s2.second)) {
+                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+                        << std::endl;
+                    tN *= prime(mpo_s2.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+                } else {
+                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+                        VSLINK, 2*(sXdiff-col+s1.first) );
+                }
+            
+            }
+            tN.prime(VSLINK,-1);
+            
+            s.first -= 1;
+            if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+
+            if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
+                " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        }
+
+        if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
+            << std::endl;
+
+        s = std::make_pair(s1.first, s2.second); 
+        if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
+            <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
+        
+        s.second = s.second % cd_f.sizeN;
+        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
+        if(DBG) Print(tN);
+        
+        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+            tN.noprime(DLINK);
+            tN.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
+            if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
+                1 << std::endl;
+
+            if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+                <<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+
+            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+        }
+
+        s.first -= 1;
+        if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+        s.first = s.first % cd_f.sizeM;        
+        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+            << std::endl;
+        if(DBG) Print(tN);
+    }
+
+    if ( tN.r() > 0 ) {
+        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
         exit(EXIT_FAILURE);
     }
+    if(DBG) std::cout <<"===== EVBuilder::contract2Smpo done ====="
+        << std::string(36,'=') << std::endl;
 
-    auto tN = cd.C_LU;
-
-    for ( int row=0; row<sc.first*cd.sizeN; row++ ) {
-        tN.prime(HSLINK,2);
-        // Reset index primeLevel when entering new cell=(copy of)cluster
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(LLINK, -cd.sizeN);
-        }
-        tN *= cd.T_L[row % cd.sizeN];
-    }
-    tN *= cd.C_LD;
-
-    for ( int col=0; col<sc.second*cd.sizeM; col++ ) {
-        if ( (col > 0) && (col % cd.sizeM == 0) ) {
-            tN.prime(DLINK, -cd.sizeM);
-            tN.prime(ULINK, -cd.sizeM);
-        }
-        tN *= cd.T_D[col % cd.sizeM];
-        tN.mapprime(cd.sizeN,1,VSLINK);
-
-        for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
-            tN.mapprime(0,1,VSLINK);
-            tN *= prime( cd.sites.at(cd.cToS.at(
-                std::make_pair(col % cd.sizeM,row % cd.sizeN))),
-                HSLINK, 2*(sc.first*cd.sizeN-1-row) );
-        }
-        tN.prime(HSLINK,-1);
-        tN *= cd.T_U[col % cd.sizeM];
-    }
-
-    tN.prime(HSLINK,cd.sizeM);
-    tN *= cd.C_RD;
-    for ( int row=sc.first*cd.sizeN-1; row>=0; row-- ) {
-        tN.mapprime(2*(sc.first*cd.sizeN-1-row)+cd.sizeM,cd.sizeM,HSLINK);
-
-        tN *= cd.T_R[row % cd.sizeN];
-
-        if ( (row > 0) && (row % cd.sizeN == 0) ) {
-            tN.prime(RLINK, cd.sizeN);
-        }
-    }
-    tN *= cd.C_RU;
-
-    if ( tN.r() > 0 ) std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-    // std::cout <<"===== EVBuilder::getNormSupercell done ====="
-    //     << std::string(28,'=') << std::endl;
     return sumels(tN);
-}
-
-void EVBuilder::setCtmData(CtmData const& new_cd) {
-    cd = new_cd;
-}
-
-void EVBuilder::setCtmData_Full(CtmData_Full const& new_cd_f) {
-    cd_f = new_cd_f;
 }
 
 std::complex<double> EVBuilder::expVal_1sO1sO_H( 
@@ -1457,7 +1222,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
     site.second = site.second % cd_f.sizeN;
     std::cout << site.first <<","<< site.second <<"] = "
         << cls.cToS[site] << std::endl;
-    auto op1 = getTOT_DBG(o1, cls.cToS[site], 0);
+    auto op1 = getTOT(o1, cls.cToS[site], 0);
     
     /*
      * Construct the "left" part tensor L
@@ -1469,7 +1234,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
      * |C|--|T |--I(T_d)'     |__|--I(T_d)
      *
      */
-    auto idOp = getTOT_DBG(MPO_Id, cls.cToS[site], 0);
+    auto idOp = getTOT(MPO_Id, cls.cToS[site], 0);
 
     auto L = (cd_f.C_LU[cd_f.cToS[site]]
         *cd_f.T_L[cd_f.cToS[site]])
@@ -1507,8 +1272,8 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
         site_op2.first = site_op2.first % cd_f.sizeM;
         std::cout <<"=>["<< site_op2.first <<","<< site_op2.second <<"] = "
             << cls.cToS[site_op2] <<" --T_D"<< std::endl; 
-        op2 = getTOT_DBG(o2, cls.cToS[site_op2], 0);
-        idOp = getTOT_DBG(MPO_Id, cls.cToS[site_op2], 0);
+        op2 = getTOT(o2, cls.cToS[site_op2], 0);
+        idOp = getTOT(MPO_Id, cls.cToS[site_op2], 0);
 
         N = ((L * cd_f.T_U[cd_f.cToS[site_op2]])
             * op2.mpo[0]) 
@@ -1548,7 +1313,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
         std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
             << cls.cToS[site] <<" --T_D"<< std::endl; 
 
-        idOp = getTOT_DBG(MPO_Id, cls.cToS[site], 0);
+        idOp = getTOT(MPO_Id, cls.cToS[site], 0);
         
         L = ((L * cd_f.T_U[cd_f.cToS[site]] )
             * idOp.mpo[0] ) 
@@ -2024,6 +1789,14 @@ ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s, bool DBG) {
     }
 
     return SU2_getSpinOp(su2o, s, DBG);
+}
+
+void EVBuilder::setCtmData(CtmData const& new_cd) {
+    cd = new_cd;
+}
+
+void EVBuilder::setCtmData_Full(CtmData_Full const& new_cd_f) {
+    cd_f = new_cd_f;
 }
 
 std::ostream& EVBuilder::print(std::ostream& s) const {
