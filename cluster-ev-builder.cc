@@ -199,400 +199,6 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
 }
 
 /* 
- * TODO? include (arbitrary) rotation matrix on physical index of 
- *      on-site tensor TA, TB as argument
- * 
- */
-std::pair< ITensor,ITensor > EVBuilder::get2STOT_DBG(OP_2S op2s,
-    ITensor const& TA, ITensor const& TB) const 
-{
-    std::cout <<"===== EVBuilder::get2STOT_DBG called ====="
-        << std::string(30,'=') << std::endl;
-    std::cout <<">>>>> 1) initial |ket> on-site tensors <<<<<"<< std::endl;
-    PrintData(TA);
-    PrintData(TB);
-    
-    /*
-     * 2-site operator acts on 2 physical indices
-     * 
-     *           A      B
-     * <bra|     s'     s'''
-     *          _|______|_   
-     *         |____OP____|
-     *           |      |
-     *           s      s''  |ket>     
-     *
-     */
-    auto s0 = findtype(TA.inds(), PHYS);
-    auto s1 = prime(s0,1);
-    auto s2 = prime(findtype(TB.inds(), PHYS), 2);
-    auto s3 = prime(s2,1);
-    // Assume s0 is different then s2S
-
-    auto Op = ITensor(s0, s1, s2, s3);
-    
-    // check dimensions of phys indices on TA and TB
-    if( s0.m() != s2.m() ) {
-        std::cout <<"On-site tensors TA and TB have different dimension of"
-            <<" phys index"<< std::endl;
-        exit(EXIT_FAILURE);
-    }
-    int dimS = s0.m();
-
-    switch(op2s) {
-        case OP2S_Id: { // Identity operator
-            std::cout <<">>>>> 2) Constructing OP2S_Id <<<<<"<< std::endl;  
-            for(int i=1;i<=dimS;i++) {
-                for(int j=1;j<=dimS;j++){
-                    Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
-                }
-            }
-            break;
-        }
-        case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
-            std::cout <<">>>>> 2) Constructing OP2S_AKLT-S2-H <<<<<"
-                << std::endl;
-            // Loop over <bra| indices
-            int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
-            int mbA, mbB, mkA, mkB;
-            double hVal;
-            for(int bA=1;bA<=dimS;bA++) {
-            for(int bB=1;bB<=dimS;bB++) {
-                // Loop over |ket> indices
-                for(int kA=1;kA<=dimS;kA++) {
-                for(int kB=1;kB<=dimS;kB++) {
-                    // Use Dynkin notation to specify irreps
-                    mbA = -(rS) + 2*(bA-1);
-                    mbB = -(rS) + 2*(bB-1);
-                    mkA = -(rS) + 2*(kA-1);
-                    mkB = -(rS) + 2*(kB-1);
-                    // Loop over possible values of m given by tensor product
-                    // of 2 spin (dimS-1) irreps (In Dynkin notation)
-                    hVal = 0.0;
-                    for(int m=-2*(rS);m<=2*(rS);m=m+2) {
-                        if ((mbA+mbB == m) && (mkA+mkB == m)) {
-                            
-                            //DEBUG
-                            std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
-                                <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
-                                <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
-                                <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
-                                << std::endl;
-
-                        hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
-                            *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
-                        }
-                    }
-                    if((bA == kA) && (bB == kB)) {
-                        // add 2*Id(bA,kA;bB,kB) == 
-                        //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+sqrt(2.0));
-                    } else {
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
-                    }
-                }}
-            }}
-            break;
-        }
-        case OP2S_SS: { 
-            // S^vec_i * S^vec_i+1 =
-            // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
-            std::cout <<">>>>> 2) Constructing OP2S_SS <<<<<"<< std::endl;
-    
-            Index sBra = Index("sBra", dimS);
-            Index sKet = prime(sBra);
-            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
-            ITensor Sp = getSpinOp(MPO_S_P, sBra);
-            ITensor Sm = getSpinOp(MPO_S_M, sBra);
-            
-            double hVal;
-            // Loop over <bra| indices
-            for(int bA=1;bA<=dimS;bA++) {
-            for(int bB=1;bB<=dimS;bB++) {
-                // Loop over |ket> indices
-                for(int kA=1;kA<=dimS;kA++) {
-                for(int kB=1;kB<=dimS;kB++) {
-                
-                    hVal = Sz.real(sBra(bA),sKet(kA))
-                        *Sz.real(sBra(bB),sKet(kB))+0.5*(
-                        Sp.real(sBra(bA),sKet(kA))
-                        *Sm.real(sBra(bB),sKet(kB))+
-                        Sm.real(sBra(bA),sKet(kA))
-                        *Sp.real(sBra(bB),sKet(kB)));
-
-                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
-                }}
-            }}
-            break;
-        }
-        default: {
-            std::cout <<"Invalid OP_2S selection"<< std::endl;
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
-
-    // Perform SVD
-    /*         __
-     * I(s)---|  |--I(s)''    =>
-     *        |OP|            =>
-     * I(s)'--|__|--I(s)'''   =>
-     *            ___                      ___  
-     * => I(s)---|   |         _          |   |--I(s)''
-     * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
-     * => I(s)'--|___|                    |___|--I(s)'''
-     *
-     */
-    auto OpA = ITensor(s0, s1);
-    ITensor OpB, S; 
-
-    std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
-        << std::endl;
-    svd(Op, OpA, S, OpB);
-    
-    Print(OpA);
-    PrintData(S);
-    Print(OpB);
-    
-    //create a lambda function
-    //which returns the square of its argument
-    auto sqrt_T = [](Real r) { return sqrt(r); };
-    S.apply(sqrt_T);
-
-    // Absorb singular values (symmetrically) into OpA, OpB
-    OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
-    OpB = S*OpB.prime(PHYS,-2);
-    
-    std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
-        << std::endl;
-    PrintData(OpA);
-    PrintData(OpB);
-
-    // Contract OpA and OpB with <bra| & |ket> on-site tensors TA and TB 
-    /*
-     * TODO write comment about this process
-     *
-     */
-    auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
-    auto auxIB = noprime(findtype(TB.inds(), AUXLINK));
-
-    // Define combiner tensors Y*
-    auto C04A = combiner(auxIA, prime(auxIA,4));
-    auto C15A = prime(C04A,1);
-    auto C26A = prime(C04A,2);
-    auto C37A = prime(C04A,3);
-    auto C04B = combiner(auxIB, prime(auxIB,4));
-    auto C15B = prime(C04B,1);
-    auto C26B = prime(C04B,2);
-    auto C37B = prime(C04B,3);
-
-    OpA = (TA*OpA*( conj(TA).prime(AUXLINK,4).prime(PHYS,1) ))
-        *C04A*C15A*C26A*C37A;
-    OpB = (TB*OpB*( conj(TB).prime(AUXLINK,4).prime(PHYS,1) ))
-        *C04B*C15B*C26B*C37B;
-
-    // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0A = delta(cd.I_XH, commonIndex(OpA,C04A));
-    auto DV0A = delta(cd.I_XV, commonIndex(OpA,C15A));
-    auto DH1A = delta(prime(cd.I_XH,1), commonIndex(OpA,C26A));
-    auto DV1A = delta(prime(cd.I_XV,1), commonIndex(OpA,C37A));
-    auto DH0B = delta(cd.I_XH, commonIndex(OpB,C04B));
-    auto DV0B = delta(cd.I_XV, commonIndex(OpB,C15B));
-    auto DH1B = delta(prime(cd.I_XH,1), commonIndex(OpB,C26B));
-    auto DV1B = delta(prime(cd.I_XV,1), commonIndex(OpB,C37B));
-
-    OpA = OpA*DH0A*DV0A*DH1A*DV1A;
-    OpB = OpB*DH0B*DV0B*DH1B*DV1B;
-
-    std::cout <<">>>>> 5) contracting OpA,OpB with TA,TB on site tensors <<<<<"
-        << std::endl;
-    Print(OpA);
-    Print(OpB);
-
-    std::cout <<"===== EVBuilder::get2STOT_DBG done ====="
-        << std::string(32,'=') << std::endl;
-    return std::make_pair(OpA, OpB);
-}
-
-std::pair< ITensor,ITensor > EVBuilder::get2STOT(OP_2S op2s,
-    ITensor const& TA, ITensor const& TB) const 
-{
-    std::cout <<"===== EVBuilder::get2STOT called ====="
-        << std::string(30,'=') << std::endl;
-    /*
-     * 2-site operator acts on 2 physical indices
-     * 
-     *           A      B
-     * <bra|     s'     s'''
-     *          _|______|_   
-     *         |____OP____|
-     *           |      |
-     *           s      s''  |ket>     
-     *
-     */
-    auto s0 = findtype(TA.inds(), PHYS);
-    auto s1 = prime(s0,1);
-    auto s2 = prime(findtype(TB.inds(), PHYS), 2);
-    auto s3 = prime(s2,1);
-    // Assume s0 is different then s2
-
-    auto Op = ITensor(s0, s1, s2, s3);
-    
-    // check dimensions of phys indices on TA and TB
-    if( s0.m() != s2.m() ) {
-        std::cout <<"On-site tensors TA and TB have different dimension of"
-            <<" phys index"<< std::endl;
-        exit(EXIT_FAILURE);
-    }
-    int dimS = s0.m();
-
-    switch(op2s) {
-        case OP2S_Id: { // Identity operator
-            std::cout <<">>>>> Constructing OP2S_Id <<<<<"<< std::endl; 
-            for(int i=1;i<=dimS;i++) {
-                for(int j=1;j<=dimS;j++){
-                    Op.set(s0(i),s2(j),s1(i),s3(j), 1.+0._i);
-                }
-            }
-            break;
-        }
-        case OP2S_AKLT_S2_H: { // H of AKLT-S2 on square lattice
-            std::cout <<">>>>> Constructing OP2S_AKLT-S2-H <<<<<"<< std::endl;
-            // Loop over <bra| indices
-            int rS = dimS-1; // Label of SU(2) irrep in Dyknin notation
-            int mbA, mbB, mkA, mkB;
-            double hVal;
-            for(int bA=1;bA<=dimS;bA++) {
-            for(int bB=1;bB<=dimS;bB++) {
-                // Loop over |ket> indices
-                for(int kA=1;kA<=dimS;kA++) {
-                for(int kB=1;kB<=dimS;kB++) {
-                    // Use Dynkin notation to specify irreps
-                    mbA = -(rS) + 2*(bA-1);
-                    mbB = -(rS) + 2*(bB-1);
-                    mkA = -(rS) + 2*(kA-1);
-                    mkB = -(rS) + 2*(kB-1);
-                    // Loop over possible values of m given by tensor product
-                    // of 2 spin (dimS-1) irreps (In Dynkin notation)
-                    hVal = 0.0;
-                    for(int m=-2*(rS);m<=2*(rS);m=m+2) {
-                        if ((mbA+mbB == m) && (mkA+mkB == m)) {
-
-                        hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
-                            *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
-                        }
-                    }
-                    if((bA == kA) && (bB == kB)) {
-                        // add 2*Id(bA,kA;bB,kB) == 
-                        //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal+sqrt(2.0));
-                    } else {
-                        Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
-                    }
-                }}
-            }}
-            break;
-        }
-        case OP2S_SS: {
-            std::cout <<">>>>> Constructing OP2S_SS <<<<<"<< std::endl;
-            // S^vec_i * S^vec_i+1 =
-            // = s^z_i*s^z_i+1 + 1/2(s^+_i*s^-_i+1 + s^-_i*s^+_i+1)
-    
-            Index sBra = Index("sBra", dimS);
-            Index sKet = prime(sBra);
-            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
-            ITensor Sp = getSpinOp(MPO_S_P, sBra);
-            ITensor Sm = getSpinOp(MPO_S_M, sBra);
-            
-            double hVal;
-            // Loop over <bra| indices
-            for(int bA=1;bA<=dimS;bA++) {
-            for(int bB=1;bB<=dimS;bB++) {
-                // Loop over |ket> indices
-                for(int kA=1;kA<=dimS;kA++) {
-                for(int kB=1;kB<=dimS;kB++) {
-                
-                    hVal = Sz.real(sBra(bA),sKet(kA))
-                        *Sz.real(sBra(bB),sKet(kB))+0.5*(
-                        Sp.real(sBra(bA),sKet(kA))
-                        *Sm.real(sBra(bB),sKet(kB))+
-                        Sm.real(sBra(bA),sKet(kA))
-                        *Sp.real(sBra(bB),sKet(kB)));
-
-                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
-                }}
-            }}
-            break;
-        }
-        default: {
-            std::cout <<"Invalid OP_2S selection"<< std::endl;
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
-
-    // Perform SVD
-    /*         __
-     * I(s)---|  |--I(s)''    =>
-     *        |OP|            =>
-     * I(s)'--|__|--I(s)'''   =>
-     *            ___                      ___  
-     * => I(s)---|   |         _          |   |--I(s)''
-     * =>        |OpA|--I(o)--|S|--I(o)'--|OpB|       
-     * => I(s)'--|___|                    |___|--I(s)'''
-     *
-     */
-    auto OpA = ITensor(s0, s1);
-    ITensor OpB, S; 
-
-    svd(Op, OpA, S, OpB);
-    
-    //create a lambda function
-    //which returns the square of its argument
-    auto sqrt_T = [](Real r) { return sqrt(r); };
-    S.apply(sqrt_T);
-
-    // Absorb singular values (symmetrically) into OpA, OpB
-    OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
-    OpB = S*OpB.prime(PHYS,-2);
-
-    auto auxIA = noprime(findtype(TA.inds(), AUXLINK));
-    auto auxIB = noprime(findtype(TB.inds(), AUXLINK));
-
-    // Define combiner tensors Y*
-    auto C04A = combiner(auxIA, prime(auxIA,4));
-    auto C15A = prime(C04A,1);
-    auto C26A = prime(C04A,2);
-    auto C37A = prime(C04A,3);
-    auto C04B = combiner(auxIB, prime(auxIB,4));
-    auto C15B = prime(C04B,1);
-    auto C26B = prime(C04B,2);
-    auto C37B = prime(C04B,3);
-
-    OpA = (TA*OpA*( conj(TA).prime(AUXLINK,4).prime(PHYS,1) ))
-        *C04A*C15A*C26A*C37A;
-    OpB = (TB*OpB*( conj(TB).prime(AUXLINK,4).prime(PHYS,1) ))
-        *C04B*C15B*C26B*C37B;
-
-    // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0A = delta(cd.I_XH, commonIndex(OpA,C04A));
-    auto DV0A = delta(cd.I_XV, commonIndex(OpA,C15A));
-    auto DH1A = delta(prime(cd.I_XH,1), commonIndex(OpA,C26A));
-    auto DV1A = delta(prime(cd.I_XV,1), commonIndex(OpA,C37A));
-    auto DH0B = delta(cd.I_XH, commonIndex(OpB,C04B));
-    auto DV0B = delta(cd.I_XV, commonIndex(OpB,C15B));
-    auto DH1B = delta(prime(cd.I_XH,1), commonIndex(OpB,C26B));
-    auto DV1B = delta(prime(cd.I_XV,1), commonIndex(OpB,C37B));
-
-    OpA = OpA*DH0A*DV0A*DH1A*DV1A;
-    OpB = OpB*DH0B*DV0B*DH1B*DV1B;
-
-    std::cout <<"===== EVBuilder::get2STOT done ====="
-        << std::string(32,'=') << std::endl;
-    return std::make_pair(OpA, OpB);
-}
-
-/* 
  * TODO implement evaluation on arbitrary large cluster
  * 
  */
@@ -934,12 +540,13 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
      *
      */
     bool singleSite = false; // Assume s1 != s2
+    bool s1bs2      = true;  // Assume s1.first <= s2.first
     bool wBEh       = true;  // Assume width of rectangle >= height 
 
     // Perform some coord manipulation (assumed coords are >= 0) and
     // s1.first <= s2.second && s1.second <= s2.second
     if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
-        || (s1.first > s2.first) || (s1.second > s2.second) ) {
+        || (s1.second > s2.second) ) {
         std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
         exit(EXIT_FAILURE);
     }
@@ -950,25 +557,32 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
         singleSite = true;
     }
 
+    if (s1.first > s2.first) {
+        if(DBG) std::cout <<"s1.first > s2.first => s1 defines upper right corner"
+            << std::endl;
+        s1bs2 = false;
+    }
+
     int sXdiff = s2.first - s1.first;
     int sYdiff = s2.second - s1.second;
-    if ( !(sXdiff >= sYdiff) ) {
+    if ( !(abs(sXdiff) >= abs(sYdiff)) ) {
         if(DBG) std::cout <<"TN Width < Height => contracting row by row"
             << std::endl;
         wBEh = false;
     }
 
-    // shift s1 to supercell
-    s1.first  = s1.first % cls.sizeM;
-    s1.second = s1.second % cls.sizeN;
-    // shift s2 wrt to new position of s1
-    s2.first  = s1.first + sXdiff;
-    s2.second = s1.second + sYdiff;
-
-    std::pair< int, int > s(s1);
     ITensor tN;
 
-    if (wBEh) {
+    if (wBEh && s1bs2) {
+        // shift s1 to supercell
+        s1.first  = s1.first % cls.sizeM;
+        s1.second = s1.second % cls.sizeN;
+        // shift s2 wrt to new position of s1
+        s2.first  = s1.first + sXdiff;
+        s2.second = s1.second + sYdiff;
+
+        std::pair< int, int > s(s1);
+
         // Construct LEFT edge
         if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
 
@@ -993,7 +607,6 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
         if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
         if(DBG) Print(tN);
 
-        s = s1;
         for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
             s.second = s1.second;
             if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
@@ -1083,7 +696,16 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
         if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
             << std::endl;
         if(DBG) Print(tN);
-    } else {
+    } else if(!wBEh && s1bs2) {
+        // shift s1 to supercell
+        s1.first  = s1.first % cls.sizeM;
+        s1.second = s1.second % cls.sizeN;
+        // shift s2 wrt to new position of s1
+        s2.first  = s1.first + sXdiff;
+        s2.second = s1.second + sYdiff;
+
+        std::pair< int, int > s(s1);
+
         // Construct UP edge
         if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
 
@@ -1191,6 +813,151 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
         
         s.first = s.first % cd_f.sizeM;        
         tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+            << std::endl;
+        if(DBG) Print(tN);
+    } else if(wBEh && !s1bs2) {
+        sXdiff = s1.first - s2.first;
+        sYdiff = s1.second - s2.second;
+
+        if(DBG) { std::cout <<"Args: s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+            std::cout <<"Args: s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+
+        // shift s2 to supercell
+        s2.first  = s2.first % cls.sizeM;
+        s2.second = s2.second % cls.sizeN;
+        // shift s1 wrt to new position of s2
+        s1.first  = s2.first + sXdiff;
+        s1.second = s2.second + sYdiff;
+
+        if(DBG) { std::cout <<"After shift: "<< std::endl;
+            std::cout <<"s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+            std::cout <<"s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+
+        // start from
+        std::pair< int, int > s{s2};
+
+        // Construct LEFT edge
+        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+        tN = cd_f.C_LD[cd_f.cToS.at(s)];
+
+        for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+            if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first <<","<< 
+            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+            tN.prime(HSLINK,2);
+            tN.mapprime(LLINK,0,1);
+            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+        }
+        s.second += 1;
+        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"] =>"
+            <<"["<< s.first <<","<< 
+        (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+        s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+        tN *= cd_f.C_LU[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+        if(DBG) Print(tN);
+
+        for ( int col=s2.first; col <= s1.first; s.first = ++col ) {
+            s.second = s2.second;
+            if(DBG) std::cout<<"T_D["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN.noprime(ULINK, DLINK);
+            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+            
+            if(DBG) Print(tN);
+
+            for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< 
+                (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+                s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN; 
+
+                if ((col==s1.first) && (row == s1.second)) {
+                    // contract Op.first with bra and ket on-site tensors of site s1
+                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+                            << std::endl; 
+                    tN *= prime(mpo_s1.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+                } else if ((col==s2.first) && (row == s2.second)) {
+                    // contract Op.second with bra and ket on-site tensors of site s2
+                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+                        << std::endl;
+                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+                            << std::endl;
+                    tN *= prime(mpo_s2.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+                } else {
+                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+                            << std::endl;
+                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+                        HSLINK, 2*abs(abs(sYdiff)+row-s2.second) );
+                }
+
+                tN.prime(VSLINK);
+            }
+            tN.prime(VSLINK,-1);
+            tN.prime(HSLINK,-1);
+            
+            s.second -= 1;
+            if(DBG) std::cout <<"T_U["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< 
+            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        }
+
+        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+            << std::endl;
+
+        // Construct RIGHT edge
+        s = std::make_pair(s1.first, s2.second); 
+        if(DBG) std::cout << "C_RD["<< s1.first <<","<< s2.second <<"] =>"
+            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+        s.first = s.first % cd_f.sizeM;
+        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+        if(DBG) Print(tN);
+        
+        for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+            tN.mapprime(2*abs(abs(sYdiff)+row-s2.second), 1,HSLINK);
+            if(DBG) std::cout <<"HSLINK "<< 2*abs(abs(sYdiff)+row-s2.second) <<" -> "<<  
+                1 << std::endl;
+
+            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< 
+                (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+
+            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+            tN.prime(RLINK);
+        }
+        tN.noprime(RLINK);
+        s.second -= 1;
+        if(DBG) std::cout <<"C_RU["<< s2.first <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< 
+            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+        
+        s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;        
+        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
 
         if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
             << std::endl;

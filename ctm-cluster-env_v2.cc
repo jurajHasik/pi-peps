@@ -733,7 +733,6 @@ void CtmEnv::insDRow_DBG(CtmEnv::ISOMETRY iso_type,
     if(dbg) std::cout <<"##### InsDRow Done "<< std::string(53,'#') << std::endl;
 }
 
-
 void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT, bool dbg)
 {
@@ -917,7 +916,6 @@ void CtmEnv::insLCol_DBG(CtmEnv::ISOMETRY iso_type,
 
     if(dbg) std::cout <<"##### InsLCol Done "<< std::string(53,'#') << std::endl;
 }
-
 
 void CtmEnv::insRCol_DBG(CtmEnv::ISOMETRY iso_type,
     CtmEnv::NORMALIZATION norm_type, std::vector<double> & accT, bool dbg) 

@@ -502,38 +502,38 @@ int main( int argc, char *argv[] ) {
     
     std::vector< std::vector<ITensor*> > opt_seq = {
         //A-D link variant GREEN
-        {&A,&l2,&B,&l8,&D}, {&D,&l8,&B,&l2,&A},
-        {&A,&l6,&C,&l4,&D}, {&D,&l4,&C,&l6,&A},
+        {&A,&l2,&B,&l8,&D}, //{&D,&l8,&B,&l2,&A},
+        {&A,&l6,&C,&l4,&D}, //{&D,&l4,&C,&l6,&A},
 
         //A-D link variant GREY
-        {&D,&l7,&B,&l1,&A}, {&A,&l1,&B,&l7,&D},
-        {&D,&l3,&C,&l5,&A}, {&A,&l5,&C,&l3,&D},         
+        {&D,&l7,&B,&l1,&A}, //{&A,&l1,&B,&l7,&D},
+        {&D,&l3,&C,&l5,&A}, //{&A,&l5,&C,&l3,&D},         
 
         //A-D link variant RED 
-        {&A,&l6,&C,&l3,&D}, {&D,&l3,&C,&l6,&A},
-        {&A,&l1,&B,&l8,&D}, {&D,&l8,&B,&l1,&A},
+        {&A,&l6,&C,&l3,&D}, //{&D,&l3,&C,&l6,&A},
+        {&A,&l1,&B,&l8,&D}, //{&D,&l8,&B,&l1,&A},
          
         //A-D link variant BLUE
-        {&D,&l4,&C,&l5,&A}, {&A,&l5,&C,&l4,&D},
-        {&D,&l7,&B,&l2,&A}, {&A,&l2,&B,&l7,&D},
+        {&D,&l4,&C,&l5,&A}, //{&A,&l5,&C,&l4,&D},
+        {&D,&l7,&B,&l2,&A}, //{&A,&l2,&B,&l7,&D},
 
         //####################################
 
         //B-C link variant GREEN
-        {&B,&l8,&D,&l4,&C}, {&C,&l4,&D,&l8,&B},
-        {&B,&l2,&A,&l6,&C}, {&C,&l6,&A,&l2,&B},
+        {&B,&l8,&D,&l4,&C}, //{&C,&l4,&D,&l8,&B},
+        {&B,&l2,&A,&l6,&C}, //{&C,&l6,&A,&l2,&B},
 
         //B-C link variant GREY
-        {&C,&l5,&A,&l1,&B}, {&B,&l1,&A,&l5,&C}, 
-        {&C,&l3,&D,&l7,&B}, {&B,&l7,&D,&l3,&C},
+        {&C,&l5,&A,&l1,&B}, //{&B,&l1,&A,&l5,&C}, 
+        {&C,&l3,&D,&l7,&B}, //{&B,&l7,&D,&l3,&C},
         
         //B-C link variant RED
-        {&B,&l1,&A,&l6,&C}, {&C,&l6,&A,&l1,&B},
-        {&B,&l8,&D,&l3,&C}, {&C,&l3,&D,&l8,&B},
+        {&B,&l1,&A,&l6,&C}, //{&C,&l6,&A,&l1,&B},
+        {&B,&l8,&D,&l3,&C}, //{&C,&l3,&D,&l8,&B},
 
         //B-C link variant BLUE
-        {&C,&l4,&D,&l7,&B}, {&B,&l7,&D,&l4,&C},
-        {&C,&l5,&A,&l2,&B}, {&B,&l2,&A,&l5,&C}
+        {&C,&l4,&D,&l7,&B}, //{&B,&l7,&D,&l4,&C},
+        {&C,&l5,&A,&l2,&B}, //{&B,&l2,&A,&l5,&C}
 
     };
 

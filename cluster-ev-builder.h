@@ -81,14 +81,6 @@ class EVBuilder {
         OP2S_SS         // Hamiltonian - NN-Heisenberg
     };
 
-    // Get 2-site operator as a pair of 1-site operators with auxiliary
-    // index coming from SVD of the original 2-site op
-    std::pair< itensor::ITensor,itensor::ITensor > get2STOT_DBG(OP_2S op2s,
-        itensor::ITensor const& TA, itensor::ITensor const& TB) const;
-
-    std::pair< itensor::ITensor,itensor::ITensor > get2STOT(OP_2S op2s,
-        itensor::ITensor const& TA, itensor::ITensor const& TB) const;
-
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment

@@ -168,6 +168,8 @@ int main( int argc, char *argv[] ) {
     // Start timing iteration loop
     std::chrono::steady_clock::time_point t_begin = 
         std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point t_begin_int, t_end_int; 
+    t_begin_int = std::chrono::steady_clock::now();
 
     for (int iter=1; iter<=arg_ctmIter; iter++ ) {
 
@@ -175,8 +177,6 @@ int main( int argc, char *argv[] ) {
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insURow_DBG(iso_type, norm_type, accT);
         ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-
-        std::cout << "STEP " << iter << std::endl;
 
         if ( iter % 1 == 0 ) {
             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
@@ -188,6 +188,12 @@ int main( int argc, char *argv[] ) {
                 std::make_pair(1,0), std::make_pair(1,1)) );
             e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(0,1), std::make_pair(1,1)) );
+        
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "STEP " << iter <<" T: "<< std::chrono::duration_cast
+            <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec]"<< std::endl;
+            t_begin_int = std::chrono::steady_clock::now();
         }
     }
 
@@ -206,19 +212,6 @@ int main( int argc, char *argv[] ) {
     //writeEnv(IO_ENV_FMT_txt, "TEST", ctmEnv.getCtmData());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    std::cout <<"ID: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
-
-    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1)) << std::endl;
-    std::cout <<"SZ: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1)) << std::endl;
-
-    std::cout <<"SP A: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SP B: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0)) << std::endl;
-    std::cout <<"SM A: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SM B: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0)) << std::endl;
-
     std::cout <<"ITER: "<<" E:"<< std::endl;
     for ( std::size_t i=0; i<e_nnH.size(); i++ ) {
         std::cout << i <<" "<< e_nnH[i] 
@@ -228,23 +221,88 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
-    std::cout << "BA: " << ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,0)) << 
-    " CA: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(0,2)) <<
-    " DB: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(1,2)) <<
-    " DC: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(2,1)) << std::endl;
+    std::vector<double> evNN;
+    std::vector<double> evNNN;
 
-    std::cout << "AD: " << ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,1)) << 
-    " DA: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(2,2)) <<
-    " BC: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,1)) <<
-    " CB: "<< ev.eval2Smpo(EVBuilder::OP2S_SS,
-         std::make_pair(0,1), std::make_pair(1,2)) << std::endl;
+    evNN.push_back(e_nnH[e_nnH.size()-1]);
+    evNN.push_back(e_nnH_AC[e_nnH.size()-1]);
+    evNN.push_back(e_nnH_BD[e_nnH.size()-1]);
+    evNN.push_back(e_nnH_CD[e_nnH.size()-1]);
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(2,1))); //DC
+
+    std::cout <<"BA: "<< evNN[4] <<" CA: "<< evNN[5] <<" DB: "<< evNN[6] 
+        <<" DC: "<< evNN[7] << std::endl;
+
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(1,1))); //A->(1,1)->D
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(2,2))); //A->(-1,-1)->D
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(4,0), std::make_pair(3,1))); //A->(1,-1)->D
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(3,1), std::make_pair(2,2))); //A->(-1,1)->D 
+
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(2,1))); //BC
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+         std::make_pair(0,1), std::make_pair(1,2))); //CB
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(0,1))); //BC
+    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(2,1), std::make_pair(1,2))); //CB
+
+    std::cout <<"AD: "<< evNNN[0] <<" DA: "<< evNNN[1] <<" AD: "<< evNNN[2]
+        <<" DA: "<< evNNN[3] << std::endl;
+    std::cout <<"BC: "<< evNNN[4] <<" CB: "<< evNNN[5] <<" BC: "<< evNNN[6]
+        <<" CB: "<< evNNN[7] << std::endl;
+
+    std::cout <<"ID: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
+
+    std::vector<double> sA_zpm;
+    std::vector<double> sB_zpm;
+    std::vector<double> sC_zpm;
+    std::vector<double> sD_zpm;
+
+    sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0)));
+    sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0)));
+    sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0)));
+    std::cout<<"S_A: "<< sA_zpm[0] <<", "<< sA_zpm[1] <<", "<< sA_zpm[2] << std::endl;
+
+    sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0)));
+    sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0)));
+    sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0)));
+    std::cout<<"S_B: "<< sB_zpm[0] <<", "<< sB_zpm[1] <<", "<< sB_zpm[2] << std::endl;
+
+    sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1)));
+    sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1)));
+    sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1)));
+    std::cout<<"S_C: "<< sC_zpm[0] <<", "<< sC_zpm[1] <<", "<< sC_zpm[2] << std::endl;
+
+    sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1)));
+    sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1)));
+    sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1)));
+    std::cout<<"S_D: "<< sD_zpm[0] <<", "<< sD_zpm[1] <<", "<< sD_zpm[2] << std::endl;
+
+    std::sort(evNN.begin(), evNN.end());
+    std::sort(evNNN.begin(), evNNN.end());
+
+    double evNNavg  = 0.0;
+    double evNNNavg = 0.0;
+    for (const auto& r : evNN) evNNavg += r;
+    for (const auto& r : evNNN) evNNNavg += r;
+
+    std::cout <<"E_NN: "<< evNNavg/8.0 <<" E_NN_split: "<< abs(evNN[0]-evNN[7]) 
+        << " E_NNN: "<< evNNNavg/8.0<<" E_NNN_split: "<< abs(evNNN[0]-evNNN[7])
+        << std::endl;
 
     /*ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_Id, EVBuilder::MPO_Id,
