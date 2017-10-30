@@ -514,11 +514,11 @@ double EVBuilder::contract2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
 {
     // find corresponding sites in elementary cluster
-    auto e_s1{std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN)};
-    auto e_s2{std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN)};
+    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
     // find the index of site given its elem position within cluster
-    auto pI1{noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS))};
-    auto pI2{noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS))};
+    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
 
     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
 
