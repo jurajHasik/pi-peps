@@ -241,23 +241,33 @@ int main( int argc, char *argv[] ) {
     std::cout <<"BA: "<< evNN[4] <<" CA: "<< evNN[5] <<" DB: "<< evNN[6] 
         <<" DC: "<< evNN[7] << std::endl;
 
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,1))); //A->(1,1)->D
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(2,2))); //A->(-1,-1)->D
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(4,0), std::make_pair(3,1))); //A->(1,-1)->D
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(3,1), std::make_pair(2,2))); //A->(-1,1)->D 
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
 
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,1))); //BC
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-         std::make_pair(0,1), std::make_pair(1,2))); //CB
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(0,1))); //BC
-    evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(2,1), std::make_pair(1,2))); //CB
+    evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(0,0), std::make_pair(1,1))); //A->(1,1)->D
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(1,1), std::make_pair(2,2))); //A->(-1,-1)->D
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(4,0), std::make_pair(3,1))); //A->(1,-1)->D
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(3,1), std::make_pair(2,2))); //A->(-1,1)->D 
+
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(1,0), std::make_pair(2,1))); //BC
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //      std::make_pair(0,1), std::make_pair(1,2))); //CB
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(1,0), std::make_pair(0,1))); //BC
+    // evNNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    //     std::make_pair(2,1), std::make_pair(1,2))); //CB
 
     std::cout <<"AD: "<< evNNN[0] <<" DA: "<< evNNN[1] <<" AD: "<< evNNN[2]
         <<" DA: "<< evNNN[3] << std::endl;
