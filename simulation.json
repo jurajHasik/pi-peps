@@ -1,0 +1,16 @@
+{
+	"initBy": "FILE",
+	"physDim": 2,
+	"auxBondDim": 3,
+	"inClusterFile": "test-input/RVB_2x2_ABCD.in",
+	"outClusterFile": "test-cluster.in",
+	"fuIter": 2,
+	"tau": 0.01,
+	"auxEnvDim": 18,
+	"ioEnvTag": "test-env-2x2",
+	"initEnvType": "INIT_ENV_ctmrg",
+	"envIsComplex": false,
+	"isoType": "ISOMETRY_T3",
+	"normType": "NORM_BLE",
+	"envIter": 20
+}

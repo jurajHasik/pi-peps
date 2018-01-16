@@ -1,0 +1,77 @@
+{
+    "auxBondDim": 1,
+    "map": [
+        {
+            "siteId": "A",
+            "x": 0,
+            "y": 0
+        },
+        {
+            "siteId": "C",
+            "x": 0,
+            "y": 1
+        },
+        {
+            "siteId": "B",
+            "x": 1,
+            "y": 0
+        },
+        {
+            "siteId": "D",
+            "x": 1,
+            "y": 1
+        }
+    ],
+    "meta": "Init by: RANDOM;nIterations: 0;tau 0.100000;J1 1.000000;J2 0.000000;",
+    "physDim": 2,
+    "siteIds": [
+        "A",
+        "B",
+        "C",
+        "D"
+    ],
+    "sites": [
+        {
+            "auxDim": 1,
+            "entries": [
+                "0 0 0 0 0 0.60140264026402646 0",
+                "1 0 0 0 0 1.0000000000000002 0"
+            ],
+            "numEntries": 2,
+            "physDim": 2,
+            "siteId": "A"
+        },
+        {
+            "auxDim": 1,
+            "entries": [
+                "0 0 0 0 0 1 0",
+                "1 0 0 0 0 0.0944842558260168 0"
+            ],
+            "numEntries": 2,
+            "physDim": 2,
+            "siteId": "B"
+        },
+        {
+            "auxDim": 1,
+            "entries": [
+                "0 0 0 0 0 1.0000000000000002 0",
+                "1 0 0 0 0 0.86079220130956979 0"
+            ],
+            "numEntries": 2,
+            "physDim": 2,
+            "siteId": "C"
+        },
+        {
+            "auxDim": 1,
+            "entries": [
+                "0 0 0 0 0 1 0",
+                "1 0 0 0 0 0.36772593476190063 0"
+            ],
+            "numEntries": 2,
+            "physDim": 2,
+            "siteId": "D"
+        }
+    ],
+    "sizeM": 2,
+    "sizeN": 2
+}
