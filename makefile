@@ -1,6 +1,6 @@
 # Link to Itensor lib
 
-ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-intel
+ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 
@@ -15,6 +15,7 @@ APP2=opt-simple-update
 #APP3=get-cluster-env_v2
 APP4=opt-simple-update-2x2-2site
 APP5=opt-simple-update-2x2-3site
+APP6=opt-full-update-2x2-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
@@ -29,6 +30,8 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
+HEADERS6=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
+	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -42,6 +45,8 @@ CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
 CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
+CCFILES6=$(APP6).cc cluster-ev-builder.cc ctm-cluster-env_v2.cc \
+	ctm-cluster-io.cc ctm-cluster.cc su2.cc
 
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
@@ -53,6 +58,7 @@ OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
+OBJECTS6=$(patsubst %.cc,%.o, $(CCFILES6))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -91,6 +97,9 @@ $(APP5): $(OBJECTS5) $(ITENSOR_LIBS)
 
 $(APP5)-g: mkdebugdir $(GOBJECTS5) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS5) -o $(APP5)-g.x $(LIBGFLAGS)
+
+$(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTS6) -o $(APP6).x $(LIBFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
