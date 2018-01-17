@@ -1,32 +1,14 @@
 //The following ifndef/define/endif pattern is called a 
 //scope guard, and prevents the C++ compiler (actually, preprocessor)
 //from including a header file more than once.
-#ifndef __SMPL_UPDT_H_
-#define __SMPL_UPDT_H_
+#ifndef __FULL_UPDT_H_
+#define __FULL_UPDT_H_
 
-#include <iomanip>
 #include <cmath>
-#include <limits>
-#include "su2.h"
-#include "ctm-cluster.h"
+#include "ctm-cluster-env_v2.h"
 #include "ctm-cluster-global.h"
+#include "ctm-cluster.h"
 #include "itensor/all.h"
-
-typedef enum ID_TYPE {
-    ID_TYPE_1,
-    ID_TYPE_2
-} id_type;
-
-typedef enum OP2S_TYPE {
-    ID_OP,
-    NNH_OP,
-    NNH_OP_STAG
-} op2s_type;
-
-// string to enum conversion
-ID_TYPE toID_TYPE(std::string const& idType);
-
-OP2S_TYPE toOP2S_TYPE(std::string const& op2sType);
 
 // Index names of 3-site MPO indices
 const std::string TAG_MPO3S_PHYS1 = "I_MPO3S_S1";
@@ -37,6 +19,11 @@ const std::string TAG_MPO3S_23LINK = "I_MPO3S_L23";
 
 // types for auxiliary indices of MPO tensors
 const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
+
+const int IOFFSET = 100;
+
+const std::array< std::array<int, 4>, 4> ORD = 
+	{{{1,2,3,0},{0,3,2,1},{2,3,0,1},{1,0,3,2}}};
 
 // ----- Main MPO Structures ------------------------------------------
 /*
@@ -55,6 +42,9 @@ const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 struct MPO_3site {
 	itensor::ITensor H1, H2, H3;
 
+	// expose internal indices
+	itensor::Index a12, a23;
+
 	// expose physical indices
 	itensor::Index Is1, Is2, Is3;
 };
@@ -66,50 +56,6 @@ struct MPO_2site {
 	itensor::Index Is1, Is2;
 };
 // ----- END Main MPO Structures --------------------------------------
-
-// ----- 2-Site operator functions ------------------------------------
-
-/*
- * construct 2-site Identity operator 
- *
- */
-MPO_2site getMPO2s_Id(int physDim);
-
-/*
- * construct 2-site operator for "Nearest-neighbour Heisenberg in magnetic
- * field" spin s=1/2 (physDim=2) defined on a lattice with coordination z 
- * corresponding to the imaginary evolution approximated through Suzuki-Trotter 
- * decomposition for time tau
- *
- */
-MPO_2site getMPO2s_NNH(int z, double tau, double J, double h);
-
-MPO_2site getMPO2s_NNHstagh(int z, double tau, double J, double h);
-
-/*
- * Apply 2-site MPO to T1 and T2 tensors connected through weight L
- *
- */
-void applyH_T1_L_T2(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
-	itensor::ITensor & LI, bool dbg = false);
-
-void applyH_T1_L_T2_v2(MPO_2site const& mpo2s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & L,
-	bool dbg = false);
-
-
-// ----- 2-Site operator functions ------------------------------------
-
-/*
- * construct Identity MPO_3site 
- *
- */
-// Splits SVD values S^1/2 : S^1/4 : S^1/4
-MPO_3site getMPO3s_Id(int physDim);
-
-// Splits SVD values S^1/3 : S^1/3 : S^1/3
-MPO_3site getMPO3s_Id_v2(int physDim);
 
 /*
  * H_J1J2 acting on a square lattice can be decomposed into sum of
@@ -158,38 +104,39 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
 MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2);
 
-typedef enum F_MPO3S {
-    F_MPO3S_1,
-    F_MPO3S_2,
-    F_MPO3S_3
-} f_mpo3s;
-
-// string to enum conversion
-F_MPO3S toF_MPO3S(std::string const& fMpo3s);
+void initRT(itensor::ITensor& rt, std::string INIT_METHOD);
 
 /*
- * Apply MPO_3site over three sites ABC
+ * contract on-site bra-ket tensor s with given operator op, 
+ * possibly apply reduction tensors rt and merge aux-indices plToEnv for
+ * contraction with the environment
+ *
+ * reduction tensors are given as array of pointers, NULL entry defines
+ * no reduction tensor applied. rt[0]=on-ket, rt[1]=on-bra, rt[2]=on-ket, rt[3]=on-bra  
+ *
+ * merging of on-site aux-indices is as defined follows
+ * plToEnv[0]=I_XH1, plToEnv[1]=Index(), ...
+ * where default index Index() is evaluated to false <=> unmerged
+ * position within plToEnv gives aux-index (primeLevel) 
  *
  */
+itensor::ITensor getT(itensor::ITensor const& s, 
+	std::array<itensor::Index, 4> const& plToEnv, itensor::ITensor const& op,
+	std::array<const itensor::ITensor * const, 4> rt, bool dbg = false);
 
-
-void applyH_123_v1(MPO_3site const& mpo3s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);
-
-void applyH_123_v2(MPO_3site const& mpo3s,
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	itensor::ITensor & l12, itensor::ITensor & l23,
-	itensor::ITensor & l12I, itensor::ITensor & l23I, bool dbg = false);
-
-void applyH_123_v3(MPO_3site const& mpo3s, 
-	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
-	itensor::ITensor & l12, itensor::ITensor & l23,
-	itensor::ITensor & l12I, itensor::ITensor & l23I, bool dbg = false);
-
-
-std::ostream& 
-operator<<(std::ostream& s, MPO_2site const& mpo2s);
+/*
+ * tn - defines sequence of on site tensors over which uJ1J2 is applied
+ * pl - defines primeLevel on the indices of tensor given in tn
+ *
+ * Hence, full string of tensors + indices by which they should be contracted
+ * is given as
+ *
+ * pl[0]--tn[0]--pl[1]--pl[2]--tn[1]--pl[3]--pl[4]--tn[2]--pl[5]--...
+ *   ...--pl[6]--tn[3]--pl[7]--(pl[0]--tn[0])
+ *
+ */
+void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl, bool dbg = false);
 
 std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);

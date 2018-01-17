@@ -6,6 +6,7 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
+#include "full-update.h"
 
 using namespace itensor;
 
@@ -34,6 +35,8 @@ int main( int argc, char *argv[] ) {
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
 
 	//define Hamiltonian
+	double arg_J1 = jsonCls["J1"].get<double>();
+	double arg_J2 = jsonCls["J2"].get<double>();
 
 	//read simulation parameters
 
@@ -55,10 +58,10 @@ int main( int argc, char *argv[] ) {
 
 	// INITIALIZE CLUSTER
 	Cluster cls;
-	Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
-	ITensor A, B, C, D;
-
 	if (initBy=="FILE") {
+		Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
+		ITensor A, B, C, D;
+
 		cls = readCluster(inClusterFile);
 		if (cls.auxBondDim > auxBondDim) std::cout <<"Warning: auxBondDim of the"
 			<<" input cluster is higher then the desired one!" << std::endl;
@@ -92,7 +95,12 @@ int main( int argc, char *argv[] ) {
         C = C*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
         D_I = delta(taID,aID);
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
+
+        cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
 	} else {
+        Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
+		ITensor A, B, C, D;
+
         // ----- DEFINE BLANK CLUSTER ----------------------------------
         cls = Cluster();
         cls.sizeN = 2;
@@ -197,7 +205,9 @@ int main( int argc, char *argv[] ) {
     EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    // SETUP OPTIMIZATION LOOP 
+    // SETUP OPTIMIZATION LOOP
+    // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
+    MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2));
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
@@ -235,7 +245,8 @@ int main( int argc, char *argv[] ) {
         ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
         // PERFORM FULL UPDATE
-        
+        fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
+        	{3,2, 0,3, 1,0, 2,1}, true);
 	}
 
 	// Compute final properties
@@ -280,7 +291,5 @@ int main( int argc, char *argv[] ) {
     std::cout<<"S_D: "<< sD_zpm[0] <<", "<< sD_zpm[1] <<", "<< sD_zpm[2] << std::endl;
 
     // Store final new cluster
-    cls.sites = {{"A",A}, {"B",B}, {"C",C}, {"D",D}};
-
     writeCluster(outClusterFile, cls);
 }

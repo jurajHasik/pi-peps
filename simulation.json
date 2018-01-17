@@ -6,11 +6,13 @@
 	"outClusterFile": "test-cluster.in",
 	"fuIter": 2,
 	"tau": 0.01,
+	"J1": 1.0,
+	"J2": 0.0,
 	"auxEnvDim": 18,
 	"ioEnvTag": "test-env-2x2",
 	"initEnvType": "INIT_ENV_ctmrg",
 	"envIsComplex": false,
 	"isoType": "ISOMETRY_T3",
 	"normType": "NORM_BLE",
-	"envIter": 20
+	"envIter": 5
 }
