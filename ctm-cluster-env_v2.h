@@ -142,7 +142,8 @@ class CtmEnv
      * with its T* (bra) counterpart through physical index
      *
      */
-    itensor::ITensor contractOST(itensor::ITensor const& T) const;
+    itensor::ITensor contractOST(itensor::ITensor const& T,
+        bool expose = false) const;
 
     // ########################################################################
     // environment initalization methods
@@ -158,6 +159,8 @@ class CtmEnv
 //    void initFromFile(int chi, IO_ENV_FMT ioFmt, std::string TAG);
 
     void initCtmrgEnv(bool dbg = false);
+
+    void testCtmrgEnv();
 
     // ########################################################################
     // CTM iterative methods

@@ -22,8 +22,32 @@ const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 
 const int IOFFSET = 100;
 
+// defines the order in which on-site tensors are contracted for
+// various choice of reduction tensors to optimize
 const std::array< std::array<int, 4>, 4> ORD = 
 	{{{1,2,3,0},{0,3,2,1},{2,3,0,1},{1,0,3,2}}};
+const std::array<int, 4> ORD_DIR = {{1,-1,1,-1}};
+
+// defines assignment of reduction tensors given an order from
+// ORD for Matrix M <phi~|phi~>
+// {ket,bra,ket,bra}
+const std::array< std::array< std::array<int, 4>, 4>, 4> RTPM =
+	{{ 
+		{{{1,1,2,2},{3,3,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}},
+		{{{0,0,-1,-1},{-1,-1,-1,-1},{3,3,-1,-1},{2,2,-1,-1}}},
+		{{{3,3,-1,-1},{-1,-1,-1,-1},{0,0,-1,-1},{1,1,-1,-1}}},
+		{{{1,1,2,2},{0,0,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}}
+	}};
+
+// defines assignment of reduction tensors given an order from
+// ORD for Matrix K <phi|U|phi~>
+const std::array< std::array< std::array<int, 4>, 4>, 4> RTPK =
+	{{ 
+		{{{-1,1,-1,2},{-1,3,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}},
+		{{{-1,0,-1,-1},{-1,-1,-1,-1},{-1,3,-1,-1},{-1,2,-1,-1}}},
+		{{{-1,3,-1,-1},{-1,-1,-1,-1},{-1,0,-1,-1},{-1,1,-1,-1}}},
+		{{{-1,1,-1,2},{-1,0,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}}
+	}};
 
 // ----- Main MPO Structures ------------------------------------------
 /*
@@ -94,6 +118,10 @@ struct MPO_2site {
  *
  */
 
+MPO_3site getMPO3s_Id(int physDim);
+
+MPO_3site getMPO3s_Id_v2(int physDim, bool dbg = false);
+
 /*
  * construct U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
  * operator from exact expression on square lattice
@@ -122,7 +150,7 @@ void initRT(itensor::ITensor& rt, std::string INIT_METHOD);
  */
 itensor::ITensor getT(itensor::ITensor const& s, 
 	std::array<itensor::Index, 4> const& plToEnv, itensor::ITensor const& op,
-	std::array<const itensor::ITensor * const, 4> rt, bool dbg = false);
+	std::array<const itensor::ITensor *, 4> rt, bool dbg = false);
 
 /*
  * tn - defines sequence of on site tensors over which uJ1J2 is applied
@@ -136,7 +164,8 @@ itensor::ITensor getT(itensor::ITensor const& s,
  *
  */
 void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl, bool dbg = false);
+	std::vector<std::string> tn, std::vector<int> pl, int maxAltLstSqrIter,
+	bool dbg = false);
 
 std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);

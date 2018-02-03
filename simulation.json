@@ -4,7 +4,7 @@
 	"auxBondDim": 3,
 	"inClusterFile": "test-input/RVB_2x2_ABCD.in",
 	"outClusterFile": "test-cluster.in",
-	"fuIter": 2,
+	"fuIter": 1,
 	"tau": 0.01,
 	"J1": 1.0,
 	"J2": 0.0,
@@ -14,5 +14,6 @@
 	"envIsComplex": false,
 	"isoType": "ISOMETRY_T3",
 	"normType": "NORM_BLE",
-	"envIter": 5
+	"envIter": 25,
+	"maxAltLstSqrIter": 100
 }

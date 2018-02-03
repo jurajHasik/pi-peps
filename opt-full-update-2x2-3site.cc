@@ -24,11 +24,8 @@ int main( int argc, char *argv[] ) {
 
 	int physDim, auxBondDim;
 	std::string inClusterFile;
-	if (initBy=="FILE") {
-		inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-	} else {
-		physDim = jsonCls["physDim"].get<int>();
-	}
+	if (initBy=="FILE") inClusterFile = jsonCls["inClusterFile"].get<std::string>();
+	physDim = jsonCls["physDim"].get<int>();
 	auxBondDim = jsonCls["auxBondDim"].get<int>();
 
 	//read cluster outfile
@@ -55,6 +52,7 @@ int main( int argc, char *argv[] ) {
 	
 	//iterations for environment per full update step
 	int arg_envIter = jsonCls["envIter"].get<int>();
+	int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
 
 	// INITIALIZE CLUSTER
 	Cluster cls;
@@ -66,6 +64,9 @@ int main( int argc, char *argv[] ) {
 		if (cls.auxBondDim > auxBondDim) std::cout <<"Warning: auxBondDim of the"
 			<<" input cluster is higher then the desired one!" << std::endl;
 		cls.auxBondDim = auxBondDim;
+		if (cls.physDim != physDim) std::cout <<"Warning: physDim of the"
+			<<" input cluster and simulation parameters are not in agreement!"
+			<< std::endl;
 
 		A = cls.sites[cls.cToS.at(std::make_pair(0,0))];
         B = cls.sites[cls.cToS.at(std::make_pair(1,0))];
@@ -208,6 +209,7 @@ int main( int argc, char *argv[] ) {
     // SETUP OPTIMIZATION LOOP
     // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
     MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2));
+//    MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
@@ -244,9 +246,10 @@ int main( int argc, char *argv[] ) {
 
         ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
+        ctmEnv.normalizeBLE();
         // PERFORM FULL UPDATE
         fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
-        	{3,2, 0,3, 1,0, 2,1}, true);
+        	{3,2, 0,3, 1,0, 2,1}, arg_maxAltLstSqrIter, false);
 	}
 
 	// Compute final properties

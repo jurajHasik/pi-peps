@@ -104,6 +104,12 @@ $(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
 
+test-lin-sys: $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) test-lin-sys.cc -o test-lin-sys.x $(LIBFLAGS)
+
+test-lin-sys-g: mkdebugdir $(ITENSOR_GLIBS)
+	$(CCCOM) $(CCGFLAGS) test-lin-sys.cc -o test-lin-sys-g.x $(LIBGFLAGS)
+
 clean:
 	rm -fr .debug_objs *.o $(APP).x $(APP)-g.x
 

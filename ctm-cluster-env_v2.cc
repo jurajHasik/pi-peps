@@ -142,7 +142,7 @@ CtmEnv::CtmEnv (std::string t_name,  std::vector<CtmData> const& ctmD,
     };
 }
 
-ITensor CtmEnv::contractOST(ITensor const& T) const {
+ITensor CtmEnv::contractOST(ITensor const& T, bool expose) const {
     /*
      * Construct on-site tensor X given by the contraction of bra & ket 
      * on-site tensors T^dag & T through physical index physI
@@ -189,7 +189,11 @@ ITensor CtmEnv::contractOST(ITensor const& T) const {
     auto C26 = prime(C04,2);
     auto C37 = prime(C04,3);
 
-    auto X = (T*( conj(T).prime(AUXLINK,4) ))*C04*C15*C26*C37;
+    ITensor X;
+    if (expose)
+        X = (T*( conj(T).prime(AUXLINK,4).prime(PHYS,1) ))*C04*C15*C26*C37;
+    else
+        X = (T*( conj(T).prime(AUXLINK,4) ))*C04*C15*C26*C37;
 
     // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
     auto DH0 = delta(I_XH, commonIndex(X,C04));
@@ -352,6 +356,144 @@ void CtmEnv::initCtmrgEnv(bool dbg) {
 
     std::cout <<"===== INIT_ENV_ctmrg done "<< std::string(46,'=') 
         << std::endl; 
+}
+
+void CtmEnv::testCtmrgEnv() {
+    
+    double m = 0.;
+    auto max_m = [&m](double d) {
+        if(std::abs(d) > m) m = std::abs(d);
+    };
+
+    ITensor temp;
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = C_LU[a] - C_LU[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"C_LU["<<a<<"]-C_LU["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = C_RU[a] - C_RU[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"C_RU["<<a<<"]-C_RU["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(C_LU[0]);
+    Print(C_RU[0]);
+    ITensor ttemp = (C_RU[0] * delta(I_R, I_L))
+        * delta(prime(I_U,1),I_U);
+    temp = C_LU[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = C_RD[a] - C_RD[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"C_RD["<<a<<"]-C_RD["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(C_LU[0]);
+    Print(C_RD[0]);
+    ttemp = (C_RD[0] * delta(prime(I_R,1), I_L))
+        * delta(prime(I_D,1), I_U);
+    temp = C_LU[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = C_LD[a] - C_LD[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"C_LD["<<a<<"]-C_LD["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(C_LU[0]);
+    Print(C_LD[0]);
+    ttemp = (C_LD[0] * delta(prime(I_L,1), I_L))
+        * delta(I_D, I_U);
+    temp = C_LU[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = T_L[a] - T_L[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"T_L["<<a<<"]-T_L["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = T_U[a] - T_U[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"T_U["<<a<<"]-T_U["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(T_L[0]);
+    Print(T_U[0]);
+    ttemp = ((T_U[0] * delta(I_U, I_L))
+        * delta(prime(I_U,1), prime(I_L,1))) 
+        * delta(I_XV, I_XH);
+    temp = T_L[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = T_R[a] - T_R[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"T_R["<<a<<"]-T_R["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(T_L[0]);
+    Print(T_R[0]);
+    ttemp = ((T_R[0] * delta(I_R, I_L))
+        * delta(prime(I_R,1), prime(I_L,1))) 
+        * delta(prime(I_XH,1), I_XH);
+    temp = T_L[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
+
+    for (int a=0; a<sites.size(); a++) {
+        for (int b=a+1; b<sites.size(); b++) {
+            temp = T_D[a] - T_D[b];
+            m = 0.;
+            temp.visit(max_m);
+            std::cout<<"T_D["<<a<<"]-T_D["<<b<<"] Max element: "<< m <<std::endl;
+        }
+    }
+
+    Print(T_L[0]);
+    Print(T_D[0]);
+    ttemp = ((T_D[0] * delta(I_D, I_L))
+        * delta(prime(I_D,1), prime(I_L,1))) 
+        * delta(prime(I_XV,1), I_XH);
+    temp = T_L[0] - ttemp;
+    m = 0.;
+    temp.visit(max_m);
+    std::cout<<"Max element: "<< m <<std::endl;
 }
 
 // ########################################################################
