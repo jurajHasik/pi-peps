@@ -40,7 +40,7 @@ const std::array< std::array< std::array<int, 4>, 4>, 4> RTPM =
 	}};
 
 // defines assignment of reduction tensors given an order from
-// ORD for Matrix K <phi|U|phi~>
+// ORD for Matrix K <phi|U|phi~>= <phi'|phi~>
 const std::array< std::array< std::array<int, 4>, 4>, 4> RTPK =
 	{{ 
 		{{{-1,1,-1,2},{-1,3,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}},
@@ -132,20 +132,27 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
 MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2);
 
+/*
+ * Initialize isometry (reduction tensors - RT) which define a 
+ * PEPS ansatz of auxDim d for a PEPS state with auxDim d and 
+ * 2-site/3-site/... gate applied 
+ *
+ */
 void initRT(itensor::ITensor& rt, std::string INIT_METHOD);
 
 /*
  * contract on-site bra-ket tensor s with given operator op, 
- * possibly apply reduction tensors rt and merge aux-indices plToEnv for
- * contraction with the environment
+ * possibly apply reduction tensors rt and merge aux-indices with prime level
+ * plToEnv for contraction with the environment
  *
  * reduction tensors are given as array of pointers, NULL entry defines
- * no reduction tensor applied. rt[0]=on-ket, rt[1]=on-bra, rt[2]=on-ket, rt[3]=on-bra  
+ * no reduction tensor applied. Reduction tensor at rt[0] and rt[2] are applied
+ * to |ket> part of resulting tensor, while rt[1] and rt[3] are applied on <bra| 
  *
  * merging of on-site aux-indices is as defined follows
  * plToEnv[0]=I_XH1, plToEnv[1]=Index(), ...
  * where default index Index() is evaluated to false <=> unmerged
- * position within plToEnv gives aux-index (primeLevel) 
+ * position within plToEnv gives aux-index (primeLevel of aux-index) 
  *
  */
 itensor::ITensor getT(itensor::ITensor const& s, 

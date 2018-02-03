@@ -498,24 +498,31 @@ ITensor getT(ITensor const& s, std::array<Index, 4> const& plToEnv,
 	Index pS(noprime(findtype(s, PHYS)));
 	Index pOp = (op) ? noprime(findtype(op, PHYS)) : Index();
 
-	// build ket part
+	// build |ket> part
 	ITensor res = s;
+	// apply reduction tensors if present to |ket>
 	if (rt[0]) res = res * (*rt[0]);
 	if (rt[2]) res = res * (*rt[2]);
 	if (dbg && (rt[0] || rt[2])) Print(res);
+	// apply physical operator - acting on physical index
 	if (op) res = (res * delta(pS,pOp)) * op;
 	if (dbg) Print(res);
 	// build bra part
+	// apply conjugate of physical operator
 	if (op) res = res * prime(conj(op), MPOLINK, 4);
 	if (dbg) Print(res);
+	// apply reduction tensors if present to <bra| 
 	if (rt[1]) res = res * prime(conj(*rt[1]), 4);
 	if (rt[3]) res = res * prime(conj(*rt[3]), 4);
 	if (dbg && (rt[1] || rt[3])) Print(res);
+	// contract with <bra| on-site tensor
 	if (op) 
 		res = res * delta(pOp, pS) * prime(conj(s), AUXLINK, 4);
 	else
 		res = res * prime(conj(s), AUXLINK, 4);
 	if (dbg) Print(res);
+	// reset primeLevel of auxIndices from isometries back to primeLevel
+	// of on-site indices
 	for (int i=0; i<=7; i++) {
 		res.mapprime(AUXLINK, IOFFSET+i, i);
 	}
@@ -551,7 +558,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	ITensor dummyMPO = ITensor();
 	std::array<const ITensor *, 4> mpo({&uJ1J2.H1, &uJ1J2.H2, &uJ1J2.H3, &dummyMPO});
 
-	// find index(int) of on-site tensors within CtmEnv
+	// find integer identifier of on-site tensors within CtmEnv
 	std::vector<int> si;
 	for (int i=0; i<=3; i++) {
 		si.push_back(std::distance(ctmEnv.siteIds.begin(),
@@ -564,10 +571,11 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	}
 
 	// read off auxiliary indices of the cluster sites
-	std::array<Index, 4> aux({noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
+	std::array<Index, 4> aux({
+		noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
 		noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
 		noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[3]), AUXLINK))});
+		noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
 
 	// prepare map from on-site tensor aux-indices to half row/column T
 	// environment tensors
@@ -586,38 +594,40 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<ITensor> pc(4);
 
 	// for every on-site tensor point from primeLevel(index) to ENV index
-	// eg. I_XH or I_XV (with appropriate prime level)
-	std::array< std::array<Index, 4>, 4> iToE;
+	// eg. I_XH or I_XV (with appropriate prime level). 
+	std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
 
-	std::vector<int> fullset({0,1,2,3});
+	// Find for site 0 through 3 which are connected to ENV
+	std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
 	for (int s=0; s<=3; s++) {
-		// Find of site 0 through 3 which are connected to environment
+		// aux-indices connected to sites
 		std::vector<int> connected({pl[s*2], pl[s*2+1]});
+		// set_difference gives aux-indices connected to ENV
 		std::sort(connected.begin(), connected.end());
-		std::vector<int> iToEnv;
-		std::set_difference(fullset.begin(), fullset.end(), 
+		std::vector<int> tmp_iToE;
+		std::set_difference(plOfSite.begin(), plOfSite.end(), 
 			connected.begin(), connected.end(), 
-            std::inserter(iToEnv, iToEnv.begin()));
-		iToEnv.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C env tensor
+            std::inserter(tmp_iToE, tmp_iToE.begin())); 
+		tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
 		if(dbg) { 
 			std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
 				<< tn[s] << std::endl;
-			std::cout << iToEnv[0] <<" "<< iToEnv[1] << " iToC: " << iToEnv[2] << std::endl;
+			std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
 		}
 
 		// Assign indices by which site is connected to ENV
-		if( findtype( (*iToT.at(iToEnv[0]))[si[s]], HSLINK ) ) {
-			iToE[s][iToEnv[0]] = findtype( (*iToT.at(iToEnv[0]))[si[s]], HSLINK );
-			iToE[s][iToEnv[1]] = findtype( (*iToT.at(iToEnv[1]))[si[s]], VSLINK );
+		if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
+			iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
+			iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
 		} else {
-			iToE[s][iToEnv[0]] = findtype( (*iToT.at(iToEnv[0]))[si[s]], VSLINK );
-			iToE[s][iToEnv[1]] = findtype( (*iToT.at(iToEnv[1]))[si[s]], HSLINK );
+			iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
+			iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
 		}
 
-		pc[s] = (*iToT.at(iToEnv[0]))[si[s]]*(*iToC.at(iToEnv[2]))[si[s]]*
-			(*iToT.at(iToEnv[1]))[si[s]];
+		pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
+			(*iToT.at(tmp_iToE[1]))[si[s]];
 		if(dbg) Print(pc[s]);
-		// set primeLevel of ENV indices between T's to 0
+		// set primeLevel of ENV indices between T's to 0 to be ready for contraction
 		pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
 	}
 
@@ -629,20 +639,23 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		}
 	}
 
-	std::vector<ITensor> rt(4); // reduction tensors
+	// Create and initialize reduction tensors RT
+	std::vector<ITensor> rt(4);
 	rt[0] = ITensor(prime(aux[0],pl[1]), uJ1J2.a12, prime(aux[0],pl[1]+IOFFSET));
 	rt[1] = ITensor(prime(aux[1],pl[2]), uJ1J2.a12, prime(aux[1],pl[2]+IOFFSET));
 	rt[2] = ITensor(prime(aux[1],pl[3]), uJ1J2.a23, prime(aux[1],pl[3]+IOFFSET));
 	rt[3] = ITensor(prime(aux[2],pl[4]), uJ1J2.a23, prime(aux[2],pl[4]+IOFFSET));
 	for (int i=0; i<=3; i++) {
 		initRT(rt[i],"DELTA");
-		PrintData(rt[i]);
+		if(dbg) PrintData(rt[i]);
 	}
 
+	// Prepare Alternating Least Squares to maximize the overlap
 	double m = 0.;
 	auto max_m = [&m](double d) {
 		if(std::abs(d) > m) m = std::abs(d);
 	};
+	double svd_cutoff = 1.0e-14;
 	int altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<Cplx> overlaps;
@@ -659,11 +672,13 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				std::cout << std::endl;
 			}
 
+			// construct matrix M, which is defined as <psi~|psi~> = rt[r]^dag * M * rt[r]
 			if(dbg) std::cout <<"COMPUTING Matrix M"<< std::endl;
 			ITensor temp, deltaKet, deltaBra, M(1.0);
-			std::array<const itensor::ITensor *, 4> rtp;
+			std::array<const itensor::ITensor *, 4> rtp; // holds reduction tensor pointers => rtp
 			for(int o=0; o<=3; o++) {
 
+				// depending on choosen order (r) set up rtp for current site o
 				for (int i=0; i<=3; i++) 
 					rtp[i] = (RTPM[r][o][i] >= 0) ? &rt[RTPM[r][o][i]] : NULL;
 			
@@ -674,6 +689,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					std::cout << std::endl;
 				}
 
+				// construct o'th corner of M
 				temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
  		 			*mpo[ord[o]], rtp, false);
 				if(dbg) Print(temp);
@@ -698,10 +714,12 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				if(dbg) Print(M);
 			}
 
+			// construct vector K, which is defined as <psi~|psi'> = rt[r]^dag * K
 			if(dbg) std::cout <<"COMPUTING Vector K"<< std::endl;
 			ITensor K(1.0);
 			for(int o=0; o<=3; o++) {
 
+				// depending on choosen order (r) set up rtp for current site o
 				for (int i=0; i<=3; i++) 
 					rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
 			
@@ -712,6 +730,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					std::cout << std::endl;
 				}
 
+				// construct o'th corner of K
 				temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
  		 			*mpo[ord[o]], rtp, false);
 				if(dbg) Print(temp);
@@ -737,6 +756,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				if(dbg) Print(K);
 			}
 
+			// construct vector Kp, which is defined as <psi'|~psi> = Kp * rt[r]
 			if(dbg) std::cout <<"COMPUTING Vector Kp"<< std::endl;
 			ITensor Kp(1.0);
 			for(int o=0; o<=3; o++) {
@@ -759,6 +779,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					std::cout << std::endl;
 				}
 
+				// construct o'th corner of K
 				temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
  		 			*mpo[ord[o]], rtp, false);
 				if(dbg) Print(temp);
@@ -784,11 +805,13 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				if(dbg) Print(Kp);
 			}
 
-			PrintData(M);
-			PrintData(K);
-			PrintData(Kp);
+			if(dbg) { 
+				PrintData(M);
+				PrintData(K);
+				PrintData(Kp);
+			}
 
-			// Check Hermicity:
+			// Check Hermicity of M
 			//if (dbg) {
 				std::cout <<"Check Hermicity of M"<< std::endl;
 				std::cout <<"swapprime: "<< pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
@@ -801,10 +824,10 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2]),
 					4+pl[2*ord[3]+(1+ORD_DIR[r])/2],
 					4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]),MPOLINK,-8);
-				Print(Mdag);
+				//Print(Mdag);
 				ITensor mherm = 0.5*(M + Mdag);
 				ITensor mantiherm = 0.5*(M - Mdag);
-				Print(mherm);
+				//Print(mherm);
 
 				m = 0.;
 		        M.visit(max_m);
@@ -816,226 +839,82 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		    auto cmbK  = combiner(K.inds()[0], K.inds()[1], K.inds()[2]);
 		    auto cmbKp = combiner(Kp.inds()[0], Kp.inds()[1], Kp.inds()[2]);
-		    Print(cmbK);
-		    Print(cmbKp);
+		    if(dbg) {
+		    	Print(cmbK);
+		    	Print(cmbKp);
+		    }
 
-		    auto Mc = (cmbK * M) * cmbKp;
-		    auto Kc = cmbK * K;
+		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+		    // is given by M^dag K = rt[r]
+		    M = (cmbK * M) * cmbKp;
+		    K = cmbK * K;
 		    ITensor mU(combinedIndex(cmbK)),svM,mV;
-			svd(Mc,mU,svM,mV,{"SVDThreshold",1.0e-1});
+			svd(M,mU,svM,mV,{"Cutoff",svd_cutoff});
 
-			Print(svM);
-			for(int isv=1; isv<=svM.inds().front().m(); isv++) std::cout << 
-				svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) << std::endl;
-
-		    // Set negative eigenvalues to 0
-		    // define combiners:
-		    // auto cmbM = combiner(Kp.inds()[0], Kp.inds()[1], Kp.inds()[2]);
-		    // auto cmbI = combinedIndex(cmbM);
-		    // Print(cmbI); 
-		    // Print(cmbM);
-
-		 //    auto RM = svM*mV;
-			// for(int isv=1; isv<=RM.inds().front().m(); isv++) { 
-			// for(int jsv=1; jsv<=RM.inds().front().m(); jsv++) { 
-			// 	std::cout << isv <<" "<< jsv <<" "<< RM.real(RM.inds().front()(isv),RM.inds().back()(jsv)) << std::endl;
-			// }}
-
-		    Print((conj(mU)*Kc)*delta(svM.inds().front(),svM.inds().back())*conj(mV));
-			auto RK = (conj(mU)*Kc); //*delta(svM.inds().front(),svM.inds().back())*conj(mV);
-			RK = RK * delta(svM.inds().front(),svM.inds().back());
-			
-			Print(RK);
-			for (int isv=1; isv<=RK.inds().front().m(); isv++) {
-				std::cout<< isv <<" "<< RK.real(RK.inds().front()(isv)) << std::endl;
+			if(dbg) {
+				Print(svM);
+				for(int isv=1; isv<=svM.inds().front().m(); isv++) 
+					std::cout << svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) 
+					<< std::endl;
 			}
-
-			for (int isv=1; isv<=RK.inds().front().m(); isv++) {
-				if (svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) > 1.0e-14)  
-					RK.set(RK.inds().front()(isv), 
-						RK.real(RK.inds().front()(isv))/svM.real(
-						svM.inds().front()(isv),svM.inds().back()(isv)) );
-				else
-					RK.set(RK.inds().front()(isv), 0);
-			}
-			
-			Print(RK);
-			for (int isv=1; isv<=RK.inds().front().m(); isv++) {
-				std::cout<< isv <<" "<< RK.real(RK.inds().front()(isv)) << std::endl;
-			}
-
-			RK = RK * conj(mV);
-			Print(RK);			
-			for (int isv=1; isv<=RK.inds().front().m(); isv++) {
-				std::cout<< isv <<" "<< RK.real(RK.inds().front()(isv)) << std::endl;
-			}
-
-		    // mherm = (cmbM * mherm) * prime(cmbM,4);
-		    // mherm.prime(prime(cmbI,4),-3);
-
-		    // mantiherm = (cmbM * mantiherm) * prime(cmbM,4);
-		    // mantiherm.prime(prime(cmbI,4),-3);
 		    
-		    // Print(mherm);
-		    // Print(mantiherm);
+			// Regularize and invert singular value matrix svM
+			std::vector<double> elems_regInvSvM;
+			for (int isv=1; isv<=svM.inds().front().m(); isv++) {
+				if (svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) > svd_cutoff)  
+					elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
+						svM.inds().back()(isv)) );
+				else
+					elems_regInvSvM.push_back(0.0);
+			}
+			auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
 
-		 //    ITensor U,D;
-			// diagHermitian(mherm,U,D);
-			// auto indD = noprime(D.inds().front());
-			// std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-			// std::vector<double> reg_D;
-			// for (int iid=1; iid<=indD.m(); iid++) {
-			// 	std::cout<< iid <<" : "<< D.cplx(indD(iid),prime(indD,1)(iid)) << std::endl;
-			// 	if( D.cplx(indD(iid),prime(indD,1)(iid)).real() < 1.0e-14 ) {
-			// 		break;
-			// 	} else {
-			// 		reg_D.push_back(D.cplx(indD(iid),prime(indD,1)(iid)).real());
-			// 	}
-			// }
-			// PrintData(U);
-			// Index irC = Index("irC",reg_D.size());
-			// Index irD = Index("irD",reg_D.size());
-			// D = diagTensor(reg_D, irD, prime(irD));
-			// PrintData(D);
-
-			// auto irCToCmbI = delta(irC,cmbI);
-			// auto irdToIndD = delta(irD,indD);
-			// U = irCToCmbI*U*irdToIndD;
-			// PrintData(U);
-
-			// mherm = dag(U)*D*prime(U);
-			// mantiherm = irCToCmbI*mantiherm*prime(irCToCmbI);
-
-			// solve M rt = K for rt
-			// ITensor Mreg = mherm + mantiherm;
-			// Print(mherm);
-			// Print(mantiherm);
-			// PrintData(Mreg);
-
-			//Mreg.mapprime(MPOLINK,0,12, MPOLINK,4,8);
-			// Mreg = prime(swapPrime(swapPrime(Mreg, 
-			// 		pl[2*ord[3]+(1+ORD_DIR[r])/2],
-			// 		IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2]),
-			// 		4+pl[2*ord[3]+(1+ORD_DIR[r])/2],
-			// 		4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]),MPOLINK,-8);
-			
-			// ITensor mregCheck1 = Mreg - M;
-			// ITensor mregCheck2 = Mreg - Mdag;
-
-			// m = 0.;
-	  //       mregCheck1.visit(max_m);
-	  //       std::cout<<"Mregcheck1 max element: "<< m <<std::endl;
-			// m = 0.;
-	  //       mregCheck2.visit(max_m);
-	  //       std::cout<<"Mregcheck2 max element: "<< m <<std::endl;
-
-
-	        // auto Kc = K*prime(prime(cmbM,4), prime(cmbI,4),-3);
-	        // Kc = Kc*prime(irCToCmbI);
-	        // PrintData(Kc);
-
-			ITensor niso;
-			niso = (RK * delta(combinedIndex(cmbK),combinedIndex(cmbKp)) ) * cmbK;
+		    ITensor niso;
+			niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp;
 			// linsystem(M,K,niso,{"plDiff",4,"dbg",true});
 
-			Print(niso);
-			auto print_elem = [](double d) {
-				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				std::cout<< d << std::endl;
-			};
-			niso.visit(print_elem);
+			if(dbg) {
+				Print(niso);
+				auto print_elem = [](double d) {
+					std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+					std::cout<< d << std::endl;
+				};
+				niso.visit(print_elem);
+			}
 
-			// niso = (niso*irCToCmbI)*cmbM;
-
-			ITensor optCond = M*niso - prime(K,-4);
+			M = (cmbK * M) * cmbKp;
+			K = K*cmbK;
+			Print(M);
+			ITensor optCond = M*niso - K;
 			m = 0.;
 		    optCond.visit(max_m);
-		    std::cout<<"optCond max element: "<< m <<std::endl;
+		    std::cout<<"optCond(M*niso - K) max element: "<< m <<std::endl;
 		    
-			optCond = Mdag*niso - prime(K,-4);
+			optCond = prime(conj(niso),4)*M - Kp;
 			m = 0.;
 		    optCond.visit(max_m);
-		    std::cout<<"optCond(Mdag) max element: "<< m <<std::endl;
-
-			niso.prime(-4);
-			optCond = niso*M - K;
-			m = 0.;
-		    optCond.visit(max_m);
-		    std::cout<<"optCond max element: "<< m <<std::endl;
-
-		    optCond = niso*Mdag - K;
-			m = 0.;
-		    optCond.visit(max_m);
-		    std::cout<<"optCond(Mdag) max element: "<< m <<std::endl;
-
-
+		    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 
 			m = 0.;
 			niso.visit(max_m);
 			max_niso.push_back(m);
-			//niso = niso / m;
-			//if (dbg) 
-				PrintData(niso);
+			 
  			rt[r] = niso;
 
- 		// 	if(dbg) std::cout <<"COMPUTING Vector Kp"<< std::endl;
-			// ITensor Kp(1.0);
-			// for(int o=0; o<=3; o++) {
-
-			// 	for (int i=0; i<=3; i++) 
-			// 		rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
-			// 	//switch bra & ket reductions
-			// 	const itensor::ITensor * rtp_temp;
-			// 	rtp_temp = rtp[0];
-			// 	rtp[0] = rtp[1];
-			// 	rtp[1] = rtp_temp;
-			// 	rtp_temp = rtp[2];
-			// 	rtp[2] = rtp[3];
-			// 	rtp[3] = rtp_temp;
-
-			// 	if(dbg) {
-			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
-			// 			<< tn[ord[o]] << std::endl;
-			// 		for(int i=0; i<=3; i++) {std::cout << RTPK[r][o][i] <<" ";}
-			// 		std::cout << std::endl;
-			// 	}
-
-			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
- 		//  			*mpo[ord[o]], rtp, false);
-			// 	if(dbg) Print(temp);
-			// 	if (o<3) {
-			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = prime(deltaKet,4);
-			// 		temp = (temp * deltaBra) * deltaKet;
-			// 	} else {
-			// 		deltaKet = delta(prime(aux[ord[3]],IOFFSET+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = delta(prime(aux[ord[3]],4+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],4+pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 	}
-			// 	if(dbg) {
-			// 		Print(deltaKet);
-			// 		Print(deltaBra);
-			// 	}
-
-			// 	Kp *= temp;
-			// 	if (o==3) Kp = (Kp * deltaBra) * deltaKet;
-			
-			// 	if(dbg) Print(Kp);
-			// }
-
 			// Check overlap
-			ITensor tempOLP;
-			tempOLP = niso*M*prime(niso,4);
-			if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-			overlaps.push_back(sumelsC(tempOLP));
-			tempOLP = K*prime(niso,4);
-			if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-			overlaps.push_back(sumelsC(tempOLP));
-			tempOLP = niso*Kp;
-			if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-			overlaps.push_back(sumelsC(tempOLP));
+			if (r=4) {
+				ITensor tempOLP;
+				tempOLP = prime(conj(niso),4)*M*niso;
+				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
+				overlaps.push_back(sumelsC(tempOLP));
+				tempOLP = K*prime(conj(niso),4);
+				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
+				overlaps.push_back(sumelsC(tempOLP));
+				tempOLP = niso*Kp;
+				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
+				overlaps.push_back(sumelsC(tempOLP));
+			}
 		}
 
 		altlstsquares_iter++;

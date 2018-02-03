@@ -249,7 +249,7 @@ int main( int argc, char *argv[] ) {
         ctmEnv.normalizeBLE();
         // PERFORM FULL UPDATE
         fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
-        	{3,2, 0,3, 1,0, 2,1}, arg_maxAltLstSqrIter, false);
+        	{3,2, 0,3, 1,0, 2,1}, arg_maxAltLstSqrIter, true);
 	}
 
 	// Compute final properties
