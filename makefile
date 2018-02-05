@@ -1,6 +1,6 @@
 # Link to Itensor lib
 
-ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc
+ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-intel
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 

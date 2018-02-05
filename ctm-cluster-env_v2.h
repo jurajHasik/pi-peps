@@ -140,7 +140,7 @@ class CtmEnv
     /*
      * Return tensor resulting from contraction of on-site tensor T (ket)
      * with its T* (bra) counterpart through physical index
-     *
+     * If expose = true, the physical index is not contracted
      */
     itensor::ITensor contractOST(itensor::ITensor const& T,
         bool expose = false) const;
@@ -239,6 +239,9 @@ class CtmEnv
     // Compute the spectral dist between stored spectrum
     // in spec_c* and current spectrum
     void specDist(CtmSpec const& s1, CtmSpec const& s2) const;
+
+    // Update original cluster with new one of same type
+    void updateCluster(Cluster const& c);
 
     CtmSpec getCtmSpec() const;
 

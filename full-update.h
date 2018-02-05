@@ -159,6 +159,9 @@ itensor::ITensor getT(itensor::ITensor const& s,
 	std::array<itensor::Index, 4> const& plToEnv, itensor::ITensor const& op,
 	std::array<const itensor::ITensor *, 4> rt, bool dbg = false);
 
+itensor::ITensor getketT(itensor::ITensor const& s, itensor::ITensor const& op,
+	std::array<const itensor::ITensor *, 2> rt, bool dbg = false);
+
 /*
  * tn - defines sequence of on site tensors over which uJ1J2 is applied
  * pl - defines primeLevel on the indices of tensor given in tn
@@ -171,8 +174,8 @@ itensor::ITensor getT(itensor::ITensor const& s,
  *
  */
 void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl, int maxAltLstSqrIter,
-	bool dbg = false);
+	std::vector<std::string> tn, std::vector<int> pl, 
+	itensor::Args const& args = itensor::Args::global());
 
 std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);

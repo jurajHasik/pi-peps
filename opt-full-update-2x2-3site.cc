@@ -39,6 +39,13 @@ int main( int argc, char *argv[] ) {
 
 	//total iterations of full update
 	int arg_fuIter = jsonCls["fuIter"].get<int>();
+    std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
+    double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
+    int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
+    double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
+    double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
+    bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
+    int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
 	//time step
 	double arg_tau = jsonCls["tau"].get<double>();
 
@@ -52,7 +59,6 @@ int main( int argc, char *argv[] ) {
 	
 	//iterations for environment per full update step
 	int arg_envIter = jsonCls["envIter"].get<int>();
-	int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
 
 	// INITIALIZE CLUSTER
 	Cluster cls;
@@ -140,7 +146,7 @@ int main( int argc, char *argv[] ) {
             C = B * delta(pIB, pIC);
             D = A * delta(pIA, pID);
             for (int i=0; i<=3; ++i) {
-                C = C * delta(prime(aIB,i), prime(aIC,i));
+                C = C * delta(prime(aIA,i), prime(aIC,i));
                 D = D * delta(prime(aIA,i), prime(aID,i));
             }
         } else if(initBy == "RANDOM") {
@@ -210,9 +216,57 @@ int main( int argc, char *argv[] ) {
     // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
     MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2));
 //    MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
+
+    // hold energies
+    std::vector<double> e_nnH;
+    std::vector<double> e_nnH_AC;
+    std::vector<double> e_nnH_BD;
+    std::vector<double> e_nnH_CD;
+
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
+    std::vector< std::vector<std::string> > gates = {
+        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, 
+        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, 
+        
+        {"D", "B", "A", "C"}, {"D", "C", "A", "B"},
+        {"C", "D", "B", "A"}, {"C", "A", "B", "D"}, 
+        
+        {"A", "C", "D", "B"}, {"A", "B", "D", "C"}, 
+        {"B", "D", "C", "A"}, {"B", "A", "C", "D"}, 
+        
+        {"D", "C", "A", "B"}, {"D", "B", "A", "C"}, 
+        {"C", "A", "B", "D"}, {"C", "D", "B", "A"} 
+       
+        
+    };
+
+    std::vector< std::vector<int> > gate_auxInds = {
+        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
+        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2},
+
+        {2,1, 3,2, 0,3, 1,0}, {1,2, 0,1, 3,0, 2,3},
+        {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2},
+        
+        {0,1, 3,0, 2,3, 1,2}, {1,0, 2,1, 3,2, 0,3},
+        {0,3, 1,0, 2,1, 3,2}, {3,0, 2,3, 1,2, 0,1},
+        
+        {0,3, 1,0, 2,1, 3,2}, {3,0, 2,3, 1,2, 0,1},
+        {0,1, 3,0, 2,3, 1,2}, {1,0, 2,1, 3,2, 0,3}
+       
+        
+    };
+
+    Args fuArgs = {
+        "maxAltLstSqrIter",arg_maxAltLstSqrIter,
+        "fuDbg",arg_fuDbg,
+        "fuDbgLevel",arg_fuDbgLevel,
+        "fuIsoInit",arg_fuIsoInit,
+        "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
+        "pseudoInvCutoff",pseudoInvCutoff,
+        "isoEpsilon",isoEpsilon
+    };
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
@@ -229,12 +283,17 @@ int main( int argc, char *argv[] ) {
 	        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
 	        if ( envI % 1 == 0 ) {
-	        //     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+	            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 	        
 	            t_end_int = std::chrono::steady_clock::now();
 	            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
 	            	<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-	                <<" [sec]"<< std::endl;
+	                <<" [sec] E: "<< 
+                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0)) <<" "<<
+                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1)) <<" "<< 
+                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1)) <<" "<<
+                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1)) << std::endl;
+
 	            t_begin_int = std::chrono::steady_clock::now();
 	        }
 	    }
@@ -244,15 +303,114 @@ int main( int argc, char *argv[] ) {
     	std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         	<<" "<< accT[7] << std::endl;
 
-        ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+        // compute energies
+        e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(0,0), std::make_pair(1,0)) );
+        e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(0,0), std::make_pair(0,1)) );
+        e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(1,0), std::make_pair(1,1)) );
+        e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(0,1), std::make_pair(1,1)) );
 
-        ctmEnv.normalizeBLE();
         // PERFORM FULL UPDATE
-        fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
-        	{3,2, 0,3, 1,0, 2,1}, arg_maxAltLstSqrIter, true);
-	}
+        fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+            gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
+        //  	{3,2, 0,3, 1,0, 2,1}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "C", "D", "B"}, 
+        //     {2,3, 1,2, 0,1, 3,0}, fuArgs);
+        
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
+        //     {2,1, 3,2, 0,3, 1,0}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "C", "A", "B"}, 
+        //     {1,2, 0,1, 3,0, 2,3}, fuArgs);
+	
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "C", "D", "B"}, 
+        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
+        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
+    
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "C", "A", "B"}, 
+        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
+        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
+
+        // //####################################################
+
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "D", "C", "A"}, 
+        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
+        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
+
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "A", "B", "D"}, 
+        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "D", "B", "A"}, 
+        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
+    
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "A", "C", "D"}, 
+        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "D", "C", "A"}, 
+        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
+
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "D", "B", "A"}, 
+        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
+        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "A", "B", "D"}, 
+        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
+    
+        ctmEnv.updateCluster(cls);
+    }
+
+    // // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
+    std::cout <<"FULL UPDATE DONE - COMPUTING FINAL ENVIRONMENT "<< std::endl;
+    // t_begin_int = std::chrono::steady_clock::now();
+        
+    // ENTER ENVIRONMENT LOOP
+    for (int envI=1; envI<=arg_envIter; envI++ ) {
+
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+
+        if ( envI % 1 == 0 ) {
+        //     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+        
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec]"<< std::endl;
+            t_begin_int = std::chrono::steady_clock::now();
+        }
+    }
+
+    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+        <<" "<< accT[3] << std::endl;
+    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+        <<" "<< accT[7] << std::endl;
+
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
 	// Compute final properties
+    e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(1,0)) );
+    e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(0,1)) );
+    e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(1,1)) );
+    e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(1,1)) );
+
+    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
+    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
+        std::cout << i <<" "<< e_nnH[i] 
+            <<" "<< e_nnH_AC[i]
+            <<" "<< e_nnH_BD[i]
+            <<" "<< e_nnH_CD[i]
+            << std::endl;
+    }
+
 	std::vector<double> evNN;
 	evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(2,0))); //BA

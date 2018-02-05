@@ -2526,6 +2526,16 @@ CtmEnv::CtmSpec CtmEnv::getCtmSpec() const {
     return spec;
 }
 
+// TODO check consistency between input cluster c and one currently
+// stored in ENV
+void CtmEnv::updateCluster(Cluster const& c) {
+
+    for( unsigned int i=0; i < siteIds.size(); i++ ) {
+        sites[i] = contractOST(c.sites.at(siteIds[i]));
+    }
+}
+
+
 /* Return environment of original cluster, hence just
  * a selected C_*s and T_*s
  *
