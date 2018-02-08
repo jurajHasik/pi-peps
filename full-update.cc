@@ -710,7 +710,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	
 	int altlstsquares_iter = 0;
 	bool converged = false;
-	std::vector<Cplx> overlaps;
+	std::vector< std::complex<double> > overlaps;
 	std::vector<double> rt_diffs;
 	std::vector<double> max_niso; // for DEBUG 
 	while (not converged) {
@@ -895,6 +895,8 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    auto cmbK  = combiner(K.inds()[0], K.inds()[1], K.inds()[2]);
 		    auto cmbKp = combiner(Kp.inds()[0], Kp.inds()[1], Kp.inds()[2]);
 		    if(dbg && (dbgLvl >= 2)) {
+		    	for (int i=0; i<3; i++) Print(K.inds()[i]);
+		    	for (int i=0; i<3; i++) Print(Kp.inds()[i]);	
 		    	Print(cmbK);
 		    	Print(cmbKp);
 		    }
@@ -903,6 +905,24 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
 		    // is given by M^dag K = rt[r]
 		    M = (cmbK * M) * cmbKp;
+		    
+		    // symmetrize
+		    M = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
+		    	*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp)) ).prime(-1));
+
+		    if(dbg && (dbgLvl >= 1)) {
+			    // check small negative eigenvalues
+			    M = M*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+			    ITensor uM, dM;
+			    auto spec = diagHermitian(M, uM, dM);
+			    Print(spec);
+			    M = M*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+				for(int idm=1; idm<=dM.inds().front().m(); idm++) 
+					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
+						<< std::endl;
+			}
+
 		    K = cmbK * K;
 		    ITensor mU(combinedIndex(cmbK)),svM,mV;
 			svd(M,mU,svM,mV,{"Cutoff",svd_cutoff});
@@ -954,9 +974,9 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 			}
 
-			m = 0.;
-		    niso.visit(max_m);
-		    niso = niso / m;
+			//m = 0.;
+		    //niso.visit(max_m);
+		    //niso = niso / m;
 			rt_diffs.push_back(norm(rt[r]-niso));
 			// std::cout<<"altlstsquares_iter: "<< altlstsquares_iter<<" r: "<< r
 			// 	<<" NORM: "<< norm(rt[r]-niso) << std::endl;
@@ -964,7 +984,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
  			rt[r] = niso;
 
 			// Check overlap
-			if (r==4) {
+			if (r==3) {
 				ITensor tempOLP;
 				tempOLP = prime(conj(niso),4)*M*niso;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
@@ -980,22 +1000,26 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		altlstsquares_iter++;
 		// check convergence
-		converged = true;
-		for (int i_rt=1; i_rt<=4; i_rt++) {	
-			converged = converged && (rt_diffs[rt_diffs.size()-i_rt] < iso_eps);
-			// std::cout << "rt_diffs["<< rt_diffs.size()-i_rt <<"] = "<< rt_diffs[rt_diffs.size()-i_rt]
-			// 	<<" converged: "<< converged << std::endl; 
+		if (altlstsquares_iter > 1) {
+			auto dist_init = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
+				- overlaps[overlaps.size()-4];
+			auto dist_curr = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
+				- overlaps[overlaps.size()-1];
+			if (abs(dist_curr - dist_init) < iso_eps) converged = true;
 		}
+		// converged = true;
+		// for (int i_rt=1; i_rt<=4; i_rt++) {	
+		// 	converged = converged && (rt_diffs[rt_diffs.size()-i_rt] < iso_eps);
+		// }
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
 
 
 
-	// for(int i=0; i<(overlaps.size()/3); i++) {
-	// 	std::cout<<"M: "<<overlaps[i].real()<<" K: "<<overlaps[i+1].real()
-	// 		<<" Kp: "<<overlaps[i+2].real()
-	// 		<<" max_elem(niso): "<< max_niso[i] <<std::endl;
-	// }
+	for(int i=0; i<(overlaps.size()/3); i++) {
+		std::cout<<"M: "<<overlaps[3*i].real()<<" K: "<<overlaps[3*i+1].real()
+			<<" Kp: "<<overlaps[3*i+2].real() <<std::endl;
+	}
 	//std::cout<<"rt_diffs.size() = "<< rt_diffs.size() << std::endl;
 	for(int i=0; i<(rt_diffs.size()/4); i++) {
 		std::cout<<"rt_diffs: "<<rt_diffs[4*i]<<" "<<rt_diffs[4*i+1]

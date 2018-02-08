@@ -1744,6 +1744,10 @@ ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s, bool DBG) {
     return SU2_getSpinOp(su2o, s, DBG);
 }
 
+void EVBuilder::setCluster(Cluster const& new_c) {
+    cls = new_c;
+}
+
 void EVBuilder::setCtmData(CtmData const& new_cd) {
     cd = new_cd;
 }

@@ -200,6 +200,8 @@ class EVBuilder {
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
 
+    void setCluster(Cluster const& new_c);
+
     void setCtmData(CtmData const& new_cd);
 
     void setCtmData_Full(CtmData_Full const& new_cd_f);

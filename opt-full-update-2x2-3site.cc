@@ -143,10 +143,15 @@ int main( int argc, char *argv[] ) {
             std::cout <<"Initializing by RANDOM TENSORS A,B,C=B,D=A"<< std::endl;
             randomize(A);
             randomize(B);
+
+            auto shift05 = [](double r){ return r-0.5; };
+            A.apply(shift05);
+            B.apply(shift05);
+
             C = B * delta(pIB, pIC);
             D = A * delta(pIA, pID);
             for (int i=0; i<=3; ++i) {
-                C = C * delta(prime(aIA,i), prime(aIC,i));
+                C = C * delta(prime(aIB,i), prime(aIC,i));
                 D = D * delta(prime(aIA,i), prime(aID,i));
             }
         } else if(initBy == "RANDOM") {
@@ -222,40 +227,39 @@ int main( int argc, char *argv[] ) {
     std::vector<double> e_nnH_AC;
     std::vector<double> e_nnH_BD;
     std::vector<double> e_nnH_CD;
+    std::vector<double> evNN;
 
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
     std::vector< std::vector<std::string> > gates = {
-        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, 
-        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, 
+        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (1 AD ABCD)
+        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (1 BC ABCD) 
         
-        {"D", "B", "A", "C"}, {"D", "C", "A", "B"},
-        {"C", "D", "B", "A"}, {"C", "A", "B", "D"}, 
+        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (2 AD BADC)
+        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (2 BC BADC)
+
+        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (3 AD CDAB) 
+        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (3 BC CDAB)
         
-        {"A", "C", "D", "B"}, {"A", "B", "D", "C"}, 
-        {"B", "D", "C", "A"}, {"B", "A", "C", "D"}, 
-        
-        {"D", "C", "A", "B"}, {"D", "B", "A", "C"}, 
-        {"C", "A", "B", "D"}, {"C", "D", "B", "A"} 
+        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (4 AD DCBA)
+        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}  // (4 BC DCBA)
        
         
     };
 
     std::vector< std::vector<int> > gate_auxInds = {
-        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
-        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2},
+        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0}, // (1)
+        {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2}, // (1)
 
-        {2,1, 3,2, 0,3, 1,0}, {1,2, 0,1, 3,0, 2,3},
         {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2},
-        
-        {0,1, 3,0, 2,3, 1,2}, {1,0, 2,1, 3,2, 0,3},
-        {0,3, 1,0, 2,1, 3,2}, {3,0, 2,3, 1,2, 0,1},
-        
-        {0,3, 1,0, 2,1, 3,2}, {3,0, 2,3, 1,2, 0,1},
-        {0,1, 3,0, 2,3, 1,2}, {1,0, 2,1, 3,2, 0,3}
+        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
+
+        {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0},
+        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, 
        
-        
+        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, // (4)
+        {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0}
     };
 
     Args fuArgs = {
@@ -313,10 +317,25 @@ int main( int argc, char *argv[] ) {
         e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
             std::make_pair(0,1), std::make_pair(1,1)) );
 
-        // PERFORM FULL UPDATE
-        fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-            gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(1,0), std::make_pair(2,0))); //BA
+        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(0,1), std::make_pair(0,2))); //CA
+        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(1,1), std::make_pair(1,2))); //DB
+        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+            std::make_pair(1,1), std::make_pair(2,1))); //DC
 
+        // PERFORM FULL UPDATE
+        if( (((fuI-1) / gates.size()) % 2) == 0 ) {
+            std::cout << "GATE: " <<(fuI-1)%gates.size() << std::endl;
+            fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+                gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+        } else {
+            std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
+            fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
+                gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
+        }
         // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
         //  	{3,2, 0,3, 1,0, 2,1}, fuArgs);
         // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "C", "D", "B"}, 
@@ -360,6 +379,8 @@ int main( int argc, char *argv[] ) {
         //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
     
         ctmEnv.updateCluster(cls);
+        ctmEnv.initCtmrgEnv();
+        ev.setCluster(cls);
     }
 
     // // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
@@ -402,17 +423,7 @@ int main( int argc, char *argv[] ) {
     e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,1), std::make_pair(1,1)) );
 
-    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
-    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
-        std::cout << i <<" "<< e_nnH[i] 
-            <<" "<< e_nnH_AC[i]
-            <<" "<< e_nnH_BD[i]
-            <<" "<< e_nnH_CD[i]
-            << std::endl;
-    }
-
-	std::vector<double> evNN;
-	evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(2,0))); //BA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,1), std::make_pair(0,2))); //CA
@@ -420,8 +431,21 @@ int main( int argc, char *argv[] ) {
         std::make_pair(1,1), std::make_pair(1,2))); //DB
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,1))); //DC
-    std::cout <<"BA: "<< evNN[0] <<" CA: "<< evNN[1] <<" DB: "<< evNN[2] 
-        <<" DC: "<< evNN[3] << std::endl;
+    
+    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
+    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
+        std::cout << i <<" "<< e_nnH[i] 
+            <<" "<< e_nnH_AC[i]
+            <<" "<< e_nnH_BD[i]
+            <<" "<< e_nnH_CD[i];
+            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
+                std::cout<<" "<< evNN[j];
+            }
+        std::cout<< std::endl;
+    }
+
+	// std::cout <<"BA: "<< evNN[0] <<" CA: "<< evNN[1] <<" DB: "<< evNN[2] 
+    //     <<" DC: "<< evNN[3] << std::endl;
 
     std::cout <<"ID: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
