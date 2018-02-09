@@ -379,7 +379,7 @@ int main( int argc, char *argv[] ) {
         //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
     
         ctmEnv.updateCluster(cls);
-        ctmEnv.initCtmrgEnv();
+        //ctmEnv.initCtmrgEnv();
         ev.setCluster(cls);
     }
 
