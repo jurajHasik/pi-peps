@@ -707,10 +707,15 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	auto max_m = [&m](double d) {
 		if(std::abs(d) > m) m = std::abs(d);
 	};
+
+	auto print_elem = [](double d) {
+		std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+		std::cout<< d << std::endl;
+	};
 	
 	int altlstsquares_iter = 0;
 	bool converged = false;
-	std::vector< std::complex<double> > overlaps;
+	std::vector<double> overlaps;
 	std::vector<double> rt_diffs;
 	std::vector<double> max_niso; // for DEBUG 
 	while (not converged) {
@@ -866,14 +871,13 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 
 			// Check Hermicity of M
-			ITensor Mdag;
 			if (dbg && (dbgLvl >= 1)) {
 				std::cout <<"Check Hermicity of M"<< std::endl;
 				std::cout <<"swapprime: "<< pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
 					<< IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2] << std::endl;
 				std::cout <<"swapprime: "<< 4+pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
 					<< 4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2] << std::endl;
-				Mdag = mapprime(conj(M), MPOLINK,0,12, MPOLINK,4,8);
+				auto Mdag = mapprime(conj(M), MPOLINK,0,12, MPOLINK,4,8);
 				Mdag = prime(swapPrime(swapPrime(Mdag, 
 					pl[2*ord[3]+(1+ORD_DIR[r])/2],
 					IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2]),
@@ -907,16 +911,16 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    M = (cmbK * M) * cmbKp;
 		    
 		    // symmetrize
-		    M = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
+		    auto Msym = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
 		    	*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp)) ).prime(-1));
 
 		    if(dbg && (dbgLvl >= 1)) {
 			    // check small negative eigenvalues
-			    M = M*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+			    Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 			    ITensor uM, dM;
-			    auto spec = diagHermitian(M, uM, dM);
+			    auto spec = diagHermitian(Msym, uM, dM);
 			    Print(spec);
-			    M = M*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+			    Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
 				for(int idm=1; idm<=dM.inds().front().m(); idm++) 
 					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
@@ -925,7 +929,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		    K = cmbK * K;
 		    ITensor mU(combinedIndex(cmbK)),svM,mV;
-			svd(M,mU,svM,mV,{"Cutoff",svd_cutoff});
+			svd(Msym,mU,svM,mV,{"Cutoff",svd_cutoff});
 
 			if(dbg && (dbgLvl >= 1)) {
 				Print(svM);
@@ -952,10 +956,6 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			if(dbg && (dbgLvl >= 1)) {
 				Print(niso);
-				auto print_elem = [](double d) {
-					std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-					std::cout<< d << std::endl;
-				};
 				niso.visit(print_elem);
 			}
 
@@ -986,15 +986,15 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// Check overlap
 			if (r==3) {
 				ITensor tempOLP;
-				tempOLP = prime(conj(niso),4)*M*niso;
+				tempOLP = (prime(conj(niso),4)*M)*niso;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-				overlaps.push_back(sumelsC(tempOLP));
+				overlaps.push_back(sumels(tempOLP));
 				tempOLP = K*prime(conj(niso),4);
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-				overlaps.push_back(sumelsC(tempOLP));
+				overlaps.push_back(sumels(tempOLP));
 				tempOLP = niso*Kp;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-				overlaps.push_back(sumelsC(tempOLP));
+				overlaps.push_back(sumels(tempOLP));
 			}
 		}
 
@@ -1005,7 +1005,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				- overlaps[overlaps.size()-4];
 			auto dist_curr = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
 				- overlaps[overlaps.size()-1];
-			if (abs(dist_curr - dist_init) < iso_eps) converged = true;
+			if (abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps) converged = true;
 		}
 		// converged = true;
 		// for (int i_rt=1; i_rt<=4; i_rt++) {	
@@ -1014,11 +1014,9 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
 
-
-
 	for(int i=0; i<(overlaps.size()/3); i++) {
-		std::cout<<"M: "<<overlaps[3*i].real()<<" K: "<<overlaps[3*i+1].real()
-			<<" Kp: "<<overlaps[3*i+2].real() <<std::endl;
+		std::cout<<"M: "<< overlaps[3*i] <<" K: "<< overlaps[3*i+1]
+			<<" Kp: "<< overlaps[3*i+2] <<std::endl;
 	}
 	//std::cout<<"rt_diffs.size() = "<< rt_diffs.size() << std::endl;
 	for(int i=0; i<(rt_diffs.size()/4); i++) {
@@ -1033,6 +1031,12 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	cls.sites.at(tn[1]) = newT;
 	newT = getketT(cls.sites.at(tn[2]), uJ1J2.H3, {&rt[3],NULL}, (dbg && (dbgLvl >=3)) );
 	cls.sites.at(tn[2]) = newT;
+
+	for (int i=0; i<3; i++) {
+		m = 0.;
+		cls.sites.at(tn[i]).visit(max_m);
+		cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / m;
+	}
 }
 
 std::ostream& 
