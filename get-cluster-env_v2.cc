@@ -37,16 +37,17 @@ int main( int argc, char *argv[] ) {
 
     // Depending on the number of args call different environment 
     // initialization function
+    Args args = {"dbg",true,"dbgLvl",0};
     switch (argc) {
         case 7: {
             // [executable name], arg_clusterFile, arg_auxEnvDim, arg_ctmIter,
             // env_init
             CtmEnv::init_env_type init_Env = toINIT_ENV(std::string(argv[4]));
             if ( init_Env == CtmEnv::INIT_ENV_const1 ) {
-                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster);
+                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster, args);
                 ctmEnv.initMockEnv();
             } else if ( init_Env == CtmEnv::INIT_ENV_ctmrg ) {
-                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster);
+                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster, args);
                 ctmEnv.initCtmrgEnv();
             } else {
                 std::cout<< argv[4] <<" requires its additional args" 
@@ -73,7 +74,7 @@ int main( int argc, char *argv[] ) {
                     exit(EXIT_FAILURE);
                 }
 
-                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster);
+                ctmEnv = CtmEnv("TEST_ENV_2x2", arg_auxEnvDim, cluster, args);
                 ctmEnv.initRndEnv(isComplex);
             } else {
                 std::cout<< argv[4] <<" requires its additional args"
@@ -273,6 +274,11 @@ int main( int argc, char *argv[] ) {
         <<" DA: "<< evNNN[3] << std::endl;
     std::cout <<"BC: "<< evNNN[4] <<" CB: "<< evNNN[5] <<" BC: "<< evNNN[6]
         <<" CB: "<< evNNN[7] << std::endl;
+
+    std::cout <<"Norm site=[0,0] : "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), 
+        std::make_pair(0,0)) << std::endl;
+    std::cout <<"Norm Region=([0,0],[1,1]) : "<< ev.getNorm_Rectangle(false, 
+        std::make_pair(0,0), std::make_pair(1,1)) << std::endl;
 
     std::cout <<"ID: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;

@@ -48,8 +48,11 @@ class CtmEnv
 
     // ########################################################################
     // data holding the environment
+    bool DBG = false;
+    int  DBG_LVL = 0;
 
     std::string m_name;
+    double isoPseudoInvCutoff = 1.0e-14;
     
     /*
      * Auxiliary dimension of bond-indices of on-site tensor TT given by 
@@ -129,7 +132,8 @@ class CtmEnv
     CtmEnv();
 
     // Basic constructor 
-    CtmEnv(std::string t_name, int t_x, Cluster const& c);
+    CtmEnv(std::string t_name, int t_x, Cluster const& c, 
+        itensor::Args const& args = itensor::Args::global());
 
     // Reconstructs CtmEnv from given CtmData - a CtmEnv for each
     // of non-equivalent sites within cluster (compatibility with

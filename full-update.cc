@@ -355,6 +355,25 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
 	// definition of U_123 done
 	//PrintData(u123);
 
+	// double el_E0 = 0.7*(-tau);
+	// ITensor uE0 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+	// uE0.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el_E0);
+	// uE0.set(s1(2),s2(1),s3(1),s1p(2),s2p(1),s3p(1),el_E0);
+	// uE0.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el_E0);
+	// uE0.set(s1(2),s2(2),s3(1),s1p(2),s2p(2),s3p(1),el_E0);
+	// uE0.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el_E0);
+	// uE0.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el_E0);
+	// uE0.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el_E0);
+	// uE0.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el_E0);
+	// u123 = u123 + uE0;
+
+	// double m = 0.;
+	// auto max_m = [&m](double d) {
+	// 	if(std::abs(d) > m) m = std::abs(d);
+	// };
+	// u123.visit(max_m);
+	// u123 = u123 / m;
+
 	// STEP2 decompose u123 from Left to Right (LR) and RL
 	ITensor O1t, O3t, SVt, O1, O2, O3, SV1t, SV3t, O2Lt, O2Rt;
 
@@ -713,14 +732,16 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		std::cout<< d << std::endl;
 	};
 	
-	int altlstsquares_iter = 0;
+	int r, altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<double> overlaps;
 	std::vector<double> rt_diffs;
 	std::vector<double> max_niso; // for DEBUG 
 	while (not converged) {
 		
-		for (int r=0; r<=3; r++) {
+		for (int i_rt=0; i_rt<=3; i_rt++) {
+			//r = ((altlstsquares_iter % 2) == 0) ? i_rt : 3-i_rt;
+			r = i_rt;
 
 			// define M,K construction order (defined 
 			// in *.h file in terms of indices of tn)
@@ -911,10 +932,11 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    M = (cmbK * M) * cmbKp;
 		    
 		    // symmetrize
-		    auto Msym = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
-		    	*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp)) ).prime(-1));
+		    // auto Msym = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
+		    // 	*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp)) ).prime(-1));
+		    auto Msym = M;
 
-		    if(dbg && (dbgLvl >= 1)) {
+		    if(dbg && (dbgLvl >= 2)) {
 			    // check small negative eigenvalues
 			    Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 			    ITensor uM, dM;
@@ -929,7 +951,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		    K = cmbK * K;
 		    ITensor mU(combinedIndex(cmbK)),svM,mV;
-			svd(Msym,mU,svM,mV,{"Cutoff",svd_cutoff});
+			svd(Msym,mU,svM,mV);
 
 			if(dbg && (dbgLvl >= 1)) {
 				Print(svM);
@@ -938,16 +960,31 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					std::cout << svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) 
 					<< std::endl;
 			}
+			if(dbg && (dbgLvl >= 1)) {
+				Print(K);
+				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+				for(int isv=1; isv<=K.inds().front().m(); isv++) 
+					std::cout << K.real(K.inds().front()(isv)) << std::endl;
+			}
 		    
 			// Regularize and invert singular value matrix svM
+			double new_norm = 0.0;
 			std::vector<double> elems_regInvSvM;
 			for (int isv=1; isv<=svM.inds().front().m(); isv++) {
-				if (svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) > svd_cutoff)  
+				if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
+					 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
 					elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
 						svM.inds().back()(isv)) );
-				else
+					new_norm += svM.real(svM.inds().front()(isv),svM.inds().back()(isv))*
+						svM.real(svM.inds().front()(isv),svM.inds().back()(isv));
+				} else
 					elems_regInvSvM.push_back(0.0);
 			}
+
+			// new_norm = norm(svM)*norm(svM) / new_norm;
+			// for (int isv=0; isv<elems_regInvSvM.size(); isv++)
+			// 	elems_regInvSvM[isv] = elems_regInvSvM[isv] / sqrt(new_norm);
+
 			auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
 
 		    ITensor niso;
@@ -974,17 +1011,18 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 			}
 
-			//m = 0.;
-		    //niso.visit(max_m);
-		    //niso = niso / m;
 			rt_diffs.push_back(norm(rt[r]-niso));
-			// std::cout<<"altlstsquares_iter: "<< altlstsquares_iter<<" r: "<< r
-			// 	<<" NORM: "<< norm(rt[r]-niso) << std::endl;
  			
  			rt[r] = niso;
 
 			// Check overlap
-			if (r==3) {
+			if (i_rt==3) {
+				// for (int i=0; i<4; i++) {
+				// 	m = 0.;
+				// 	rt[i].visit(max_m);
+				// 	rt[i] = rt[i] / m;
+				// }
+
 				ITensor tempOLP;
 				tempOLP = (prime(conj(niso),4)*M)*niso;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
@@ -1005,7 +1043,15 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				- overlaps[overlaps.size()-4];
 			auto dist_curr = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
 				- overlaps[overlaps.size()-1];
-			if (abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps) converged = true;
+			if (abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps) {
+				converged = true;
+
+				std::ofstream outfile;
+				outfile.open("overlaps.dat", std::ofstream::out | std::ofstream::app);
+				outfile.precision(std::numeric_limits<long double>::digits10 + 1);
+  				outfile << altlstsquares_iter <<" "<< abs(dist_curr) << std::endl;
+  				outfile.close(); 
+			}
 		}
 		// converged = true;
 		// for (int i_rt=1; i_rt<=4; i_rt++) {	
@@ -1024,6 +1070,12 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			<<" "<<rt_diffs[4*i+2]<<" "<<rt_diffs[4*i+3]<<std::endl;
 	}
 
+	// for (int i=0; i<4; i++) {
+	// 	m = 0.;
+	// 	rt[i].visit(max_m);
+	// 	rt[i] = rt[i] / m;
+	// }
+
 	// update on-site tensors of cluster
 	auto newT = getketT(cls.sites.at(tn[0]), uJ1J2.H1, {&rt[0],NULL}, (dbg && (dbgLvl >=3)) );
 	cls.sites.at(tn[0]) = newT;
@@ -1032,9 +1084,10 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	newT = getketT(cls.sites.at(tn[2]), uJ1J2.H3, {&rt[3],NULL}, (dbg && (dbgLvl >=3)) );
 	cls.sites.at(tn[2]) = newT;
 
-	for (int i=0; i<3; i++) {
-		m = 0.;
-		cls.sites.at(tn[i]).visit(max_m);
+	m = std::pow(std::abs(overlaps.back()), (1.0/8.0));
+	for (int i=0; i<4; i++) {
+		//m = 0.;
+		//cls.sites.at(tn[i]).visit(max_m);
 		cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / m;
 	}
 }

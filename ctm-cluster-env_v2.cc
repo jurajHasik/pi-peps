@@ -15,9 +15,13 @@ using namespace itensor;
 
 CtmEnv::CtmEnv () {}
 
-CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c) 
+CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args) 
     : m_name(t_name), d(c.auxBondDim*c.auxBondDim), x(t_x), sizeN(c.sizeN), 
     sizeM(c.sizeM) {
+
+    isoPseudoInvCutoff =  args.getReal("isoPseudoInvCutoff",1.0e-14);
+    DBG     = args.getBool("dbg",false);
+    DBG_LVL = args.getInt("dbgLevel",0);
 
     /* 
      * Intialize tensors and indices compromising the environment
@@ -229,14 +233,25 @@ void CtmEnv::initMockEnv() {
 void CtmEnv::initRndEnv(bool isComplex) {
     //Fill with random numbers (real or complex)
 
-    for ( auto& t : C_LU ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : C_RU ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : C_RD ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : C_LD ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : T_U ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : T_R ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : T_D ) { randomize(t, {"Complex", isComplex}); }
-    for ( auto& t : T_L ) { randomize(t, {"Complex", isComplex}); }
+    auto shift05 = [](double r){ return r-0.5; };
+
+    for ( auto& t : C_LU ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : C_RU ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : C_RD ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : C_LD ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : T_U ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : T_R ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : T_D ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : T_L ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+
+    // for ( auto& t : C_LU ) { t.apply(shift05); }
+    // for ( auto& t : C_RU ) { t.apply(shift05); }
+    // for ( auto& t : C_RD ) { t.apply(shift05); }
+    // for ( auto& t : C_LD ) { t.apply(shift05); }
+    // for ( auto& t : T_U ) { t.apply(shift05); }
+    // for ( auto& t : T_R ) { t.apply(shift05); }
+    // for ( auto& t : T_D ) { t.apply(shift05); }
+    // for ( auto& t : T_L ) { t.apply(shift05); }
 
     normalizePTN();
 
@@ -1684,7 +1699,10 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
     int p1, p2;
 
     // Take the square-root of SV's
-    auto oneOverSqrtT = [](Real r) { return 1.0/sqrt(r); };
+    double loc_psdInvCutoff = isoPseudoInvCutoff;
+    double max_sv;
+    auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
+        { return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
 
     switch(ctmMove) {
         case 'L': {
@@ -1716,7 +1734,13 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 U = ITensor(I_U, I_XH);
                 spec = svd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -1725,9 +1749,10 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 // STEP 3
                 t_iso_begin = std::chrono::steady_clock::now();
 
-                // Create inverse matrix
+                // Create pseudo-inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -1781,7 +1806,13 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
                 spec = svd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -1792,6 +1823,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -1836,7 +1868,13 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(I_U, I_XH);
                 spec = svd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -1847,6 +1885,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -1901,7 +1940,13 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
                 spec = svd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -1912,6 +1957,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 

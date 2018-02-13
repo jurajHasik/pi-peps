@@ -55,7 +55,8 @@ int main( int argc, char *argv[] ) {
 	CtmEnv::init_env_type arg_initEnvType(toINIT_ENV(jsonCls["initEnvType"].get<std::string>()));
 	bool envIsComplex = jsonCls["envIsComplex"].get<bool>();
 	CtmEnv::isometry_type iso_type(toISOMETRY(jsonCls["isoType"].get<std::string>()));
-	CtmEnv::normalization_type norm_type(toNORMALIZATION(jsonCls["normType"].get<std::string>()));
+	double arg_isoPseudoInvCutoff = jsonCls["isoPseudoInvCutoff"].get<double>();
+    CtmEnv::normalization_type norm_type(toNORMALIZATION(jsonCls["normType"].get<std::string>()));
 	
 	//iterations for environment per full update step
 	int arg_envIter = jsonCls["envIter"].get<int>();
@@ -188,7 +189,8 @@ int main( int argc, char *argv[] ) {
     }
 
     // INITIALIZE ENVIRONMENT
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls);
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
+        {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff});
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
             ctmEnv.initMockEnv();
@@ -232,34 +234,60 @@ int main( int argc, char *argv[] ) {
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
-    std::vector< std::vector<std::string> > gates = {
-        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (1 AD ABCD)
-        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (1 BC ABCD) 
+    // std::vector< std::vector<std::string> > gates = {
+    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (1 AD ABCD)
+    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (1 BC ABCD) 
         
-        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (2 AD BADC)
-        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (2 BC BADC)
+    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (2 AD BADC)
+    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (2 BC BADC)
 
-        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (3 AD CDAB) 
-        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (3 BC CDAB)
+    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (3 AD CDAB) 
+    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (3 BC CDAB)
         
-        {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (4 AD DCBA)
-        {"B", "A", "C", "D"}, {"B", "D", "C", "A"}  // (4 BC DCBA)
+    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (4 AD DCBA)
+    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}  // (4 BC DCBA)
+    // };
+
+    // std::vector< std::vector<int> > gate_auxInds = {
+    //     {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0}, // (1)
+    //     {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2}, // (1)
+
+    //     {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2},
+    //     {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
+
+    //     {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0},
+    //     {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, 
        
+    //     {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, // (4)
+    //     {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0}
+    // };
+
+    std::vector< std::vector<std::string> > gates = {
+        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
         
+        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+
+        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
+        
+        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
     };
 
     std::vector< std::vector<int> > gate_auxInds = {
-        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0}, // (1)
-        {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2}, // (1)
+        {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+        {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
 
-        {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2},
-        {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
+        {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+        {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
 
-        {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0},
-        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, 
+        {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+        {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
        
-        {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, // (4)
-        {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0}
+        {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+        {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
     };
 
     Args fuArgs = {
@@ -379,7 +407,7 @@ int main( int argc, char *argv[] ) {
         //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
     
         ctmEnv.updateCluster(cls);
-        //ctmEnv.initCtmrgEnv();
+        ctmEnv.initRndEnv(false);
         ev.setCluster(cls);
     }
 
