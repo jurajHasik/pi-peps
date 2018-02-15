@@ -225,6 +225,7 @@ int main( int argc, char *argv[] ) {
 //    MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
 
     // hold energies
+    std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
     std::vector<double> e_nnH;
     std::vector<double> e_nnH_AC;
     std::vector<double> e_nnH_BD;
@@ -318,16 +319,29 @@ int main( int argc, char *argv[] ) {
 	            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 	        
 	            t_end_int = std::chrono::steady_clock::now();
+
+                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+
 	            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
 	            	<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-	                <<" [sec] E: "<< 
-                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0)) <<" "<<
-                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1)) <<" "<< 
-                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1)) <<" "<<
-                ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1)) << std::endl;
+	                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
+                    << e_curr[3] << std::endl;
 
-	            t_begin_int = std::chrono::steady_clock::now();
-	        }
+                if ((std::abs(e_prev[0]-e_curr[0]) < 1.0e-7) &&
+                    (std::abs(e_prev[1]-e_curr[1]) < 1.0e-7) &&
+                    (std::abs(e_prev[2]-e_curr[2]) < 1.0e-7) &&
+                    (std::abs(e_prev[3]-e_curr[3]) < 1.0e-7) ) {
+
+                    std::cout<< "ENV CONVERGED" << std::endl;
+                    break;
+                }
+
+                e_prev = e_curr;
+                t_begin_int = std::chrono::steady_clock::now();
+            }
 	    }
 
 	    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
@@ -364,51 +378,12 @@ int main( int argc, char *argv[] ) {
             fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
                 gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
         }
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
-        //  	{3,2, 0,3, 1,0, 2,1}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "C", "D", "B"}, 
-        //     {2,3, 1,2, 0,1, 3,0}, fuArgs);
-        
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
-        //     {2,1, 3,2, 0,3, 1,0}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "C", "A", "B"}, 
-        //     {1,2, 0,1, 3,0, 2,3}, fuArgs);
-	
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "C", "D", "B"}, 
-        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"A", "B", "D", "C"}, 
-        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
-    
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "C", "A", "B"}, 
-        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
-        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
-
-        // //####################################################
-
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "D", "C", "A"}, 
-        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "B", "A", "C"}, 
-        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
-
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "A", "B", "D"}, 
-        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "D", "B", "A"}, 
-        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
-    
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "A", "C", "D"}, 
-        //     {1,0, 2,1, 3,2, 0,3}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"B", "D", "C", "A"}, 
-        //     {0,1, 3,0, 2,3, 1,2}, fuArgs);
-
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"C", "D", "B", "A"}, 
-        //     {3,0, 2,3, 1,2, 0,1}, fuArgs);
-        // fullUpdate(uJ1J2, cls, ctmEnv, {"D", "A", "B", "D"}, 
-        //     {0,3, 1,0, 2,1, 3,2}, fuArgs);
     
         ctmEnv.updateCluster(cls);
-        ctmEnv.initRndEnv(false);
+        //ctmEnv.initRndEnv(false);
+        //ctmEnv.initCtmrgEnv();
         ev.setCluster(cls);
+        writeCluster(outClusterFile, cls);
     }
 
     // // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT

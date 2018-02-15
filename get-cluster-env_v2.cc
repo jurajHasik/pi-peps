@@ -320,6 +320,8 @@ int main( int argc, char *argv[] ) {
         << " E_NNN: "<< evNNNavg/8.0<<" E_NNN_split: "<< abs(evNNN[0]-evNNN[7])
         << std::endl;
 
+    std::cout << ctmEnv;
+
     /*ev.expVal_1sO1sO_H( 
         EVBuilder::MPO_Id, EVBuilder::MPO_Id,
         std::make_pair(0, 0), 20);

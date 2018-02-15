@@ -235,14 +235,14 @@ void CtmEnv::initRndEnv(bool isComplex) {
 
     auto shift05 = [](double r){ return r-0.5; };
 
-    for ( auto& t : C_LU ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : C_RU ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : C_RD ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : C_LD ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : T_U ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : T_R ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : T_D ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
-    for ( auto& t : T_L ) { randomize(t, {"Complex", isComplex}); t.apply(shift05); }
+    for ( auto& t : C_LU ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : C_RU ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : C_RD ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : C_LD ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : T_U ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : T_R ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : T_D ) { randomize(t, {"Complex", isComplex}); }
+    for ( auto& t : T_L ) { randomize(t, {"Complex", isComplex}); }
 
     // for ( auto& t : C_LU ) { t.apply(shift05); }
     // for ( auto& t : C_RU ) { t.apply(shift05); }
