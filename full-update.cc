@@ -492,7 +492,7 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
 	return mpo3s;
 }
 
-void initRT(ITensor& rt, std::string INIT_METHOD) {
+void initRT_basic(ITensor& rt, std::string INIT_METHOD, Args const& args) {
 	if(INIT_METHOD == "RANDOM") {
 		randomize(rt);
 	} else if (INIT_METHOD == "DELTA") {
@@ -502,19 +502,18 @@ void initRT(ITensor& rt, std::string INIT_METHOD) {
 		Index impo = findtype(rt.inds(),MPOLINK);
 
 		for (int i=1; i<=a1.m(); i++) {
-			// for (int j=1; j<=impo.m(); j++) {
-			//  	rt.set(a1(i),a2(i),impo(j),1.0);
-			// }
 			rt.set(a1(i),a2(i),impo(1),1.0);
 		}
 	} else if (INIT_METHOD == "NOISE") {
+		auto fuIsoInitNoiseLevel = args.getReal("fuIsoInitNoiseLevel",1.0e-3);
+
 		// expect 2 AUXLINK indices and single MPOLINK
 		Index a1 = findtype(rt.inds(),AUXLINK);
 		Index a2 = ( a1.primeLevel() < IOFFSET ) ? prime(a1,IOFFSET) : prime(a1,-IOFFSET);
 		Index impo = findtype(rt.inds(),MPOLINK);
 
 		randomize(rt);
-		rt = rt * 1.0e-3;
+		rt = rt * fuIsoInitNoiseLevel;
 		for (int i=1; i<=a1.m(); i++) {
 			rt.set(a1(i),a2(i),impo(1),1.0);
 		}
@@ -624,6 +623,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		PrintData(uJ1J2.H3);
 	}
 
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
 	// map MPOs
 	ITensor dummyMPO = ITensor();
 	std::array<const ITensor *, 4> mpo({&uJ1J2.H1, &uJ1J2.H2, &uJ1J2.H3, &dummyMPO});
@@ -707,6 +707,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::cout << std::endl;
 		}
 	}
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
 
 	// Create and initialize reduction tensors RT
 	std::vector<ITensor> rt(4);
@@ -714,80 +715,79 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	rt[1] = ITensor(prime(aux[1],pl[2]), uJ1J2.a12, prime(aux[1],pl[2]+IOFFSET));
 	rt[2] = ITensor(prime(aux[1],pl[3]), uJ1J2.a23, prime(aux[1],pl[3]+IOFFSET));
 	rt[3] = ITensor(prime(aux[2],pl[4]), uJ1J2.a23, prime(aux[2],pl[4]+IOFFSET));
-	for (int i=0; i<=3; i++) {
-		initRT(rt[i],rtInitType);
-		if(dbg && (dbgLvl >= 2)) PrintData(rt[i]);
-	}
-	// guess isometries between tn[0] and tn[1]
-	auto sqrt_T = [](double d) { return sqrt(d); };
-	ITensor ttemp, tdelKet, tdelBra, tRT(1.0);
-	std::array<const itensor::ITensor *, 4> trtp = {{NULL,NULL,NULL,NULL}};
-	for(int r=0; r<=3; r+=3){
-		std::array<int,4> tord = ORD[r];
-		if(dbg && (dbgLvl >= 2)) std::cout <<"GUESS RT "<< tn[tord[0]] <<"-"<< tn[tord[3]] << std::endl;
-		for(int o=0; o<=3; o++) {
-			// construct o'th corner of tmpRT
-			ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
-		 			*mpo[tord[o]], trtp, (dbg && (dbgLvl >= 3)) );
-			if (dbg && (dbgLvl >= 2)) Print(ttemp);
-			if (o<3) {
-				tdelKet = delta(prime(aux[tord[o]],pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
-					prime(aux[tord[(o+1)%4]],pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-				tdelBra = prime(tdelKet,4);
-				ttemp = (ttemp * tdelBra) * tdelKet;
-			} else {
-				tdelKet = ITensor();
-				tdelBra = delta(prime(aux[tord[3]],4+pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
-					prime(aux[tord[0]],4+pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-				ttemp.mapprime(MPOLINK,0,IOFFSET);
-			}
-			if(dbg && (dbgLvl >= 3)) {
-				Print(tdelKet);
-				Print(tdelBra);
-			}
-
-			tRT *= ttemp;
-			if (o==3) tRT = tRT * tdelBra;
-		
-			if(dbg && (dbgLvl >= 3)) Print(tRT);
+	// simple initialization routines
+	if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") 
+		for (int i=0; i<=3; i++) {
+			initRT_basic(rt[i],rtInitType,{"fuIsoInitNoiseLevel",rtInitParam});
+			if(dbg && (dbgLvl >= 3)) PrintData(rt[i]);
 		}
-		if(dbg && (dbgLvl >= 3)) Print(tRT);
-		
-		auto cmb0 = combiner(prime(aux[tord[0]],pl[2*tord[0]+(1-ORD_DIR[r])/2]),
-			noprime(findtype(tRT, MPOLINK)));
-		auto cmb1 = combiner(prime(aux[tord[3]],pl[2*tord[3]+(1+ORD_DIR[r])/2]),
-			prime(noprime(findtype(tRT, MPOLINK)),IOFFSET));
-		if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+	// self-consistent initialization - guess isometries between tn[0] and tn[1]
+	if (rtInitType == "LINKSVD") {
+		ITensor ttemp, tdelKet, tdelBra, tRT(1.0);
+		std::array<const itensor::ITensor *, 4> trtp = {{NULL,NULL,NULL,NULL}};
+		for(int r=0; r<=3; r+=3){
+			std::array<int,4> tord = ORD[r];
+			if(dbg) std::cout <<"GUESS RT "<< tn[tord[0]] <<"-"<< tn[tord[3]] << std::endl;
+			for(int o=0; o<=3; o++) {
+				// construct o'th corner of tmpRT
+				ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
+			 			*mpo[tord[o]], trtp, (dbg && (dbgLvl >= 3)) );
+				if (dbg && (dbgLvl >= 3)) Print(ttemp);
+				if (o<3) {
+					tdelKet = delta(prime(aux[tord[o]],pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
+						prime(aux[tord[(o+1)%4]],pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+					tdelBra = prime(tdelKet,4);
+					ttemp = (ttemp * tdelBra) * tdelKet;
+				} else {
+					tdelKet = ITensor();
+					tdelBra = delta(prime(aux[tord[3]],4+pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
+						prime(aux[tord[0]],4+pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+					ttemp.mapprime(MPOLINK,0,IOFFSET);
+				}
+				if(dbg && (dbgLvl >= 3)) {
+					Print(tdelKet);
+					Print(tdelBra);
+				}
 
-		tRT = (tRT * cmb0) * cmb1;
+				tRT *= ttemp;
+				if (o==3) tRT = tRT * tdelBra;
+			
+				if(dbg && (dbgLvl >= 3)) Print(tRT);
+			}
+			if(dbg && (dbgLvl >= 3)) Print(tRT);
+			
+			auto cmb0 = combiner(prime(aux[tord[0]],pl[2*tord[0]+(1-ORD_DIR[r])/2]),
+				noprime(findtype(tRT, MPOLINK)));
+			auto cmb1 = combiner(prime(aux[tord[3]],pl[2*tord[3]+(1+ORD_DIR[r])/2]),
+				prime(noprime(findtype(tRT, MPOLINK)),IOFFSET));
+			if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
 
-		ITensor tU(combinedIndex(cmb0)),tS,tV;
-		svd(tRT,tU,tS,tV,{"Maxm",aux[0].m()});
+			tRT = (tRT * cmb0) * cmb1;
 
-		//Print(tU);
-		//Print(tV);
-		if(dbg && (dbgLvl >= 2)) PrintData(tS);
+			ITensor tU(combinedIndex(cmb0)),tS,tV;
+			svd(tRT,tU,tS,tV,{"Maxm",aux[0].m()});
 
-		tS.apply(sqrt_T);
-		tS /= norm(tS);
-		
-		// rt[r+(1+ORD_DIR[r])/2-r/3] = ((tU*tS)*delta(commonIndex(tS,tV), 
-		// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-		// rt[r+(1-ORD_DIR[r])/2-r/3] = (((tV*tS)*delta(commonIndex(tS,tU), 
-		// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
-		
-		rt[r+(1+ORD_DIR[r])/2-r/3] = (tU*delta(commonIndex(tS,tU), 
-			prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-		rt[r+(1-ORD_DIR[r])/2-r/3] = ((tV*delta(commonIndex(tS,tV), 
-			prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
-		
+			if(dbg && (dbgLvl >= 2)) PrintData(tS);
+			
+			// rt[r+(1+ORD_DIR[r])/2-r/3] = ((tU*tS)*delta(commonIndex(tS,tV), 
+			// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+			// rt[r+(1-ORD_DIR[r])/2-r/3] = (((tV*tS)*delta(commonIndex(tS,tU), 
+			// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
+			
+			rt[r+(1+ORD_DIR[r])/2-r/3] = (tU*delta(commonIndex(tS,tU), 
+				prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+			rt[r+(1-ORD_DIR[r])/2-r/3] = ((tV*delta(commonIndex(tS,tV), 
+				prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
+			
+			//if(dbg && (dbgLvl >= 3)) {
+				// std::cout<< r+(1-ORD_DIR[r])/2-r/3 <<" ";
+				// Print(rt[r+(1-ORD_DIR[r])/2-r/3]);
+				// std::cout<< r+(1+ORD_DIR[r])/2-r/3 <<" ";
+				// Print(rt[r+(1+ORD_DIR[r])/2-r/3]);
+			//}
 
-		//std::cout<< r+(1-ORD_DIR[r])/2-r/3 <<" ";
-		//Print(rt[r+(1-ORD_DIR[r])/2-r/3]);
-		//std::cout<< r+(1+ORD_DIR[r])/2-r/3 <<" ";
-		//Print(rt[r+(1+ORD_DIR[r])/2-r/3]);
-
-		tRT = ITensor(1.0);
+			tRT = ITensor(1.0);
+		}
 	}
 
 	// Prepare Alternating Least Squares to maximize the overlap
@@ -804,8 +804,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	int r, altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<double> overlaps;
-	std::vector<double> rt_diffs;
-	std::vector<double> max_niso; // for DEBUG 
+	std::vector<double> rt_diffs; 
 	
 	ITensor dbg_D, dbg_svM;
 	while (not converged) {
@@ -1001,84 +1000,79 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
 		    // is given by M^dag K = rt[r]
 		    M = (cmbK * M) * cmbKp;
-		    
+		    K = cmbK * K;
+
 		    // symmetrize
 		    auto Msym = 0.5*(M + ( (conj(M) * delta(combinedIndex(cmbK),prime(combinedIndex(cmbKp),1)))
 		    	*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp)) ).prime(-1));
-		    // auto Msym = M;
 
-		    //if(dbg && (dbgLvl >= 1)) {
-			    // check small negative eigenvalues
-			    Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
-			    ITensor uM, dM;
-			    auto spec = diagHermitian(Msym, uM, dM);
-			    dbg_D = dM;
-			    // Print(spec);
-			    //Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
-				Print(dM);
-				//Print(uM);
+		    // check small negative eigenvalues
+		    Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+		    ITensor uM, dM;
+		    auto spec = diagHermitian(Msym, uM, dM);
+		    dbg_D = dM;
+		    
+		    if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"ORIGINAL SPECTRUM ";
+				Print(dbg_D);
 				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				for(int idm=1; idm<=dM.inds().front().m(); idm++) 
-					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
-						<< std::endl;
-
-				// Find largest (absolute) EV and ...
-				double msign = 1.0;
-				double mval = 0.;
-				std::vector<double> dM_elems;
-				for (int idm=1; idm<=dM.inds().front().m(); idm++) {  
-					dM_elems.push_back(dM.real(dM.inds().front()(idm),dM.inds().back()(idm)));
-					if (std::abs(dM_elems.back()) > mval) {
-						mval = std::abs(dM_elems.back());
-						msign = dM_elems.back()/mval;
-					}
-				}
-
-				if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
-
-				// Drop small negative EV's
-				for (auto & elem : dM_elems) elem = (elem > 0.0) ? elem : 0.0; 
-				dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
-				Print(dM);
-				for(int idm=1; idm<=dM.inds().front().m(); idm++) 
-					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
-						<< std::endl;
-
-				Msym = (uM*dM)*prime(uM);
-				//Print(Msym);
-				Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
-				//Print(Msym);
-
-				//if(	dM.real(dM.inds().front()(dM.inds().front().m()),
-				//   			dM.inds().back()(dM.inds().front().m())) < -1.0e-8 ) {
-					// Negative value
-					// update on-site tensors of cluster
-					// auto newT = getketT(cls.sites.at(tn[0]), uJ1J2.H1, {&rt[0],NULL}, (dbg && (dbgLvl >=3)) );
-					// cls.sites.at(tn[0]) = newT;
-					// newT = getketT(cls.sites.at(tn[1]), uJ1J2.H2, {&rt[1],&rt[2]}, (dbg && (dbgLvl >=3)) );
-					// cls.sites.at(tn[1]) = newT;
-					// newT = getketT(cls.sites.at(tn[2]), uJ1J2.H3, {&rt[3],NULL}, (dbg && (dbgLvl >=3)) );
-					// cls.sites.at(tn[2]) = newT;
-				
-					//writeCluster("neg-value-cls.in", cls);
-				//	std::cout<<"NEGATIVE SPECTRUM"<< std::endl;
-                //	Msym = Msym * -1.0;
-                	//exit(EXIT_FAILURE);
-				//}
-			//}
-
-		    K = cmbK * K;
-		    ITensor mU(combinedIndex(cmbK)),svM,mV;
-			svd(Msym,mU,svM,mV);
-			dbg_svM = svM;
-
-			if(dbg && (dbgLvl >= 1)) {
-				Print(svM);
-				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				for(int isv=1; isv<=svM.inds().front().m(); isv++) 
-					std::cout << svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) 
+				for(int idm=1; idm<=dbg_D.inds().front().m(); idm++) 
+					std::cout << dbg_D.real(dbg_D.inds().front()(idm),dbg_D.inds().back()(idm)) 
 					<< std::endl;
 			}
+
+			// Find largest (absolute) EV and in the case of msign * mval < 0, multiply
+			// dM by -1 as to set the sign of largest (and consecutive) EV to +1
+			double msign = 1.0;
+			double mval = 0.;
+			std::vector<double> dM_elems;
+			for (int idm=1; idm<=dM.inds().front().m(); idm++) {  
+				dM_elems.push_back(dM.real(dM.inds().front()(idm),dM.inds().back()(idm)));
+				if (std::abs(dM_elems.back()) > mval) {
+					mval = std::abs(dM_elems.back());
+					msign = dM_elems.back()/mval;
+				}
+			}
+			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// Drop small (and negative) EV's
+			for (auto & elem : dM_elems) elem = (elem > svd_cutoff) ? elem : 0.0; 
+			dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
+			
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"REFINED SPECTRUM ";
+				Print(dM);
+				for (int idm=1; idm<=dM.inds().front().m(); idm++) 
+					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
+						<< std::endl;
+			}
+
+			// Invert Hermitian matrix Msym
+			std::vector<double> elems_regInvDM;
+			for (int idm=1; idm<=dM.inds().front().m(); idm++) {
+				if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
+						dM.real(dM.inds().front()(1),dM.inds().back()(1))  > svd_cutoff) {  
+					elems_regInvDM.push_back(1.0/dM.real(dM.inds().front()(idm),
+						dM.inds().back()(idm)) );
+				} else
+					elems_regInvDM.push_back(0.0);
+			}
+			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
+
+			//Msym = (uM*dM)*prime(uM);	
+			//Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+
+		    //ITensor mU(combinedIndex(cmbK)),svM,mV;
+			//svd(Msym,mU,svM,mV);
+			//dbg_svM = svM;
+
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	Print(svM);
+			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+			// 	for(int isv=1; isv<=svM.inds().front().m(); isv++) 
+			// 		std::cout << svM.real(svM.inds().front()(isv),svM.inds().back()(isv)) 
+			// 		<< std::endl;
+			// }
 			// if(dbg && (dbgLvl >= 1)) {
 			// 	Print(K);
 			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
@@ -1087,34 +1081,33 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// }
 		    
 			// Regularize and invert singular value matrix svM
-			double new_norm = 0.0;
-			std::vector<double> elems_regInvSvM;
-			for (int isv=1; isv<=svM.inds().front().m(); isv++) {
-				if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
-					 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
-					elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
-						svM.inds().back()(isv)) );
-					new_norm += svM.real(svM.inds().front()(isv),svM.inds().back()(isv))*
-						svM.real(svM.inds().front()(isv),svM.inds().back()(isv));
-				} else
-					elems_regInvSvM.push_back(0.0);
-			}
+			// std::vector<double> elems_regInvSvM;
+			// for (int isv=1; isv<=svM.inds().front().m(); isv++) {
+			// 	if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
+			// 		 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
+			// 		elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
+			// 			svM.inds().back()(isv)) );
+			// 	} else
+			// 		elems_regInvSvM.push_back(0.0);
+			// }
 
-			// new_norm = norm(svM)*norm(svM) / new_norm;
-			// for (int isv=0; isv<elems_regInvSvM.size(); isv++)
-			// 	elems_regInvSvM[isv] = elems_regInvSvM[isv] / sqrt(new_norm);
-
-			auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
-			if(dbg && (dbgLvl >= 1)) {
-				Print(regInvSvM);
-				std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				for(int isv=1; isv<=regInvSvM.inds().front().m(); isv++) 
-					std::cout << regInvSvM.real(regInvSvM.inds().front()(isv),regInvSvM.inds().back()(isv)) 
-					<< std::endl;
-			}
+			// auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	Print(regInvSvM);
+			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+			// 	for(int isv=1; isv<=regInvSvM.inds().front().m(); isv++) 
+			// 		std::cout << regInvSvM.real(regInvSvM.inds().front()(isv),regInvSvM.inds().back()(isv)) 
+			// 		<< std::endl;
+			// }
 
 		    ITensor niso;
-			niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp;
+
+		    // Msym = U^dag D U ==> Msym^-1 = U^-1 D^-1 (U^dag)^-1 = U^dag D^-1 U
+		    Msym = (conj(uM)*regInvDM)*prime(uM);
+			Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+			niso = (Msym*K)*cmbKp;
+
+			//niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp; 
 			// linsystem(M,K,niso,{"plDiff",4,"dbg",true});
 
 			if(dbg && (dbgLvl >= 2)) {
@@ -1143,12 +1136,6 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			// Check overlap
 			if (i_rt==3) {
-				// for (int i=0; i<4; i++) {
-				// 	m = 0.;
-				// 	rt[i].visit(max_m);
-				// 	rt[i] = rt[i] / m;
-				// }
-
 				ITensor tempOLP;
 				tempOLP = (prime(conj(niso),4)*M)*niso;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
@@ -1193,10 +1180,6 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 		}
 		
-		// converged = true;
-		// for (int i_rt=1; i_rt<=4; i_rt++) {	
-		// 	converged = converged && (rt_diffs[rt_diffs.size()-i_rt] < iso_eps);
-		// }
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
 

@@ -57,9 +57,11 @@ int main( int argc, char *argv[] ) {
 	CtmEnv::isometry_type iso_type(toISOMETRY(jsonCls["isoType"].get<std::string>()));
 	double arg_isoPseudoInvCutoff = jsonCls["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(jsonCls["normType"].get<std::string>()));
-	
-	//iterations for environment per full update step
-	int arg_envIter = jsonCls["envIter"].get<int>();
+
+	//max iterations for environment per full update step
+	int arg_maxEnvIter = jsonCls["maxEnvIter"].get<int>();
+    double arg_envEps  = jsonCls["envEpsilon"].get<double>();
+    bool arg_reinitEnv = jsonCls["reinitEnv"].get<bool>();
 
 	// INITIALIZE CLUSTER
 	Cluster cls;
@@ -308,7 +310,7 @@ int main( int argc, char *argv[] ) {
     	t_begin_int = std::chrono::steady_clock::now();
 		
     	// ENTER ENVIRONMENT LOOP
-		for (int envI=1; envI<=arg_envIter; envI++ ) {
+		for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
 
 	        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 	        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
@@ -330,10 +332,12 @@ int main( int argc, char *argv[] ) {
 	                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
                     << e_curr[3] << std::endl;
 
-                if ((std::abs(e_prev[0]-e_curr[0]) < 1.0e-7) &&
-                    (std::abs(e_prev[1]-e_curr[1]) < 1.0e-7) &&
-                    (std::abs(e_prev[2]-e_curr[2]) < 1.0e-7) &&
-                    (std::abs(e_prev[3]-e_curr[3]) < 1.0e-7) ) {
+                // if the difference between energies along NN links is lower then arg_envEps
+                // consider the environment converged
+                if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
+                    (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
+                    (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
+                    (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
                     std::cout<< "ENV CONVERGED" << std::endl;
                     break;
@@ -368,7 +372,7 @@ int main( int argc, char *argv[] ) {
         evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
-        // PERFORM FULL UPDATE
+        // PERFORM FULL UPDATE - Symmetric Trotter decomp
         if( (((fuI-1) / gates.size()) % 2) == 0 ) {
             std::cout << "GATE: " <<(fuI-1)%gates.size() << std::endl;
             fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
@@ -380,8 +384,22 @@ int main( int argc, char *argv[] ) {
         }
     
         ctmEnv.updateCluster(cls);
-        //ctmEnv.initRndEnv(false);
-        //ctmEnv.initCtmrgEnv();
+        // reset environment
+        if (arg_reinitEnv) 
+            switch (arg_initEnvType) {
+                case CtmEnv::INIT_ENV_const1: {
+                    ctmEnv.initMockEnv();
+                    break;
+                }
+                case CtmEnv::INIT_ENV_ctmrg: {
+                    ctmEnv.initCtmrgEnv();
+                    break;
+                }
+                case CtmEnv::INIT_ENV_rnd: {
+                    ctmEnv.initRndEnv(envIsComplex);
+                    break;
+                } 
+            }
         ev.setCluster(cls);
         writeCluster(outClusterFile, cls);
     }
@@ -391,7 +409,7 @@ int main( int argc, char *argv[] ) {
     // t_begin_int = std::chrono::steady_clock::now();
         
     // ENTER ENVIRONMENT LOOP
-    for (int envI=1; envI<=arg_envIter; envI++ ) {
+    for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
 
         ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
@@ -399,12 +417,29 @@ int main( int argc, char *argv[] ) {
         ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
         if ( envI % 1 == 0 ) {
-        //     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
         
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
                 <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec]"<< std::endl;
+                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
+                << e_curr[3] << std::endl;
+            
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+
+            if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
+                (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
+                (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
+                (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
+
+                std::cout<< "ENV CONVERGED" << std::endl;
+                break;
+            }
+
+            e_prev = e_curr;
             t_begin_int = std::chrono::steady_clock::now();
         }
     }

@@ -1,28 +1,31 @@
 {
-	"initBy": "FILE",
+	"initBy": "RND_AB",
 	"physDim": 2,
 	"auxBondDim": 3,
 	"inClusterFile": "test-input/RVB_2x2_ABCD.in",
 	"outClusterFile": "test-cluster.in",
 	
-	"fuIter": 32,
-	"fuIsoInit": "NOISE",
+	"fuIter": 64,
+	"fuIsoInit": "DELTA",
 	"fuIsoInitNoiseLevel": 1.0e-3,
-	"maxAltLstSqrIter": 100,
-	"pseudoInvCutoff": 1.0e-14,
-	"isoEpsilon": 1.0e-8,
+	"maxAltLstSqrIter": 200,
+	"pseudoInvCutoff": 1.0e-8,
+	"isoEpsilon": 1.0e-7,
 	"fuDbg": true,
 	"fuDbgLevel": 1,
 	
-	"tau": 0.01,
+	"tau": 0.15,
 	"J1": 1.0,
 	"J2": 0.0,
 	
-	"auxEnvDim": 18,
+	"auxEnvDim": 12,
 	"ioEnvTag": "test-env-2x2",
 	"initEnvType": "INIT_ENV_ctmrg",
 	"envIsComplex": false,
 	"isoType": "ISOMETRY_T3",
+	"isoPseudoInvCutoff": 1.0e-10,
 	"normType": "NORM_BLE",
-	"envIter": 50
+	"maxEnvIter": 100,
+	"envEpsilon": 1.0e-7,
+	"reinitEnv": true
 }

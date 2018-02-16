@@ -138,7 +138,8 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2);
  * 2-site/3-site/... gate applied 
  *
  */
-void initRT(itensor::ITensor& rt, std::string INIT_METHOD);
+void initRT_basic(itensor::ITensor& rt, std::string INIT_METHOD, 
+	itensor::Args const& args = itensor::Args::global());
 
 /*
  * contract on-site bra-ket tensor s with given operator op, 

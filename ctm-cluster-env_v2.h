@@ -143,8 +143,10 @@ class CtmEnv
 
     /*
      * Return tensor resulting from contraction of on-site tensor T (ket)
-     * with its T* (bra) counterpart through physical index
-     * If expose = true, the physical index is not contracted
+     * with its T* (bra) counterpart through physical index and fuse aux-bonds
+     * of bar and ket parts
+     * If expose = true, the physical index is not contracted, but aux-bonds are 
+     * fused
      */
     itensor::ITensor contractOST(itensor::ITensor const& T,
         bool expose = false) const;
@@ -249,13 +251,19 @@ class CtmEnv
 
     CtmSpec getCtmSpec() const;
 
+    // DEPRECATED
     // Compatibility with LEGACY ctm-cluster-io.h, cluster-ev-builder.h
     /* Store canonical environment = one of the original cluster
      */
     CtmData getCtmData() const;
-
+    // DEPRECATED
     CtmData getCtmData_DBG() const;
 
+    /* 
+     * Export Full environment of cluster - C's and T's for every 
+     * non-equivalent lattice site
+     *
+     */
     CtmData_Full getCtmData_Full_DBG(bool dbg = false) const;
 
     std::ostream& print(std::ostream& s) const;
