@@ -19,7 +19,7 @@ APP6=opt-full-update-2x2-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS =cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
+HEADERS =full-update.h simple-update.h cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 #HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
@@ -32,6 +32,8 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS6=cluster-ev-builder.h full-update.h ctm-cluster-env_v2.h \
 	ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
+
+HEADERSN=ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -48,6 +50,8 @@ CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 CCFILES6=$(APP6).cc cluster-ev-builder.cc full-update.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
 
+CCFILESN=ctm-cluster-io.cc ctm-cluster.cc
+
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
@@ -59,6 +63,8 @@ GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
 OBJECTS6=$(patsubst %.cc,%.o, $(CCFILES6))
+
+OBJECTSN=$(patsubst %.cc,%.o, $(CCFILESN))
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
@@ -103,6 +109,9 @@ $(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
+
+normalize-cls: $(OBJECTSN) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTSN) normalize-cls.cc -o normalize-cls.x $(LIBFLAGS)
 
 test-lin-sys: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test-lin-sys.cc -o test-lin-sys.x $(LIBFLAGS)

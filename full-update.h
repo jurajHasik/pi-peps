@@ -174,7 +174,7 @@ itensor::ITensor getketT(itensor::ITensor const& s, itensor::ITensor const& op,
  *   ...--pl[6]--tn[3]--pl[7]--(pl[0]--tn[0])
  *
  */
-void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+itensor::Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl, 
 	itensor::Args const& args = itensor::Args::global());
 

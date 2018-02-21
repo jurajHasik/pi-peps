@@ -599,7 +599,7 @@ ITensor getketT(ITensor const& s, ITensor const& op,
 	return res;
 }
 
-void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl, Args const& args) {
 
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
@@ -609,6 +609,10 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
 	auto rtInitType = args.getString("fuIsoInit","DELTA");
     auto rtInitParam = args.getReal("fuIsoInitNoiseLevel",1.0e-3);
+    auto otNormType = args.getString("otNormType");
+
+    // prepare to hold diagnostic data
+    Args diag_data = Args::global();
 
 	std::cout<<"GATE: ";
 	for(int i=0; i<=3; i++) {
@@ -716,13 +720,14 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	rt[2] = ITensor(prime(aux[1],pl[3]), uJ1J2.a23, prime(aux[1],pl[3]+IOFFSET));
 	rt[3] = ITensor(prime(aux[2],pl[4]), uJ1J2.a23, prime(aux[2],pl[4]+IOFFSET));
 	// simple initialization routines
-	if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") 
+	if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") { 
 		for (int i=0; i<=3; i++) {
 			initRT_basic(rt[i],rtInitType,{"fuIsoInitNoiseLevel",rtInitParam});
 			if(dbg && (dbgLvl >= 3)) PrintData(rt[i]);
 		}
+	}
 	// self-consistent initialization - guess isometries between tn[0] and tn[1]
-	if (rtInitType == "LINKSVD") {
+	else if (rtInitType == "LINKSVD") {
 		ITensor ttemp, tdelKet, tdelBra, tRT(1.0);
 		std::array<const itensor::ITensor *, 4> trtp = {{NULL,NULL,NULL,NULL}};
 		for(int r=0; r<=3; r+=3){
@@ -788,6 +793,9 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			tRT = ITensor(1.0);
 		}
+	} else {
+		std::cout<<"Unsupported fu-isometry initialization: "<< rtInitType << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
 	// Prepare Alternating Least Squares to maximize the overlap
@@ -806,6 +814,8 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<double> overlaps;
 	std::vector<double> rt_diffs; 
 	
+	double diag_maxMsymLE, diag_maxMasymLE;
+	double diag_maxMsymFN, diag_maxMasymFN;
 	ITensor dbg_D, dbg_svM;
 	while (not converged) {
 		
@@ -974,17 +984,21 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2]),
 					4+pl[2*ord[3]+(1+ORD_DIR[r])/2],
 					4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]),MPOLINK,-8);
-				//Print(Mdag);
+				
 				ITensor mherm = 0.5*(M + Mdag);
 				ITensor mantiherm = 0.5*(M - Mdag);
-				//Print(mherm);
 
 				m = 0.;
 		        M.visit(max_m);
+		        diag_maxMsymLE = m;
 		        std::cout<<"M max element: "<< m <<std::endl;
 				m = 0.;
 		        mantiherm.visit(max_m);
+		        diag_maxMasymLE = m;
 		        std::cout<<"M-Mdag max element: "<< m <<std::endl;
+			
+				diag_maxMsymFN  = norm(mherm);
+				diag_maxMasymFN = norm(mantiherm);
 			}
 
 		    auto cmbK  = combiner(K.inds()[0], K.inds()[1], K.inds()[2]);
@@ -1052,7 +1066,7 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			for (int idm=1; idm<=dM.inds().front().m(); idm++) {
 				if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
 						dM.real(dM.inds().front()(1),dM.inds().back()(1))  > svd_cutoff) {  
-					elems_regInvDM.push_back(1.0/dM.real(dM.inds().front()(idm),
+					elems_regInvDM.push_back(msign*1.0/dM.real(dM.inds().front()(idm),
 						dM.inds().back()(idm)) );
 				} else
 					elems_regInvDM.push_back(0.0);
@@ -1156,28 +1170,8 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				- overlaps[overlaps.size()-4];
 			auto dist_curr = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
 				- overlaps[overlaps.size()-1];
-			if (abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps) {
+			if (std::abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps)
 				converged = true;
-
-				std::ofstream outfile;
-				outfile.open("overlaps.dat", std::ofstream::out | std::ofstream::app);
-				outfile.precision(std::numeric_limits<long double>::digits10 + 1);
-  				outfile << altlstsquares_iter <<" "<< dist_curr << std::endl;
-  				outfile.close(); 
-			
-			    // check small negative eigenvalues
-				// Print(dbg_D);    
-				// std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				// for(int idm=1; idm<=dbg_D.inds().front().m(); idm++) 
-				// 	std::cout << dbg_D.real(dbg_D.inds().front()(idm),dbg_D.inds().back()(idm)) 
-				// 		<< std::endl;
-			
-				// Print(dbg_svM);
-				// std::setprecision(std::numeric_limits<long double>::digits10 + 1);
-				// for(int isv=1; isv<=dbg_svM.inds().front().m(); isv++) 
-				// 	std::cout << dbg_svM.real(dbg_svM.inds().front()(isv),dbg_svM.inds().back()(isv)) 
-				// 	<< std::endl;
-			}
 		}
 		
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
@@ -1201,25 +1195,50 @@ void fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	newT = getketT(cls.sites.at(tn[2]), uJ1J2.H3, {&rt[3],NULL}, (dbg && (dbgLvl >=3)) );
 	cls.sites.at(tn[2]) = newT;
 
+	// max element of on-site tensors
+	std::string diag_maxElem;
 	for (int i=0; i<4; i++) {
 		m = 0.;
 		cls.sites.at(tn[i]).visit(max_m);
-		std::cout<< tn[i] <<" : "<< m <<" ";
+		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m) +" ";
+	}
+	std::cout << diag_maxElem << std::endl;
+
+	// normalize updated tensors
+	if (otNormType == "PTN3") {
+		double nn = std::pow(std::abs(overlaps[overlaps.size()-3]), (1.0/6.0));
+		for (int i=0; i<3; i++) cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
+	} else if (otNormType == "PTN4") {
+		double nn = std::pow(std::abs(overlaps[overlaps.size()-3]), (1.0/8.0));
+		for (int i=0; i<4; i++) cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
+	} else if (otNormType == "BLE") {
+		for (int i=0; i<3; i++) {
+			m = 0.;
+			cls.sites.at(tn[i]).visit(max_m);
+			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / m;
+		}
+	} else if (otNormType == "NONE") {
+	} else {
+		std::cout<<"Unsupported on-site tensor normalisation after full update: "
+			<< otNormType << std::endl;
+		exit(EXIT_FAILURE);
 	}
 
-	double nn = std::pow(std::abs(overlaps.back()), (1.0/6.0));
-	for (int i=0; i<3; i++) {
-		cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
+	// prepare and return diagnostic data
+	diag_data.add("alsSweep",altlstsquares_iter);
+	diag_data.add("siteMaxElem",diag_maxElem);
+	if(dbg && (dbgLvl >= 1)) {
+		diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
+		diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	}
+	auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
+		- overlaps[overlaps.size()-4];
+	auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
+		- overlaps[overlaps.size()-1];
+	diag_data.add("finalDist0",dist0);
+	diag_data.add("finalDist1",dist1);
 
-	//for (int i=0; i<3; i++) {
-	// 	m = 0.;
-	// 	cls.sites.at(tn[i]).visit(max_m);
-	// 	//std::cout<< tn[i] <<" : "<< m <<" ";
-	// 	cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / m;
-	//}
-
-	std::cout << std::endl;
+	return diag_data;
 }
 
 std::ostream& 

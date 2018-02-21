@@ -44,6 +44,7 @@ int main( int argc, char *argv[] ) {
     int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
     double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
     double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
+    std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
 	//time step
@@ -237,60 +238,105 @@ int main( int argc, char *argv[] ) {
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
+    // DEFINE GATE SEQUENCE
     // std::vector< std::vector<std::string> > gates = {
-    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (1 AD ABCD)
-    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (1 BC ABCD) 
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
         
-    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (2 AD BADC)
-    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (2 BC BADC)
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
 
-    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (3 AD CDAB) 
-    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}, // (3 BC CDAB)
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
         
-    //     {"A", "B", "D", "C"}, {"A", "C", "D", "B"}, // (4 AD DCBA)
-    //     {"B", "A", "C", "D"}, {"B", "D", "C", "A"}  // (4 BC DCBA)
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
     // };
 
     // std::vector< std::vector<int> > gate_auxInds = {
-    //     {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0}, // (1)
-    //     {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2}, // (1)
+    //     {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+    //     {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
 
-    //     {3,0, 2,3, 1,2, 0,1}, {0,3, 1,0, 2,1, 3,2},
-    //     {3,2, 0,3, 1,0, 2,1}, {2,3, 1,2, 0,1, 3,0},
+    //     {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+    //     {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
 
-    //     {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0},
-    //     {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, 
+    //     {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+    //     {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
        
-    //     {1,0, 2,1, 3,2, 0,3}, {0,1, 3,0, 2,3, 1,2}, // (4)
-    //     {1,2, 0,1, 3,0, 2,3}, {2,1, 3,2, 0,3, 1,0}
+    //     {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+    //     {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+    // };
+
+    // std::vector< std::vector<std::string> > gates = {
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (1 AD ABCD)
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (1 BC ABCD) 
+        
+    //     {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (2 BC BADC)
+    //     {"D", "C", "A", "B"}, {"A", "B", "D", "C"}, // (2 AD BADC)
+        
+    //     {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (3 AD CDAB) 
+    //     {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (3 BC CDAB)
+
+    //     {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (4 BC DCBA)        
+    //     {"D", "C", "A", "B"}, {"A", "B", "D", "C"}  // (4 AD DCBA)
+    // };
+
+    // std::vector< std::vector<int> > gate_auxInds = {
+    //     {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+    //     {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+
+    //     {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+    //     {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+        
+    //     {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+    //     {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
+
+    //     {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},        
+    //     {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3}
     // };
 
     std::vector< std::vector<std::string> > gates = {
-        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
-        
-        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+        {"A", "B", "D", "C"},
+        {"C", "D", "B", "A"},
+        {"D", "C", "A", "B"},
+        {"B", "A", "C", "D"},
 
-        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
-        
-        {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-        {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
+        {"B", "A", "C", "D"},
+        {"D", "C", "A", "B"},
+        {"C", "D", "B", "A"},
+        {"A", "B", "D", "C"},
+
+        {"D", "C", "A", "B"},
+        {"B", "A", "C", "D"},
+        {"A", "B", "D", "C"},
+        {"C", "D", "B", "A"},
+
+        {"C", "D", "B", "A"}, 
+        {"A", "B", "D", "C"},
+        {"B", "A", "C", "D"},
+        {"D", "C", "A", "B"}
     };
 
     std::vector< std::vector<int> > gate_auxInds = {
-        {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-        {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+        {3,2, 0,3, 1,0, 2,1},
+        {3,0, 2,3, 1,2, 0,1},
+        {3,0, 2,3, 1,2, 0,1},
+        {3,2, 0,3, 1,0, 2,1},
 
-        {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-        {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+        {3,0, 2,3, 1,2, 0,1},
+        {3,2, 0,3, 1,0, 2,1},
+        {3,2, 0,3, 1,0, 2,1},
+        {3,0, 2,3, 1,2, 0,1},
 
-        {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-        {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-       
-        {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-        {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+        {1,0, 2,1, 3,2, 0,3},
+        {1,2, 0,1, 3,0, 2,3},
+        {1,2, 0,1, 3,0, 2,3}, 
+        {1,0, 2,1, 3,2, 0,3},
+
+        {1,2, 0,1, 3,0, 2,3},
+        {1,0, 2,1, 3,2, 0,3},
+        {1,0, 2,1, 3,2, 0,3},
+        {1,2, 0,1, 3,0, 2,3}
     };
 
     Args fuArgs = {
@@ -300,8 +346,14 @@ int main( int argc, char *argv[] ) {
         "fuIsoInit",arg_fuIsoInit,
         "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
         "pseudoInvCutoff",pseudoInvCutoff,
-        "isoEpsilon",isoEpsilon
+        "isoEpsilon",isoEpsilon,
+        "otNormType",arg_otNormType
     };
+    // Diagnostic data
+    std::vector<int> diag_ctmIter;
+    std::vector< Args > diagData_fu;
+    Args diag_fu;
+
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
@@ -339,6 +391,7 @@ int main( int argc, char *argv[] ) {
                     (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
                     (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
+                    diag_ctmIter.push_back(envI);
                     std::cout<< "ENV CONVERGED" << std::endl;
                     break;
                 }
@@ -375,14 +428,29 @@ int main( int argc, char *argv[] ) {
         // PERFORM FULL UPDATE - Symmetric Trotter decomp
         if( (((fuI-1) / gates.size()) % 2) == 0 ) {
             std::cout << "GATE: " <<(fuI-1)%gates.size() << std::endl;
-            fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
                 gate_auxInds[(fuI-1)%gates.size()], fuArgs);
         } else {
             std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
-            fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
+            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
                 gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
         }
-    
+        diagData_fu.push_back(diag_fu);
+
+        // // PERFORM FULL UPDATE - Symmetric Trotter decomp
+        // for(int xx=0; xx<gates.size(); xx++) {
+        //     std::cout << "GATE: " << xx << std::endl;
+        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[xx], 
+        //         gate_auxInds[xx], fuArgs);
+        //     diagData_fu.push_back(diag_fu);
+        // }
+        // for(int xx=gates.size()-1; xx>=0; xx--) {
+        //     std::cout << "GATE: " << xx << std::endl;
+        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[xx], 
+        //         gate_auxInds[xx], fuArgs);
+        //     diagData_fu.push_back(diag_fu);
+        // }
+
         ctmEnv.updateCluster(cls);
         // reset environment
         if (arg_reinitEnv) 
@@ -515,4 +583,16 @@ int main( int argc, char *argv[] ) {
 
     // Store final new cluster
     writeCluster(outClusterFile, cls);
+
+    // write out diagnostic data of full-update
+    for (int i=0; i<arg_fuIter; i++) {
+        std::cout<< i <<" "<< diag_ctmIter[i] <<" "<< diagData_fu[i].getInt("alsSweep",0)
+            <<" "<< diagData_fu[i].getString("siteMaxElem")
+            <<" "<< diagData_fu[i].getReal("finalDist0",0.0)
+            <<" "<< diagData_fu[i].getReal("finalDist1",0.0);
+        if (arg_fuDbg && (arg_fuDbgLevel >=1))
+            std::cout<<" "<< diagData_fu[i].getReal("ratioNonSymLE",0.0)
+            <<" "<< diagData_fu[i].getReal("ratioNonSymFN",0.0);
+        std::cout<<std::endl;
+    }
 }
