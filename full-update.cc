@@ -1209,8 +1209,13 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		double nn = std::pow(std::abs(overlaps[overlaps.size()-3]), (1.0/6.0));
 		for (int i=0; i<3; i++) cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
 	} else if (otNormType == "PTN4") {
-		double nn = std::pow(std::abs(overlaps[overlaps.size()-3]), (1.0/8.0));
-		for (int i=0; i<4; i++) cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
+		double nn = std::sqrt(std::abs(overlaps[overlaps.size()-3]));
+		double ot_norms_tot = 0.0;
+		std::vector<double> ot_norms;
+		for (int i=0; i<4; i++) 
+			{ ot_norms.push_back(norm(cls.sites.at(tn[i]))); ot_norms_tot += ot_norms.back(); } 
+		for (int i=0; i<4; i++) cls.sites.at(tn[i]) = 
+			cls.sites.at(tn[i]) / std::pow(nn, (ot_norms[i]/ot_norms_tot));
 	} else if (otNormType == "BLE") {
 		for (int i=0; i<3; i++) {
 			m = 0.;
