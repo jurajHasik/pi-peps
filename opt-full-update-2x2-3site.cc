@@ -301,7 +301,7 @@ int main( int argc, char *argv[] ) {
         };
     }
     else if (arg_fuGateSeq == "SYM3") {
-        std::vector< std::vector<std::string> > gates = {
+        gates = {
             {"A", "B", "D", "C"},
             {"C", "D", "B", "A"},
             {"D", "C", "A", "B"},
@@ -323,7 +323,7 @@ int main( int argc, char *argv[] ) {
             {"D", "C", "A", "B"}
         };
 
-        std::vector< std::vector<int> > gate_auxInds = {
+        gate_auxInds = {
             {3,2, 0,3, 1,0, 2,1},
             {3,0, 2,3, 1,2, 0,1},
             {3,0, 2,3, 1,2, 0,1},
