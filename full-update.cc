@@ -833,7 +833,50 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 
 			// construct matrix M, which is defined as <psi~|psi~> = rt[r]^dag * M * rt[r]
-			if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
+// OLD M CONSTRUCTION			
+			// if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
+			// ITensor temp, deltaKet, deltaBra, M(1.0);
+			// std::array<const itensor::ITensor *, 4> rtp; // holds reduction tensor pointers => rtp
+			// for(int o=0; o<=3; o++) {
+
+			// 	// depending on choosen order (r) set up rtp for current site o
+			// 	for (int i=0; i<=3; i++) 
+			// 		rtp[i] = (RTPM[r][o][i] >= 0) ? &rt[RTPM[r][o][i]] : NULL;
+			
+			// 	if(dbg && (dbgLvl >= 3)) {
+			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
+			// 			<< tn[ord[o]] << std::endl;
+			// 		for(int i=0; i<=3; i++) {std::cout << RTPM[r][o][i] <<" ";}
+			// 		std::cout << std::endl;
+			// 	}
+
+			// 	// construct o'th corner of M
+			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
+ 		//  			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
+			// 	if(dbg && (dbgLvl >=3)) Print(temp);
+			// 	if (o<3) {
+			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
+			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+			// 		deltaBra = prime(deltaKet,4);
+			// 		temp = (temp * deltaBra) * deltaKet;
+			// 	} else {
+			// 		deltaKet = delta(prime(aux[ord[3]],IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]), 
+			// 			prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[r])/2]));
+			// 		deltaBra = prime(deltaKet,4);
+			// 	}
+			// 	if(dbg && (dbgLvl >= 3)) {
+			// 		Print(deltaKet);
+			// 		Print(deltaBra);
+			// 	}
+
+			// 	M *= temp;
+			// 	if (o==3) M = (M * deltaBra) * deltaKet;
+			
+			// 	if(dbg && (dbgLvl >= 3)) Print(M);
+			// }
+// END OLD M CONSTRUCTION
+
+		if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
 			ITensor temp, deltaKet, deltaBra, M(1.0);
 			std::array<const itensor::ITensor *, 4> rtp; // holds reduction tensor pointers => rtp
 			for(int o=0; o<=3; o++) {
@@ -1038,49 +1081,51 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// Find largest (absolute) EV and in the case of msign * mval < 0, multiply
 			// dM by -1 as to set the sign of largest (and consecutive) EV to +1
 // SYM SOLUTION
-			// double msign = 1.0;
-			// double mval = 0.;
-			// std::vector<double> dM_elems;
-			// for (int idm=1; idm<=dM.inds().front().m(); idm++) {  
-			// 	dM_elems.push_back(dM.real(dM.inds().front()(idm),dM.inds().back()(idm)));
-			// 	if (std::abs(dM_elems.back()) > mval) {
-			// 		mval = std::abs(dM_elems.back());
-			// 		msign = dM_elems.back()/mval;
-			// 	}
-			// }
-			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+			double msign = 1.0;
+			double mval = 0.;
+			std::vector<double> dM_elems;
+			for (int idm=1; idm<=dM.inds().front().m(); idm++) {  
+				dM_elems.push_back(dM.real(dM.inds().front()(idm),dM.inds().back()(idm)));
+				if (std::abs(dM_elems.back()) > mval) {
+					mval = std::abs(dM_elems.back());
+					msign = dM_elems.back()/mval;
+				}
+			}
+			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// // Drop small (and negative) EV's
-			// for (auto & elem : dM_elems) elem = (elem > svd_cutoff) ? elem : 0.0; 
-			// dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
+			// Drop small (and negative) EV's
+			for (auto & elem : dM_elems) elem = (elem > svd_cutoff) ? elem : 0.0; 
+			dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
 			
-			// if(dbg && (dbgLvl >= 1)) {
-			// 	std::cout<<"REFINED SPECTRUM ";
-			// 	Print(dM);
-			// 	for (int idm=1; idm<=dM.inds().front().m(); idm++) 
-			// 		std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
-			// 			<< std::endl;
-			// }
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"REFINED SPECTRUM ";
+				Print(dM);
+				for (int idm=1; idm<=dM.inds().front().m(); idm++) 
+					std::cout << dM.real(dM.inds().front()(idm),dM.inds().back()(idm)) 
+						<< std::endl;
+			}
 
-			// // Invert Hermitian matrix Msym
-			// std::vector<double> elems_regInvDM;
-			// for (int idm=1; idm<=dM.inds().front().m(); idm++) {
-			// 	if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
-			// 			dM.real(dM.inds().front()(1),dM.inds().back()(1))  > svd_cutoff) {  
-			// 		elems_regInvDM.push_back(msign*1.0/dM.real(dM.inds().front()(idm),
-			// 			dM.inds().back()(idm)) );
-			// 	} else
-			// 		elems_regInvDM.push_back(0.0);
-			// }
-			// auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
+			// Invert Hermitian matrix Msym
+			std::vector<double> elems_regInvDM;
+			for (int idm=1; idm<=dM.inds().front().m(); idm++) {
+				if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
+						dM.real(dM.inds().front()(1),dM.inds().back()(1))  > svd_cutoff) {  
+					elems_regInvDM.push_back(msign*1.0/dM.real(dM.inds().front()(idm),
+						dM.inds().back()(idm)) );
+				} else
+					elems_regInvDM.push_back(0.0);
+			}
+			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
 // END SYM SOLUTION
 
 			//Msym = (uM*dM)*prime(uM);	
 			//Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 
-		    ITensor mU(combinedIndex(cmbK)),svM,mV;
-			svd(M,mU,svM,mV);
-			dbg_svM = svM;
+// ASYM SOLUTION
+		 // 	ITensor mU(combinedIndex(cmbK)),svM,mV;
+			// svd(M,mU,svM,mV);
+			// dbg_svM = svM;
+// END ASYM SOLUTION
 
 			// if(dbg && (dbgLvl >= 1)) {
 			// 	Print(svM);
@@ -1096,18 +1141,20 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// 		std::cout << K.real(K.inds().front()(isv)) << std::endl;
 			// }
 		    
-			// Regularize and invert singular value matrix svM
-			std::vector<double> elems_regInvSvM;
-			for (int isv=1; isv<=svM.inds().front().m(); isv++) {
-				if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
-					 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
-					elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
-						svM.inds().back()(isv)) );
-				} else
-					elems_regInvSvM.push_back(0.0);
-			}
+// ASYM SOLUTION
+			// // Regularize and invert singular value matrix svM
+			// std::vector<double> elems_regInvSvM;
+			// for (int isv=1; isv<=svM.inds().front().m(); isv++) {
+			// 	if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
+			// 		 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
+			// 		elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
+			// 			svM.inds().back()(isv)) );
+			// 	} else
+			// 		elems_regInvSvM.push_back(0.0);
+			// }
 
-			auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
+			// auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
+// END ASYM SOLUTION
 			// if(dbg && (dbgLvl >= 1)) {
 			// 	Print(regInvSvM);
 			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
@@ -1120,12 +1167,14 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		    // Msym = U^dag D U ==> Msym^-1 = U^-1 D^-1 (U^dag)^-1 = U^dag D^-1 U
 // SYM SOLUTION
-		 	// Msym = (conj(uM)*regInvDM)*prime(uM);
-			// Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
-			// niso = (Msym*K)*cmbKp;
+		 	Msym = (conj(uM)*regInvDM)*prime(uM);
+			Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
+			niso = (Msym*K)*cmbKp;
 // END SYM SOLUTION
 
-			niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp; 
+// ASYM SOLUTION
+			// niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp; 
+// END ASYM SOLUTION
 			// linsystem(M,K,niso,{"plDiff",4,"dbg",true});
 
 			if(dbg && (dbgLvl >= 2)) {
@@ -1148,7 +1197,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 			}
 
-			rt_diffs.push_back(norm(rt[r]-niso));
+			//rt_diffs.push_back(norm(rt[r]-niso));
+			rt_diffs.push_back(norm(rt[r]));
  			
  			rt[r] = niso;
 
@@ -1232,6 +1282,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			<< otNormType << std::endl;
 		exit(EXIT_FAILURE);
 	}
+
+	for (int r=0; r<4; r++) { PrintData(rt[r]); }
 
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);

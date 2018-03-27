@@ -119,6 +119,13 @@ test-lin-sys: $(ITENSOR_LIBS)
 test-lin-sys-g: mkdebugdir $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) test-lin-sys.cc -o test-lin-sys-g.x $(LIBGFLAGS)
 
+test-mklsvd: $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) test-mklsvd.cc -o test-mklsvd.x $(LIBFLAGS)
+
+test-mklsvd-g: mkdebugdir $(ITENSOR_GLIBS)
+	$(CCCOM) $(CCGFLAGS) test-mklsvd.cc -o test-mklsvd-g.x $(LIBGFLAGS)
+
+
 clean:
 	rm -fr .debug_objs *.o $(APP).x $(APP)-g.x
 

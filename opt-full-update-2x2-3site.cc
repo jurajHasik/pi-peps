@@ -344,6 +344,34 @@ int main( int argc, char *argv[] ) {
             {1,0, 2,1, 3,2, 0,3},
             {1,2, 0,1, 3,0, 2,3}
         };
+    } else if (arg_fuGateSeq == "SYM4") {
+        gates = {
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"},
+
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
+
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+
+            {"D", "C", "A", "B"}, 
+            {"B", "A", "C", "D"}
+        };
+
+        gate_auxInds = {
+            {3,0, 2,3, 1,2, 0,1},
+            {1,0, 2,1, 3,2, 0,3},
+
+            {3,0, 2,3, 1,2, 0,1},
+            {1,0, 2,1, 3,2, 0,3},
+
+            {3,0, 2,3, 1,2, 0,1},
+            {1,0, 2,1, 3,2, 0,3},
+
+            {3,0, 2,3, 1,2, 0,1},
+            {1,0, 2,1, 3,2, 0,3}
+        };
     } else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
@@ -436,15 +464,15 @@ int main( int argc, char *argv[] ) {
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
         // PERFORM FULL UPDATE - Symmetric Trotter decomp
-        if( (((fuI-1) / gates.size()) % 2) == 0 ) {
-            std::cout << "GATE: " <<(fuI-1)%gates.size() << std::endl;
+        //if( (((fuI-1) / gates.size()) % 2) == 0 ) {
+            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
                 gate_auxInds[(fuI-1)%gates.size()], fuArgs);
-        } else {
-            std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
-            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
-                gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
-        }
+        // } else {
+        //     std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
+        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
+        //         gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
+        // }
         diagData_fu.push_back(diag_fu);
 
         // // PERFORM FULL UPDATE - Symmetric Trotter decomp
