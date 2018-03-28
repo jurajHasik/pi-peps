@@ -1018,15 +1018,15 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			if (dbg && (dbgLvl >= 1)) {
 				std::cout <<"Check Hermicity of M"<< std::endl;
 				std::cout <<"swapprime: "<< pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
-					<< IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2] << std::endl;
-				std::cout <<"swapprime: "<< 4+pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
+					<< 4+pl[2*ord[3]+(1+ORD_DIR[r])/2] << std::endl;
+				std::cout <<"swapprime: "<< IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2] <<" <-> "
 					<< 4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2] << std::endl;
 				auto Mdag = mapprime(conj(M), MPOLINK,0,12, MPOLINK,4,8);
 				Mdag = prime(swapPrime(swapPrime(Mdag, 
-					pl[2*ord[3]+(1+ORD_DIR[r])/2],
-					IOFFSET+pl[2*ord[3]+(1+ORD_DIR[r])/2]),
-					4+pl[2*ord[3]+(1+ORD_DIR[r])/2],
-					4+IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]),MPOLINK,-8);
+					    pl[2*ord[3]+(1+ORD_DIR[r])/2],
+					4 + pl[2*ord[3]+(1+ORD_DIR[r])/2]),
+					  IOFFSET + pl[2*ord[3]+(1+ORD_DIR[r])/2],
+					4+IOFFSET + pl[2*ord[3]+(1+ORD_DIR[r])/2]),MPOLINK,-8);
 				
 				ITensor mherm = 0.5*(M + Mdag);
 				ITensor mantiherm = 0.5*(M - Mdag);
