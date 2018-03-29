@@ -34,6 +34,7 @@ int main( int argc, char *argv[] ) {
 	//define Hamiltonian
 	double arg_J1 = jsonCls["J1"].get<double>();
 	double arg_J2 = jsonCls["J2"].get<double>();
+    double arg_lambda = jsonCls["LAMBDA"].get<double>();
 
 	//read simulation parameters
 
@@ -225,7 +226,7 @@ int main( int argc, char *argv[] ) {
 
     // SETUP OPTIMIZATION LOOP
     // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
-    MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2));
+    MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
 //    MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
 
     // hold energies

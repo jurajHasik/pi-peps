@@ -130,7 +130,7 @@ MPO_3site getMPO3s_Id_v2(int physDim, bool dbg = false);
  */
 MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
-MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2);
+MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda);
 
 /*
  * Initialize isometry (reduction tensors - RT) which define a 

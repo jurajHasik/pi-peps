@@ -312,7 +312,7 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2) {
 	return mpo3s;
 }
 
-MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
+MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda) {
 	int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
 	std::cout.precision(10);
 
@@ -326,15 +326,21 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
 	// STEP1 define exact U_123 = exp(J1(S_1.S_2 + S_2.S_3) + 2*J2(S_1.S_3))
 	double a = -tau*J1/8.0;
 	double b = -tau*J2/4.0;
+	double el_E0 = lambda*tau;
 	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
-	double el1 = exp(2.0*a + b);
+	double el1 = exp(2.0*a + b)*exp(el_E0);
 	u123.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el1);
 	u123.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el1);
-	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))+3.0);
+	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))+3.0)*exp(el_E0);
 	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el2);
 	u123.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el2);
 	u123.set(s1(2),s2(1),s3(1),s1p(2),s2p(1),s3p(1),el2);
 	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(2),s3p(1),el2);
+	
+	double el4 = (1.0/3.0)*exp(b-4.0*a)*(2.0+exp(6.0*a))*exp(el_E0);
+	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el4);
+	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el4);
+
 	double el3 = (1.0/3.0)*exp(b-4.0*a)*(-1.0+exp(6.0*a));
 	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(2),s3p(1),el3);
 	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(1),s3p(2),el3);
@@ -344,9 +350,7 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
 	u123.set(s1(2),s2(1),s3(2),s1p(1),s2p(2),s3p(2),el3);
 	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(2),s3p(1),el3);
 	u123.set(s1(2),s2(2),s3(1),s1p(2),s2p(1),s3p(2),el3);
-	double el4 = (1.0/3.0)*exp(b-4.0*a)*(2.0+exp(6.0*a));
-	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el4);
-	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el4);
+	
 	double el5 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))-3.0);
 	u123.set(s1(1),s2(1),s3(2),s1p(2),s2p(1),s3p(1),el5);
 	u123.set(s1(1),s2(2),s3(2),s1p(2),s2p(2),s3p(1),el5);
@@ -354,18 +358,6 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2) {
 	u123.set(s1(2),s2(2),s3(1),s1p(1),s2p(2),s3p(2),el5);
 	// definition of U_123 done
 	//PrintData(u123);
-
-	// double el_E0 = 0.7*(-tau);
-	// ITensor uE0 = ITensor(s1,s2,s3,s1p,s2p,s3p);
-	// uE0.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el_E0);
-	// uE0.set(s1(2),s2(1),s3(1),s1p(2),s2p(1),s3p(1),el_E0);
-	// uE0.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el_E0);
-	// uE0.set(s1(2),s2(2),s3(1),s1p(2),s2p(2),s3p(1),el_E0);
-	// uE0.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el_E0);
-	// uE0.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el_E0);
-	// uE0.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el_E0);
-	// uE0.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el_E0);
-	// u123 = u123 + uE0;
 
 	// double m = 0.;
 	// auto max_m = [&m](double d) {
@@ -832,51 +824,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				std::cout << std::endl;
 			}
 
-			// construct matrix M, which is defined as <psi~|psi~> = rt[r]^dag * M * rt[r]
-// OLD M CONSTRUCTION			
-			// if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
-			// ITensor temp, deltaKet, deltaBra, M(1.0);
-			// std::array<const itensor::ITensor *, 4> rtp; // holds reduction tensor pointers => rtp
-			// for(int o=0; o<=3; o++) {
-
-			// 	// depending on choosen order (r) set up rtp for current site o
-			// 	for (int i=0; i<=3; i++) 
-			// 		rtp[i] = (RTPM[r][o][i] >= 0) ? &rt[RTPM[r][o][i]] : NULL;
-			
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
-			// 			<< tn[ord[o]] << std::endl;
-			// 		for(int i=0; i<=3; i++) {std::cout << RTPM[r][o][i] <<" ";}
-			// 		std::cout << std::endl;
-			// 	}
-
-			// 	// construct o'th corner of M
-			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
- 		//  			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
-			// 	if(dbg && (dbgLvl >=3)) Print(temp);
-			// 	if (o<3) {
-			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = prime(deltaKet,4);
-			// 		temp = (temp * deltaBra) * deltaKet;
-			// 	} else {
-			// 		deltaKet = delta(prime(aux[ord[3]],IOFFSET+ pl[2*ord[3]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = prime(deltaKet,4);
-			// 	}
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		Print(deltaKet);
-			// 		Print(deltaBra);
-			// 	}
-
-			// 	M *= temp;
-			// 	if (o==3) M = (M * deltaBra) * deltaKet;
-			
-			// 	if(dbg && (dbgLvl >= 3)) Print(M);
-			// }
-// END OLD M CONSTRUCTION
-
-		if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
+			// construct matrix M, which is defined as <psi~|psi~> = rt[r]^dag * M * rt[r]	
+			if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Matrix M"<< std::endl;
 			ITensor temp, deltaKet, deltaBra, M(1.0);
 			std::array<const itensor::ITensor *, 4> rtp; // holds reduction tensor pointers => rtp
 			for(int o=0; o<=3; o++) {
@@ -960,58 +909,58 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 
 			// construct vector Kp, which is defined as <psi'|~psi> = Kp * rt[r]
-			if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Vector Kp"<< std::endl;
-			ITensor Kp(1.0);
-			for(int o=0; o<=3; o++) {
+			// if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Vector Kp"<< std::endl;
+			// ITensor Kp(1.0);
+			// for(int o=0; o<=3; o++) {
 
-				for (int i=0; i<=3; i++) 
-					rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
-				//switch bra & ket reductions
-				const itensor::ITensor * rtp_temp;
-				rtp_temp = rtp[0];
-				rtp[0] = rtp[1];
-				rtp[1] = rtp_temp;
-				rtp_temp = rtp[2];
-				rtp[2] = rtp[3];
-				rtp[3] = rtp_temp;
+			// 	for (int i=0; i<=3; i++) 
+			// 		rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
+			// 	//switch bra & ket reductions
+			// 	const itensor::ITensor * rtp_temp;
+			// 	rtp_temp = rtp[0];
+			// 	rtp[0] = rtp[1];
+			// 	rtp[1] = rtp_temp;
+			// 	rtp_temp = rtp[2];
+			// 	rtp[2] = rtp[3];
+			// 	rtp[3] = rtp_temp;
 
-				if(dbg && (dbgLvl >= 3)) {
-					std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
-						<< tn[ord[o]] << std::endl;
-					for(int i=0; i<=3; i++) {std::cout << RTPK[r][o][i] <<" ";}
-					std::cout << std::endl;
-				}
+			// 	if(dbg && (dbgLvl >= 3)) {
+			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
+			// 			<< tn[ord[o]] << std::endl;
+			// 		for(int i=0; i<=3; i++) {std::cout << RTPK[r][o][i] <<" ";}
+			// 		std::cout << std::endl;
+			// 	}
 
-				// construct o'th corner of K
-				temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
- 		 			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
-				if(dbg && (dbgLvl >= 3)) Print(temp);
-				if (o<3) {
-					deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-						prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-					deltaBra = prime(deltaKet,4);
-					temp = (temp * deltaBra) * deltaKet;
-				} else {
-					deltaKet = delta(prime(aux[ord[3]],IOFFSET+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-						prime(aux[ord[0]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-					deltaBra = delta(prime(aux[ord[3]],4+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-						prime(aux[ord[0]],4+pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-				}
-				if(dbg && (dbgLvl >= 3)) {
-					Print(deltaKet);
-					Print(deltaBra);
-				}
+			// 	// construct o'th corner of K
+			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
+ 		//  			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
+			// 	if(dbg && (dbgLvl >= 3)) Print(temp);
+			// 	if (o<3) {
+			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
+			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+			// 		deltaBra = prime(deltaKet,4);
+			// 		temp = (temp * deltaBra) * deltaKet;
+			// 	} else {
+			// 		deltaKet = delta(prime(aux[ord[3]],IOFFSET+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
+			// 			prime(aux[ord[0]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+			// 		deltaBra = delta(prime(aux[ord[3]],4+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
+			// 			prime(aux[ord[0]],4+pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+			// 	}
+			// 	if(dbg && (dbgLvl >= 3)) {
+			// 		Print(deltaKet);
+			// 		Print(deltaBra);
+			// 	}
 
-				Kp *= temp;
-				if (o==3) Kp = (Kp * deltaBra) * deltaKet;
+			// 	Kp *= temp;
+			// 	if (o==3) Kp = (Kp * deltaBra) * deltaKet;
 			
-				if(dbg && (dbgLvl >= 2)) Print(Kp);
-			}
+			// 	if(dbg && (dbgLvl >= 2)) Print(Kp);
+			// }
 
 			if(dbg && (dbgLvl >= 3)) { 
 				PrintData(M);
 				PrintData(K);
-				PrintData(Kp);
+				//PrintData(Kp);
 			}
 
 			// Check Hermicity of M
@@ -1045,10 +994,12 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 
 		    auto cmbK  = combiner(K.inds()[0], K.inds()[1], K.inds()[2]);
-		    auto cmbKp = combiner(Kp.inds()[0], Kp.inds()[1], Kp.inds()[2]);
+		    auto cmbKp = combiner(prime(K.inds()[0],-4), prime(K.inds()[1],-4), prime(K.inds()[2],-4));
+			// auto cmbKp = combiner(Kp.inds()[0], Kp.inds()[1], Kp.inds()[2]);
+
 		    if(dbg && (dbgLvl >= 3)) {
 		    	for (int i=0; i<3; i++) Print(K.inds()[i]);
-		    	for (int i=0; i<3; i++) Print(Kp.inds()[i]);	
+		    	//for (int i=0; i<3; i++) Print(Kp.inds()[i]);	
 		    	Print(cmbK);
 		    	Print(cmbKp);
 		    }
@@ -1191,10 +1142,10 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			    optCond.visit(max_m);
 			    std::cout<<"optCond(M*niso - K) max element: "<< m <<std::endl;
 			    
-				optCond = prime(conj(niso),4)*M - Kp;
-				m = 0.;
-			    optCond.visit(max_m);
-			    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
+				// optCond = prime(conj(niso),4)*M - Kp;
+				// m = 0.;
+			 //    optCond.visit(max_m);
+			 //    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 			}
 
 			//rt_diffs.push_back(norm(rt[r]-niso));
@@ -1211,8 +1162,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				tempOLP = K*prime(conj(niso),4);
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
 				overlaps.push_back(sumels(tempOLP));
-				tempOLP = niso*Kp;
-				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
+				// tempOLP = niso*Kp;
+				// if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
 				overlaps.push_back(sumels(tempOLP));
 			}
 		}
