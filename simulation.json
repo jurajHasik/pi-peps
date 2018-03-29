@@ -1,26 +1,27 @@
 {
-	"initBy": "FILE",
+	"initBy": "RND_AB",
 	"physDim": 2,
 	"auxBondDim": 2,
-	"inClusterFile": "d2chi48-t0.01-PTN4-fuIsoDELTA.in",
-	"outClusterFile": "test-cluster-1.in",
-	
+	"inClusterFile": "d2chi",
+	"outClusterFile": "V3_d2ch1-t0.1-pIcttf4-ieps4_iter0-512.envRec-pIctff12-ieps7.in",
+
 	"fuGateSeq": "SYM1",
-	"fuIter": 128,
+	"fuIter": 512,
 	"fuIsoInit": "DELTA",
 	"fuIsoInitNoiseLevel": 1.0e-3,
-	"maxAltLstSqrIter": 200,
-	"pseudoInvCutoff": 1.0e-10,
-	"isoEpsilon": 1.0e-8,
+	"maxAltLstSqrIter": 50,
+	"pseudoInvCutoff": 1.0e-4,
+	"isoEpsilon": 1.0e-4,
 	"otNormType": "PTN4",
 	"fuDbg": true,
 	"fuDbgLevel": 1,
 	
-	"tau": 0.01,
+	"tau": 0.1,
 	"J1": 1.0,
 	"J2": 0.0,
-	
-	"auxEnvDim": 48,
+	"LAMBDA": 1.1,
+
+	"auxEnvDim": 1,
 	"ioEnvTag": "test-env-2x2",
 	"initEnvType": "INIT_ENV_rnd",
 	"envIsComplex": false,
@@ -29,5 +30,5 @@
 	"normType": "NORM_BLE",
 	"maxEnvIter": 250,
 	"envEpsilon": 1.0e-7,
-	"reinitEnv": true
+	"reinitEnv": false
 }
