@@ -327,10 +327,14 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda) {
 	double a = -tau*J1/8.0;
 	double b = -tau*J2/4.0;
 	double el_E0 = lambda*tau;
+	std::cout<<"Lambda: "<< lambda << std::endl;
 	ITensor u123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+	
+	// Diagonal elements
 	double el1 = exp(2.0*a + b)*exp(el_E0);
 	u123.set(s1(1),s2(1),s3(1),s1p(1),s2p(1),s3p(1),el1);
 	u123.set(s1(2),s2(2),s3(2),s1p(2),s2p(2),s3p(2),el1);
+
 	double el2 = (1.0/6.0)*exp(-3.0*b)*(exp(4.0*(b-a))*(1.0+2.0*exp(6.0*a))+3.0)*exp(el_E0);
 	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(1),s3p(2),el2);
 	u123.set(s1(1),s2(2),s3(2),s1p(1),s2p(2),s3p(2),el2);
@@ -341,6 +345,7 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda) {
 	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(2),s3p(1),el4);
 	u123.set(s1(2),s2(1),s3(2),s1p(2),s2p(1),s3p(2),el4);
 
+	// Off-Diagonal elements
 	double el3 = (1.0/3.0)*exp(b-4.0*a)*(-1.0+exp(6.0*a));
 	u123.set(s1(1),s2(1),s3(2),s1p(1),s2p(2),s3p(1),el3);
 	u123.set(s1(1),s2(2),s3(1),s1p(1),s2p(1),s3p(2),el3);

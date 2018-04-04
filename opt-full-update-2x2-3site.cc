@@ -465,15 +465,15 @@ int main( int argc, char *argv[] ) {
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
         // PERFORM FULL UPDATE - Symmetric Trotter decomp
-        //if( (((fuI-1) / gates.size()) % 2) == 0 ) {
+        if( (((fuI-1) / gates.size()) % 2) == 0 ) {
             std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
                 gate_auxInds[(fuI-1)%gates.size()], fuArgs);
-        // } else {
-        //     std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
-        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
-        //         gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
-        // }
+        } else {
+            std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
+            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
+                gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
+        }
         diagData_fu.push_back(diag_fu);
 
         // // PERFORM FULL UPDATE - Symmetric Trotter decomp
