@@ -597,7 +597,9 @@ ITensor getketT(ITensor const& s, ITensor const& op,
 }
 
 Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl, Args const& args) {
+	std::vector<std::string> tn, std::vector<int> pl,
+	std::vector< ITensor > & iso_store,
+	Args const& args) {
 
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
     auto dbg = args.getBool("fuDbg",false);
@@ -790,7 +792,43 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			tRT = ITensor(1.0);
 		}
-	} else {
+	} 
+	else if (rtInitType == "REUSE") {
+            std::cout << "REUSING ISO: ";
+            if (iso_store[0]) {
+                    rt[0] = iso_store[0];
+                    std::cout << " 0 ";
+            } else {
+                    rt[0] = ITensor(prime(aux[0],pl[1]), uJ1J2.a12, prime(aux[0],pl[1]+IOFFSET));
+                    initRT_basic(rt[0],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+            }
+
+            if (iso_store[1]) {
+                    rt[1] = iso_store[1];
+                    std::cout << " 1 ";
+            } else {
+                    rt[1] = ITensor(prime(aux[1],pl[2]), uJ1J2.a12, prime(aux[1],pl[2]+IOFFSET));
+                    initRT_basic(rt[1],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+            }
+
+            if (iso_store[2]) {
+                    rt[2] = iso_store[2];
+                    std::cout << " 2 ";
+            } else {
+                    rt[2] = ITensor(prime(aux[1],pl[3]), uJ1J2.a23, prime(aux[1],pl[3]+IOFFSET));
+                    initRT_basic(rt[2],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+            }
+
+            if (iso_store[3]) {
+                    rt[3] = iso_store[3];
+                    std::cout << " 3" << std::endl;
+            } else {
+                    rt[3] = ITensor(prime(aux[2],pl[4]), uJ1J2.a23, prime(aux[2],pl[4]+IOFFSET));
+                    initRT_basic(rt[3],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+                    std::cout << std::endl;
+            }
+    }
+	else {
 		std::cout<<"Unsupported fu-isometry initialization: "<< rtInitType << std::endl;
 		exit(EXIT_FAILURE);
 	}
@@ -1230,7 +1268,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		for (int i=0; i<3; i++) {
 			m = 0.;
 			cls.sites.at(tn[i]).visit(max_m);
-			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / m;
+			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
 		}
 	} else if (otNormType == "NONE") {
 	} else {
@@ -1238,6 +1276,14 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			<< otNormType << std::endl;
 		exit(EXIT_FAILURE);
 	}
+
+	// max element of on-site tensors after normalization
+    for (int i=0; i<4; i++) {
+            m = 0.;
+            cls.sites.at(tn[i]).visit(max_m);
+        std::cout << tn[i] <<" : "<< std::to_string(m) <<" ";
+    }
+    std::cout << std::endl;
 
 	for (int r=0; r<4; r++) { PrintData(rt[r]); }
 

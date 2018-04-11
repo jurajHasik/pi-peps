@@ -18,6 +18,9 @@ int main( int argc, char *argv[] ) {
 	nlohmann::json jsonCls;
 	infile >> jsonCls;
 
+    // write simulation parameters to log file
+    std::cout << jsonCls.dump(4) << std::endl;
+
 	//read cluster infile OR initialize by one of the predefined
 	//options FILE, RND, RND_AB, AFM, RVB, ...
 	std::string initBy(jsonCls["initBy"].get<std::string>());
@@ -345,7 +348,8 @@ int main( int argc, char *argv[] ) {
             {1,0, 2,1, 3,2, 0,3},
             {1,2, 0,1, 3,0, 2,3}
         };
-    } else if (arg_fuGateSeq == "SYM4") {
+    } 
+    else if (arg_fuGateSeq == "SYM4") {
         gates = {
             {"B", "A", "C", "D"},
             {"D", "C", "A", "B"},
@@ -373,10 +377,21 @@ int main( int argc, char *argv[] ) {
             {3,0, 2,3, 1,2, 0,1},
             {1,0, 2,1, 3,2, 0,3}
         };
-    } else {
+    } 
+    else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
     }
+
+    // For symmetric Trotter decomposition
+    for (int i=0; i<=15; i++) {
+        gates.push_back(gates[15-i]);
+        gate_auxInds.push_back(gate_auxInds[15-i]);
+    }
+
+    // STORE ISOMETRIES
+    std::vector< std::vector< ITensor > > iso_store(
+        gates.size(), {ITensor(), ITensor(), ITensor(), ITensor()} );
 
     Args fuArgs = {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,
@@ -464,31 +479,13 @@ int main( int argc, char *argv[] ) {
         evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
-        // PERFORM FULL UPDATE - Symmetric Trotter decomp
-        if( (((fuI-1) / gates.size()) % 2) == 0 ) {
-            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
-            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-                gate_auxInds[(fuI-1)%gates.size()], fuArgs);
-        } else {
-            std::cout << "GATE: " << (gates.size()-1) - (fuI-1)%gates.size() << std::endl;
-            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(gates.size()-1) - (fuI-1)%gates.size()], 
-                gate_auxInds[(gates.size()-1) - (fuI-1)%gates.size()], fuArgs);
-        }
-        diagData_fu.push_back(diag_fu);
+        // PERFORM FULL UPDATE
+        std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
+            
+        diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+            gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        // // PERFORM FULL UPDATE - Symmetric Trotter decomp
-        // for(int xx=0; xx<gates.size(); xx++) {
-        //     std::cout << "GATE: " << xx << std::endl;
-        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[xx], 
-        //         gate_auxInds[xx], fuArgs);
-        //     diagData_fu.push_back(diag_fu);
-        // }
-        // for(int xx=gates.size()-1; xx>=0; xx--) {
-        //     std::cout << "GATE: " << xx << std::endl;
-        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[xx], 
-        //         gate_auxInds[xx], fuArgs);
-        //     diagData_fu.push_back(diag_fu);
-        // }
+        diagData_fu.push_back(diag_fu);
 
         ctmEnv.updateCluster(cls);
         // reset environment
