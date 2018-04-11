@@ -384,9 +384,10 @@ int main( int argc, char *argv[] ) {
     }
 
     // For symmetric Trotter decomposition
-    for (int i=0; i<=15; i++) {
-        gates.push_back(gates[15-i]);
-        gate_auxInds.push_back(gate_auxInds[15-i]);
+    int init_gate_size = gates.size();
+    for (int i=0; i<init_gate_size; i++) {
+        gates.push_back(gates[init_gate_size-1-i]);
+        gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
     }
 
     // STORE ISOMETRIES
@@ -407,6 +408,11 @@ int main( int argc, char *argv[] ) {
     std::vector<int> diag_ctmIter;
     std::vector< Args > diagData_fu;
     Args diag_fu;
+
+    std::ofstream out_file_energy(outClusterFile+".energy.dat", std::ios::out);
+    std::ofstream out_file_diag(outClusterFile+".diag.dat", std::ios::out);
+    out_file_energy.precision( std::numeric_limits< double >::max_digits10 );
+    out_file_diag.precision( std::numeric_limits< double >::max_digits10 );
 
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
@@ -479,6 +485,21 @@ int main( int argc, char *argv[] ) {
         evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
+        // write energy
+        double avgE_8links = 0.;
+        out_file_energy << fuI-1 <<" "<< e_nnH.back() 
+            <<" "<< e_nnH_AC.back()
+            <<" "<< e_nnH_BD.back()
+            <<" "<< e_nnH_CD.back();
+            for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+                avgE_8links += evNN[j];
+                out_file_energy<<" "<< evNN[j];
+            }
+            avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+                + e_nnH_BD.back() + e_nnH_CD.back();
+        out_file_energy <<" "<< avgE_8links/8.0;
+        out_file_energy << std::endl;
+
         // PERFORM FULL UPDATE
         std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             
@@ -486,6 +507,15 @@ int main( int argc, char *argv[] ) {
             gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
+
+        out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
+            <<" "<< diag_fu.getString("siteMaxElem")
+            <<" "<< diag_fu.getReal("finalDist0",0.0)
+            <<" "<< diag_fu.getReal("finalDist1",0.0);
+        if (arg_fuDbg && (arg_fuDbgLevel >=1))
+            out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
+            <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
+        out_file_diag  <<std::endl;
 
         ctmEnv.updateCluster(cls);
         // reset environment
@@ -574,6 +604,22 @@ int main( int argc, char *argv[] ) {
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,1))); //DC
     
+
+    // write energy
+    double avgE_8links = 0.;
+    out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
+        <<" "<< e_nnH_AC.back()
+        <<" "<< e_nnH_BD.back()
+        <<" "<< e_nnH_CD.back();
+        for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+            avgE_8links += evNN[j];
+            out_file_energy<<" "<< evNN[j];
+        }
+        avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+            + e_nnH_BD.back() + e_nnH_CD.back();
+    out_file_energy <<" "<< avgE_8links/8.0;
+    out_file_energy << std::endl;
+
     std::cout <<"FU_ITER: "<<" E:"<< std::endl;
     for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
         std::cout << i <<" "<< e_nnH[i] 

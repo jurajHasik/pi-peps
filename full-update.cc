@@ -1235,6 +1235,26 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			<<" "<<rt_diffs[4*i+2]<<" "<<rt_diffs[4*i+3]<<std::endl;
 	}
 
+	// BALANCE ISOMETRIES
+	std::cout << "BALANCING ISOMETRIES" << std::endl;
+	double iso_tot_mag = 1.0;
+    for (int i=0; i<=3; i++) {
+    	m = 0.;
+		rt[i].visit(max_m);
+    	rt[i] = rt[i] / m;
+    	iso_tot_mag = iso_tot_mag * m;
+    }
+    rt[0] = rt[0] * std::pow(iso_tot_mag,(1.0/3.0));
+    rt[1] = rt[1] * std::pow(iso_tot_mag,(1.0/6.0));
+    rt[2] = rt[2] * std::pow(iso_tot_mag,(1.0/6.0));
+    rt[3] = rt[3] * std::pow(iso_tot_mag,(1.0/3.0));
+
+	// STORE ISOMETRIES
+    if (rtInitType == "REUSE") {
+        std::cout << "STORING ISOMETRIES" << std::endl;
+        for (int i=0; i<=3; i++) iso_store[i] = rt[i];
+    }
+
 	// update on-site tensors of cluster
 	auto newT = getketT(cls.sites.at(tn[0]), uJ1J2.H1, {&rt[0],NULL}, (dbg && (dbgLvl >=3)) );
 	cls.sites.at(tn[0]) = newT;
