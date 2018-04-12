@@ -517,8 +517,20 @@ void initRT_basic(ITensor& rt, std::string INIT_METHOD, Args const& args) {
 	}
 }
 
+ITensor getT(ITensor const& s, std::array<Index, 4> const& plToEnv, bool dbg) {  
+
+	return getT(s, plToEnv, ITensor(), {{NULL,NULL,NULL,NULL}}, true, dbg); 
+}
+
 ITensor getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
 	ITensor const& op, std::array<const ITensor *, 4> rt, bool dbg) {  
+
+	return getT(s, plToEnv, op, rt, true, dbg); 
+}
+
+ITensor getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
+	ITensor const& op, std::array<const ITensor *, 4> rt, 
+	bool pIcont, bool dbg) {  
 
 	Index aS(noprime(findtype(s, AUXLINK)));
 	Index pS(noprime(findtype(s, PHYS)));
@@ -535,6 +547,7 @@ ITensor getT(ITensor const& s, std::array<Index, 4> const& plToEnv,
 	if (dbg) Print(res);
 	// build bra part
 	// apply conjugate of physical operator
+	if (!pIcont) res.prime(prime(pOp,1),1);
 	if (op) res = res * prime(conj(op), MPOLINK, 4);
 	if (dbg) Print(res);
 	// apply reduction tensors if present to <bra| 
@@ -643,12 +656,18 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
 	}
 
-	// read off auxiliary indices of the cluster sites
+	// read off auxiliary and physical indices of the cluster sites
 	std::array<Index, 4> aux({
 		noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
 		noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
 		noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
 		noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+
+	std::array<Index, 4> phys({
+		noprime(findtype(cls.sites.at(tn[0]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[1]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[2]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
 
 	// prepare map from on-site tensor aux-indices to half row/column T
 	// environment tensors
@@ -711,6 +730,67 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		}
 	}
 	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+
+	// C  D
+	//    |
+	// A--B
+	ITensor eRE;
+	ITensor deltaBra, deltaKet;
+
+	// Decompose A tensor on which the gate is applied
+	ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+	svd(cls.sites.at(tn[0]), eA, tempSA, QA);
+	QA *= delta(commonIndex(QA,tempSA), Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0) );
+
+	// Prepare corner of A
+	ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+
+	deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
+	deltaBra = prime(deltaKet,4);
+	tempC = (tempC * deltaBra) * deltaKet;
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+
+	eRE = tempC;
+
+	// Prepare corner of C
+	tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+	
+	deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
+	deltaBra = prime(deltaKet,4);
+	tempC = (tempC * deltaBra) * deltaKet;
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+
+	eRE = eRE * tempC;
+
+	// Decompose D tensor on which the gate is applied
+	ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+	svd(cls.sites.at(tn[2]), eD, tempSD, QD);
+	QD *= delta(commonIndex(QD,tempSD), Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0) );
+
+	// Prepare corner of D
+	tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+
+	eRE = eRE * tempC;
+
+	// Decompose B tensor on which the gate is applied
+	ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+	svd(cls.sites.at(tn[1]), eB, tempSB, QB);
+	QB *= delta(commonIndex(QB,tempSB), Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0) );
+
+	tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
+	if(dbg && (dbgLvl >=3)) Print(tempC);
+
+	eRE = eRE * tempC;
+
+	if(dbg && (dbgLvl >=3)) Print(eRE);
+
+	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
+	exit(EXIT_FAILURE);
 
 	// Create and initialize reduction tensors RT
 	std::vector<ITensor> rt(4);
@@ -792,7 +872,137 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			tRT = ITensor(1.0);
 		}
-	} 
+	}
+	else if (rtInitType == "BIDIAG") {
+		ITensor ttemp, tdelKet, tdelBra, tRT(1.0);
+		std::array<const itensor::ITensor *, 4> trtp = {{NULL,NULL,NULL,NULL}};
+		for(int r=0; r<=3; r+=3){
+			std::array<int,4> tord = ORD[r];
+			if(dbg) std::cout <<"GUESS RT "<< tn[tord[0]] <<"-"<< tn[tord[3]] << std::endl;
+			for(int o=0; o<=3; o++) {
+				// construct o'th corner of tmpRT
+				if (o == 0 || o == 3) {
+					// leave physical index uncontracted
+					ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
+				 			*mpo[tord[o]], trtp, false, (dbg && (dbgLvl >= 3)) );
+				} else {
+					ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
+			 			*mpo[tord[o]], trtp, (dbg && (dbgLvl >= 3)) );
+				}
+
+				if (dbg && (dbgLvl >= 3)) Print(ttemp);
+				if (o<3) {
+					tdelKet = delta(prime(aux[tord[o]],pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
+						prime(aux[tord[(o+1)%4]],pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+					tdelBra = prime(tdelKet,4);
+					ttemp = (ttemp * tdelBra) * tdelKet;
+				} else {
+					tdelKet = ITensor();
+					tdelBra = delta(prime(aux[tord[3]],4+pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
+						prime(aux[tord[0]],4+pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
+					ttemp.mapprime(MPOLINK,0,IOFFSET);
+				}
+				if(dbg && (dbgLvl >= 3)) {
+					Print(tdelKet);
+					Print(tdelBra);
+				}
+
+				tRT *= ttemp;
+				if (o==3) tRT = tRT * tdelBra;
+			
+				if(dbg && (dbgLvl >= 3)) Print(tRT);
+			}
+			if(dbg && (dbgLvl >= 3)) Print(tRT);
+			
+			// physical bra indices have primeLevel 1
+			auto pI0 = noprime(findtype(*mpo[tord[0]], PHYS));
+			auto pI3 = noprime(findtype(*mpo[tord[3]], PHYS));
+			ITensor ob_contract(pI0,pI3);
+			ob_contract.fill(1.0);
+
+			tRT = tRT * prime(ob_contract,1);
+			tRT.noprime(PHYS);
+			if(dbg && (dbgLvl >= 3)) Print(tRT);
+
+			// combiners for LEFT, RIGHT and PHYS
+			auto cmbL = combiner(prime(aux[tord[0]],pl[2*tord[0]+(1-ORD_DIR[r])/2]),
+				noprime(findtype(tRT, MPOLINK)));
+			auto cmbR = combiner(prime(aux[tord[3]],pl[2*tord[3]+(1+ORD_DIR[r])/2]),
+				prime(noprime(findtype(tRT, MPOLINK)),IOFFSET));
+			auto cmbP = combiner(pI0,pI3);
+			auto cmbIL = combinedIndex(cmbL);
+			auto cmbIR = combinedIndex(cmbR);
+			auto cmbIP = combinedIndex(cmbP);
+			if(dbg && (dbgLvl >= 2)) { Print(cmbL); Print(cmbR); Print(cmbP); } 
+
+			tRT = ((tRT * cmbL) * cmbR) *cmbP;
+
+			// Perform QL
+			ITensor QL, tSL, tL(cmbIL);
+			svd(tRT, tL,tSL,QL);
+			tL = tL * tSL;
+			auto iQL = commonIndex(QL,tSL);
+
+			// Perform QR
+			ITensor QR, tSR, tR(cmbIR);
+			svd(tRT, tR,tSR,QR);
+			tR = tR * tSR;
+			auto iQR = commonIndex(QR,tSR);
+
+			ITensor tRL = tR * delta(cmbIL,cmbIR) * tL;
+			Print(iQL);
+			Print(iQR);
+			Print(tRL);
+
+			ITensor tU(combinedIndex(iQL)),tS,tV;
+			svd(tRL,tU,tS,tV,{"Maxm",aux[0].m()});
+
+			if(dbg && (dbgLvl >= 2)) PrintData(tS);
+
+			// Regularize and invert singular value matrix tS
+			std::vector<double> elems_regInvSvM;
+			for (int isv=1; isv<=tS.inds().front().m(); isv++) {
+				if ( tS.real(tS.inds().front()(isv),tS.inds().back()(isv))/
+					 tS.real(tS.inds().front()(1),tS.inds().back()(1))  > svd_cutoff) {  
+					elems_regInvSvM.push_back(1.0/sqrt(tS.real(tS.inds().front()(isv),
+						tS.inds().back()(isv))) );
+				} else
+					elems_regInvSvM.push_back(0.0);
+			}
+			auto regInvSvM = diagTensor(elems_regInvSvM, tS.inds().front(),tS.inds().back());
+			PrintData(regInvSvM);
+
+			rt[r+(1+ORD_DIR[r])/2-r/3] = ( (tL * conj(tU) * regInvSvM) * 
+				delta( commonIndex(tS,tV), prime(findtype(cmbL, AUXLINK),IOFFSET) ) 	
+				) * cmbL;
+
+			rt[r+(1-ORD_DIR[r])/2-r/3] = ( (tR * conj(tV) * regInvSvM) * 
+				delta( commonIndex(tS,tU), prime(findtype(cmbR, AUXLINK),IOFFSET) )
+				) * cmbR;
+			rt[r+(1-ORD_DIR[r])/2-r/3].prime(MPOLINK,-IOFFSET);
+
+			// rt[r+(1+ORD_DIR[r])/2-r/3] = ((tU*tS)*delta(commonIndex(tS,tV), 
+			// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+			// rt[r+(1-ORD_DIR[r])/2-r/3] = (((tV*tS)*delta(commonIndex(tS,tU), 
+			// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
+			
+			// rt[r+(1+ORD_DIR[r])/2-r/3] = (tU*delta(commonIndex(tS,tU), 
+			// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+			// rt[r+(1-ORD_DIR[r])/2-r/3] = ((tV*delta(commonIndex(tS,tV), 
+			// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
+			
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<< r+(1-ORD_DIR[r])/2-r/3 <<" ";
+				PrintData(rt[r+(1-ORD_DIR[r])/2-r/3]);
+				std::cout<< r+(1+ORD_DIR[r])/2-r/3 <<" ";
+				PrintData(rt[r+(1+ORD_DIR[r])/2-r/3]);
+			}
+
+
+
+			tRT = ITensor(1.0);
+		}
+	}
 	else if (rtInitType == "REUSE") {
             std::cout << "REUSING ISO: ";
             if (iso_store[0]) {
@@ -832,6 +1042,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		std::cout<<"Unsupported fu-isometry initialization: "<< rtInitType << std::endl;
 		exit(EXIT_FAILURE);
 	}
+	//exit(EXIT_FAILURE);
 
 	// Prepare Alternating Least Squares to maximize the overlap
 	double m = 0.;

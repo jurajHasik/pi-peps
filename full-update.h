@@ -157,8 +157,15 @@ void initRT_basic(itensor::ITensor& rt, std::string INIT_METHOD,
  *
  */
 itensor::ITensor getT(itensor::ITensor const& s, 
+	std::array<itensor::Index, 4> const& plToEnv, bool dbg = false);
+
+itensor::ITensor getT(itensor::ITensor const& s, 
 	std::array<itensor::Index, 4> const& plToEnv, itensor::ITensor const& op,
 	std::array<const itensor::ITensor *, 4> rt, bool dbg = false);
+
+itensor::ITensor getT(itensor::ITensor const& s, 
+	std::array<itensor::Index, 4> const& plToEnv, itensor::ITensor const& op,
+	std::array<const itensor::ITensor *, 4> rt, bool pIcont, bool dbg);
 
 itensor::ITensor getketT(itensor::ITensor const& s, itensor::ITensor const& op,
 	std::array<const itensor::ITensor *, 2> rt, bool dbg = false);
