@@ -456,7 +456,13 @@ int main( int argc, char *argv[] ) {
                     break;
                 }
 
+                if (envI==arg_maxEnvIter) {
+                    diag_ctmIter.push_back(envI);
+                    // diagnose spectra
+                    
+                }
                 e_prev = e_curr;
+
                 t_begin_int = std::chrono::steady_clock::now();
             }
 	    }

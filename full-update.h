@@ -26,6 +26,22 @@ const int IOFFSET = 100;
 // various choice of reduction tensors to optimize
 const std::array< std::array<int, 4>, 4> ORD = 
 	{{{1,2,3,0},{0,3,2,1},{2,3,0,1},{1,0,3,2}}};
+
+const std::array< std::array<int, 3>, 4> ORD_R = 
+	{{{1,2,0},{0,2,1},{2,0,1},{1,0,2}}};
+
+const std::array< std::array<int, 2>, 2> PL_R =
+	{{ 
+		{4,3},
+		{1,2},
+	}};
+
+const std::array< std::array<int, 2>, 2> A_R =
+	{{ 
+		{2,1},
+		{0,1},
+	}};
+
 const std::array<int, 4> ORD_DIR = {{1,-1,1,-1}};
 
 // defines assignment of reduction tensors given an order from
@@ -37,6 +53,14 @@ const std::array< std::array< std::array<int, 4>, 4>, 4> RTPM =
 		{{{0,0,-1,-1},{-1,-1,-1,-1},{3,3,-1,-1},{2,2,-1,-1}}},
 		{{{3,3,-1,-1},{-1,-1,-1,-1},{0,0,-1,-1},{1,1,-1,-1}}},
 		{{{1,1,2,2},{0,0,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}}
+	}};
+
+const std::array< std::array< std::array<int, 2>, 3>, 4> RTPM_R =
+	{{ 
+		{{{1,2},{3,-1},{-1,-1}}},
+		{{{0,-1},{3,-1},{2,-1}}},
+		{{{3,-1},{0,-1},{1,-1}}},
+		{{{1,2},{0,-1},{-1,-1}}}
 	}};
 
 // defines assignment of reduction tensors given an order from
