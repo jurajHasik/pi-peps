@@ -273,6 +273,7 @@ void CtmEnv::initCtmrgEnv(bool dbg) {
     for ( int i=1; i<= D; i++ ) {
         CT.set(cI(i+D*(i-1)),1.0);
     }
+    // OBC (?)
     // for ( int i=1; i<= D*D; i++ ) {
     //     CT.set(cI(i),1.0);
     // }
@@ -371,6 +372,49 @@ void CtmEnv::initCtmrgEnv(bool dbg) {
 
     std::cout <<"===== INIT_ENV_ctmrg done "<< std::string(46,'=') 
         << std::endl; 
+}
+
+void CtmEnv::symmetrizeEnv(bool dbg) {
+ 
+    //Define "contractor" tensor
+    int D = round(sqrt(d));
+    auto cI  = Index("C",d);
+    auto cIp = prime(cI);
+    auto CT = ITensor(cI,cIp);
+    for ( int i=0; i<D; i++ ) {
+        for ( int j=0; j<D; j++ ) {
+            CT.set(cI(1+i*D),cIp(1+i+j*D),1.0);
+        }
+    }
+
+    for ( size_t i=0; i<sites.size(); i++ ) {
+        if(dbg) std::cout <<"----- symmetrizing T's for site "<< siteIds[i]
+            <<" -----"<< std::endl;
+        // Locate the first appearance of given site within cluster
+        int row, col;
+        for ( const auto& cToSEntry : cToS ) {
+            if ( cToSEntry.second == i) {
+                col = cToSEntry.first.first;
+                row = cToSEntry.first.second;
+                break;
+            }
+        }
+        if(dbg) std::cout <<"Found "<< siteIds[i] <<" at ["<< col <<","<< row
+            <<"]"<< std::endl;
+
+        //Construct half-row/col matrices
+        T_U[i] = 0.5*( T_U[i] + (T_U[i]*(delta(cI,I_XV)*CT))*delta(cIp,I_XV) );
+        if(dbg) { printfln(" = %s", T_U[i]); }
+
+        T_R[i] = 0.5*( T_R[i] + (T_R[i]*(delta(cI,prime(I_XH))*CT))*delta(cIp,prime(I_XH)) );
+        if(dbg) { printfln(" = %s", T_R[i]); }
+
+        T_D[i] = 0.5*( T_D[i] + (T_D[i]*(delta(cI,prime(I_XV))*CT))*delta(cIp,prime(I_XV)) );
+        if(dbg) { printfln(" = %s", T_D[i]); }
+
+        T_L[i] = 0.5*( T_L[i] + (T_L[i]*(delta(cI,I_XH)*CT))*delta(cIp,I_XH) );
+        if(dbg) { printfln(" = %s", T_L[i]); }
+    }
 }
 
 void CtmEnv::testCtmrgEnv() {

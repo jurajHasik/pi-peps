@@ -166,6 +166,8 @@ class CtmEnv
 
     void initCtmrgEnv(bool dbg = false);
 
+    void symmetrizeEnv(bool dbg = false);
+
     void testCtmrgEnv();
 
     // ########################################################################
