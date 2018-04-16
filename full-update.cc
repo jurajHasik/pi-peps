@@ -834,6 +834,35 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	diag_maxMsymFN  = norm(eRE_sym);
 	diag_maxMasymFN = norm(eRE_asym);
 
+	eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+	ITensor U_eRE, D_eRE;
+	diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+	double msign = 1.0;
+	double mval = 0.;
+	std::vector<double> dM_elems;
+	for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+		dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+		if (std::abs(dM_elems.back()) > mval) {
+			mval = std::abs(dM_elems.back());
+			msign = dM_elems.back()/mval;
+		}
+	}
+	if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+	// Drop negative EV's
+	if(dbg && (dbgLvl >= 1)) std::cout<<"REFINED SPECTRUM ";
+	for (auto & elem : dM_elems) {
+		if (elem < 0.0) {
+			if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+			elem = 0.0;
+		}
+	}
+	D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+
+	eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
+		* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+
 	eRE_sym = (eRE_sym * cmbKet) * cmbBra;
 	// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
 
@@ -1204,94 +1233,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			K = K * conj(rt[current_rt]).prime(4);
 			if(dbg && (dbgLvl >= 3)) Print(K);
 
-			// for(int o=0; o<=3; o++) {
 
-			// 	// depending on choosen order (r) set up rtp for current site o
-			// 	for (int i=0; i<=3; i++) 
-			// 		rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
-			
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
-			// 			<< tn[ord[o]] << std::endl;
-			// 		for(int i=0; i<=3; i++) {std::cout << RTPK[r][o][i] <<" ";}
-			// 		std::cout << std::endl;
-			// 	}
-
-			// 	// construct o'th corner of K
-			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
- 		//  			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
-			// 	if(dbg && (dbgLvl >= 3)) Print(temp);
-			// 	if (o<3) {
-			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = prime(deltaKet,4);
-			// 		temp = (temp * deltaBra) * deltaKet;
-			// 	} else {
-			// 		deltaKet = delta(prime(aux[ord[3]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = delta(prime(aux[ord[3]],IOFFSET+4+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],4+pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 	}
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		Print(deltaKet);
-			// 		Print(deltaBra);
-			// 	}
-
-			// 	K *= temp;
-			// 	if (o==3) K = (K * deltaBra) * deltaKet;
-			
-			// 	if(dbg && (dbgLvl >= 3)) Print(K);
-			// }
-
-			// construct vector Kp, which is defined as <psi'|~psi> = Kp * rt[r]
-			// if(dbg && (dbgLvl >= 3)) std::cout <<"COMPUTING Vector Kp"<< std::endl;
-			// ITensor Kp(1.0);
-			// for(int o=0; o<=3; o++) {
-
-			// 	for (int i=0; i<=3; i++) 
-			// 		rtp[i] = (RTPK[r][o][i] >= 0) ? &rt[RTPK[r][o][i]] : NULL;
-			// 	//switch bra & ket reductions
-			// 	const itensor::ITensor * rtp_temp;
-			// 	rtp_temp = rtp[0];
-			// 	rtp[0] = rtp[1];
-			// 	rtp[1] = rtp_temp;
-			// 	rtp_temp = rtp[2];
-			// 	rtp[2] = rtp[3];
-			// 	rtp[3] = rtp_temp;
-
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		std::cout <<"Optimizing rt["<< r <<"] - RedTens site "
-			// 			<< tn[ord[o]] << std::endl;
-			// 		for(int i=0; i<=3; i++) {std::cout << RTPK[r][o][i] <<" ";}
-			// 		std::cout << std::endl;
-			// 	}
-
-			// 	// construct o'th corner of K
-			// 	temp = pc[ord[o]] * getT(cls.sites.at(tn[ord[o]]), iToE[ord[o]], 
- 		//  			*mpo[ord[o]], rtp, (dbg && (dbgLvl >= 3)) );
-			// 	if(dbg && (dbgLvl >= 3)) Print(temp);
-			// 	if (o<3) {
-			// 		deltaKet = delta(prime(aux[ord[o]],pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[(o+1)%4]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = prime(deltaKet,4);
-			// 		temp = (temp * deltaBra) * deltaKet;
-			// 	} else {
-			// 		deltaKet = delta(prime(aux[ord[3]],IOFFSET+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 		deltaBra = delta(prime(aux[ord[3]],4+pl[2*ord[o]+(1+ORD_DIR[r])/2]), 
-			// 			prime(aux[ord[0]],4+pl[2*ord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-			// 	}
-			// 	if(dbg && (dbgLvl >= 3)) {
-			// 		Print(deltaKet);
-			// 		Print(deltaBra);
-			// 	}
-
-			// 	Kp *= temp;
-			// 	if (o==3) Kp = (Kp * deltaBra) * deltaKet;
-			
-			// 	if(dbg && (dbgLvl >= 2)) Print(Kp);
-			// }
-
+			// ***** SOLVE LINEAR SYSTEM M*rt = K ******************************
 			if(dbg && (dbgLvl >= 3)) { 
 				PrintData(M);
 				PrintData(K);
@@ -1375,7 +1318,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
 			// Drop small (and negative) EV's
-			for (auto & elem : dM_elems) elem = (elem > svd_cutoff) ? elem : 0.0; 
+			for (auto & elem : dM_elems) elem = (elem/mval > svd_cutoff) ? elem : 0.0; 
 			dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
 			
 			if(dbg && (dbgLvl >= 1)) {
