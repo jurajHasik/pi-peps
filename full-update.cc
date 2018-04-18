@@ -836,18 +836,38 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 	eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 	
-		// Make eff. Env. positive semidefinite
-	// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
-	// eRE_sym = eRE * prime(swapPrime(conj(eRE),0,1));
-	// eRE_sym.prime( prime(combinedIndex(cmbKet), 2), -1);
+	// ##### V3 ######################################################
+	// ITensor U_eRE, D_eRE;
+	// diagHermitian(eRE_sym, U_eRE, D_eRE);
 
+	// double msign = 1.0;
+	// double mval = 0.;
+	// std::vector<double> dM_elems;
+	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+	// 	if (std::abs(dM_elems.back()) > mval) {
+	// 		mval = std::abs(dM_elems.back());
+	// 		msign = dM_elems.back()/mval;
+	// 	}
+	// }
+	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+	// // Drop negative EV's
+	// if(dbg && (dbgLvl >= 1)) {
+	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+	// 	std::cout<<"MAX EV: "<< mval << std::endl;
+	// }
+	// for (auto & elem : dM_elems) {
+	// 	if (elem < 0.0) {
+	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+	// 		elem = 0.0;
+	// 	}
+	// }
+	// ##### END V3 ##################################################
+
+	// ##### V4 ######################################################
 	ITensor U_eRE, D_eRE;
 	diagHermitian(eRE_sym, U_eRE, D_eRE);
-
-	// std::vector<double> dM_elems;
-	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
-	// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
-	// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
 
 	double msign = 1.0;
 	double mval = 0.;
@@ -861,18 +881,64 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	}
 	if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-	// Drop negative EV's
-	if(dbg && (dbgLvl >= 1)) std::cout<<"REFINED SPECTRUM"<< std::endl;
-	for (auto & elem : dM_elems) {
-		if (elem < 0.0 && elem/mval < svd_cutoff) {
-			if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-			elem = 0.0;
-		} else if (elem < 0.0) {
-			if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
-			elem = std::fabs(elem);
-		}
-
+	// Set EV's to ABS Values
+	if(dbg && (dbgLvl >= 1)) {
+		std::cout<<"REFINED SPECTRUM"<< std::endl;
+		std::cout<<"MAX EV: "<< mval << std::endl;
 	}
+	for (auto & elem : dM_elems) elem = std::fabs(elem);
+	// ##### END V4 ##################################################
+
+	// ##### V5 ######################################################
+	// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
+	
+	// eRE_sym = conj(eRE); // 0--eRE*--1
+	// eRE.mapprime(1,2);   // 0--eRE---2
+	// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
+	// eRE_sym.prime(-1);
+
+	// ITensor U_eRE, D_eRE;
+	// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+	// std::vector<double> dM_elems;
+	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
+	// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
+	// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+	// ##### END V5 ##################################################
+
+	// ##### V6 ######################################################
+	// ITensor U_eRE, D_eRE;
+	// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+	// double msign = 1.0;
+	// double mval = 0.;
+	// std::vector<double> dM_elems;
+	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+	// 	if (std::abs(dM_elems.back()) > mval) {
+	// 		mval = std::abs(dM_elems.back());
+	// 		msign = dM_elems.back()/mval;
+	// 	}
+	// }
+	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+	// // Drop negative EV's
+	// if(dbg && (dbgLvl >= 1)) {
+	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+	// 	std::cout<<"MAX EV: "<< mval << std::endl;
+	// }
+	// for (auto & elem : dM_elems) {
+	// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
+	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+	// 		elem = 0.0;
+	// 	} else if (elem < 0.0) {
+	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
+	// 		elem = std::fabs(elem);
+	// 	}
+	// }
+	// ##### END V6 ##################################################
+
+	
 	D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
 
 	eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
