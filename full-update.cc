@@ -614,6 +614,9 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector< ITensor > & iso_store,
 	Args const& args) {
 
+	double machine_eps = std::numeric_limits<double>::epsilon();
+	std::cout<< "M EPS: " << machine_eps << std::endl;
+ 
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
     auto dbg = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
@@ -1398,8 +1401,28 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
+			// TODO in the case of msign < 0.0, the loop order has to be reversed
 			// Drop small (and negative) EV's
-			for (auto & elem : dM_elems) elem = (elem/mval > svd_cutoff) ? elem : 0.0; 
+			int index_cutoff;
+			std::vector<double> log_dM_e, log_diffs;
+			for (int idm=0; idm<dM_elems.size(); idm++) {
+				if ( dM_elems[idm] > mval*machine_eps ) {
+					log_dM_e.push_back(std::log(dM_elems[idm])); 
+					log_diffs.push_back(log_dM_e[std::max(idm-1,0)]-log_dM_e[idm]);
+				
+					// candidate for cutoff
+					if ((dM_elems[idm]/mval < svd_cutoff) && 
+						(std::fabs(log_diffs.back()) > 1.0) ) {
+						index_cutoff = idm;
+						
+						for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
+						break;
+					}
+				} else {
+					dM_elems[idm] = 0.0;
+				}
+			}
+
 			dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
 			
 			if(dbg && (dbgLvl >= 1)) {
@@ -1426,12 +1449,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			//Msym = (uM*dM)*prime(uM);	
 			//Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 
-// ASYM SOLUTION
-		 // 	ITensor mU(combinedIndex(cmbK)),svM,mV;
-			// svd(M,mU,svM,mV);
-			// dbg_svM = svM;
-// END ASYM SOLUTION
-
 			// if(dbg && (dbgLvl >= 1)) {
 			// 	Print(svM);
 			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
@@ -1446,20 +1463,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// 		std::cout << K.real(K.inds().front()(isv)) << std::endl;
 			// }
 		    
-// ASYM SOLUTION
-			// // Regularize and invert singular value matrix svM
-			// std::vector<double> elems_regInvSvM;
-			// for (int isv=1; isv<=svM.inds().front().m(); isv++) {
-			// 	if ( svM.real(svM.inds().front()(isv),svM.inds().back()(isv))/
-			// 		 svM.real(svM.inds().front()(1),svM.inds().back()(1))  > svd_cutoff) {  
-			// 		elems_regInvSvM.push_back(1.0/svM.real(svM.inds().front()(isv),
-			// 			svM.inds().back()(isv)) );
-			// 	} else
-			// 		elems_regInvSvM.push_back(0.0);
-			// }
-
-			// auto regInvSvM = diagTensor(elems_regInvSvM, svM.inds().front(),svM.inds().back());
-// END ASYM SOLUTION
 			// if(dbg && (dbgLvl >= 1)) {
 			// 	Print(regInvSvM);
 			// 	std::setprecision(std::numeric_limits<long double>::digits10 + 1);
@@ -1477,11 +1480,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			niso = (Msym*K)*cmbKp;
 // END SYM SOLUTION
 
-// ASYM SOLUTION
-			// niso = (conj(mV)*(regInvSvM*(conj(mU)*K))) * cmbKp; 
-// END ASYM SOLUTION
-			// linsystem(M,K,niso,{"plDiff",4,"dbg",true});
-
 			if(dbg && (dbgLvl >= 2)) {
 				Print(niso);
 				niso.visit(print_elem);
@@ -1495,11 +1493,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				m = 0.;
 			    optCond.visit(max_m);
 			    std::cout<<"optCond(M*niso - K) max element: "<< m <<std::endl;
-			    
-				// optCond = prime(conj(niso),4)*M - Kp;
-				// m = 0.;
-			 //    optCond.visit(max_m);
-			 //    std::cout<<"optCond(niso^dag*M - Kp) max element: "<< m <<std::endl;
 			}
 
 			//rt_diffs.push_back(norm(rt[r]-niso));

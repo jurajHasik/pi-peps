@@ -5,6 +5,7 @@
 #define __FULL_UPDT_H_
 
 #include <cmath>
+#include <limits>
 #include "ctm-cluster-env_v2.h"
 #include "ctm-cluster-global.h"
 #include "ctm-cluster.h"
