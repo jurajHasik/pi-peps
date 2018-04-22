@@ -613,18 +613,19 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	std::vector< ITensor > & iso_store,
 	Args const& args) {
-
-	double machine_eps = std::numeric_limits<double>::epsilon();
-	std::cout<< "M EPS: " << machine_eps << std::endl;
  
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
     auto dbg = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
+	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
 	auto rtInitType = args.getString("fuIsoInit","DELTA");
     auto rtInitParam = args.getReal("fuIsoInitNoiseLevel",1.0e-3);
     auto otNormType = args.getString("otNormType");
+
+    double machine_eps = std::numeric_limits<double>::epsilon();
+	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
 
     // prepare to hold diagnostic data
     Args diag_data = Args::global();
@@ -840,35 +841,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 	
 	// ##### V3 ######################################################
-	// ITensor U_eRE, D_eRE;
-	// diagHermitian(eRE_sym, U_eRE, D_eRE);
-
-	// double msign = 1.0;
-	// double mval = 0.;
-	// std::vector<double> dM_elems;
-	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-	// 	if (std::abs(dM_elems.back()) > mval) {
-	// 		mval = std::abs(dM_elems.back());
-	// 		msign = dM_elems.back()/mval;
-	// 	}
-	// }
-	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
-
-	// // Drop negative EV's
-	// if(dbg && (dbgLvl >= 1)) {
-	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
-	// 	std::cout<<"MAX EV: "<< mval << std::endl;
-	// }
-	// for (auto & elem : dM_elems) {
-	// 	if (elem < 0.0) {
-	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-	// 		elem = 0.0;
-	// 	}
-	// }
-	// ##### END V3 ##################################################
-
-	// ##### V4 ######################################################
 	ITensor U_eRE, D_eRE;
 	diagHermitian(eRE_sym, U_eRE, D_eRE);
 
@@ -884,12 +856,41 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	}
 	if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-	// Set EV's to ABS Values
+	// Drop negative EV's
 	if(dbg && (dbgLvl >= 1)) {
 		std::cout<<"REFINED SPECTRUM"<< std::endl;
 		std::cout<<"MAX EV: "<< mval << std::endl;
 	}
-	for (auto & elem : dM_elems) elem = std::fabs(elem);
+	for (auto & elem : dM_elems) {
+		if (elem < 0.0) {
+			if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+			elem = 0.0;
+		}
+	}
+	// ##### END V3 ##################################################
+
+	// ##### V4 ######################################################
+	// ITensor U_eRE, D_eRE;
+	// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+	// double msign = 1.0;
+	// double mval = 0.;
+	// std::vector<double> dM_elems;
+	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+	// 	if (std::abs(dM_elems.back()) > mval) {
+	// 		mval = std::abs(dM_elems.back());
+	// 		msign = dM_elems.back()/mval;
+	// 	}
+	// }
+	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+	// // Set EV's to ABS Values
+	// if(dbg && (dbgLvl >= 1)) {
+	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+	// 	std::cout<<"MAX EV: "<< mval << std::endl;
+	// }
+	// for (auto & elem : dM_elems) elem = std::fabs(elem);
 	// ##### END V4 ##################################################
 
 	// ##### V5 ######################################################
@@ -1219,12 +1220,16 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		std::setprecision(std::numeric_limits<long double>::digits10 + 1);
 		std::cout<< d << std::endl;
 	};
-	
+
 	int r, altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<double> overlaps;
-	std::vector<double> rt_diffs; 
-	
+	std::vector<double> rt_diffs;
+	//int min_indexCutoff = cls.auxBondDim*cls.auxBondDim*uJ1J2.a12.m();
+	double minGapDisc = 1.0e16;
+	double minEvKept  = 1.0e16; 
+	//double maxEvDisc  = 0.0;
+
 	ITensor dbg_D, dbg_svM;
 	while (not converged) {
 		
@@ -1412,10 +1417,22 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				
 					// candidate for cutoff
 					if ((dM_elems[idm]/mval < svd_cutoff) && 
-						(std::fabs(log_diffs.back()) > 1.0) ) {
+						(std::fabs(log_diffs.back()) > svd_maxLogGap) ) {
 						index_cutoff = idm;
+
+						// log diagnostics
+						if ( minGapDisc > std::fabs(log_diffs.back()) ) {
+							minGapDisc = std::fabs(log_diffs.back());
+							//min_indexCutoff = std::min(min_indexCutoff, index_cutoff);
+							minEvKept  = dM_elems[std::max(idm-1,0)];
+							//maxEvDisc  = dM_elems[idm];
+						}
 						
 						for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
+
+						//Dynamic setting of iso_eps
+						iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]); 
+
 						break;
 					}
 				} else {
@@ -1624,6 +1641,10 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		- overlaps[overlaps.size()-1];
 	diag_data.add("finalDist0",dist0);
 	diag_data.add("finalDist1",dist1);
+
+	diag_data.add("minGapDisc",minGapDisc);
+	diag_data.add("minEvKept",minEvKept);
+	//diag_data.add("maxEvDisc",maxEvDisc);
 
 	return diag_data;
 }
