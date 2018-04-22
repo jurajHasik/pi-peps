@@ -48,6 +48,7 @@ int main( int argc, char *argv[] ) {
     double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
     int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
     double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
+    double pseudoInvMaxLogGap = jsonCls["pseudoInvMaxLogGap"].get<double>();
     double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
     std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
@@ -401,6 +402,7 @@ int main( int argc, char *argv[] ) {
         "fuIsoInit",arg_fuIsoInit,
         "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
         "pseudoInvCutoff",pseudoInvCutoff,
+        "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
         "isoEpsilon",isoEpsilon,
         "otNormType",arg_otNormType
     };

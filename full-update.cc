@@ -1226,8 +1226,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<double> overlaps;
 	std::vector<double> rt_diffs;
 	//int min_indexCutoff = cls.auxBondDim*cls.auxBondDim*uJ1J2.a12.m();
-	double minGapDisc = 1.0e16;
-	double minEvKept  = 1.0e16; 
+	double minGapDisc = 100.0; // in logscale
+	double minEvKept  = svd_cutoff; 
 	//double maxEvDisc  = 0.0;
 
 	ITensor dbg_D, dbg_svM;
@@ -1251,7 +1251,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::array<const itensor::ITensor *, 2> rtp; // holds reduction tensor pointers => rtp
 			std::array<const itensor::ITensor *, 3> QS({ &eA, &eB, &eD });
 
-// BRA
+			// BRA
 			int shift = i_rt / 2;
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][0][i] >= 0) ? &rt[RTPM_R[i_rt][0][i]] : NULL;
@@ -1279,7 +1279,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			M.prime(MPOLINK,plRT[i_rt]+IOFFSET);
 			if(dbg && (dbgLvl >= 3)) Print(M);
 
-// KET
+			// KET
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][0][i] >= 0) ? &rt[RTPM_R[i_rt][0][i]] : NULL;
 			M = M * prime(conj(getketT(*QS[ord[0]],*mpo[ord[0]], rtp, (dbg && (dbgLvl >= 3)))), AUXLINK, 4);
 			M *= delta( prime(aux[ord[0]],4+pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
@@ -1393,7 +1393,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			// Find largest (absolute) EV and in the case of msign * mval < 0, multiply
 			// dM by -1 as to set the sign of largest (and consecutive) EV to +1
-// SYM SOLUTION
+			// SYM SOLUTION
 			double msign = 1.0;
 			double mval = 0.;
 			std::vector<double> dM_elems;
@@ -1424,19 +1424,37 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 						if ( minGapDisc > std::fabs(log_diffs.back()) ) {
 							minGapDisc = std::fabs(log_diffs.back());
 							//min_indexCutoff = std::min(min_indexCutoff, index_cutoff);
-							minEvKept  = dM_elems[std::max(idm-1,0)];
+							minEvKept = dM_elems[std::max(idm-1,0)];
 							//maxEvDisc  = dM_elems[idm];
 						}
 						
 						for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
 
 						//Dynamic setting of iso_eps
-						iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]); 
+						iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
 
 						break;
 					}
 				} else {
-					dM_elems[idm] = 0.0;
+					index_cutoff = idm;
+					for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
+
+					// log diagnostics
+					minEvKept  = dM_elems[std::max(idm-1,0)];
+
+					//Dynamic setting of iso_eps
+					iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
+					
+					break;
+				}
+				if (idm == dM_elems.size()-1) {
+					index_cutoff = -1;
+
+					// log diagnostics
+					minEvKept  = dM_elems[idm];
+
+					//Dynamic setting of iso_eps
+					iso_eps = std::min(iso_eps, dM_elems[idm]);
 				}
 			}
 
@@ -1461,7 +1479,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					elems_regInvDM.push_back(0.0);
 			}
 			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
-// END SYM SOLUTION
+			// END SYM SOLUTION
 
 			//Msym = (uM*dM)*prime(uM);	
 			//Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
@@ -1491,11 +1509,11 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		    ITensor niso;
 
 		    // Msym = U^dag D U ==> Msym^-1 = U^-1 D^-1 (U^dag)^-1 = U^dag D^-1 U
-// SYM SOLUTION
+			// SYM SOLUTION
 		 	Msym = (conj(uM)*regInvDM)*prime(uM);
 			Msym = Msym*delta(prime(combinedIndex(cmbK),1),combinedIndex(cmbKp));
 			niso = (Msym*K)*cmbKp;
-// END SYM SOLUTION
+			// END SYM SOLUTION
 
 			if(dbg && (dbgLvl >= 2)) {
 				Print(niso);
@@ -1642,6 +1660,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	diag_data.add("finalDist0",dist0);
 	diag_data.add("finalDist1",dist1);
 
+	minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
 	diag_data.add("minGapDisc",minGapDisc);
 	diag_data.add("minEvKept",minEvKept);
 	//diag_data.add("maxEvDisc",maxEvDisc);
