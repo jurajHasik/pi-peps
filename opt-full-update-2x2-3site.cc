@@ -64,6 +64,7 @@ int main( int argc, char *argv[] ) {
 	CtmEnv::isometry_type iso_type(toISOMETRY(jsonCls["isoType"].get<std::string>()));
 	double arg_isoPseudoInvCutoff = jsonCls["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(jsonCls["normType"].get<std::string>()));
+    std::string env_SVD_METHOD(jsonCls["env_SVD_METHOD"].get<std::string>()); 
 
 	//max iterations for environment per full update step
 	int arg_maxEnvIter = jsonCls["maxEnvIter"].get<int>();
@@ -199,7 +200,8 @@ int main( int argc, char *argv[] ) {
 
     // INITIALIZE ENVIRONMENT
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
-        {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff});
+        {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
+         "SVD_METHOD",env_SVD_METHOD});
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
             ctmEnv.initMockEnv();

@@ -1537,16 +1537,28 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			// Check overlap
 			if (i_rt==3) {
+				std::complex<double> ovrlp_val;
 				ITensor tempOLP;
 				tempOLP = (prime(conj(niso),4)*M)*niso;
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
+				ovrlp_val = sumelsC(tempOLP);
+				if (isComplex(tempOLP)) {
+					std::cout<<"NORM is Complex: imag(ovrlp_val)="<< ovrlp_val.imag() << std::endl;
+				}
+				overlaps.push_back(ovrlp_val.real());
+
 				overlaps.push_back(sumels(tempOLP));
 				tempOLP = K*prime(conj(niso),4);
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-				overlaps.push_back(sumels(tempOLP));
+				ovrlp_val = sumelsC(tempOLP);
+				if (isComplex(tempOLP)) {
+					std::cout<<"OVERLAP is Complex: imag(ovrlp_val)="<< ovrlp_val.imag() << std::endl;
+				}
+				overlaps.push_back(ovrlp_val.real());
+
 				// tempOLP = niso*Kp;
 				// if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
-				overlaps.push_back(sumels(tempOLP));
+				overlaps.push_back(ovrlp_val.real());
 			}
 		}
 
