@@ -617,6 +617,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
     auto dbg = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
+    auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
@@ -814,6 +815,9 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	if(dbg && (dbgLvl >=3)) Print(eRE);
 	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
 	
+	double diag_maxMsymLE, diag_maxMasymLE;
+	double diag_maxMsymFN, diag_maxMasymFN;
+	if (symmProtoEnv) {
 	// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 	auto cmbKet = combiner(iQA, iQB, iQD);
 	auto cmbBra = prime(cmbKet,4);
@@ -822,9 +826,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 	ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
 	ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
-
-	double diag_maxMsymLE, diag_maxMasymLE;
-	double diag_maxMsymFN, diag_maxMasymFN;
 
 	m = 0.;
     eRE_sym.visit(max_m);
@@ -948,11 +949,12 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
 		* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 
-	eRE_sym = (eRE_sym * cmbKet) * cmbBra;
+	eRE = (eRE_sym * cmbKet) * cmbBra;
 	// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
+	}
 
 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
-	ITensor protoK = (eRE_sym * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
+	ITensor protoK = (eRE * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
 	protoK = (protoK * eB) * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4]));
 	protoK = (protoK * eD);
 	if(dbg && (dbgLvl >=3)) Print(protoK);
@@ -1255,7 +1257,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			int shift = i_rt / 2;
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][0][i] >= 0) ? &rt[RTPM_R[i_rt][0][i]] : NULL;
-			ITensor M = eRE_sym * getketT(*QS[ord[0]],*mpo[ord[0]], rtp, (dbg && (dbgLvl >= 3)));
+			ITensor M = eRE * getketT(*QS[ord[0]],*mpo[ord[0]], rtp, (dbg && (dbgLvl >= 3)));
 			M *= delta(	prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
 			  			prime(auxRT[i_rt],IOFFSET+plRT[i_rt]) );		
 			Print(delta(prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
