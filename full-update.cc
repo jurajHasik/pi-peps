@@ -979,6 +979,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	if(dbg && (dbgLvl >=3)) Print(protoK);
 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
 
+	std::cout<<"eRE.scale(): "<< eRE.scale()<<" protoK.scale(): "<< protoK.scale() <<std::endl;
+
 	// Create and initialize reduction tensors RT
 	std::vector<ITensor> rt(4);
 	rt[0] = ITensor(prime(aux[0],pl[1]), prime(uJ1J2.a12,pl[1]), prime(aux[0],pl[1]+IOFFSET));
@@ -1229,7 +1231,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<double> rt_diffs;
 	//int min_indexCutoff = cls.auxBondDim*cls.auxBondDim*uJ1J2.a12.m();
 	double minGapDisc = 100.0; // in logscale
-	double minEvKept  = svd_cutoff; 
+	double minEvKept  = svd_cutoff;
 	//double maxEvDisc  = 0.0;
 
 	ITensor dbg_D, dbg_svM;
@@ -1260,20 +1262,16 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			ITensor M = eRE * getketT(*QS[ord[0]],*mpo[ord[0]], rtp, (dbg && (dbgLvl >= 3)));
 			M *= delta(	prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
 			  			prime(auxRT[i_rt],IOFFSET+plRT[i_rt]) );		
-			Print(delta(prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
-			  			prime(auxRT[i_rt],IOFFSET+plRT[i_rt]) ));
+			// Print(delta(prime(aux[ord[0]],pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
+			//   			prime(auxRT[i_rt],IOFFSET+plRT[i_rt]) ));
 			if(dbg && (dbgLvl >= 3)) Print(M);
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][1][i] >= 0) ? &rt[RTPM_R[i_rt][1][i]] : NULL;
 			M = M * (getketT(*QS[ord[1]],*mpo[ord[1]], rtp, (dbg && (dbgLvl >= 3)))
-			// 	* delta(prime(aux[ord[1]],pl[2*ord[1]+shift]),
-			// 			prime(aux[ord[1-ORD_DIR[i_rt]]],pl[2*ord[1-ORD_DIR[i_rt]]+1-shift])) );
-			// Print(delta(prime(aux[ord[1]],pl[2*ord[1]+shift]),
-			// 			prime(aux[ord[1-ORD_DIR[i_rt]]],pl[2*ord[1-ORD_DIR[i_rt]]+1-shift])) );
 				* delta(prime(aux[A_R[shift][0]],pl[PL_R[shift][0]]),
 						prime(aux[A_R[shift][1]],pl[PL_R[shift][1]]) ));
-			Print(delta(prime(aux[A_R[shift][0]],pl[PL_R[shift][0]]),
-						prime(aux[A_R[shift][1]],pl[PL_R[shift][1]])) );
+			// Print(delta(prime(aux[A_R[shift][0]],pl[PL_R[shift][0]]),
+			// 			prime(aux[A_R[shift][1]],pl[PL_R[shift][1]])) );
 			if(dbg && (dbgLvl >= 3)) Print(M);
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][2][i] >= 0) ? &rt[RTPM_R[i_rt][2][i]] : NULL;
@@ -1286,16 +1284,16 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			M = M * prime(conj(getketT(*QS[ord[0]],*mpo[ord[0]], rtp, (dbg && (dbgLvl >= 3)))), AUXLINK, 4);
 			M *= delta( prime(aux[ord[0]],4+pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
 						prime(auxRT[i_rt],4+IOFFSET+plRT[i_rt]));
-			Print(delta(prime(aux[ord[0]],4+pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
-						prime(auxRT[i_rt],4+IOFFSET+plRT[i_rt])));
+			// Print(delta(prime(aux[ord[0]],4+pl[2*ord[0]+(1-ORD_DIR[i_rt])/2]),
+			// 			prime(auxRT[i_rt],4+IOFFSET+plRT[i_rt])));
 			if(dbg && (dbgLvl >= 3)) Print(M);
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][1][i] >= 0) ? &rt[RTPM_R[i_rt][1][i]] : NULL;
 			M = M * (prime(conj(getketT(*QS[ord[1]],*mpo[ord[1]], rtp, (dbg && (dbgLvl >= 3)))), AUXLINK, 4)
 				* delta(prime(aux[A_R[shift][0]],4+pl[PL_R[shift][0]]), 
 			 	       	prime(aux[A_R[shift][1]],4+pl[PL_R[shift][1]]) ));
-			Print(delta(prime(aux[A_R[shift][0]],4+pl[PL_R[shift][0]]), 
-			 	       	prime(aux[A_R[shift][1]],4+pl[PL_R[shift][1]]))  );
+			// Print(delta(prime(aux[A_R[shift][0]],4+pl[PL_R[shift][0]]), 
+			//  	       	prime(aux[A_R[shift][1]],4+pl[PL_R[shift][1]]))  );
 			if(dbg && (dbgLvl >= 3)) Print(M);
 
 			for (int i=0; i<2; i++) rtp[i] = (RTPM_R[i_rt][2][i] >= 0) ? &rt[RTPM_R[i_rt][2][i]] : NULL;
@@ -1481,6 +1479,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					elems_regInvDM.push_back(0.0);
 			}
 			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
+			
+			if(dbg && (dbgLvl >= 1)) { std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; }
 			// END SYM SOLUTION
 
 			//Msym = (uM*dM)*prime(uM);	
@@ -1532,9 +1532,21 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			    std::cout<<"optCond(M*niso - K) max element: "<< m <<std::endl;
 			}
 
-			//rt_diffs.push_back(norm(rt[r]-niso));
+			// Largest elements of isometries
+			// for (int i=0; i<=3; i++) {
+		 	// m = 0.;
+			// rt[i].visit(max_m);
+			// std::cout<<" iso["<< i <<"] max_elem: "<< m;
+			// }
+			// std::cout << std::endl;
+			// for (int i=0; i<=3; i++) std::cout<<" iso["<< i <<"].scale(): "<< rt[i].scale();
+			// std::cout << std::endl;
+
+		    //rt_diffs.push_back(norm(rt[r]-niso));
 			rt_diffs.push_back(norm(rt[r]));
  			
+ 			// scale logScale of isometry tensor to 1.0
+ 			niso.scaleTo(1.0);
  			rt[r] = niso;
 
 			// Check overlap
