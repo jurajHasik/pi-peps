@@ -1547,7 +1547,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				}
 				overlaps.push_back(ovrlp_val.real());
 
-				overlaps.push_back(sumels(tempOLP));
 				tempOLP = K*prime(conj(niso),4);
 				if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a scalar"<<std::endl;
 				ovrlp_val = sumelsC(tempOLP);
