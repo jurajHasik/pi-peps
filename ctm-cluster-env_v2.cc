@@ -21,7 +21,7 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
 
     isoPseudoInvCutoff = args.getReal("isoPseudoInvCutoff",1.0e-14);
     isoMinElemWarning  = args.getReal("isoMinElemWarning",1.0e-4);
-    isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e10);
+    isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e8);
     SVD_METHOD         = args.getString("SVD_METHOD","itensor");
     DBG     = args.getBool("dbg",false);
     DBG_LVL = args.getInt("dbgLevel",0);
@@ -1784,7 +1784,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 U = ITensor(I_U, I_XH);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -1863,7 +1863,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
@@ -1931,7 +1931,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(I_U, I_XH);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -2009,7 +2009,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
@@ -2377,7 +2377,10 @@ void CtmEnv::normalizeBLE() {
  */
 void CtmEnv::normalizeBLE_ctmStep(char ctmMove, int col, int row, bool dbg) {
 
-    auto normalizeBLE_T = [&dbg](ITensor& t)
+    double iMinEW = isoMinElemWarning;
+    double iMaxEW = isoMaxElemWarning;
+
+    auto normalizeBLE_T = [&dbg,&ctmMove,&col,&row,&iMinEW,&iMaxEW](ITensor& t)
     {
         double m = 0.;
         auto max_m = [&m](double d)
@@ -2386,6 +2389,11 @@ void CtmEnv::normalizeBLE_ctmStep(char ctmMove, int col, int row, bool dbg) {
         };
 
         t.visit(max_m);
+        if( m > iMaxEW || m < iMinEW ) {
+            std::cout << "WARNING: NormalizeBLE " << ctmMove << " [col:row]= ["
+                << col <<":"<< row <<"] Max elem.: "<< m << std::endl;
+        }
+
         if(dbg) std::cout << "MAX elem = "<< m << std::endl;
         t /= m;
     };

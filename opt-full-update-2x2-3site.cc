@@ -243,6 +243,7 @@ int main( int argc, char *argv[] ) {
     std::vector<double> e_nnH_BD;
     std::vector<double> e_nnH_CD;
     std::vector<double> evNN;
+    std::vector<double> evNNN;
 
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
@@ -430,10 +431,15 @@ int main( int argc, char *argv[] ) {
     	// ENTER ENVIRONMENT LOOP
 		for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
 
-	        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-	        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-	        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-	        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+	        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+	        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+	        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+	        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+
+            ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+            ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+            ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+            ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
 	        if ( envI % 1 == 0 ) {
 	            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
@@ -511,6 +517,22 @@ int main( int argc, char *argv[] ) {
         evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
             std::make_pair(1,1), std::make_pair(2,1))); //DC
 
+        double evNNN_avg = 0.0;
+        //if( ((fuI-1) % gates.size()) == 0 ) {
+            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+
+            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+            for(int evnnni=evNNN.size()-1; evnnni > evNNN.size()-8; evnnni--)   
+                evNNN_avg += evNNN[evnnni];
+            evNNN_avg = evNNN_avg / 8.0;
+        //}
+
         // write energy
         double avgE_8links = 0.;
         out_file_energy << fuI-1 <<" "<< e_nnH.back() 
@@ -524,28 +546,37 @@ int main( int argc, char *argv[] ) {
             avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
                 + e_nnH_BD.back() + e_nnH_CD.back();
         out_file_energy <<" "<< avgE_8links/8.0;
+        out_file_energy <<" "<< avgE_8links/8.0 + evNNN_avg;
         out_file_energy << std::endl;
 
         // PERFORM FULL UPDATE
-        std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
-            
-        diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-            gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
+        // for(int fuII = 0; fuII < gates.size(); fuII++) {
+        //     std::cout << "GATE: " << fuII << std::endl;
+                
+        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[fuII], 
+        //         gate_auxInds[fuII], iso_store[fuII], fuArgs);
 
-        diagData_fu.push_back(diag_fu);
+            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
+                
+            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+                gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
-            <<" "<< diag_fu.getString("siteMaxElem")
-            <<" "<< diag_fu.getReal("finalDist0",0.0)
-            <<" "<< diag_fu.getReal("finalDist1",0.0);
-        if (arg_fuDbg && (arg_fuDbgLevel >=1))
-            out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
-            <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
-        out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
-            <<" "<< diag_fu.getReal("minEvKept",0.0);
-        out_file_diag  <<std::endl;
+            diagData_fu.push_back(diag_fu);
 
-        ctmEnv.updateCluster(cls);
+            out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
+                <<" "<< diag_fu.getString("siteMaxElem")
+                <<" "<< diag_fu.getReal("finalDist0",0.0)
+                <<" "<< diag_fu.getReal("finalDist1",0.0);
+            if (arg_fuDbg && (arg_fuDbgLevel >=1))
+                out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
+                <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
+            out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
+                <<" "<< diag_fu.getReal("minEvKept",0.0);
+            out_file_diag  <<std::endl;
+
+            ctmEnv.updateCluster(cls);
+        // }
+        
         // reset environment
         if (arg_reinitEnv) 
             switch (arg_initEnvType) {
@@ -560,6 +591,7 @@ int main( int argc, char *argv[] ) {
                 }
                 case CtmEnv::INIT_ENV_rnd: {
                     ctmEnv.initRndEnv(envIsComplex);
+                    ctmEnv.symmetrizeEnv();
                     break;
                 } 
             }
