@@ -12,6 +12,7 @@ using namespace itensor;
 
 int main( int argc, char *argv[] ) {
 
+    // ***** INITIALIZE FULL UPDATE ALGORITHM *********************************
 	std::string arg_initFile = std::string(argv[1]);
 	std::ifstream infile(arg_initFile, std::ios::in);
 
@@ -31,19 +32,20 @@ int main( int argc, char *argv[] ) {
 	physDim = jsonCls["physDim"].get<int>();
 	auxBondDim = jsonCls["auxBondDim"].get<int>();
 
-	//read cluster outfile
+	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
 
 	//define Hamiltonian
 	double arg_J1 = jsonCls["J1"].get<double>();
 	double arg_J2 = jsonCls["J2"].get<double>();
     double arg_lambda = jsonCls["LAMBDA"].get<double>();
+    //time step
+    double arg_tau = jsonCls["tau"].get<double>();
 
-	//read simulation parameters
-
-	//total iterations of full update
+	// full update parameters
 	std::string arg_fuGateSeq = jsonCls["fuGateSeq"].get<std::string>();
-    int arg_fuIter = jsonCls["fuIter"].get<int>();
+    int arg_fuIter  = jsonCls["fuIter"].get<int>();
+    int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
     double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
     int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
@@ -54,23 +56,25 @@ int main( int argc, char *argv[] ) {
     std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
-	//time step
-	double arg_tau = jsonCls["tau"].get<double>();
-
-	//env parameters
-	int auxEnvDim = jsonCls["auxEnvDim"].get<int>();
-	std::string arg_ioEnvTag(jsonCls["ioEnvTag"].get<std::string>());
-	CtmEnv::init_env_type arg_initEnvType(toINIT_ENV(jsonCls["initEnvType"].get<std::string>()));
-	bool envIsComplex = jsonCls["envIsComplex"].get<bool>();
-	CtmEnv::isometry_type iso_type(toISOMETRY(jsonCls["isoType"].get<std::string>()));
-	double arg_isoPseudoInvCutoff = jsonCls["isoPseudoInvCutoff"].get<double>();
-    CtmEnv::normalization_type norm_type(toNORMALIZATION(jsonCls["normType"].get<std::string>()));
-    std::string env_SVD_METHOD(jsonCls["env_SVD_METHOD"].get<std::string>()); 
-
-	//max iterations for environment per full update step
-	int arg_maxEnvIter = jsonCls["maxEnvIter"].get<int>();
-    double arg_envEps  = jsonCls["envEpsilon"].get<double>();
-    bool arg_reinitEnv = jsonCls["reinitEnv"].get<bool>();
+	
+	// read CTMRG parameters
+    auto json_ctmrg_params(jsonCls["ctmrg"]);
+	int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
+	std::string arg_ioEnvTag(json_ctmrg_params["ioEnvTag"].get<std::string>());
+	CtmEnv::init_env_type arg_initEnvType(toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
+	bool envIsComplex = json_ctmrg_params["envIsComplex"].get<bool>();
+	CtmEnv::isometry_type iso_type(toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
+	double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
+    CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
+    std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>()); 
+	int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
+    int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
+    double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
+    bool arg_reinitEnv = json_ctmrg_params["reinitEnv"].get<bool>();
+    bool arg_envDbg    = json_ctmrg_params["dbg"].get<bool>();
+    int arg_envDbgLvl  = json_ctmrg_params["dbgLvl"].get<int>();
+    // end reading CTMRG parameters
+    // ***** INITIALIZE FULL UPDATE ALGORITHM DONE ****************************
 
 	// INITIALIZE CLUSTER
 	Cluster cls;
@@ -202,7 +206,8 @@ int main( int argc, char *argv[] ) {
     // INITIALIZE ENVIRONMENT
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
-         "SVD_METHOD",env_SVD_METHOD});
+         "SVD_METHOD",env_SVD_METHOD,
+         "dbg",arg_envDbg,"dbgLevel",arg_envDbgLvl});
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
             ctmEnv.initMockEnv();
@@ -421,9 +426,120 @@ int main( int argc, char *argv[] ) {
     out_file_energy.precision( std::numeric_limits< double >::max_digits10 );
     out_file_diag.precision( std::numeric_limits< double >::max_digits10 );
 
+    // ***** COMPUTING INITIAL ENVIRONMENT ************************************
+    std::cout <<"COMPUTING INITIAL ENVIRONMENT "<< std::endl;
+    // t_begin_int = std::chrono::steady_clock::now();
+        
+    // ENTER ENVIRONMENT LOOP
+    for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
+
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+
+        if ( envI % 1 == 0 ) {
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+        
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
+                << e_curr[3] << std::endl;
+            
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+
+            if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
+                (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
+                (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
+                (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
+
+                diag_ctmIter.push_back(envI);
+                std::cout<< "INIT ENV CONVERGED" << std::endl;
+                break;
+            }
+
+            if (envI==arg_maxInitEnvIter) {
+                diag_ctmIter.push_back(envI);
+                // diagnose spectra
+                ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                Print(spec);
+
+                tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                Print(spec);
+
+                tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                Print(spec);
+
+                tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                Print(spec);
+            }
+            
+            e_prev = e_curr;
+            t_begin_int = std::chrono::steady_clock::now();
+        }
+    }
+    // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
+
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
+
+        // PERFORM FULL UPDATE
+        // for(int fuII = 0; fuII < gates.size(); fuII++) {
+        //     std::cout << "GATE: " << fuII << std::endl;
+                
+        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[fuII], 
+        //         gate_auxInds[fuII], iso_store[fuII], fuArgs);
+
+            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
+                
+            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+                gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
+
+            diagData_fu.push_back(diag_fu);
+
+            out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
+                <<" "<< diag_fu.getString("siteMaxElem")
+                <<" "<< diag_fu.getReal("finalDist0",0.0)
+                <<" "<< diag_fu.getReal("finalDist1",0.0);
+            if (arg_fuDbg && (arg_fuDbgLevel >=1))
+                out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
+                <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
+            out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
+                <<" "<< diag_fu.getReal("minEvKept",0.0);
+            out_file_diag  <<std::endl;
+
+            ctmEnv.updateCluster(cls);
+            ev.setCluster(cls);
+            writeCluster(outClusterFile, cls);
+        // }
+        
+        // reset environment
+        if (arg_reinitEnv) 
+            switch (arg_initEnvType) {
+                case CtmEnv::INIT_ENV_const1: {
+                    ctmEnv.initMockEnv();
+                    break;
+                }
+                case CtmEnv::INIT_ENV_ctmrg: {
+                    ctmEnv.initCtmrgEnv();
+                    //ctmEnv.symmetrizeEnv(arg_fuDbg);
+                    break;
+                }
+                case CtmEnv::INIT_ENV_rnd: {
+                    ctmEnv.initRndEnv(envIsComplex);
+                    ctmEnv.symmetrizeEnv();
+                    break;
+                } 
+            }
 
     	// SETUP ENVIRONMENT LOOP
     	t_begin_int = std::chrono::steady_clock::now();
@@ -498,27 +614,27 @@ int main( int argc, char *argv[] ) {
     	std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         	<<" "<< accT[7] << std::endl;
 
-        // compute energies
-        e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(0,0), std::make_pair(1,0)) );
-        e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(0,0), std::make_pair(0,1)) );
-        e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(1,0), std::make_pair(1,1)) );
-        e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(0,1), std::make_pair(1,1)) );
+        if ((fuI-1) % arg_obsFreq == 0) {
+            // compute energies NN links
+            e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(0,0), std::make_pair(1,0)) );
+            e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(0,0), std::make_pair(0,1)) );
+            e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(1,0), std::make_pair(1,1)) );
+            e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(0,1), std::make_pair(1,1)) );
 
-        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(1,0), std::make_pair(2,0))); //BA
-        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(0,1), std::make_pair(0,2))); //CA
-        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(1,1), std::make_pair(1,2))); //DB
-        evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            std::make_pair(1,1), std::make_pair(2,1))); //DC
+            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(1,0), std::make_pair(2,0))); //BA
+            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(0,1), std::make_pair(0,2))); //CA
+            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(1,1), std::make_pair(1,2))); //DB
+            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+                std::make_pair(1,1), std::make_pair(2,1))); //DC
 
-        double evNNN_avg = 0.0;
-        //if( ((fuI-1) % gates.size()) == 0 ) {
+            // compute energies NNN links
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
@@ -528,10 +644,7 @@ int main( int argc, char *argv[] ) {
             evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
             evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
             evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
-            for(int evnnni=evNNN.size()-1; evnnni > evNNN.size()-8; evnnni--)   
-                evNNN_avg += evNNN[evnnni];
-            evNNN_avg = evNNN_avg / 8.0;
-        //}
+        }
 
         // write energy
         double avgE_8links = 0.;
@@ -539,72 +652,29 @@ int main( int argc, char *argv[] ) {
             <<" "<< e_nnH_AC.back()
             <<" "<< e_nnH_BD.back()
             <<" "<< e_nnH_CD.back();
-            for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-                avgE_8links += evNN[j];
-                out_file_energy<<" "<< evNN[j];
-            }
-            avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-                + e_nnH_BD.back() + e_nnH_CD.back();
+        for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+            avgE_8links += evNN[j];
+            out_file_energy<<" "<< evNN[j];
+        }
+        avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+            + e_nnH_BD.back() + e_nnH_CD.back();
         out_file_energy <<" "<< avgE_8links/8.0;
+        
+        double evNNN_avg = 0.;
+        for(int evnnni=evNNN.size()-1; evnnni > evNNN.size()-8; evnnni--)   
+            evNNN_avg += evNNN[evnnni];
+        evNNN_avg = evNNN_avg / 8.0;
+
         out_file_energy <<" "<< avgE_8links/8.0 + evNNN_avg;
         out_file_energy << std::endl;
-
-        // PERFORM FULL UPDATE
-        // for(int fuII = 0; fuII < gates.size(); fuII++) {
-        //     std::cout << "GATE: " << fuII << std::endl;
-                
-        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[fuII], 
-        //         gate_auxInds[fuII], iso_store[fuII], fuArgs);
-
-            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
-                
-            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-                gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
-
-            diagData_fu.push_back(diag_fu);
-
-            out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
-                <<" "<< diag_fu.getString("siteMaxElem")
-                <<" "<< diag_fu.getReal("finalDist0",0.0)
-                <<" "<< diag_fu.getReal("finalDist1",0.0);
-            if (arg_fuDbg && (arg_fuDbgLevel >=1))
-                out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
-                <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
-            out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
-                <<" "<< diag_fu.getReal("minEvKept",0.0);
-            out_file_diag  <<std::endl;
-
-            ctmEnv.updateCluster(cls);
-        // }
-        
-        // reset environment
-        if (arg_reinitEnv) 
-            switch (arg_initEnvType) {
-                case CtmEnv::INIT_ENV_const1: {
-                    ctmEnv.initMockEnv();
-                    break;
-                }
-                case CtmEnv::INIT_ENV_ctmrg: {
-                    ctmEnv.initCtmrgEnv();
-                    //ctmEnv.symmetrizeEnv(arg_fuDbg);
-                    break;
-                }
-                case CtmEnv::INIT_ENV_rnd: {
-                    ctmEnv.initRndEnv(envIsComplex);
-                    ctmEnv.symmetrizeEnv();
-                    break;
-                } 
-            }
-        ev.setCluster(cls);
-        writeCluster(outClusterFile, cls);
     }
 
-    // // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
+    // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
     std::cout <<"FULL UPDATE DONE - COMPUTING FINAL ENVIRONMENT "<< std::endl;
     // t_begin_int = std::chrono::steady_clock::now();
         
     // ENTER ENVIRONMENT LOOP
-    for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
+    for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
         ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
@@ -612,7 +682,7 @@ int main( int argc, char *argv[] ) {
         ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
         if ( envI % 1 == 0 ) {
-             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
         
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -665,7 +735,6 @@ int main( int argc, char *argv[] ) {
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,1))); //DC
     
-
     // write energy
     double avgE_8links = 0.;
     out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
@@ -696,7 +765,7 @@ int main( int argc, char *argv[] ) {
 	// std::cout <<"BA: "<< evNN[0] <<" CA: "<< evNN[1] <<" DB: "<< evNN[2] 
     //     <<" DC: "<< evNN[3] << std::endl;
 
-    std::cout <<"ID: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"ID: " << ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
 
     std::vector<double> sA_zpm;

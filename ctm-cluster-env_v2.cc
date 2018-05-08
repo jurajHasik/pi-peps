@@ -1784,7 +1784,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 U = ITensor(I_U, I_XH);
-                spec = svd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -1863,7 +1863,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
@@ -1931,7 +1931,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(I_U, I_XH);
-                spec = svd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -2009,7 +2009,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
