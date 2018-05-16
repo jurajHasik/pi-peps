@@ -1191,14 +1191,107 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, std::pair<int,int> s1,
     return sumels(tN);
 }
 
+
+// Diagonal s1, s1+[1,-1]
+// double EVBuilder::eval2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+//         bool DBG) const
+// {
+//     return contract2x2Diag1N1(op2s, s1, DBG)/contract2x2Diag1N1(OP2S_Id, s1, DBG);
+// }
+
+// double EVBuilder::contract2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+//     bool DBG) const 
+// {
+//     if(DBG) std::cout <<"===== EVBuilder::expVal2x2Diag1N1 called ====="
+//         << std::string(34,'=') << std::endl;
+
+//     //shift to unit cell
+//     auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+//     //diagonal s2 = s1 + [1,-1]
+//     auto e_s2 = std::make_pair((s1.first+1) % cls.sizeM, (s1.second-1+cls.sizeN) % cls.sizeN);
+
+//     // sY s2
+//     // s1 sX
+//     auto sX = std::make_pair((s1.first+1) % cls.sizeM, s1.second % cls.sizeN);
+//     auto sY = std::make_pair(s1.first % cls.sizeM, (s1.second-1+cls.sizeN) % cls.sizeN);
+
+//     if(DBG) { std::cout <<"s1: ["<< e_s1.first <<","<< e_s1.second <<"]"<<std::endl;
+//     std::cout <<"sX: ["<< sX.first <<","<< sX.second <<"]"<<std::endl;
+//     std::cout <<"sY: ["<< sY.first <<","<< sY.second <<"]"<<std::endl;
+//     std::cout <<"s2: ["<< e_s2.first <<","<< e_s2.second <<"]"<<std::endl; }
+
+//     // find the index of site given its elem position within cluster
+//     auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+//     auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+
+//     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
+
+//     // build lower left corner
+//     auto tN = cd_f.C_LD[cd_f.cToS.at(e_s1)] * cd_f.T_D[cd_f.cToS.at(e_s1)] * 
+//         cd_f.T_L[cd_f.cToS.at(e_s1)];
+
+//     // get operator on site s1
+//     auto mpo1s = getTOT(op.first, cls.cToS.at(e_s1), 0, DBG);
+//     tN = tN * mpo1s.mpo[0];
+//     tN.mapprime(DLINK,1,0, HSLINK,1,0);
+//     if(DBG) { std::cout <<">>>>> 1) Lower Left corner done <<<<<"
+//             << std::endl;
+//         Print(tN); }
+
+//     // build lower right corner
+//     auto urc = cd_f.C_RD[cd_f.cToS.at(sX)] * cd_f.T_D[cd_f.cToS.at(sX)] * 
+//         cd_f.T_R[cd_f.cToS.at(sX)] * cd_f.sites[cd_f.cToS.at(sX)];
+//     urc.mapprime(VSLINK,0,2);
+//     if(DBG) Print(urc);
+
+//     tN = tN * urc;
+//     if(DBG) { std::cout <<">>>>> 2) Lower Right corner done <<<<<"
+//             << std::endl;
+//         Print(tN); }
+
+//     // build upper right corner
+//     urc = cd_f.C_RU[cd_f.cToS.at(e_s2)] * cd_f.T_R[cd_f.cToS.at(e_s2)] * 
+//         cd_f.T_U[cd_f.cToS.at(e_s2)];
+
+//     // get operator on site s1
+//     mpo1s = getTOT(op.second, cls.cToS.at(e_s2), 0, DBG);
+//     urc = urc * mpo1s.mpo[0];
+//     urc.mapprime(RLINK,1,0, VSLINK,1,2);
+//     if(DBG) Print(urc);
+
+//     tN = tN * urc;
+//     if(DBG) { std::cout <<">>>>> 3) Upper Right corner done <<<<<"
+//             << std::endl;
+//         Print(tN); }
+
+//     urc = cd_f.C_LU[cd_f.cToS.at(sY)] * cd_f.T_U[cd_f.cToS.at(sY)] * 
+//         cd_f.T_L[cd_f.cToS.at(sY)] * cd_f.sites[cd_f.cToS.at(sY)];
+//     urc.mapprime(LLINK,1,0, VSLINK,1,0, ULINK,1,0, HSLINK,1,0);
+//     if(DBG) Print(urc);
+
+//     tN = tN * urc;
+//     if(DBG) std::cout <<">>>>> 4) Upper Left corner done <<<<<"
+//             << std::endl;
+
+//     if(tN.r() > 0) {
+//         std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+
+//     if(DBG) std::cout <<"===== EVBuilder::expVal2x2Diag1N1 done ====="
+//         << std::string(36,'=') << std::endl;
+
+//     return sumels(tN);
+// }
+
 // Diagonal s1, s1+[-1,-1]
-double EVBuilder::eval2x2DiagN1N1(OP_2S op2s, std::pair<int,int> s1, 
+double EVBuilder::eval2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG) const
 {
-    return contract2x2DiagN1N1(op2s, s1, DBG)/contract2x2DiagN1N1(OP2S_Id, s1, DBG);
+    return contract2x2DiagN11(op2s, s1, DBG)/contract2x2DiagN11(OP2S_Id, s1, DBG);
 }
 
-double EVBuilder::contract2x2DiagN1N1(OP_2S op2s, std::pair<int,int> s1, 
+double EVBuilder::contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
     bool DBG) const 
 {
     if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN1N1 called ====="
@@ -1206,7 +1299,7 @@ double EVBuilder::contract2x2DiagN1N1(OP_2S op2s, std::pair<int,int> s1,
 
     //shift to unit cell
     auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    //diagonal s2 = s1 + [-1,-1]
+    //diagonal s2 = s1 + [-1,+1]
     auto e_s2 = std::make_pair((s1.first-1+cls.sizeM) % cls.sizeM, 
         (s1.second-1+cls.sizeN) % cls.sizeN);
 

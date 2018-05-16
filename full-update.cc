@@ -1587,7 +1587,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			rt_diffs.push_back(norm(rt[r]));
  			
  			// scale logScale of isometry tensor to 1.0
- 			// niso.scaleTo(1.0);
+ 			niso.scaleTo(1.0);
  			rt[r] = niso;
 
 			// Check overlap

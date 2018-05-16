@@ -134,10 +134,16 @@ class EVBuilder {
     double contract2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
 
-    double eval2x2DiagN1N1(OP_2S op2s, std::pair<int,int> s1, 
+    // double eval2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+    //     bool DBG = false) const;
+
+    // double contract2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+    //     bool DBG = false) const;
+
+    double eval2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
 
-    double contract2x2DiagN1N1(OP_2S op2s, std::pair<int,int> s1, 
+    double contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
 
     // Correlation function

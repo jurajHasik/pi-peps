@@ -29,7 +29,8 @@ class CtmEnv
     typedef enum ISOMETRY {
         ISOMETRY_T1,
         ISOMETRY_T2,
-        ISOMETRY_T3
+        ISOMETRY_T3,
+        ISOMETRY_T4
     } isometry_type;
 
     typedef enum NORMALIZATION {
@@ -37,13 +38,12 @@ class CtmEnv
         NORM_PTN
     } normalization_type;
 
-    // LEGACY
     // Holding the current spectrum of singular values of C_*
     struct CtmSpec {
-        std::vector< double > spec_clu;
-        std::vector< double > spec_cru;
-        std::vector< double > spec_crd;
-        std::vector< double > spec_cld;
+        std::vector< std::vector<double> > spec_clu;
+        std::vector< std::vector<double> > spec_cru;
+        std::vector< std::vector<double> > spec_crd;
+        std::vector< std::vector<double> > spec_cld;
     };
 
     // ########################################################################
@@ -204,6 +204,8 @@ class CtmEnv
         std::vector<double> & accT, bool dbg = false);
     std::vector<itensor::ITensor> isoT3(char ctmMove, int col, int row,
         std::vector<double> & accT, bool dbg = false);
+    std::vector<itensor::ITensor> isoT4(char ctmMove, int col, int row,
+        std::vector<double> & accT, bool dbg = false);
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from
@@ -249,7 +251,7 @@ class CtmEnv
 
     // Compute the spectral dist between stored spectrum
     // in spec_c* and current spectrum
-    void specDist(CtmSpec const& s1, CtmSpec const& s2) const;
+    //void specDist(CtmSpec const& s1, CtmSpec const& s2) const;
 
     // Update original cluster with new one of same type
     void updateCluster(Cluster const& c);

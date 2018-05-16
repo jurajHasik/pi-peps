@@ -639,10 +639,10 @@ int main( int argc, char *argv[] ) {
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
 
-            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-            evNNN.push_back( ev.eval2x2DiagN1N1(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
         }
 
         // write energy
@@ -655,23 +655,43 @@ int main( int argc, char *argv[] ) {
             avgE_8links += evNN[j];
             out_file_energy<<" "<< evNN[j];
         }
-        avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-            + e_nnH_BD.back() + e_nnH_CD.back();
-        out_file_energy <<" "<< avgE_8links/8.0;
+        avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+            + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
+        out_file_energy <<" "<< avgE_8links;
         
         double evNNN_avg = 0.;
-        for(int evnnni=evNNN.size()-1; evnnni > evNNN.size()-8; evnnni--)   
+        for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
             evNNN_avg += evNNN[evnnni];
         evNNN_avg = evNNN_avg / 8.0;
 
-        out_file_energy <<" "<< avgE_8links/8.0 + evNNN_avg;
+        out_file_energy <<" "<< evNNN_avg;
+        out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
         out_file_energy << std::endl;
     }
 
     // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
     std::cout <<"FULL UPDATE DONE - COMPUTING FINAL ENVIRONMENT "<< std::endl;
     // t_begin_int = std::chrono::steady_clock::now();
-        
+    
+    // reset environment
+    if (arg_reinitEnv) 
+        switch (arg_initEnvType) {
+            case CtmEnv::INIT_ENV_const1: {
+                ctmEnv.initMockEnv();
+                break;
+            }
+            case CtmEnv::INIT_ENV_ctmrg: {
+                ctmEnv.initCtmrgEnv();
+                //ctmEnv.symmetrizeEnv(arg_fuDbg);
+                break;
+            }
+            case CtmEnv::INIT_ENV_rnd: {
+                ctmEnv.initRndEnv(envIsComplex);
+                ctmEnv.symmetrizeEnv();
+                break;
+            } 
+        }
+
     // ENTER ENVIRONMENT LOOP
     for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
@@ -734,19 +754,38 @@ int main( int argc, char *argv[] ) {
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,1), std::make_pair(2,1))); //DC
     
+    // compute energies NNN links
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+
     // write energy
     double avgE_8links = 0.;
     out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
         <<" "<< e_nnH_AC.back()
         <<" "<< e_nnH_BD.back()
         <<" "<< e_nnH_CD.back();
-        for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-            avgE_8links += evNN[j];
-            out_file_energy<<" "<< evNN[j];
-        }
-        avgE_8links = avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-            + e_nnH_BD.back() + e_nnH_CD.back();
-    out_file_energy <<" "<< avgE_8links/8.0;
+    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+        avgE_8links += evNN[j];
+        out_file_energy<<" "<< evNN[j];
+    }
+    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
+    out_file_energy <<" "<< avgE_8links;
+    
+    double evNNN_avg = 0.;
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        evNNN_avg += evNNN[evnnni];
+    evNNN_avg = evNNN_avg / 8.0;
+
+    out_file_energy <<" "<< evNNN_avg;
+    out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
     out_file_energy << std::endl;
 
     std::cout <<"FU_ITER: "<<" E:"<< std::endl;
@@ -760,9 +799,9 @@ int main( int argc, char *argv[] ) {
             }
         std::cout<< std::endl;
     }
-
-	// std::cout <<"BA: "<< evNN[0] <<" CA: "<< evNN[1] <<" DB: "<< evNN[2] 
-    //     <<" DC: "<< evNN[3] << std::endl;
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        std::cout << evNNN[evnnni] <<" ";
+    std::cout<< std::endl;  
 
     std::cout <<"ID: " << ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
     std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
@@ -806,4 +845,7 @@ int main( int argc, char *argv[] ) {
             <<" "<< diagData_fu[i].getReal("ratioNonSymFN",0.0);
         std::cout<<std::endl;
     }
+
+    ctmEnv.computeSVDspec();
+    ctmEnv.printSVDspec();
 }
