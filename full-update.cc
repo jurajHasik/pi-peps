@@ -1695,6 +1695,17 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			cls.sites.at(tn[i]).visit(max_m);
 			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
 		}
+	} else if (otNormType == "BALANCE") {
+		double iso_tot_mag = 1.0;
+	    for ( auto & site_e : cls.sites)  {
+	    	m = 0.;
+			site_e.second.visit(max_m);
+	    	site_e.second = site_e.second / m;
+	    	iso_tot_mag = iso_tot_mag * m;
+	    }
+	    for (auto & site_e : cls.sites) {
+	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/8.0) );
+	    }
 	} else if (otNormType == "NONE") {
 	} else {
 		std::cout<<"Unsupported on-site tensor normalisation after full update: "
