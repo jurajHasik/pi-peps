@@ -54,7 +54,7 @@ class CtmEnv
     std::string m_name;
     double isoPseudoInvCutoff = 1.0e-14;
     double isoMinElemWarning  = 1.0e-4;
-    double isoMaxElemWarning  = 1.0e10;
+    double isoMaxElemWarning  = 1.0e4;
     std::string SVD_METHOD = "itensor"; 
     
     /*

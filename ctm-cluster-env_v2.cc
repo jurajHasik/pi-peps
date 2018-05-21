@@ -21,7 +21,7 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
 
     isoPseudoInvCutoff = args.getReal("isoPseudoInvCutoff",1.0e-14);
     isoMinElemWarning  = args.getReal("isoMinElemWarning",1.0e-4);
-    isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e8);
+    isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e4);
     SVD_METHOD         = args.getString("SVD_METHOD","itensor");
     DBG     = args.getBool("dbg",false);
     DBG_LVL = args.getInt("dbgLevel",0);

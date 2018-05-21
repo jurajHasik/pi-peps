@@ -618,6 +618,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
     auto dbg = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
+    auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
@@ -839,144 +840,146 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
 	if (symmProtoEnv) {
-	// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
-	t_begin_int = std::chrono::steady_clock::now();
-	auto cmbKet = combiner(iQA, iQB, iQD);
-	auto cmbBra = prime(cmbKet,4);
+		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
+		t_begin_int = std::chrono::steady_clock::now();
+		auto cmbKet = combiner(iQA, iQB, iQD);
+		auto cmbBra = prime(cmbKet,4);
 
-	eRE = (eRE * cmbKet) * cmbBra;
+		eRE = (eRE * cmbKet) * cmbBra;
 
-	ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
-	ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
+		ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
+		ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
 
-	m = 0.;
-    eRE_sym.visit(max_m);
-    diag_maxMsymLE = m;
-    std::cout<<"eRE_sym max element: "<< m <<std::endl;
-	m = 0.;
-    eRE_asym.visit(max_m);
-    diag_maxMasymLE = m;
-    std::cout<<"eRE_asym max element: "<< m <<std::endl;
+		m = 0.;
+	    eRE_sym.visit(max_m);
+	    diag_maxMsymLE = m;
+	    std::cout<<"eRE_sym max element: "<< m <<std::endl;
+		m = 0.;
+	    eRE_asym.visit(max_m);
+	    diag_maxMasymLE = m;
+	    std::cout<<"eRE_asym max element: "<< m <<std::endl;
 
-	diag_maxMsymFN  = norm(eRE_sym);
-	diag_maxMasymFN = norm(eRE_asym);
-
-	eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+		diag_maxMsymFN  = norm(eRE_sym);
+		diag_maxMasymFN = norm(eRE_asym);
 	
-	// ##### V3 ######################################################
-	ITensor U_eRE, D_eRE;
-	diagHermitian(eRE_sym, U_eRE, D_eRE);
+		if (posDefProtoEnv) {
+			eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+			
+			// ##### V3 ######################################################
+			ITensor U_eRE, D_eRE;
+			diagHermitian(eRE_sym, U_eRE, D_eRE);
 
-	double msign = 1.0;
-	double mval = 0.;
-	std::vector<double> dM_elems;
-	for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-		dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-		if (std::abs(dM_elems.back()) > mval) {
-			mval = std::abs(dM_elems.back());
-			msign = dM_elems.back()/mval;
+			double msign = 1.0;
+			double mval = 0.;
+			std::vector<double> dM_elems;
+			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+				if (std::abs(dM_elems.back()) > mval) {
+					mval = std::abs(dM_elems.back());
+					msign = dM_elems.back()/mval;
+				}
+			}
+			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// Drop negative EV's
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"REFINED SPECTRUM"<< std::endl;
+				std::cout<<"MAX EV: "<< mval << std::endl;
+			}
+			for (auto & elem : dM_elems) {
+				if (elem < 0.0) {
+					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+					elem = 0.0;
+				}
+			}
+			// ##### END V3 ##################################################
+
+			// ##### V4 ######################################################
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// double msign = 1.0;
+			// double mval = 0.;
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+			// 	if (std::abs(dM_elems.back()) > mval) {
+			// 		mval = std::abs(dM_elems.back());
+			// 		msign = dM_elems.back()/mval;
+			// 	}
+			// }
+			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// // Set EV's to ABS Values
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+			// }
+			// for (auto & elem : dM_elems) elem = std::fabs(elem);
+			// ##### END V4 ##################################################
+
+			// ##### V5 ######################################################
+			// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
+			
+			// eRE_sym = conj(eRE); // 0--eRE*--1
+			// eRE.mapprime(1,2);   // 0--eRE---2
+			// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
+			// eRE_sym.prime(-1);
+
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
+			// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
+			// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+			// ##### END V5 ##################################################
+
+			// ##### V6 ######################################################
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// double msign = 1.0;
+			// double mval = 0.;
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+			// 	if (std::abs(dM_elems.back()) > mval) {
+			// 		mval = std::abs(dM_elems.back());
+			// 		msign = dM_elems.back()/mval;
+			// 	}
+			// }
+			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// // Drop negative EV's
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+			// }
+			// for (auto & elem : dM_elems) {
+			// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
+			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+			// 		elem = 0.0;
+			// 	} else if (elem < 0.0) {
+			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
+			// 		elem = std::fabs(elem);
+			// 	}
+			// }
+			// ##### END V6 ##################################################
+
+			
+			D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+
+			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
+				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 		}
-	}
-	if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-	// Drop negative EV's
-	if(dbg && (dbgLvl >= 1)) {
-		std::cout<<"REFINED SPECTRUM"<< std::endl;
-		std::cout<<"MAX EV: "<< mval << std::endl;
-	}
-	for (auto & elem : dM_elems) {
-		if (elem < 0.0) {
-			if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-			elem = 0.0;
-		}
-	}
-	// ##### END V3 ##################################################
+		eRE = (eRE_sym * cmbKet) * cmbBra;
 
-	// ##### V4 ######################################################
-	// ITensor U_eRE, D_eRE;
-	// diagHermitian(eRE_sym, U_eRE, D_eRE);
-
-	// double msign = 1.0;
-	// double mval = 0.;
-	// std::vector<double> dM_elems;
-	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-	// 	if (std::abs(dM_elems.back()) > mval) {
-	// 		mval = std::abs(dM_elems.back());
-	// 		msign = dM_elems.back()/mval;
-	// 	}
-	// }
-	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
-
-	// // Set EV's to ABS Values
-	// if(dbg && (dbgLvl >= 1)) {
-	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
-	// 	std::cout<<"MAX EV: "<< mval << std::endl;
-	// }
-	// for (auto & elem : dM_elems) elem = std::fabs(elem);
-	// ##### END V4 ##################################################
-
-	// ##### V5 ######################################################
-	// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
-	
-	// eRE_sym = conj(eRE); // 0--eRE*--1
-	// eRE.mapprime(1,2);   // 0--eRE---2
-	// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
-	// eRE_sym.prime(-1);
-
-	// ITensor U_eRE, D_eRE;
-	// diagHermitian(eRE_sym, U_eRE, D_eRE);
-
-	// std::vector<double> dM_elems;
-	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
-	// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
-	// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
-	// ##### END V5 ##################################################
-
-	// ##### V6 ######################################################
-	// ITensor U_eRE, D_eRE;
-	// diagHermitian(eRE_sym, U_eRE, D_eRE);
-
-	// double msign = 1.0;
-	// double mval = 0.;
-	// std::vector<double> dM_elems;
-	// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-	// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-	// 	if (std::abs(dM_elems.back()) > mval) {
-	// 		mval = std::abs(dM_elems.back());
-	// 		msign = dM_elems.back()/mval;
-	// 	}
-	// }
-	// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
-
-	// // Drop negative EV's
-	// if(dbg && (dbgLvl >= 1)) {
-	// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
-	// 	std::cout<<"MAX EV: "<< mval << std::endl;
-	// }
-	// for (auto & elem : dM_elems) {
-	// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
-	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-	// 		elem = 0.0;
-	// 	} else if (elem < 0.0) {
-	// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
-	// 		elem = std::fabs(elem);
-	// 	}
-	// }
-	// ##### END V6 ##################################################
-
-	
-	D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
-
-	eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
-		* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
-
-	eRE = (eRE_sym * cmbKet) * cmbBra;
-
-	t_end_int = std::chrono::steady_clock::now();
-	std::cout<<"Symmetrized reduced env - T: "<< 
-		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-	// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
+		t_end_int = std::chrono::steady_clock::now();
+		std::cout<<"Symmetrized reduced env - T: "<< 
+			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
 	}
 
 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
@@ -1085,170 +1088,97 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			Print(rt[3]);
 		}
 	}
-	// else if (rtInitType == "BIDIAG") {
-	// 	ITensor ttemp, tdelKet, tdelBra, tRT(1.0);
-	// 	std::array<const itensor::ITensor *, 4> trtp = {{NULL,NULL,NULL,NULL}};
-	// 	for(int r=0; r<=3; r+=3){
-	// 		std::array<int,4> tord = ORD[r];
-	// 		if(dbg) std::cout <<"GUESS RT "<< tn[tord[0]] <<"-"<< tn[tord[3]] << std::endl;
-	// 		for(int o=0; o<=3; o++) {
-	// 			// construct o'th corner of tmpRT
-	// 			if (o == 0 || o == 3) {
-	// 				// leave physical index uncontracted
-	// 				ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
-	// 			 			*mpo[tord[o]], trtp, false, (dbg && (dbgLvl >= 3)) );
-	// 			} else {
-	// 				ttemp = pc[tord[o]] * getT(cls.sites.at(tn[tord[o]]), iToE[tord[o]], 
-	// 		 			*mpo[tord[o]], trtp, (dbg && (dbgLvl >= 3)) );
-	// 			}
-
-	// 			if (dbg && (dbgLvl >= 3)) Print(ttemp);
-	// 			if (o<3) {
-	// 				tdelKet = delta(prime(aux[tord[o]],pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
-	// 					prime(aux[tord[(o+1)%4]],pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-	// 				tdelBra = prime(tdelKet,4);
-	// 				ttemp = (ttemp * tdelBra) * tdelKet;
-	// 			} else {
-	// 				tdelKet = ITensor();
-	// 				tdelBra = delta(prime(aux[tord[3]],4+pl[2*tord[o]+(1+ORD_DIR[r])/2]), 
-	// 					prime(aux[tord[0]],4+pl[2*tord[(o+1)%4]+(1-ORD_DIR[r])/2]));
-	// 				ttemp.mapprime(MPOLINK,0,IOFFSET);
-	// 			}
-	// 			if(dbg && (dbgLvl >= 3)) {
-	// 				Print(tdelKet);
-	// 				Print(tdelBra);
-	// 			}
-
-	// 			tRT *= ttemp;
-	// 			if (o==3) tRT = tRT * tdelBra;
+	else if (rtInitType == "BIDIAG") {
+		// rt[0]--rt[1]
+		ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
+			* delta(prime(auxRT[2],4+plRT[2]),prime(auxRT[3],4+plRT[3]));	
 			
-	// 			if(dbg && (dbgLvl >= 3)) Print(tRT);
-	// 		}
-	// 		if(dbg && (dbgLvl >= 3)) Print(tRT);
+		auto cmb0 = combiner(prime(auxRT[0],4+plRT[0]), prime(uJ1J2.a12,4+plRT[0]));
+		auto cmb1 = combiner(prime(auxRT[1],4+plRT[1]), prime(uJ1J2.a12,4+plRT[1]));
+
+		if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+
+		ttemp = (ttemp * cmb0) * cmb1;
+
+		ITensor tU(combinedIndex(cmb0)),tS,tV;
+		svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
+
+		if(dbg && (dbgLvl >= 2)) PrintData(tS);
 			
-	// 		// physical bra indices have primeLevel 1
-	// 		auto pI0 = noprime(findtype(*mpo[tord[0]], PHYS));
-	// 		auto pI3 = noprime(findtype(*mpo[tord[3]], PHYS));
-	// 		ITensor ob_contract(pI0,pI3);
-	// 		ob_contract.fill(1.0);
+		rt[0] = (tU*delta(commonIndex(tS,tU), 
+				prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+		rt[1] = (tV*delta(commonIndex(tS,tV), 
+				prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
+		rt[0].prime(-4);
+		rt[1].prime(-4);
 
-	// 		tRT = tRT * prime(ob_contract,1);
-	// 		tRT.noprime(PHYS);
-	// 		if(dbg && (dbgLvl >= 3)) Print(tRT);
+		if(dbg && (dbgLvl >= 3)) {
+			Print(rt[0]);
+			Print(rt[1]);
+		}
 
-	// 		// combiners for LEFT, RIGHT and PHYS
-	// 		auto cmbL = combiner(prime(aux[tord[0]],pl[2*tord[0]+(1-ORD_DIR[r])/2]),
-	// 			noprime(findtype(tRT, MPOLINK)));
-	// 		auto cmbR = combiner(prime(aux[tord[3]],pl[2*tord[3]+(1+ORD_DIR[r])/2]),
-	// 			prime(noprime(findtype(tRT, MPOLINK)),IOFFSET));
-	// 		auto cmbP = combiner(pI0,pI3);
-	// 		auto cmbIL = combinedIndex(cmbL);
-	// 		auto cmbIR = combinedIndex(cmbR);
-	// 		auto cmbIP = combinedIndex(cmbP);
-	// 		if(dbg && (dbgLvl >= 2)) { Print(cmbL); Print(cmbR); Print(cmbP); } 
-
-	// 		tRT = ((tRT * cmbL) * cmbR) *cmbP;
-
-	// 		// Perform QL
-	// 		ITensor QL, tSL, tL(cmbIL);
-	// 		svd(tRT, tL,tSL,QL);
-	// 		tL = tL * tSL;
-	// 		auto iQL = commonIndex(QL,tSL);
-
-	// 		// Perform QR
-	// 		ITensor QR, tSR, tR(cmbIR);
-	// 		svd(tRT, tR,tSR,QR);
-	// 		tR = tR * tSR;
-	// 		auto iQR = commonIndex(QR,tSR);
-
-	// 		ITensor tRL = tR * delta(cmbIL,cmbIR) * tL;
-	// 		Print(iQL);
-	// 		Print(iQR);
-	// 		Print(tRL);
-
-	// 		ITensor tU(combinedIndex(iQL)),tS,tV;
-	// 		svd(tRL,tU,tS,tV,{"Maxm",aux[0].m()});
-
-	// 		if(dbg && (dbgLvl >= 2)) PrintData(tS);
-
-	// 		// Regularize and invert singular value matrix tS
-	// 		std::vector<double> elems_regInvSvM;
-	// 		for (int isv=1; isv<=tS.inds().front().m(); isv++) {
-	// 			if ( tS.real(tS.inds().front()(isv),tS.inds().back()(isv))/
-	// 				 tS.real(tS.inds().front()(1),tS.inds().back()(1))  > svd_cutoff) {  
-	// 				elems_regInvSvM.push_back(1.0/sqrt(tS.real(tS.inds().front()(isv),
-	// 					tS.inds().back()(isv))) );
-	// 			} else
-	// 				elems_regInvSvM.push_back(0.0);
-	// 		}
-	// 		auto regInvSvM = diagTensor(elems_regInvSvM, tS.inds().front(),tS.inds().back());
-	// 		PrintData(regInvSvM);
-
-	// 		rt[r+(1+ORD_DIR[r])/2-r/3] = ( (tL * conj(tU) * regInvSvM) * 
-	// 			delta( commonIndex(tS,tV), prime(findtype(cmbL, AUXLINK),IOFFSET) ) 	
-	// 			) * cmbL;
-
-	// 		rt[r+(1-ORD_DIR[r])/2-r/3] = ( (tR * conj(tV) * regInvSvM) * 
-	// 			delta( commonIndex(tS,tU), prime(findtype(cmbR, AUXLINK),IOFFSET) )
-	// 			) * cmbR;
-	// 		rt[r+(1-ORD_DIR[r])/2-r/3].prime(MPOLINK,-IOFFSET);
-
-	// 		// rt[r+(1+ORD_DIR[r])/2-r/3] = ((tU*tS)*delta(commonIndex(tS,tV), 
-	// 		// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 		// rt[r+(1-ORD_DIR[r])/2-r/3] = (((tV*tS)*delta(commonIndex(tS,tU), 
-	// 		// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
+		// rt[2]--rt[3]
+		ttemp = ( protoK * delta(prime(uJ1J2.a12,4+plRT[0]), prime(uJ1J2.a12,4+plRT[1])) )
+			* delta(prime(auxRT[0],4+plRT[0]),prime(auxRT[1],4+plRT[1]));
 			
-	// 		// rt[r+(1+ORD_DIR[r])/2-r/3] = (tU*delta(commonIndex(tS,tU), 
-	// 		// 	prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 		// rt[r+(1-ORD_DIR[r])/2-r/3] = ((tV*delta(commonIndex(tS,tV), 
-	// 		// 	prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1).prime(MPOLINK,-IOFFSET);
-			
-	// 		if(dbg && (dbgLvl >= 1)) {
-	// 			std::cout<< r+(1-ORD_DIR[r])/2-r/3 <<" ";
-	// 			PrintData(rt[r+(1-ORD_DIR[r])/2-r/3]);
-	// 			std::cout<< r+(1+ORD_DIR[r])/2-r/3 <<" ";
-	// 			PrintData(rt[r+(1+ORD_DIR[r])/2-r/3]);
-	// 		}
+		cmb0 = combiner(prime(auxRT[2],4+plRT[2]), prime(uJ1J2.a23,4+plRT[2]));
+		cmb1 = combiner(prime(auxRT[3],4+plRT[3]), prime(uJ1J2.a23,4+plRT[3]));
 
+		if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
 
+		ttemp = (ttemp * cmb0) * cmb1;
 
-	// 		tRT = ITensor(1.0);
-	// 	}
-	// }
+		tU = ITensor(combinedIndex(cmb0));
+		svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
+
+		if(dbg && (dbgLvl >= 2)) PrintData(tS);
+
+		rt[2] = (tU*delta(commonIndex(tS,tU), 
+				prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
+		rt[3] = (tV*delta(commonIndex(tS,tV), 
+				prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
+		rt[2].prime(-4);
+		rt[3].prime(-4);
+		
+		if(dbg && (dbgLvl >= 3)) {
+			Print(rt[2]);
+			Print(rt[3]);
+		}
+	}
 	else if (rtInitType == "REUSE") {
-            std::cout << "REUSING ISO: ";
-            if (iso_store[0]) {
-                    rt[0] = iso_store[0];
-                    std::cout << " 0 ";
-            } else {
-                    rt[0] = ITensor(prime(aux[0],pl[1]), prime(uJ1J2.a12,pl[1]), prime(aux[0],pl[1]+IOFFSET));
-                    initRT_basic(rt[0],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
-            }
+        std::cout << "REUSING ISO: ";
+        if (iso_store[0]) {
+                rt[0] = iso_store[0];
+                std::cout << " 0 ";
+        } else {
+                rt[0] = ITensor(prime(aux[0],pl[1]), prime(uJ1J2.a12,pl[1]), prime(aux[0],pl[1]+IOFFSET));
+                initRT_basic(rt[0],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+        }
 
-            if (iso_store[1]) {
-                    rt[1] = iso_store[1];
-                    std::cout << " 1 ";
-            } else {
-                    rt[1] = ITensor(prime(aux[1],pl[2]), prime(uJ1J2.a12,pl[2]), prime(aux[1],pl[2]+IOFFSET));
-                    initRT_basic(rt[1],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
-            }
+        if (iso_store[1]) {
+                rt[1] = iso_store[1];
+                std::cout << " 1 ";
+        } else {
+                rt[1] = ITensor(prime(aux[1],pl[2]), prime(uJ1J2.a12,pl[2]), prime(aux[1],pl[2]+IOFFSET));
+                initRT_basic(rt[1],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+        }
 
-            if (iso_store[2]) {
-                    rt[2] = iso_store[2];
-                    std::cout << " 2 ";
-            } else {
-                    rt[2] = ITensor(prime(aux[1],pl[3]), prime(uJ1J2.a23,pl[3]), prime(aux[1],pl[3]+IOFFSET));
-                    initRT_basic(rt[2],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
-            }
+        if (iso_store[2]) {
+                rt[2] = iso_store[2];
+                std::cout << " 2 ";
+        } else {
+                rt[2] = ITensor(prime(aux[1],pl[3]), prime(uJ1J2.a23,pl[3]), prime(aux[1],pl[3]+IOFFSET));
+                initRT_basic(rt[2],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+        }
 
-            if (iso_store[3]) {
-                    rt[3] = iso_store[3];
-                    std::cout << " 3" << std::endl;
-            } else {
-                    rt[3] = ITensor(prime(aux[2],pl[4]), prime(uJ1J2.a23,pl[4]), prime(aux[2],pl[4]+IOFFSET));
-                    initRT_basic(rt[3],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
-                    std::cout << std::endl;
-            }
+        if (iso_store[3]) {
+                rt[3] = iso_store[3];
+                std::cout << " 3" << std::endl;
+        } else {
+                rt[3] = ITensor(prime(aux[2],pl[4]), prime(uJ1J2.a23,pl[4]), prime(aux[2],pl[4]+IOFFSET));
+                initRT_basic(rt[3],"DELTA",{"fuIsoInitNoiseLevel",rtInitParam});
+                std::cout << std::endl;
+        }
     }
 	else {
 		std::cout<<"Unsupported fu-isometry initialization: "<< rtInitType << std::endl;
@@ -1445,9 +1375,12 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					msign = dM_elems.back()/mval;
 				}
 			}
-			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+			if (msign < 0.0) {
+				for (auto & elem : dM_elems) elem = elem*(-1.0);
+				std::reverse(dM_elems.begin(),dM_elems.end());
+			}
 
-			// TODO in the case of msign < 0.0, the loop order has to be reversed
+			// In the case of msign < 0.0, for REFINING spectrum we reverse dM_elems
 			// Drop small (and negative) EV's
 			int index_cutoff;
 			std::vector<double> log_dM_e, log_diffs;
@@ -1497,6 +1430,11 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					//Dynamic setting of iso_eps
 					//iso_eps = std::min(iso_eps, dM_elems[idm]);
 				}
+			}
+
+			if (msign < 0.0) {
+				//for (auto & elem : dM_elems) elem = elem*(-1.0);
+				std::reverse(dM_elems.begin(),dM_elems.end());
 			}
 
 			dM = diagTensor(dM_elems,dM.inds().front(),dM.inds().back());
