@@ -1,6 +1,7 @@
 # Link to Itensor lib
 
-ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-intel
+ITENSOR_DIR=/home/urza/Projects/ITensor-v2.1.1-gcc
+#ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc-withMKL
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 
@@ -63,6 +64,7 @@ GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
 OBJECTS6=$(patsubst %.cc,%.o, $(CCFILES6))
+GOBJECTS6=$(patsubst %,.debug_objs/%, $(OBJECTS6))
 
 OBJECTSN=$(patsubst %.cc,%.o, $(CCFILESN))
 
@@ -106,6 +108,9 @@ $(APP5)-g: mkdebugdir $(GOBJECTS5) $(ITENSOR_GLIBS)
 
 $(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) $(OBJECTS6) -o $(APP6).x $(LIBFLAGS)
+
+$(APP6)-g: mkdebugdir $(GOBJECTS6) $(ITENSOR_GLIBS)
+	$(CCCOM) $(CCGFLAGS) $(GOBJECTS6) -o $(APP6)-g.x $(LIBGFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)
