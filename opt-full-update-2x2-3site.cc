@@ -239,8 +239,11 @@ int main( int argc, char *argv[] ) {
 
     // SETUP OPTIMIZATION LOOP
     // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
-    MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-//    MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
+    // MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
+    // MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
+    MPO_3site  uJJ(getMPO3s_Uladder(arg_tau, arg_J1, arg_J1));
+    MPO_3site uJJp(getMPO3s_Uladder(arg_tau, arg_J1, arg_J2));
+    MPO_3site uJpJ(getMPO3s_Uladder(arg_tau, arg_J2, arg_J1));
 
     // hold energies
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
@@ -255,6 +258,7 @@ int main( int argc, char *argv[] ) {
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
     // DEFINE GATE SEQUENCE
+    std::vector< MPO_3site * > gateMPO;
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
     if (arg_fuGateSeq == "SYM1") {
@@ -284,6 +288,13 @@ int main( int argc, char *argv[] ) {
            
             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+        };
+
+        gateMPO = {
+            &uJJ, &uJJ, &uJJ, &uJJ,
+            &uJJ, &uJJ, &uJJ, &uJJ,
+            &uJJp, &uJJp, &uJJp, &uJJp,
+            &uJJp, &uJJp, &uJJp, &uJJp
         };
     } 
     else if (arg_fuGateSeq == "SYM2") {
@@ -397,6 +408,7 @@ int main( int argc, char *argv[] ) {
     // For symmetric Trotter decomposition
     int init_gate_size = gates.size();
     for (int i=0; i<init_gate_size; i++) {
+        gateMPO.push_back(gateMPO[init_gate_size-1-i]);
         gates.push_back(gates[init_gate_size-1-i]);
         gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
     }
@@ -490,6 +502,77 @@ int main( int argc, char *argv[] ) {
     }
     // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
 
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+
+    // Compute final properties
+    e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(1,0)) );
+    e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(0,1)) );
+    e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(1,1)) );
+    e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(1,1)) );
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(2,1))); //DC
+    
+    // compute energies NNN links
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+
+    // write energy
+    double avgE_8links = 0.;
+    out_file_energy << -1 <<" "<< e_nnH.back() 
+        <<" "<< e_nnH_AC.back()
+        <<" "<< e_nnH_BD.back()
+        <<" "<< e_nnH_CD.back();
+    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+        avgE_8links += evNN[j];
+        out_file_energy<<" "<< evNN[j];
+    }
+    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
+    out_file_energy <<" "<< avgE_8links;
+    
+    double evNNN_avg = 0.;
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        evNNN_avg += evNNN[evnnni];
+    evNNN_avg = evNNN_avg / 8.0;
+
+    out_file_energy <<" "<< evNNN_avg;
+    out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
+    out_file_energy << std::endl;
+
+    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
+    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
+        std::cout << i <<" "<< e_nnH[i] 
+            <<" "<< e_nnH_AC[i]
+            <<" "<< e_nnH_BD[i]
+            <<" "<< e_nnH_CD[i];
+            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
+                std::cout<<" "<< evNN[j];
+            }
+        std::cout<< std::endl;
+    }
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        std::cout << evNNN[evnnni] <<" ";
+    std::cout<< std::endl;
+
+
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
@@ -503,8 +586,11 @@ int main( int argc, char *argv[] ) {
 
             std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
                 
-            diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+            // diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
+            //     gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
+            diag_fu = fullUpdate(*(gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, gates[(fuI-1)%gates.size()], 
                 gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
+
 
             diagData_fu.push_back(diag_fu);
 
@@ -768,7 +854,7 @@ int main( int argc, char *argv[] ) {
     evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
 
     // write energy
-    double avgE_8links = 0.;
+    avgE_8links = 0.;
     out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
         <<" "<< e_nnH_AC.back()
         <<" "<< e_nnH_BD.back()
@@ -781,7 +867,7 @@ int main( int argc, char *argv[] ) {
         + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
     out_file_energy <<" "<< avgE_8links;
     
-    double evNNN_avg = 0.;
+    evNNN_avg = 0.;
     for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
         evNNN_avg += evNNN[evnnni];
     evNNN_avg = evNNN_avg / 8.0;

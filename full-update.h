@@ -10,6 +10,7 @@
 #include "ctm-cluster-env_v2.h"
 #include "ctm-cluster-global.h"
 #include "ctm-cluster.h"
+#include "su2.h"
 #include "itensor/all.h"
 
 // Index names of 3-site MPO indices
@@ -157,6 +158,8 @@ MPO_3site getMPO3s_Id_v2(int physDim, bool dbg = false);
 MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
 MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda);
+
+MPO_3site getMPO3s_Uladder(double tau, double J, double Jp);
 
 /*
  * Initialize isometry (reduction tensors - RT) which define a 

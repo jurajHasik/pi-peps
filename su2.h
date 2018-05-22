@@ -19,6 +19,10 @@ enum SU2O {
     SU2_S_M     // S_minus
 };
 
+/*
+ * Return spin operator with indices s, prime(s)
+ *
+ */
 itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s,
 	bool DBG = false);
 
