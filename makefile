@@ -20,7 +20,7 @@ APP6=opt-full-update-2x2-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS =full-update.h simple-update.h cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
+HEADERS =models.h full-update.h simple-update.h cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 #HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
@@ -31,7 +31,7 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
-HEADERS6=cluster-ev-builder.h full-update.h ctm-cluster-env_v2.h \
+HEADERS6=cluster-ev-builder.h models.h full-update.h ctm-cluster-env_v2.h \
 	ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
 
 HEADERSN=ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h

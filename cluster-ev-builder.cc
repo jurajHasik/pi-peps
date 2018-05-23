@@ -186,7 +186,7 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
 
     ev *= cd_f.T_U[cd_f.cToS.at(site)];
     // substitute original on-site tensor for op at position site
-    std::cout <<"OP inserted at ("<< site.first <<","<< site.second <<") -> "
+    if(DBG) std::cout <<"OP inserted at ("<< site.first <<","<< site.second <<") -> "
         << cls.cToS.at(site) << std::endl;
     ev *= op.mpo[0];
     ev *= cd_f.T_D[cd_f.cToS.at(site)];

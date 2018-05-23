@@ -1,13 +1,13 @@
 {
-	"initBy": "AFM",
+	"initBy": "RND_AB",
 	"physDim": 2,
 	"auxBondDim": 3,
 	"inClusterFile": "TEST-d3ch36-t0.05-iter0-128.in",
         "outClusterFile": "TEST-d3ch36-t0.01-iter0-128-T3itensor.in",
 
-	"fuIter": 128,
-	"obsFreq": 1,
-	"fuIsoInit": "LINKSVD",
+	"fuIter": 1024,
+	"obsFreq": 32,
+	"fuIsoInit": "DELTA",
 	"fuIsoInitNoiseLevel": 1.0e-3,
 	"maxAltLstSqrIter": 50,
 	"symmetrizeProtoEnv": true,
@@ -20,21 +20,21 @@
 	"fuDbgLevel": 1,
 
 	"model": {	
-		"type": "J1J2",	
-		"tau": 0.15,
+		"type": "NNHLadder",	
+		"tau": 0.1,
 		"J1": 1.0,
-		"J2": 0.0,
+		"alpha": 0.0,
 		"LAMBDA": 0.0,
 		"fuGateSeq": "SYM1"
 	},
 
 	"ctmrg": {
-		"auxEnvDim": 1,
+		"auxEnvDim": 36,
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
 		"envIsComplex": false,
 		"isoType": "ISOMETRY_T3",
-		"env_SVD_METHOD": "itensor",
+		"env_SVD_METHOD": "rsvd",
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 1,

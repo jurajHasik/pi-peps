@@ -6,6 +6,7 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
+#include "models.h"
 #include "full-update.h"
 
 using namespace itensor;
@@ -35,15 +36,10 @@ int main( int argc, char *argv[] ) {
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
 
-	//define Hamiltonian
-	double arg_J1 = jsonCls["J1"].get<double>();
-	double arg_J2 = jsonCls["J2"].get<double>();
-    double arg_lambda = jsonCls["LAMBDA"].get<double>();
-    //time step
-    double arg_tau = jsonCls["tau"].get<double>();
+	// read Hamiltonian and Trotter decomposition
+    auto json_model_params(jsonCls["model"]);
 
 	// full update parameters
-	std::string arg_fuGateSeq = jsonCls["fuGateSeq"].get<std::string>();
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
@@ -237,14 +233,6 @@ int main( int argc, char *argv[] ) {
     EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    // SETUP OPTIMIZATION LOOP
-    // Get Exp of 3-site operator u_123 - building block of Trotter Decomposition
-    // MPO_3site uJ1J2(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-    // MPO_3site uJ1J2(getMPO3s_Id_v2(physDim));
-    MPO_3site  uJJ(getMPO3s_Uladder(arg_tau, arg_J1, arg_J1));
-    MPO_3site uJJp(getMPO3s_Uladder(arg_tau, arg_J1, arg_J2));
-    MPO_3site uJpJ(getMPO3s_Uladder(arg_tau, arg_J2, arg_J1));
-
     // hold energies
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
     std::vector<double> e_nnH;
@@ -253,162 +241,31 @@ int main( int argc, char *argv[] ) {
     std::vector<double> e_nnH_CD;
     std::vector<double> evNN;
     std::vector<double> evNNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
 
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
+    // ##################################################################
+    // # SETUP OPTIMIZATION LOOP                                        #
+    // ##################################################################
+
     // DEFINE GATE SEQUENCE
-    std::vector< MPO_3site * > gateMPO;
+    std::vector< MPO_3site > gateMPO;
+    std::vector< MPO_3site * > ptr_gateMPO;
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
-    if (arg_fuGateSeq == "SYM1") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
 
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-           
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
-
-        gateMPO = {
-            &uJJ, &uJJ, &uJJ, &uJJ,
-            &uJJ, &uJJ, &uJJ, &uJJ,
-            &uJJp, &uJJp, &uJJp, &uJJp,
-            &uJJp, &uJJp, &uJJp, &uJJp
-        };
-    } 
-    else if (arg_fuGateSeq == "SYM2") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (1 BC ABCD) 
-            
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (2 BC BADC)
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}, // (2 AD BADC)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (3 BC CDAB)
-
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (4 BC DCBA)        
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}  // (4 AD DCBA)
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},        
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3}
-        };
-    }
-    else if (arg_fuGateSeq == "SYM3") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
-    } 
-    else if (arg_fuGateSeq == "SYM4") {
-        gates = {
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"D", "C", "A", "B"}, 
-            {"B", "A", "C", "D"}
-        };
-
-        gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}
-        };
-    } 
-    else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    // Generate gates for given model by Trotter decomposition
+    getModel(json_model_params, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
     int init_gate_size = gates.size();
     for (int i=0; i<init_gate_size; i++) {
-        gateMPO.push_back(gateMPO[init_gate_size-1-i]);
+        ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
         gates.push_back(gates[init_gate_size-1-i]);
         gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
     }
@@ -504,7 +361,7 @@ int main( int argc, char *argv[] ) {
 
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    // Compute final properties
+    // Compute initial properties
     e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(0,0), std::make_pair(1,0)) );
     e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
@@ -554,7 +411,7 @@ int main( int argc, char *argv[] ) {
     evNNN_avg = evNNN_avg / 8.0;
 
     out_file_energy <<" "<< evNNN_avg;
-    out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
+    //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
     out_file_energy << std::endl;
 
     std::cout <<"FU_ITER: "<<" E:"<< std::endl;
@@ -578,37 +435,30 @@ int main( int argc, char *argv[] ) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
 
         // PERFORM FULL UPDATE
-        // for(int fuII = 0; fuII < gates.size(); fuII++) {
-        //     std::cout << "GATE: " << fuII << std::endl;
-                
-        //     diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[fuII], 
-        //         gate_auxInds[fuII], iso_store[fuII], fuArgs);
+        std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
+            
+        diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
+            iso_store[(fuI-1)%gates.size()], fuArgs);
 
-            std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
-                
-            // diag_fu = fullUpdate(uJ1J2, cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-            //     gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
-            diag_fu = fullUpdate(*(gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, gates[(fuI-1)%gates.size()], 
-                gate_auxInds[(fuI-1)%gates.size()], iso_store[(fuI-1)%gates.size()], fuArgs);
+        diagData_fu.push_back(diag_fu);
 
+        out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
+            <<" "<< diag_fu.getString("siteMaxElem")
+            <<" "<< diag_fu.getReal("finalDist0",0.0)
+            <<" "<< diag_fu.getReal("finalDist1",0.0);
+        out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
+            <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
+        out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
+            <<" "<< diag_fu.getReal("minEvKept",0.0);
+        out_file_diag  <<std::endl;
 
-            diagData_fu.push_back(diag_fu);
-
-            out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
-                <<" "<< diag_fu.getString("siteMaxElem")
-                <<" "<< diag_fu.getReal("finalDist0",0.0)
-                <<" "<< diag_fu.getReal("finalDist1",0.0);
-            out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
-                <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
-            out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
-                <<" "<< diag_fu.getReal("minEvKept",0.0);
-            out_file_diag  <<std::endl;
-
-            ctmEnv.updateCluster(cls);
-            ev.setCluster(cls);
-            writeCluster(outClusterFile, cls);
-        // }
+        ctmEnv.updateCluster(cls);
+        ev.setCluster(cls);
+        writeCluster(outClusterFile, cls);
         
+        // SETUP ENVIRONMENT LOOP
+        accT = std::vector<double>(8,0.0);
         // reset environment
         if (arg_reinitEnv) 
             switch (arg_initEnvType) {
@@ -627,12 +477,10 @@ int main( int argc, char *argv[] ) {
                     break;
                 } 
             }
-
-    	// SETUP ENVIRONMENT LOOP
-    	t_begin_int = std::chrono::steady_clock::now();
 		
     	// ENTER ENVIRONMENT LOOP
 		for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
+            t_begin_int = std::chrono::steady_clock::now();
 
 	        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
 	        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
@@ -644,20 +492,27 @@ int main( int argc, char *argv[] ) {
             ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
             ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
-	        if ( envI % 1 == 0 ) {
-	            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-	        
-	            t_end_int = std::chrono::steady_clock::now();
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                    <<" [sec] "; 
+
+	        if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
+                t_begin_int = std::chrono::steady_clock::now();
+	            
+                ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
                 e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
                 e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
                 e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
                 e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
 
-	            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+                t_end_int = std::chrono::steady_clock::now();
+
+	            std::cout<<" || E in T: "<< std::chrono::duration_cast
 	            	<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
 	                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                    << e_curr[3] << std::endl;
+                    << e_curr[3]; 
 
                 // if the difference between energies along NN links is lower then arg_envEps
                 // consider the environment converged
@@ -667,11 +522,11 @@ int main( int argc, char *argv[] ) {
                     (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
                     diag_ctmIter.push_back(envI);
-                    std::cout<< "ENV CONVERGED" << std::endl;
+                    std::cout<< " ENV CONVERGED ";
                     break;
                 }
 
-                if (envI==arg_maxEnvIter) {
+                if ( arg_envDbg && (envI==arg_maxEnvIter) )  {
                     diag_ctmIter.push_back(envI);
                     // diagnose spectra
                     ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
@@ -691,9 +546,8 @@ int main( int argc, char *argv[] ) {
                     Print(spec);
                 }
                 e_prev = e_curr;
-
-                t_begin_int = std::chrono::steady_clock::now();
             }
+            std::cout << std::endl;
 	    }
 
 	    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
@@ -701,7 +555,11 @@ int main( int argc, char *argv[] ) {
     	std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         	<<" "<< accT[7] << std::endl;
 
-        if ((fuI-1) % arg_obsFreq == 0) {
+        if (fuI % arg_obsFreq == 0) {
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+
+            t_begin_int = std::chrono::steady_clock::now();
+
             // compute energies NN links
             e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(0,0), std::make_pair(1,0)) );
@@ -721,6 +579,13 @@ int main( int argc, char *argv[] ) {
             evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
                 std::make_pair(1,1), std::make_pair(2,1))); //DC
 
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "NN <S.S> computed in T: "<< std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                    <<" [sec] "<< std::endl;
+
+            t_begin_int = std::chrono::steady_clock::now();
+
             // compute energies NNN links
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
             evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
@@ -731,6 +596,34 @@ int main( int argc, char *argv[] ) {
             evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
             evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
             evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+        
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "NNN <S.S> computed in T: "<< std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                    <<" [sec] "<< std::endl;
+
+            t_begin_int = std::chrono::steady_clock::now();
+
+            ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
+            ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
+            ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+
+            ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
+            ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
+            ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+
+            ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
+            ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
+            ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+
+            ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
+            ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
+            ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "<S> computed in T: "<< std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                    <<" [sec] "<< std::endl;
         }
 
         // write energy
@@ -753,7 +646,18 @@ int main( int argc, char *argv[] ) {
         evNNN_avg = evNNN_avg / 8.0;
 
         out_file_energy <<" "<< evNNN_avg;
-        out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
+        //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
+        
+        // write magnetization
+        double evMag_avg = 0.;
+        evMag_avg = 0.25*(
+            sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )//+ ev_sA[2]*ev_sA[2])
+            + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )//+ ev_sB[2]*ev_sB[2])
+            + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )//+ ev_sC[2]*ev_sC[2])
+            + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )//+ ev_sD[2]*ev_sD[2])
+            );
+        out_file_energy <<" "<< evMag_avg;
+
         out_file_energy << std::endl;
     }
 
@@ -853,47 +757,6 @@ int main( int argc, char *argv[] ) {
     evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
     evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
 
-    // write energy
-    avgE_8links = 0.;
-    out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
-        <<" "<< e_nnH_AC.back()
-        <<" "<< e_nnH_BD.back()
-        <<" "<< e_nnH_CD.back();
-    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-        avgE_8links += evNN[j];
-        out_file_energy<<" "<< evNN[j];
-    }
-    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
-    out_file_energy <<" "<< avgE_8links;
-    
-    evNNN_avg = 0.;
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        evNNN_avg += evNNN[evnnni];
-    evNNN_avg = evNNN_avg / 8.0;
-
-    out_file_energy <<" "<< evNNN_avg;
-    out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
-    out_file_energy << std::endl;
-
-    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
-    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
-        std::cout << i <<" "<< e_nnH[i] 
-            <<" "<< e_nnH_AC[i]
-            <<" "<< e_nnH_BD[i]
-            <<" "<< e_nnH_CD[i];
-            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
-                std::cout<<" "<< evNN[j];
-            }
-        std::cout<< std::endl;
-    }
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        std::cout << evNNN[evnnni] <<" ";
-    std::cout<< std::endl;  
-
-    std::cout <<"ID: " << ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
-    std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
-
     std::vector<double> sA_zpm;
     std::vector<double> sB_zpm;
     std::vector<double> sC_zpm;
@@ -918,6 +781,58 @@ int main( int argc, char *argv[] ) {
     sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1)));
     sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1)));
     std::cout<<"S_D: "<< sD_zpm[0] <<", "<< sD_zpm[1] <<", "<< sD_zpm[2] << std::endl;
+
+    // write energy
+    avgE_8links = 0.;
+    out_file_energy << arg_fuIter <<" "<< e_nnH.back() 
+        <<" "<< e_nnH_AC.back()
+        <<" "<< e_nnH_BD.back()
+        <<" "<< e_nnH_CD.back();
+    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
+        avgE_8links += evNN[j];
+        out_file_energy<<" "<< evNN[j];
+    }
+    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
+        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
+    out_file_energy <<" "<< avgE_8links;
+    
+    evNNN_avg = 0.;
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        evNNN_avg += evNNN[evnnni];
+    evNNN_avg = evNNN_avg / 8.0;
+
+    out_file_energy <<" "<< evNNN_avg;
+    //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
+    
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.25*(
+        sqrt(sA_zpm[0]*sA_zpm[0] + sA_zpm[1]*sA_zpm[1] )//+ sA_zpm[2]*sA_zpm[2])
+        + sqrt(sB_zpm[0]*sB_zpm[0] + sB_zpm[1]*sB_zpm[1] )//+ sB_zpm[2]*sB_zpm[2])
+        + sqrt(sC_zpm[0]*sC_zpm[0] + sC_zpm[1]*sC_zpm[1] )//+ sC_zpm[2]*sC_zpm[2])
+        + sqrt(sD_zpm[0]*sD_zpm[0] + sD_zpm[1]*sD_zpm[1] )//+ sD_zpm[2]*sD_zpm[2])
+        );
+    out_file_energy <<" "<< evMag_avg;
+
+    out_file_energy << std::endl;
+
+    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
+    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
+        std::cout << i <<" "<< e_nnH[i] 
+            <<" "<< e_nnH_AC[i]
+            <<" "<< e_nnH_BD[i]
+            <<" "<< e_nnH_CD[i];
+            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
+                std::cout<<" "<< evNN[j];
+            }
+        std::cout<< std::endl;
+    }
+    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
+        std::cout << evNNN[evnnni] <<" ";
+    std::cout<< std::endl;  
+
+    std::cout <<"ID: " << ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
+    std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
 
     // Store final new cluster
     writeCluster(outClusterFile, cls);
