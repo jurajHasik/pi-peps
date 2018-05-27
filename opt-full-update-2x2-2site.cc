@@ -710,6 +710,14 @@ int main( int argc, char *argv[] ) {
             + sqrt(ev_sD[0]*ev_sD[0])//+ ev_sD[2]*ev_sD[2])
             );
         out_file_energy <<" "<< evMag_avg;
+        evMag_avg = 0.25*(
+            sqrt(ev_sA[1]*ev_sA[1])//+ ev_sA[2]*ev_sA[2])
+            + sqrt(ev_sB[1]*ev_sB[1])//+ ev_sB[2]*ev_sB[2])
+            + sqrt(ev_sC[1]*ev_sC[1])//+ ev_sC[2]*ev_sC[2])
+            + sqrt(ev_sD[1]*ev_sD[1])//+ ev_sD[2]*ev_sD[2])
+            );
+        out_file_energy <<" "<< evMag_avg;
+
 
         out_file_energy << std::endl;
     }
