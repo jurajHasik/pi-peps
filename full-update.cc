@@ -2758,70 +2758,45 @@ Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 	//rt[2] = ITensor(prime(aux[1],pl[3]), prime(uJ1J2.a23,pl[3]), prime(aux[1],pl[3]+IOFFSET));
 	//rt[3] = ITensor(prime(aux[2],pl[4]), prime(uJ1J2.a23,pl[4]), prime(aux[2],pl[4]+IOFFSET));
 	// simple initialization routines
-	// if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") { 
-	// 	for (int i=0; i<=3; i++) {
-	// 		initRT_basic(rt[i],rtInitType,{"fuIsoInitNoiseLevel",rtInitParam});
-	// 		if(dbg && (dbgLvl >= 3)) PrintData(rt[i]);
-	// 	}
-	// }
-	// // self-consistent initialization - guess isometries between tn[0] and tn[1]
-	// else if (rtInitType == "LINKSVD") {
-	// 	// rt[0]--rt[1]
-	// 	ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
-	// 		* delta(prime(auxRT[2],4+plRT[2]),prime(auxRT[3],4+plRT[3]));	
-			
-	// 	auto cmb0 = combiner(prime(auxRT[0],4+plRT[0]), prime(uJ1J2.a12,4+plRT[0]));
-	// 	auto cmb1 = combiner(prime(auxRT[1],4+plRT[1]), prime(uJ1J2.a12,4+plRT[1]));
+	if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") { 
+		rt[0] = eA;
+		rt[1] = eB;
+	}
+	// self-consistent initialization - guess isometries between tn[0] and tn[1]
+	else if (rtInitType == "LINKSVD") {
+		double pw = 0.5;
+		auto pow_T = [&pw](double r) { return std::pow(r,pw); };
 
-	// 	if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+		// rt[0]--rt[1]
+		ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
+			* delta(prime(auxRT[2],4+plRT[2]),prime(auxRT[3],4+plRT[3]));
+		ttemp = (eA * delta(opPI[0],phys[0])) * tmpo3s.H1 * 
+			(eB * delta(opPI[1],phys[1])) * tmpo3s.H2; 
+		ttemp = (ttemp * delta(prime(opPI[0]),phys[0])) * delta(prime(opPI[1]),phys[1]);	
 
-	// 	ttemp = (ttemp * cmb0) * cmb1;
+		if(dbg && (dbgLvl >= 2)) PrintData(ttemp);
 
-	// 	ITensor tU(combinedIndex(cmb0)),tS,tV;
-	// 	svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
+		auto cmb0 = combiner(iQA, phys[0]);
+		auto cmb1 = combiner(iQB, phys[1]);
 
-	// 	if(dbg && (dbgLvl >= 2)) PrintData(tS);
-			
-	// 	rt[0] = (tU*delta(commonIndex(tS,tU), 
-	// 			prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 	rt[1] = (tV*delta(commonIndex(tS,tV), 
-	// 			prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
-	// 	rt[0].prime(-4);
-	// 	rt[1].prime(-4);
+		if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
 
-	// 	if(dbg && (dbgLvl >= 3)) {
-	// 		Print(rt[0]);
-	// 		Print(rt[1]);
-	// 	}
+		ttemp = (ttemp * cmb0) * cmb1;
 
-	// 	// rt[2]--rt[3]
-	// 	ttemp = ( protoK * delta(prime(uJ1J2.a12,4+plRT[0]), prime(uJ1J2.a12,4+plRT[1])) )
-	// 		* delta(prime(auxRT[0],4+plRT[0]),prime(auxRT[1],4+plRT[1]));
-			
-	// 	cmb0 = combiner(prime(auxRT[2],4+plRT[2]), prime(uJ1J2.a23,4+plRT[2]));
-	// 	cmb1 = combiner(prime(auxRT[3],4+plRT[3]), prime(uJ1J2.a23,4+plRT[3]));
+		ITensor tU(combinedIndex(cmb0)),tS,tV;
+		svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
 
-	// 	if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+		if(dbg && (dbgLvl >= 2)) PrintData(tS);
 
-	// 	ttemp = (ttemp * cmb0) * cmb1;
+		tS.apply(pow_T);	
+		rt[0] = ( (tU*tS)*delta(commonIndex(tS,tV),prime(auxRT[2],plRT[2])) )*cmb0;
+		rt[1] = ( (tV*tS)*delta(commonIndex(tS,tU),prime(auxRT[3],plRT[3])) )*cmb1;
 
-	// 	tU = ITensor(combinedIndex(cmb0));
-	// 	svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
-
-	// 	if(dbg && (dbgLvl >= 2)) PrintData(tS);
-
-	// 	rt[2] = (tU*delta(commonIndex(tS,tU), 
-	// 			prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 	rt[3] = (tV*delta(commonIndex(tS,tV), 
-	// 			prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
-	// 	rt[2].prime(-4);
-	// 	rt[3].prime(-4);
-		
-	// 	if(dbg && (dbgLvl >= 3)) {
-	// 		Print(rt[2]);
-	// 		Print(rt[3]);
-	// 	}
-	// }
+		if(dbg && (dbgLvl >= 3)) {
+			Print(rt[0]);
+			Print(rt[1]);
+		}
+	}
 	// else if (rtInitType == "BIDIAG") {
 	// 	// rt[0]--rt[1]
 	// 	ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
@@ -3914,70 +3889,47 @@ Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	//rt[2] = ITensor(prime(aux[1],pl[3]), prime(uJ1J2.a23,pl[3]), prime(aux[1],pl[3]+IOFFSET));
 	//rt[3] = ITensor(prime(aux[2],pl[4]), prime(uJ1J2.a23,pl[4]), prime(aux[2],pl[4]+IOFFSET));
 	// simple initialization routines
-	// if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") { 
-	// 	for (int i=0; i<=3; i++) {
-	// 		initRT_basic(rt[i],rtInitType,{"fuIsoInitNoiseLevel",rtInitParam});
-	// 		if(dbg && (dbgLvl >= 3)) PrintData(rt[i]);
-	// 	}
-	// }
-	// // self-consistent initialization - guess isometries between tn[0] and tn[1]
-	// else if (rtInitType == "LINKSVD") {
-	// 	// rt[0]--rt[1]
-	// 	ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
-	// 		* delta(prime(auxRT[2],4+plRT[2]),prime(auxRT[3],4+plRT[3]));	
-			
-	// 	auto cmb0 = combiner(prime(auxRT[0],4+plRT[0]), prime(uJ1J2.a12,4+plRT[0]));
-	// 	auto cmb1 = combiner(prime(auxRT[1],4+plRT[1]), prime(uJ1J2.a12,4+plRT[1]));
+	if (rtInitType == "RANDOM" || rtInitType == "DELTA" || rtInitType == "NOISE") { 
+		rt[0] = eA;
+		rt[1] = eB;
+	}
+	// self-consistent initialization - guess isometries between tn[0] and tn[1]
+	else if (rtInitType == "LINKSVD") {
+		// rt[0]--rt[1]
+		double pw = 0.5;
+		auto pow_T = [&pw](double r) { return std::pow(r,pw); };
 
-	// 	if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+		// rt[0]--rt[1]
+		// ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )
+		// 	* delta(prime(auxRT[2],4+plRT[2]),prime(auxRT[3],4+plRT[3]));
+		ITensor ttemp = (eA * delta(prime(auxRT[0],plRT[0]),prime(auxRT[1],plRT[1])) ) 
+			* (tmpo3s.H1 * delta(opPI[0],phys[0])) * 
+			(eB * delta(opPI[1],phys[1])) * tmpo3s.H2; 
+		ttemp = (ttemp * delta(prime(opPI[0]),phys[0])) * delta(prime(opPI[1]),phys[1]);	
 
-	// 	ttemp = (ttemp * cmb0) * cmb1;
+		if(dbg && (dbgLvl >= 2)) PrintData(ttemp);
 
-	// 	ITensor tU(combinedIndex(cmb0)),tS,tV;
-	// 	svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
+		auto cmb0 = combiner(iQA, phys[0]);
+		auto cmb1 = combiner(iQB, phys[1]);
 
-	// 	if(dbg && (dbgLvl >= 2)) PrintData(tS);
-			
-	// 	rt[0] = (tU*delta(commonIndex(tS,tU), 
-	// 			prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 	rt[1] = (tV*delta(commonIndex(tS,tV), 
-	// 			prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
-	// 	rt[0].prime(-4);
-	// 	rt[1].prime(-4);
+		if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
 
-	// 	if(dbg && (dbgLvl >= 3)) {
-	// 		Print(rt[0]);
-	// 		Print(rt[1]);
-	// 	}
+		ttemp = (ttemp * cmb0) * cmb1;
 
-	// 	// rt[2]--rt[3]
-	// 	ttemp = ( protoK * delta(prime(uJ1J2.a12,4+plRT[0]), prime(uJ1J2.a12,4+plRT[1])) )
-	// 		* delta(prime(auxRT[0],4+plRT[0]),prime(auxRT[1],4+plRT[1]));
-			
-	// 	cmb0 = combiner(prime(auxRT[2],4+plRT[2]), prime(uJ1J2.a23,4+plRT[2]));
-	// 	cmb1 = combiner(prime(auxRT[3],4+plRT[3]), prime(uJ1J2.a23,4+plRT[3]));
+		ITensor tU(combinedIndex(cmb0)),tS,tV;
+		svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
 
-	// 	if(dbg && (dbgLvl >= 3)) { Print(cmb0); Print(cmb1); } 
+		if(dbg && (dbgLvl >= 2)) PrintData(tS);
 
-	// 	ttemp = (ttemp * cmb0) * cmb1;
+		tS.apply(pow_T);	
+		rt[0] = ( (tU*tS)*delta(commonIndex(tS,tV),prime(auxRT[0],plRT[0])) )*cmb0;
+		rt[1] = ( (tV*tS)*delta(commonIndex(tS,tU),prime(auxRT[1],plRT[1])) )*cmb1;
 
-	// 	tU = ITensor(combinedIndex(cmb0));
-	// 	svd(ttemp,tU,tS,tV,{"Maxm",aux[0].m()});
-
-	// 	if(dbg && (dbgLvl >= 2)) PrintData(tS);
-
-	// 	rt[2] = (tU*delta(commonIndex(tS,tU), 
-	// 			prime(findtype(cmb0, AUXLINK),IOFFSET)))*cmb0;
-	// 	rt[3] = (tV*delta(commonIndex(tS,tV), 
-	// 			prime(findtype(cmb1, AUXLINK),IOFFSET)))*cmb1;
-	// 	rt[2].prime(-4);
-	// 	rt[3].prime(-4);
-		
-	// 	if(dbg && (dbgLvl >= 3)) {
-	// 		Print(rt[2]);
-	// 		Print(rt[3]);
-	// 	}
-	// }
+		if(dbg && (dbgLvl >= 3)) {
+			Print(rt[0]);
+			Print(rt[1]);
+		}
+	}
 	// else if (rtInitType == "BIDIAG") {
 	// 	// rt[0]--rt[1]
 	// 	ITensor ttemp = ( protoK * delta(prime(uJ1J2.a23,4+plRT[2]), prime(uJ1J2.a23,4+plRT[3])) )

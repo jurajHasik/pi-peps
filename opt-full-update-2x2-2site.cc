@@ -40,7 +40,6 @@ int main( int argc, char *argv[] ) {
     auto json_model_params(jsonCls["model"]);
 
 	// full update parameters
-    bool arg_FU2SITe = jsonCls["FU2SITE"].get<bool>();
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
@@ -308,8 +307,7 @@ int main( int argc, char *argv[] ) {
         "pseudoInvCutoff",pseudoInvCutoff,
         "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
         "isoEpsilon",isoEpsilon,
-        "otNormType",arg_otNormType,
-        "FU2SITE",arg_FU2SITe
+        "otNormType",arg_otNormType
     };
     // Diagnostic data
     std::vector<int> diag_ctmIter;
