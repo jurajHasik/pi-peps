@@ -40,6 +40,7 @@ int main( int argc, char *argv[] ) {
     auto json_model_params(jsonCls["model"]);
 
 	// full update parameters
+    bool arg_FU2SITe = jsonCls["FU2SITE"].get<bool>();
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
@@ -307,7 +308,8 @@ int main( int argc, char *argv[] ) {
         "pseudoInvCutoff",pseudoInvCutoff,
         "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
         "isoEpsilon",isoEpsilon,
-        "otNormType",arg_otNormType
+        "otNormType",arg_otNormType,
+        "FU2SITE",arg_FU2SITe
     };
     // Diagnostic data
     std::vector<int> diag_ctmIter;
@@ -459,7 +461,7 @@ int main( int argc, char *argv[] ) {
         // PERFORM FULL UPDATE
         std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             
-        diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_2site_v2(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
             gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
             iso_store[(fuI-1)%gates.size()], fuArgs);
 

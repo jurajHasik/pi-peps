@@ -17,6 +17,7 @@ APP2=opt-simple-update
 APP4=opt-simple-update-2x2-2site
 APP5=opt-simple-update-2x2-3site
 APP6=opt-full-update-2x2-3site
+APP7=opt-full-update-2x2-2site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
@@ -50,6 +51,8 @@ CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
 CCFILES6=$(APP6).cc cluster-ev-builder.cc full-update.cc ctm-cluster-env_v2.cc \
 	ctm-cluster-io.cc ctm-cluster.cc su2.cc
+CCFILES7=$(APP7).cc cluster-ev-builder.cc full-update.cc ctm-cluster-env_v2.cc \
+	ctm-cluster-io.cc ctm-cluster.cc su2.cc
 
 CCFILESN=ctm-cluster-io.cc ctm-cluster.cc
 
@@ -65,6 +68,7 @@ OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
 OBJECTS6=$(patsubst %.cc,%.o, $(CCFILES6))
 GOBJECTS6=$(patsubst %,.debug_objs/%, $(OBJECTS6))
+OBJECTS7=$(patsubst %.cc,%.o, $(CCFILES7))
 
 OBJECTSN=$(patsubst %.cc,%.o, $(CCFILESN))
 
@@ -111,6 +115,9 @@ $(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
 
 $(APP6)-g: mkdebugdir $(GOBJECTS6) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS6) -o $(APP6)-g.x $(LIBGFLAGS)
+
+$(APP7): $(OBJECTS7) $(ITENSOR_LIBS)
+	$(CCCOM) $(CCFLAGS) $(OBJECTS7) -o $(APP7).x $(LIBFLAGS)
 
 test3x3: $(ITENSOR_LIBS)
 	$(CCCOM) $(CCFLAGS) test3x3.cc -o test3x3.x $(LIBFLAGS)

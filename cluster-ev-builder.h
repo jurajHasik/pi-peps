@@ -78,7 +78,8 @@ class EVBuilder {
     enum OP_2S {
         OP2S_Id,        // Identity
         OP2S_AKLT_S2_H, // Hamiltonian - P(rojector)^{S=4} on S=4 subspace
-        OP2S_SS         // Hamiltonian - NN-Heisenberg
+        OP2S_SS,        // Hamiltonian - NN-Heisenberg
+        OP2S_SZSZ
     };
 
     // Compute expectation value of 2-site operator O given

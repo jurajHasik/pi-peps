@@ -1755,6 +1755,30 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
                 }}
             }}
             break;
+        } 
+        case OP2S_SZSZ: {
+            if(dbg) std::cout <<">>>>> 2) Constructing OP2S_SZSZ <<<<<"<< std::endl;
+
+            Index sBra = Index("sBra", dimS);
+            Index sKet = prime(sBra);
+            ITensor Sz = getSpinOp(MPO_S_Z, sBra);
+            
+            double hVal;
+            // Loop over <bra| indices
+            for(int bA=1;bA<=dimS;bA++) {
+            for(int bB=1;bB<=dimS;bB++) {
+                // Loop over |ket> indices
+                for(int kA=1;kA<=dimS;kA++) {
+                for(int kB=1;kB<=dimS;kB++) {
+                
+                    hVal = Sz.real(sBra(bA),sKet(kA))
+                        *Sz.real(sBra(bB),sKet(kB));
+
+                    Op.set(s0(kA),s2(kB),s1(bA),s3(bB),hVal);
+                }}
+            }}
+
+            break;
         }
         default: {
             if(dbg) std::cout <<"Invalid OP_2S selection"<< std::endl;

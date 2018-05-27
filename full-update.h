@@ -161,6 +161,12 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda);
 
 MPO_3site getMPO3s_Uladder(double tau, double J, double Jp);
 
+MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp);
+
+MPO_3site getMPO3s_Ising_v2(double tau, double J, double h);
+
+MPO_3site getMPO3s_Ising_2site(double tau, double J, double h);
+
 /*
  * Initialize isometry (reduction tensors - RT) which define a 
  * PEPS ansatz of auxDim d for a PEPS state with auxDim d and 
@@ -211,6 +217,16 @@ itensor::ITensor getketT(itensor::ITensor const& s, itensor::ITensor const& op,
  *
  */
 itensor::Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	std::vector< itensor::ITensor > & iso_store, 
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	std::vector< itensor::ITensor > & iso_store, 
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
