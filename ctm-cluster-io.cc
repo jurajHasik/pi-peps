@@ -38,16 +38,39 @@ Cluster readCluster(string const& filename) {
     for( const auto& siteIdEntry : jsonCls["siteIds"].get < vector<string> >() )
     {
         cluster.siteIds.push_back(siteIdEntry);
+        cluster.SI[siteIdEntry] = cluster.siteIds.size() - 1;
     }
 
-    for( const auto& siteEntry : 
-        jsonCls["sites"].get < vector<nlohmann::json> >() ) 
-    {
-        cluster.sites[ siteEntry["siteId"].get<string>() ] =
-            readOnSiteT(siteEntry);    
-    }
+    initClusterSites(cluster);
+
+    setOnSiteTensorsFromJSON(cluster, jsonCls);
+
+    // construction of weights on links within cluster
+    if (jsonCls.value("linkWeightsUsed",false)) readClusterWeights(cluster, jsonCls);
+
+    initClusterWeights(cluster);
 
     return cluster;
+}
+
+void readClusterWeights(Cluster & cls, nlohmann::json & jsonCls) {
+    for( const auto& siteIdEntry : jsonCls["siteIds"].get < vector<string> >() )
+        cls.siteToWeights[siteIdEntry] = vector< LinkWeight >();
+
+    for (const auto& lwEntry : 
+        jsonCls["linkWeights"].get< vector<nlohmann::json> >() ) {
+        LinkWeight lw = {
+            lwEntry["sites"].get< vector<string> >(),
+            lwEntry["directions"].get< vector<int> >(),
+            lwEntry["weightId"].get< string >()
+        };
+        LinkWeight rlw = lw;
+        reverse(rlw.sId.begin(),rlw.sId.end());
+        reverse(rlw.dirs.begin(),rlw.dirs.end());
+    
+        cls.siteToWeights[lw.sId[0]].push_back(lw);
+        cls.siteToWeights[rlw.sId[0]].push_back(rlw);
+    }
 }
 
 /*
@@ -77,6 +100,26 @@ void writeCluster(string const& filename, Cluster const& cls) {
     jCls["map"] = jcToS;
 
     jCls["siteIds"] = cls.siteIds;
+
+    if (cls.siteToWeights.size() > 0) {
+        jCls["linkWeightsUsed"] = true;    
+        
+        vector< nlohmann::json > jlws;
+        vector< std::string > lwIds;
+        for (auto const& stw : cls.siteToWeights )
+            for (auto const& lw : stw.second)
+                if ( std::find(lwIds.begin(), lwIds.end(), lw.wId) == lwIds.end() ) {
+                    nlohmann::json jentry;
+                    jentry["sites"] = lw.sId;
+                    jentry["directions"] = lw.dirs;
+                    jentry["weightId"] = lw.wId;
+                    
+                    jlws.push_back(jentry);
+                    lwIds.push_back(lw.wId);
+                }
+
+        jCls["linkWeights"] = jlws;
+    }
 
     vector< nlohmann::json > jsites;
     for ( auto const& entry : cls.sites ) {
@@ -139,6 +182,48 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset) {
     }
 
     return t;
+}
+
+void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
+    std::string sId = j["siteId"].get<string>();
+
+    auto physI = c.aux[c.SI.at( sId )];
+    auto auxI0 = c.aux[c.SI.at( sId )];
+    auto auxI1 = prime(auxI0,1);
+    auto auxI2 = prime(auxI0,2);
+    auto auxI3 = prime(auxI0,3);
+    
+    string token[7];
+    int offset = 1;
+    int pI, aI0, aI1, aI2, aI3;
+    char delim = ' ';
+    for( const auto& tEntry : j["entries"].get< vector<string> >() ) {
+        istringstream iss(tEntry);
+        
+        token[6] = "0.0";
+
+        for(int i=0; i<7; i++) { 
+            getline(iss, token[i], delim);
+        }
+
+        // ITensor indices start from 1, hence if input file indices start from
+        // 0 use offset 1
+        pI  = offset + stoi(token[0]);
+        aI0 = offset + stoi(token[1]);
+        aI1 = offset + stoi(token[2]);
+        aI2 = offset + stoi(token[3]);
+        aI3 = offset + stoi(token[4]);
+
+        c.sites.at(sId).set( physI(pI), auxI0(aI0), auxI1(aI1), auxI2(aI2), 
+            auxI3(aI3), 
+            complex<double>( stod(token[5]),stod(token[6]) ) );
+    }
+}
+
+void setOnSiteTensorsFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
+    for( const auto& siteEntry : 
+        j["sites"].get < vector<nlohmann::json> >() ) 
+        readOnSiteFromJSON(c, siteEntry);
 }
 
 void writeOnSiteTElems(vector< string > & tEs,

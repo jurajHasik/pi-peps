@@ -76,38 +76,6 @@ const std::array< std::array< std::array<int, 4>, 4>, 4> RTPK =
 		{{{-1,1,-1,2},{-1,0,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}}
 	}};
 
-// ----- Main MPO Structures ------------------------------------------
-/*
- * this struct holds instance of particular 3-site MPO composed
- * by three tensors
- *
- *    s1'              s2'              s3'
- *    |                |                | 
- *   |H1|--I_MPO3s12--|H2|--I_MPO3s23--|H3|
- *    |                |                | 
- *    s1               s2               s3
- *
- * exposing the physical indices s1,s2,s3
- *
- */
-struct MPO_3site {
-	itensor::ITensor H1, H2, H3;
-
-	// expose internal indices
-	itensor::Index a12, a23;
-
-	// expose physical indices
-	itensor::Index Is1, Is2, Is3;
-};
-
-struct MPO_2site {
-	itensor::ITensor H1, H2;
-
-	// expose physical indices
-	itensor::Index Is1, Is2;
-};
-// ----- END Main MPO Structures --------------------------------------
-
 /*
  * H_J1J2 acting on a square lattice can be decomposed into sum of
  * 

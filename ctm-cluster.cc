@@ -2,6 +2,101 @@
 
 using namespace itensor; 
 
+void initClusterSites(Cluster & c, bool dbg) {
+    for (auto & site : c.siteIds) {
+        c.aux.push_back( Index(TAG_I_AUX, c.auxBondDim, AUXLINK) );
+        c.phys.push_back( Index(TAG_I_PHYS, c.physDim, PHYS) );
+    
+        c.sites[site] = ITensor(c.phys.back(), c.aux.back(), 
+            prime(c.aux.back(),1), prime(c.aux.back(),2), prime(c.aux.back(),3) );
+    }
+}
+
+void initClusterWeights(Cluster & c, bool dbg) {
+    // create map holding LinkWeights
+    std::map<std::string, LinkWeight> tmpLWs;
+
+    for (const auto& lwSet : c.siteToWeights) 
+        for (const auto& lw : lwSet.second) 
+            if ( (tmpLWs.find( lw.wId ) == tmpLWs.end()) ) tmpLWs[lw.wId] = lw;
+
+    for (const auto& lw : tmpLWs) 
+        c.weights[lw.second.wId] = ITensor(
+            prime(c.aux[c.SI.at(lw.second.sId[0])],lw.second.dirs[0]),
+            prime(c.aux[c.SI.at(lw.second.sId[1])],lw.second.dirs[1])
+            );
+}
+
+void setWeights(Cluster & c, std::string option, bool dbg) {
+    if(option == "DELTA") {
+        for (auto & wEntry : c.weights) {
+            std::vector<double> tmpD(c.auxBondDim, 1.0);
+            wEntry.second = diagTensor(tmpD, 
+                wEntry.second.inds()[0], wEntry.second.inds()[1] );
+        }
+    } else {
+        std::cout <<"ctm-cluster setWeights unsupported option: "
+            << option << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void setSites(Cluster & c, std::string option, bool dbg) {
+
+    // reset all sites to zero tensors
+    for (auto & se : c.sites) se.second.fill(0.0);
+
+    if (option == "RANDOM") {
+        std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
+
+        auto shift05 = [](Real r){ return r-0.5; };
+        
+        for (auto & se : c.sites) {
+            randomize(se.second);
+            se.second.apply(shift05);
+        }
+
+    } else if (option == "RND_1S") {
+        std::cout <<"Initializing by SINGLE RANDOM TENSOR"<< std::endl;
+
+        auto shift05 = [](Real r){ return r-0.5; };
+
+        // create random tensor
+        Index pI(TAG_I_PHYS,c.physDim,PHYS), aI(TAG_I_AUX,c.auxBondDim,AUXLINK);
+        ITensor tmpT(pI,aI,prime(aI,1),prime(aI,2),prime(aI,3));
+        randomize(tmpT);
+        tmpT.apply(shift05);
+
+        for (auto & se : c.sites) {
+            auto sId = se.first;
+            auto tmpDeltaAux = delta(aI,c.aux.at(c.SI.at(sId)));
+            
+            se.second = (((( (tmpT * delta(pI, c.phys.at(c.SI.at(sId))))
+                *tmpDeltaAux )
+                *prime(tmpDeltaAux,1) )
+                *prime(tmpDeltaAux,2) )
+                *prime(tmpDeltaAux,3) );
+        }
+
+    } else if (option == "XPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along X"<< std::endl;
+        
+        for (auto & se : c.sites) {
+            auto sId = se.first;
+            auto tmpPI = c.phys.at(c.SI.at(sId));
+            auto tmpAI = c.aux.at(c.SI.at(sId));
+
+            se.second.set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
+                tmpPI(1), 1.0/std::sqrt(2.0));
+            se.second.set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
+                tmpPI(2), 1.0/std::sqrt(2.0));            
+        }
+
+    } else {
+        std::cout <<"ctm-cluster setSites unsupported option: "<< option << std::endl;
+    }
+}
+
 ITensor contractCluster(Cluster const& c, bool dbg) {
     std::cout <<">>>> contractCluster called <<<<<"<< std::endl;
 
@@ -54,6 +149,11 @@ ITensor contractCluster(Cluster const& c, bool dbg) {
     return initPlaq;
 }
 
+/*
+ * Exact contraction of a cluster with ... rectangular 
+ * unit cell, physical indices being uncontracted
+ *
+ */
 ITensor clusterDenMat(Cluster const& c, bool dbg) {
     std::cout <<">>>> contractCluster called <<<<<"<< std::endl;
 
@@ -135,6 +235,29 @@ ITensor clusterDenMat(Cluster const& c, bool dbg) {
     return initPlaq;
 }
 
+void absorbWeightsToSites(Cluster & c, bool dbg) {
+
+    auto sqrtT = [](double r) { return std::sqrt(r); };
+    auto quadT = [](double r) { return r*r; };
+
+    // apply sqrtT to all wight tensors
+    for ( auto & w : c.weights) w.second.apply(sqrtT);
+
+    for ( auto & siteEntry : c.sites ) {
+        auto sId = siteEntry.first;
+        // contract each on-site tensor with its weights
+        // and set back the original index
+        for ( auto const& stw : c.siteToWeights.at(sId) ) {
+            siteEntry.second *= c.weights.at(stw.wId);
+            siteEntry.second *= delta(prime(c.aux[c.SI[sId]], stw.dirs[0]),
+                prime(c.aux[c.SI[stw.sId[1]]], stw.dirs[1]) );
+        }
+    }
+
+    // apply quadT to all weight tensors to recover original ones
+    for ( auto & w : c.weights) w.second.apply(quadT);
+}
+
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
     s <<"Cluster( metaInfo: "<< c.metaInfo 
         << "sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 
@@ -146,17 +269,46 @@ std::ostream& operator<<(std::ostream& s, Cluster const& c) {
     }
     s <<"]"<< std::endl;
 
+    s <<"Indices phys AND aux: ["<< std::endl;
+    for( unsigned int i=0; i<c.aux.size(); i++ ) {
+        s << c.siteIds[i]<< ": " << c.phys[i] <<" -- "<< c.aux[i] << std::endl;
+    }
+    s <<"]"<< std::endl;
+
     s <<"clusterToSite: ["<< std::endl; 
     for( const auto& cToSEntry : c.cToS ) {
         s <<"("<< cToSEntry.first.first <<", "<< cToSEntry.first.second 
-            <<") -> "<< cToSEntry.second << std::endl;
+            <<") -> "<< cToSEntry.second <<" -> " << c.SI.at(cToSEntry.second) << std::endl;
     }
     s << "]" << std::endl;
     
     for( const auto& sitesEntry : c.sites ) {
         s << sitesEntry.first <<" = ";
-        printfln("%f", sitesEntry.second);  
+        printfln("%f", sitesEntry.second);
     }
+
+    s << "siteToWeights: [" << std::endl;
+    for( const auto& lwEntrySet : c.siteToWeights ) {
+        s << lwEntrySet.first <<" --> ["<< std::endl;
+        for ( const auto& lwEntry : lwEntrySet.second) s << lwEntry << std::endl;
+        s << "]" << std::endl;
+    }
+    s << std::endl;
+
+    s << "weights: [" << std::endl;
+    for ( const auto& wEntry : c.weights ) { 
+        s << wEntry.first << " --> ";
+        printfln("%f", wEntry.second);
+    }
+    s << "]" << std::endl;
+
+    return s;
+}
+
+std::ostream& operator<<(std::ostream& s, LinkWeight const& lw) {
+    s <<"LinkWeight( "<< lw.wId <<" ["
+        << lw.sId[0] <<","<< lw.sId[1] <<"], ["
+        << lw.dirs[0] <<","<< lw.dirs[1] <<"])";
 
     return s;
 }

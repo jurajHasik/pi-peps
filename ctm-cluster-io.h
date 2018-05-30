@@ -26,6 +26,8 @@ IO_ENV_FMT toIO_ENV_FMT(std::string const& ioFmt);
 
 Cluster readCluster(std::string const& filename);
 
+void readClusterWeights(Cluster & cls, nlohmann::json & jsonCls);
+
 void writeCluster(std::string const& filename, Cluster const& cls);
 
 /* 
@@ -49,6 +51,10 @@ void writeCluster(std::string const& filename, Cluster const& cls);
  *
  */
 itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
+
+void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg = false);
+
+void setOnSiteTensorsFromJSON(Cluster & cls, nlohmann::json const& j, bool dbg = false);
 
 /* 
  * write elements of an on-site tensor T on a SQUARE lattice into a vector
