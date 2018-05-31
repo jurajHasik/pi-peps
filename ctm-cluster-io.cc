@@ -187,7 +187,7 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset) {
 void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
     std::string sId = j["siteId"].get<string>();
 
-    auto physI = c.aux[c.SI.at( sId )];
+    auto physI = c.phys[c.SI.at( sId )];
     auto auxI0 = c.aux[c.SI.at( sId )];
     auto auxI1 = prime(auxI0,1);
     auto auxI2 = prime(auxI0,2);

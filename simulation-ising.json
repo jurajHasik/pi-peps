@@ -1,9 +1,9 @@
 {
-	"initBy": "XPRST",
+	"initBy": "RND_AB",
 	"physDim": 2,
 	"auxBondDim": 3,
-	"inClusterFile": "ISINGh1.15_d3ch30-t0.05-pIc15-iter0-512.envR1T3rsvd.in",
-        "outClusterFile": "XPRST_ISINGh1.15_d3ch30-t0.01-pIc15-iter0-512.envR1T3rsvd.in",
+	"inClusterFile": "XPRST_ISINGh1.15_d3ch30-t0.05-pIc15-iter0-512.envR1T3iten.in",
+        "outClusterFile": "RNDAB_ISINGh1.05_d3ch30-t0.05-pIc15-iter0-512.env50T3iten.in",
 
 	"fuIter": 512,
 	"obsFreq": 16,
@@ -18,13 +18,12 @@
 	"otNormType": "BALANCE",
 	"fuDbg": true,
 	"fuDbgLevel": 1,
-	"FU2SITE": true,
 
 	"model": {	
-		"type": "Ising",	
-		"tau": 0.01,
+		"type": "Ising",
+		"tau": 0.05,
 		"J1": 1.0,
-		"h": 1.15,
+		"h": 1.05,
 		"LAMBDA": 0.0,
 		"fuGateSeq": "SYM4"
 	},
@@ -34,14 +33,14 @@
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
 		"envIsComplex": false,
-		"isoType": "ISOMETRY_T4",
+		"isoType": "ISOMETRY_T3",
 		"env_SVD_METHOD": "itensor",
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
-		"maxEnvIter": 1,
+		"maxEnvIter": 50,
 		"initMaxEnvIter": 50,
 		"envEpsilon": 1.0e-8,
-		"reinitEnv": false,
+		"reinitEnv": true,
 		"dbg": false,
 		"dbgLvl": 0
 	}
