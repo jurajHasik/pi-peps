@@ -38,6 +38,7 @@
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 50,
+		"obsMaxIter": 50,
 		"initMaxEnvIter": 50,
 		"envEpsilon": 1.0e-8,
 		"reinitEnv": true,

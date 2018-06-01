@@ -66,6 +66,7 @@ int main( int argc, char *argv[] ) {
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>()); 
 	int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
+    int arg_obsMaxIter = jsonCls.value("obsMaxIter",arg_maxInitEnvIter);
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
     bool arg_reinitEnv = json_ctmrg_params["reinitEnv"].get<bool>();
     bool arg_envDbg    = json_ctmrg_params["dbg"].get<bool>();
@@ -565,7 +566,8 @@ int main( int argc, char *argv[] ) {
             }
 		
     	// ENTER ENVIRONMENT LOOP
-		for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
+        int currentMaxEnvIter = (fuI % arg_obsFreq == 0) ? arg_obsMaxIter : arg_maxEnvIter; 
+		for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
             t_begin_int = std::chrono::steady_clock::now();
 
 	        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
@@ -583,7 +585,7 @@ int main( int argc, char *argv[] ) {
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
                     <<" [sec] "; 
 
-	        if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
+	        if ( (currentMaxEnvIter > 1) && (envI % 1 == 0) ) {
                 t_begin_int = std::chrono::steady_clock::now();
 	            
                 ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());

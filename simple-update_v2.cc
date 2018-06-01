@@ -870,10 +870,19 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 }
 
 ITensor getInvDiagT(ITensor const& t) {
+	double machine_eps = std::numeric_limits<double>::epsilon();
+
 	std::vector<double> tmpD;
 
-	for(int i=1; i<=t.inds()[0].m(); i++)
-		tmpD.push_back( 1.0 / t.real(t.inds()[0](i),t.inds()[1](i)) );
+	double elem;
+	for(int i=1; i<=t.inds()[0].m(); i++) {
+		elem = t.real(t.inds()[0](i),t.inds()[1](i));
+		if ( std::abs(elem) > machine_eps) 
+			tmpD.push_back( 1.0 / elem );
+		else
+			tmpD.push_back(0.0);
+
+	}
 
 	return diagTensor(tmpD, t.inds()[0], t.inds()[1]);
 }

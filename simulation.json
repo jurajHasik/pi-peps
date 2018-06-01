@@ -1,17 +1,17 @@
 {
-	"initBy": "AFM",
+	"initBy": "RND_AB",
 	"physDim": 2,
 	"auxBondDim": 3,
-	"inClusterFile": "TEST-d3ch36-t0.05-iter0-128.in",
-        "outClusterFile": "TEST-d3ch36-t0.01-iter0-128-T3itensor.in",
+	"inClusterFile": "test-input/RVB_2x2_ABCD.in",
+        "outClusterFile": "TEST.in",
 
 	"fuIter": 128,
-	"obsFreq": 1,
-	"fuIsoInit": "LINKSVD",
+	"obsFreq": 32,
+	"fuIsoInit": "DELTA",
 	"fuIsoInitNoiseLevel": 1.0e-3,
 	"maxAltLstSqrIter": 50,
 	"symmetrizeProtoEnv": true,
-	"positiveDefiniteProtoEnv": false,
+	"positiveDefiniteProtoEnv": true,
 	"pseudoInvCutoff": 1.0e-15,
 	"pseudoInvMaxLogGap": 0.0,
 	"isoEpsilon": 1.0e-8,
@@ -20,16 +20,16 @@
 	"fuDbgLevel": 1,
 
 	"model": {	
-		"type": "J1J2",	
-		"tau": 0.15,
+		"type": "Ising",	
+		"tau": 0.05,
 		"J1": 1.0,
-		"J2": 0.0,
+		"h": 1.03,
 		"LAMBDA": 0.0,
-		"fuGateSeq": "SYM1"
+		"fuGateSeq": "SYM3"
 	},
 
 	"ctmrg": {
-		"auxEnvDim": 1,
+		"auxEnvDim": 30,
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
 		"envIsComplex": false,
@@ -38,6 +38,7 @@
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 1,
+		"maxObsIter": 50,
 		"initMaxEnvIter": 50,
 		"envEpsilon": 1.0e-8,
 		"reinitEnv": false,
