@@ -3,6 +3,11 @@
 using namespace itensor; 
 
 void initClusterSites(Cluster & c, bool dbg) {
+    // reset
+    c.aux.clear();
+    c.phys.clear();
+    c.sites.clear();
+
     for (auto & site : c.siteIds) {
         c.aux.push_back( Index(TAG_I_AUX, c.auxBondDim, AUXLINK) );
         c.phys.push_back( Index(TAG_I_PHYS, c.physDim, PHYS) );
@@ -13,6 +18,9 @@ void initClusterSites(Cluster & c, bool dbg) {
 }
 
 void initClusterWeights(Cluster & c, bool dbg) {
+    // reset
+    c.weights.clear();
+
     // create map holding LinkWeights
     std::map<std::string, LinkWeight> tmpLWs;
 

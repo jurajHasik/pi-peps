@@ -26,7 +26,9 @@ IO_ENV_FMT toIO_ENV_FMT(std::string const& ioFmt);
 
 Cluster readCluster(std::string const& filename);
 
-void readClusterWeights(Cluster & cls, nlohmann::json & jsonCls);
+Cluster readCluster(nlohmann::json const& jsonCls);
+
+void readClusterWeights(Cluster & cls, nlohmann::json const& jsonCls);
 
 void writeCluster(std::string const& filename, Cluster const& cls);
 

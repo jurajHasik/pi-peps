@@ -20,6 +20,10 @@ Cluster readCluster(string const& filename) {
     nlohmann::json jsonCls;
     infile >> jsonCls;
 
+    return readCluster(jsonCls);
+}
+
+Cluster readCluster(nlohmann::json const& jsonCls) {
     // Create corresponding cluster struct
     Cluster cluster = Cluster();
 
@@ -53,7 +57,7 @@ Cluster readCluster(string const& filename) {
     return cluster;
 }
 
-void readClusterWeights(Cluster & cls, nlohmann::json & jsonCls) {
+void readClusterWeights(Cluster & cls, nlohmann::json const& jsonCls) {
     for( const auto& siteIdEntry : jsonCls["siteIds"].get < vector<string> >() )
         cls.siteToWeights[siteIdEntry] = vector< LinkWeight >();
 

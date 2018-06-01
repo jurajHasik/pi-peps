@@ -69,12 +69,16 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE SIMPLE UPDATE ALGORITHM DONE **************************
 
 	// ***** INITIALIZE CLUSTER ***********************************************
-	Cluster cls( readCluster(inClusterFile) );
-        
+    Cluster cls( readCluster(inClusterFile) );
+    
+    // set auxiliary dimension to the desired one
+    cls.auxBondDim = auxBondDim;
+    initClusterSites(cls);
+    initClusterWeights(cls);
+
     // choose initial wavefunction
     if (sitesInit == "FILE") {
-        // Do nothing - the on-site tensor have been initialized from
-        // inClusterFile
+        setSites(cls, sitesInit);
     } else {
         setSites(cls, sitesInit);
     }
