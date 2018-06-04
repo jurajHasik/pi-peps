@@ -3,10 +3,10 @@
 	"physDim": 2,
 	"auxBondDim": 3,
 	"inClusterFile": "XPRST_ISINGh1.15_d3ch30-t0.05-pIc15-iter0-512.envR1T3iten.in",
-        "outClusterFile": "RNDAB_ISINGh1.05_d3ch30-t0.05-pIc15-iter0-512.env50T3iten.in",
+        "outClusterFile": "TEST.in",
 
-	"fuIter": 512,
-	"obsFreq": 16,
+	"fuIter": 1024,
+	"obsFreq": 32,
 	"fuIsoInit": "LINKSVD",
 	"fuIsoInitNoiseLevel": 1.0e-3,
 	"maxAltLstSqrIter": 50,
@@ -21,11 +21,11 @@
 
 	"model": {	
 		"type": "Ising",
-		"tau": 0.05,
+		"tau": 0.01,
 		"J1": 1.0,
-		"h": 1.05,
+		"h": 0.9,
 		"LAMBDA": 0.0,
-		"fuGateSeq": "SYM4"
+		"fuGateSeq": "SYM3"
 	},
 
 	"ctmrg": {
@@ -37,11 +37,11 @@
 		"env_SVD_METHOD": "itensor",
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
-		"maxEnvIter": 50,
+		"maxEnvIter": 1,
 		"obsMaxIter": 50,
 		"initMaxEnvIter": 50,
 		"envEpsilon": 1.0e-8,
-		"reinitEnv": true,
+		"reinitEnv": false,
 		"dbg": false,
 		"dbgLvl": 0
 	}

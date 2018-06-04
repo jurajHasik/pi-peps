@@ -545,8 +545,226 @@ MPO_3site getMPO3s_Ising_2site(double tau, double J, double h) {
 }
 // ----- END Trotter gates (2Site, 3site, ...) MPOs -------------------
 
+// ----- Definition of model base class and its particular instances --
+J1J2Model::J1J2Model(double arg_J1, double arg_J2)
+    : J1(arg_J1), J2(arg_J2) {}
+
+void J1J2Model::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SS AB (0,0)(1,0), "<<"SS AC (0,0)(0,1), "
+        <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
+        <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
+        <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
+        <<"Avg mag=|S|, "<<"Energy"
+        <<std::endl;
+}
+
+void J1J2Model::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args const& metaInf) {
+
+    std::vector<double> evNN;
+    std::vector<double> evNNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
+
+    // compute energies NNN links
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+}
+
+NNHLadderModel::NNHLadderModel(double arg_J1, double arg_alpha)
+    : J1(arg_J1), alpha(arg_alpha) {}
+
+void NNHLadderModel::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SS AB (0,0)(1,0), "<<"SS AC (0,0)(0,1), "
+        <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
+        <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
+        <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
+        <<"Avg SS CA+DB, "<<"Avg mag=|S|, "<<"Energy"
+        <<std::endl;
+}
+
+void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args const& metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
+
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(1,0)) );    //AB
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(0,1)) );    //AC
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(1,1)) );    //BD
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(1,1)) );    //CD
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(2,1))); //DC
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+
+    // write energy
+    double avgE_CAplusDB = 0.;
+    output << lineNo <<" "; 
+    for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
+        output<<" "<< evNN[j];
+    }
+    avgE_CAplusDB = (evNN[5] + evNN[6])/2.0;
+    output <<" "<< avgE_CAplusDB;
+    
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.25*(
+        sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
+        + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
+        + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )
+        + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )
+    );
+    output <<" "<< evMag_avg;
+
+    // write Energy
+    double energy = (evNN[0]+evNN[1]+evNN[2]+evNN[3]+evNN[4]+evNN[7]) * J1
+         + (evNN[5]+evNN[6]) * (alpha*J1); 
+    output <<" "<< energy; 
+
+    output << std::endl;
+}
+
+IsingModel::IsingModel(double arg_J1, double arg_h)
+    : J1(arg_J1), h(arg_h) {}
+
+void IsingModel::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SzSz AB (0,0)(1,0), "<<"SzSz AC (0,0)(0,1), "
+        <<"SzSz BD (1,0)(1,1), "<<"SzSz CD (0,1)(1,1), "
+        <<"SzSz BA (1,0)(2,0), "<<"SzSz CA (0,1)(0,2), "
+        <<"SzSz DB (1,1)(1,2), "<<"SzSz DC (1,1)(2,1), "
+        <<"Avg SzSz, "<<"Avg Sz, "<<"Avg Sx, "<<"Energy"
+        <<std::endl;
+}
+
+void IsingModel::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args const& metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
+
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(0,0), std::make_pair(1,0)) );    //AB
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(0,0), std::make_pair(0,1)) );    //AC
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(1,0), std::make_pair(1,1)) );    //BD
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(0,1), std::make_pair(1,1)) );    //CD
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(1,0), std::make_pair(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(0,1), std::make_pair(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(1,1), std::make_pair(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        std::make_pair(1,1), std::make_pair(2,1))); //DC
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+
+    // write energy
+    double avgE_8links = 0.;
+    output << lineNo <<" "; 
+    for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
+        avgE_8links += evNN[j];
+        output<<" "<< evNN[j];
+    }
+    avgE_8links = avgE_8links/8.0;
+    output <<" "<< avgE_8links;
+    
+    // write Z magnetization
+    double evMagZ_avg = 0.;
+    double evMagX_avg = 0.;
+    evMagZ_avg = 0.25*(
+        sqrt(ev_sA[0]*ev_sA[0])
+        + sqrt(ev_sB[0]*ev_sB[0])
+        + sqrt(ev_sC[0]*ev_sC[0])
+        + sqrt(ev_sD[0]*ev_sD[0])
+        );
+    output <<" "<< evMagZ_avg;
+    evMagX_avg = 0.25*(
+        sqrt(ev_sA[1]*ev_sA[1])
+        + sqrt(ev_sB[1]*ev_sB[1])
+        + sqrt(ev_sC[1]*ev_sC[1])
+        + sqrt(ev_sD[1]*ev_sD[1])
+        );
+    output <<" "<< evMagX_avg;
+
+    // write Energy 
+    // * working with spin DoFs instead of Ising DoFs hence factor of 2
+    // * h_hamiltonian = 3.0 * h_trotterGate 
+    double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * (3.0 * h) * evMagX_avg; 
+    output <<" "<< energy; 
+
+    output << std::endl;
+}
+// ----- END Definition of model class --------------------------------
+
 // ----- Model Definitions --------------------------------------------
 void getModel_J1J2(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
 	std::vector< MPO_3site > & gateMPO,
     std::vector< MPO_3site *> & ptr_gateMPO,
 	std::vector< std::vector<std::string> > & gates,
@@ -555,6 +773,9 @@ void getModel_J1J2(nlohmann::json & json_model,
 	double arg_J1 = json_model["J1"].get<double>();
 	double arg_J2 = json_model["J2"].get<double>();
     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+    ptr_model = std::unique_ptr<Model>(new J1J2Model(arg_J1, arg_J2));
+
     // time step
     double arg_tau = json_model["tau"].get<double>();
     // gate sequence
@@ -705,6 +926,7 @@ void getModel_J1J2(nlohmann::json & json_model,
 }
 
 void getModel_NNHLadder(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
 	std::vector< MPO_3site > & gateMPO,
     std::vector< MPO_3site *> & ptr_gateMPO,
 	std::vector< std::vector<std::string> > & gates,
@@ -713,6 +935,9 @@ void getModel_NNHLadder(nlohmann::json & json_model,
 	double arg_J1 = json_model["J1"].get<double>();
 	double arg_alpha = json_model["alpha"].get<double>();
     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+    ptr_model = std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
+
     // time step
     double arg_tau = json_model["tau"].get<double>();
     // gate sequence
@@ -752,6 +977,60 @@ void getModel_NNHLadder(nlohmann::json & json_model,
 
         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) ); 
         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
+    } else if (arg_fuGateSeq == "SYM3") {
+        gates = {
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"},
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
+
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+
+            {"C", "D", "B", "A"}, 
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"}
+        };
+
+        gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3}, 
+            {1,0, 2,1, 3,2, 0,3},
+
+            {1,2, 0,1, 3,0, 2,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3}
+        };
+
+        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
+        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
+
+        ptr_gateMPO = {
+            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0])
+        };
     } else if (arg_fuGateSeq == "2SITE") {
         gates = {
             {"A", "B", "D", "C"},
@@ -782,14 +1061,14 @@ void getModel_NNHLadder(nlohmann::json & json_model,
 
         for (int i=0; i<6; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
         for (int i=0; i<2; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
-    } 
-    else {
+    } else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
     }
 }
 
 void getModel_Ising(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
     std::vector< MPO_3site > & gateMPO,
     std::vector< MPO_3site *> & ptr_gateMPO,
     std::vector< std::vector<std::string> > & gates,
@@ -798,6 +1077,9 @@ void getModel_Ising(nlohmann::json & json_model,
     double arg_J1     = json_model["J1"].get<double>();
     double arg_h      = json_model["h"].get<double>();
     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+    ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
+
     // time step
     double arg_tau    = json_model["tau"].get<double>();
     // gate sequence
@@ -892,7 +1174,7 @@ void getModel_Ising(nlohmann::json & json_model,
             {"A", "B", "D", "C"},
             {"C", "D", "B", "A"},
 
-            {"D", "C", "A", "B"}, 
+            {"D", "C", "A", "B"},
             {"B", "A", "C", "D"}
         };
 
@@ -945,6 +1227,7 @@ void getModel_Ising(nlohmann::json & json_model,
 }
 
 void getModel(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
     std::vector< MPO_3site > & gateMPO,
     std::vector< MPO_3site *> & ptr_gateMPO,
     std::vector< std::vector<std::string> > & gates,
@@ -953,11 +1236,11 @@ void getModel(nlohmann::json & json_model,
     std::string arg_modelType = json_model["type"].get<std::string>(); 
 
     if(arg_modelType == "J1J2") {
-        getModel_J1J2(json_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+        getModel_J1J2(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
     } else if (arg_modelType == "NNHLadder") {
-        getModel_NNHLadder(json_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+        getModel_NNHLadder(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
     } else if (arg_modelType == "Ising") {
-        getModel_Ising(json_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+        getModel_Ising(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
     } else {
         std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
         exit(EXIT_FAILURE);

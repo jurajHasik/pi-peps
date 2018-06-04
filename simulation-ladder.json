@@ -1,11 +1,11 @@
 {
-	"initBy": "FILE",
+	"initBy": "RND_AB",
 	"physDim": 2,
-	"auxBondDim": 4,
+	"auxBondDim": 3,
 	"inClusterFile": "REF_d4ch50-t0.05-SYM4-pIc15-ieps8_iter0-128.env-pIctff15-ieps8.in",
-        "outClusterFile": "NNH_d4ch16-t0.1-pIc15-iter0-128.envR1T3iten.in",
+        "outClusterFile": "TEST-ladder.in",
 
-	"fuIter": 128,
+	"fuIter": 512,
 	"obsFreq": 32,
 	"fuIsoInit": "DELTA",
 	"fuIsoInitNoiseLevel": 1.0e-3,
@@ -29,7 +29,7 @@
 	},
 
 	"ctmrg": {
-		"auxEnvDim": 16,
+		"auxEnvDim": 30,
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
 		"envIsComplex": false,
@@ -38,6 +38,7 @@
 		"isoPseudoInvCutoff": 1.0e-15,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 1,
+		"maxObsIter": 50,
 		"initMaxEnvIter": 50,
 		"envEpsilon": 1.0e-8,
 		"reinitEnv": false,

@@ -256,18 +256,8 @@ int main( int argc, char *argv[] ) {
     EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-    // hold energies
+    // hold ctm observables used in the convergence criterion
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
-    std::vector<double> e_nnH;
-    std::vector<double> e_nnH_AC;
-    std::vector<double> e_nnH_BD;
-    std::vector<double> e_nnH_CD;
-    std::vector<double> evNN;
-    std::vector<double> evNNN;
-    std::vector<double> ev_sA(3,0.0);
-    std::vector<double> ev_sB(3,0.0);
-    std::vector<double> ev_sC(3,0.0);
-    std::vector<double> ev_sD(3,0.0);
 
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
@@ -276,14 +266,15 @@ int main( int argc, char *argv[] ) {
     // # SETUP OPTIMIZATION LOOP                                        #
     // ##################################################################
 
-    // DEFINE GATE SEQUENCE
+    // DEFINE MODEL AND GATE SEQUENCE
+    std::unique_ptr<Model> ptr_model;   
     std::vector< MPO_3site > gateMPO;
     std::vector< MPO_3site * > ptr_gateMPO;
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel(json_model_params, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
     int init_gate_size = gates.size();
@@ -388,134 +379,9 @@ int main( int argc, char *argv[] ) {
     // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
 
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-
     // Compute initial properties
-    // e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,0), std::make_pair(1,0)) );
-    // e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,0), std::make_pair(0,1)) );
-    // e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,0), std::make_pair(1,1)) );
-    // e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,1), std::make_pair(1,1)) );
-
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,0), std::make_pair(2,0))); //BA
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,1), std::make_pair(0,2))); //CA
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,1), std::make_pair(1,2))); //DB
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,1), std::make_pair(2,1))); //DC
-
-    e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(1,0)) );
-    e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(0,1)) );
-    e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(1,1)) );
-    e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(1,1)) );
-
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
-    
-    // compute energies NNN links
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
-
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
-
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
-
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
-
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
-
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
-
-
-    // write energy
-    double avgE_8links = 0.;
-    out_file_energy << 0 <<" "<< e_nnH.back() 
-        <<" "<< e_nnH_AC.back()
-        <<" "<< e_nnH_BD.back()
-        <<" "<< e_nnH_CD.back();
-    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-        avgE_8links += evNN[j];
-        out_file_energy<<" "<< evNN[j];
-    }
-    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
-    out_file_energy <<" "<< avgE_8links;
-    
-    double evNNN_avg = 0.;
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        evNNN_avg += evNNN[evnnni];
-    evNNN_avg = evNNN_avg / 8.0;
-
-    out_file_energy <<" "<< evNNN_avg;
-    //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
-    
-    // write magnetization
-    double evMag_avg = 0.;
-    // evMag_avg = 0.25*(
-    //     sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )//+ ev_sA[2]*ev_sA[2])
-    //     + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )//+ ev_sB[2]*ev_sB[2])
-    //     + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )//+ ev_sC[2]*ev_sC[2])
-    //     + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )//+ ev_sD[2]*ev_sD[2])
-    //     );
-    evMag_avg = 0.25*(
-        sqrt(ev_sA[0]*ev_sA[0])//+ ev_sA[2]*ev_sA[2])
-        + sqrt(ev_sB[0]*ev_sB[0])//+ ev_sB[2]*ev_sB[2])
-        + sqrt(ev_sC[0]*ev_sC[0])//+ ev_sC[2]*ev_sC[2])
-        + sqrt(ev_sD[0]*ev_sD[0])//+ ev_sD[2]*ev_sD[2])
-        );
-    out_file_energy <<" "<< evMag_avg;
-    evMag_avg = 0.25*(
-        sqrt(ev_sA[1]*ev_sA[1])//+ ev_sA[2]*ev_sA[2])
-        + sqrt(ev_sB[1]*ev_sB[1])//+ ev_sB[2]*ev_sB[2])
-        + sqrt(ev_sC[1]*ev_sC[1])//+ ev_sC[2]*ev_sC[2])
-        + sqrt(ev_sD[1]*ev_sD[1])//+ ev_sD[2]*ev_sD[2])
-        );
-    out_file_energy <<" "<< evMag_avg;
-
-    out_file_energy << std::endl;
-
-    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
-    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
-        std::cout << i <<" "<< e_nnH[i] 
-            <<" "<< e_nnH_AC[i]
-            <<" "<< e_nnH_BD[i]
-            <<" "<< e_nnH_CD[i];
-            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
-                std::cout<<" "<< evNN[j];
-            }
-        std::cout<< std::endl;
-    }
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        std::cout << evNNN[evnnni] <<" ";
-    std::cout<< std::endl;
-
+    ptr_model->setObservablesHeader(out_file_energy);
+    ptr_model->computeAndWriteObservables(ev, out_file_energy,{"lineNo",0});
 
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
@@ -653,136 +519,30 @@ int main( int argc, char *argv[] ) {
 
             t_begin_int = std::chrono::steady_clock::now();
 
-            // compute energies NN links
-            // e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(0,0), std::make_pair(1,0)) );
-            // e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(0,0), std::make_pair(0,1)) );
-            // e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(1,0), std::make_pair(1,1)) );
-            // e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(0,1), std::make_pair(1,1)) );
+            ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",fuI});
 
-            // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(1,0), std::make_pair(2,0))); //BA
-            // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(0,1), std::make_pair(0,2))); //CA
-            // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(1,1), std::make_pair(1,2))); //DB
-            // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-            //     std::make_pair(1,1), std::make_pair(2,1))); //DC
-
-            e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(0,0), std::make_pair(1,0)) );
-            e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(0,0), std::make_pair(0,1)) );
-            e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(1,0), std::make_pair(1,1)) );
-            e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(0,1), std::make_pair(1,1)) );
-
-            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(1,0), std::make_pair(2,0))); //BA
-            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(0,1), std::make_pair(0,2))); //CA
-            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(1,1), std::make_pair(1,2))); //DB
-            evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-                std::make_pair(1,1), std::make_pair(2,1))); //DC
-
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout << "NN <S.S> computed in T: "<< std::chrono::duration_cast
+            std::cout << "Observables computed in T: "<< std::chrono::duration_cast
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
                     <<" [sec] "<< std::endl;
 
-            t_begin_int = std::chrono::steady_clock::now();
+            // t_begin_int = std::chrono::steady_clock::now();
+            // t_end_int = std::chrono::steady_clock::now();
+            // std::cout << "NN <S.S> computed in T: "<< std::chrono::duration_cast
+            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+            //         <<" [sec] "<< std::endl;
 
-            // compute energies NNN links
-            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-            evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+            // t_begin_int = std::chrono::steady_clock::now();
+            // t_end_int = std::chrono::steady_clock::now();
+            // std::cout << "NNN <S.S> computed in T: "<< std::chrono::duration_cast
+            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+            //         <<" [sec] "<< std::endl;
 
-            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-            evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
-        
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout << "NNN <S.S> computed in T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "<< std::endl;
-
-            t_begin_int = std::chrono::steady_clock::now();
-
-            ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-            ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-            ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
-
-            ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-            ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-            ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
-
-            ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-            ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-            ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
-
-            ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-            ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-            ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
-
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout << "<S> computed in T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "<< std::endl;
+            // t_begin_int = std::chrono::steady_clock::now();
+            // t_end_int = std::chrono::steady_clock::now();
+            // std::cout << "<S> computed in T: "<< std::chrono::duration_cast
+            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+            //         <<" [sec] "<< std::endl;
         }
-
-        // write energy
-        double avgE_8links = 0.;
-        out_file_energy << fuI <<" "<< e_nnH.back() 
-            <<" "<< e_nnH_AC.back()
-            <<" "<< e_nnH_BD.back()
-            <<" "<< e_nnH_CD.back();
-        for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-            avgE_8links += evNN[j];
-            out_file_energy<<" "<< evNN[j];
-        }
-        avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-            + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
-        out_file_energy <<" "<< avgE_8links;
-        
-        double evNNN_avg = 0.;
-        for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-            evNNN_avg += evNNN[evnnni];
-        evNNN_avg = evNNN_avg / 8.0;
-
-        out_file_energy <<" "<< evNNN_avg;
-        //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
-        
-        // write magnetization
-        double evMag_avg = 0.;
-        // evMag_avg = 0.25*(
-        //     sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )//+ ev_sA[2]*ev_sA[2])
-        //     + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )//+ ev_sB[2]*ev_sB[2])
-        //     + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )//+ ev_sC[2]*ev_sC[2])
-        //     + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )//+ ev_sD[2]*ev_sD[2])
-        //     );
-        evMag_avg = 0.25*(
-            sqrt(ev_sA[0]*ev_sA[0])//+ ev_sA[2]*ev_sA[2])
-            + sqrt(ev_sB[0]*ev_sB[0])//+ ev_sB[2]*ev_sB[2])
-            + sqrt(ev_sC[0]*ev_sC[0])//+ ev_sC[2]*ev_sC[2])
-            + sqrt(ev_sD[0]*ev_sD[0])//+ ev_sD[2]*ev_sD[2])
-            );
-        out_file_energy <<" "<< evMag_avg;
-        evMag_avg = 0.25*(
-            sqrt(ev_sA[1]*ev_sA[1])//+ ev_sA[2]*ev_sA[2])
-            + sqrt(ev_sB[1]*ev_sB[1])//+ ev_sB[2]*ev_sB[2])
-            + sqrt(ev_sC[1]*ev_sC[1])//+ ev_sC[2]*ev_sC[2])
-            + sqrt(ev_sD[1]*ev_sD[1])//+ ev_sD[2]*ev_sD[2])
-            );
-        out_file_energy <<" "<< evMag_avg;
-
-        out_file_energy << std::endl;
     }
 
     // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
@@ -851,160 +611,7 @@ int main( int argc, char *argv[] ) {
 
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-	// Compute final properties
-    // e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,0), std::make_pair(1,0)) );
-    // e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,0), std::make_pair(0,1)) );
-    // e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,0), std::make_pair(1,1)) );
-    // e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,1), std::make_pair(1,1)) );
-
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,0), std::make_pair(2,0))); //BA
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(0,1), std::make_pair(0,2))); //CA
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,1), std::make_pair(1,2))); //DB
-    // evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-    //     std::make_pair(1,1), std::make_pair(2,1))); //DC
-
-    e_nnH.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(1,0)) );
-    e_nnH_AC.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(0,1)) );
-    e_nnH_BD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(1,1)) );
-    e_nnH_CD.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(1,1)) );
-
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
-    
-    // compute energies NNN links
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
-
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
-
-    // std::vector<double> sA_zpm;
-    // std::vector<double> sB_zpm;
-    // std::vector<double> sC_zpm;
-    // std::vector<double> sD_zpm;
-
-    // sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0)));
-    // sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0)));
-    // sA_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0)));
-    // std::cout<<"S_A: "<< sA_zpm[0] <<", "<< sA_zpm[1] <<", "<< sA_zpm[2] << std::endl;
-
-    // sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0)));
-    // sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0)));
-    // sB_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0)));
-    // std::cout<<"S_B: "<< sB_zpm[0] <<", "<< sB_zpm[1] <<", "<< sB_zpm[2] << std::endl;
-
-    // sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1)));
-    // sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1)));
-    // sC_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1)));
-    // std::cout<<"S_C: "<< sC_zpm[0] <<", "<< sC_zpm[1] <<", "<< sC_zpm[2] << std::endl;
-
-    // sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1)));
-    // sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1)));
-    // sD_zpm.push_back(ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1)));
-    // std::cout<<"S_D: "<< sD_zpm[0] <<", "<< sD_zpm[1] <<", "<< sD_zpm[2] << std::endl;
-
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
-
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
-
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
-
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
-
-
-    // write energy
-    avgE_8links = 0.;
-    out_file_energy << arg_fuIter+1 <<" "<< e_nnH.back() 
-        <<" "<< e_nnH_AC.back()
-        <<" "<< e_nnH_BD.back()
-        <<" "<< e_nnH_CD.back();
-    for ( unsigned int j=evNN.size()-4; j<evNN.size(); j++ ) {
-        avgE_8links += evNN[j];
-        out_file_energy<<" "<< evNN[j];
-    }
-    avgE_8links = (avgE_8links + e_nnH.back() + e_nnH_AC.back() 
-        + e_nnH_BD.back() + e_nnH_CD.back())/8.0;
-    out_file_energy <<" "<< avgE_8links;
-    
-    evNNN_avg = 0.;
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        evNNN_avg += evNNN[evnnni];
-    evNNN_avg = evNNN_avg / 8.0;
-
-    out_file_energy <<" "<< evNNN_avg;
-    //out_file_energy <<" "<< avgE_8links + arg_J2*evNNN_avg;
-    
-    // write magnetization
-    evMag_avg = 0.;
-    // evMag_avg = 0.25*(
-    //     sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )//+ ev_sA[2]*ev_sA[2])
-    //     + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )//+ ev_sB[2]*ev_sB[2])
-    //     + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )//+ ev_sC[2]*ev_sC[2])
-    //     + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )//+ ev_sD[2]*ev_sD[2])
-    //     );
-    evMag_avg = 0.25*(
-        sqrt(ev_sA[0]*ev_sA[0])//+ ev_sA[2]*ev_sA[2])
-        + sqrt(ev_sB[0]*ev_sB[0])//+ ev_sB[2]*ev_sB[2])
-        + sqrt(ev_sC[0]*ev_sC[0])//+ ev_sC[2]*ev_sC[2])
-        + sqrt(ev_sD[0]*ev_sD[0])//+ ev_sD[2]*ev_sD[2])
-        );
-    out_file_energy <<" "<< evMag_avg;
-    evMag_avg = 0.25*(
-        sqrt(ev_sA[1]*ev_sA[1])//+ ev_sA[2]*ev_sA[2])
-        + sqrt(ev_sB[1]*ev_sB[1])//+ ev_sB[2]*ev_sB[2])
-        + sqrt(ev_sC[1]*ev_sC[1])//+ ev_sC[2]*ev_sC[2])
-        + sqrt(ev_sD[1]*ev_sD[1])//+ ev_sD[2]*ev_sD[2])
-        );
-    out_file_energy <<" "<< evMag_avg;
-
-    out_file_energy << std::endl;
-
-    std::cout <<"FU_ITER: "<<" E:"<< std::endl;
-    for ( unsigned int i=0; i<e_nnH.size(); i++ ) {
-        std::cout << i <<" "<< e_nnH[i] 
-            <<" "<< e_nnH_AC[i]
-            <<" "<< e_nnH_BD[i]
-            <<" "<< e_nnH_CD[i];
-            for ( unsigned int j=i*4; j<(i+1)*4; j++ ) {
-                std::cout<<" "<< evNN[j];
-            }
-        std::cout<< std::endl;
-    }
-    for(int evnnni=evNNN.size()-8; evnnni < evNNN.size(); evnnni++)   
-        std::cout << evNNN[evnnni] <<" ";
-    std::cout<< std::endl;
-
-    // std::cout <<"ID: " << ev.eV_1sO_1sENV(EVBuilder::MPO_Id, std::make_pair(0,0)) << std::endl;
-    // std::cout <<"SZ2: "<< ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z2, std::make_pair(0,0)) << std::endl;
+	ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",arg_fuIter+1});
 
     // Store final new cluster
     writeCluster(outClusterFile, cls);
