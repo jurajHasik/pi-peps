@@ -209,24 +209,26 @@ int main( int argc, char *argv[] ) {
                     break;
                 }
 
-                if ( arg_envDbg && (envI==arg_maxEnvIter) )  {
+                if ( envI==arg_maxEnvIter )  {
                     diag_ctmIter.push_back(envI);
-                    // diagnose spectra
-                    ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
-                    Print(spec);
+                    if (arg_envDbg) {
+                        // diagnose spectra
+                        ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                        Print(spec);
 
-                    tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
-                    Print(spec);
+                        tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                        Print(spec);
 
-                    tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
-                    Print(spec);
+                        tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                        Print(spec);
 
-                    tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
-                    Print(spec);
+                        tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                        Print(spec);
+                    }
                 }
                 e_prev = e_curr;
             }
@@ -346,24 +348,26 @@ int main( int argc, char *argv[] ) {
                         break;
                     }
 
-                    if ( arg_envDbg && (envI==arg_maxEnvIter) )  {
+                    if ( envI==arg_maxEnvIter )  {
                         diag_ctmIter.push_back(envI);
-                        // diagnose spectra
-                        ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
-                        Print(spec);
+                        if (arg_envDbg) {
+                            // diagnose spectra
+                            ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                            auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                            Print(spec);
 
-                        tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
-                        Print(spec);
+                            tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                            spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                            Print(spec);
 
-                        tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
-                        Print(spec);
+                            tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                            spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                            Print(spec);
 
-                        tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
-                        Print(spec);
+                            tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                            spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                            Print(spec);
+                        }
                     }
                     e_prev = e_curr;
                 }
