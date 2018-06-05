@@ -102,6 +102,7 @@ void setSites(Cluster & c, std::string option, bool dbg) {
 
     } else {
         std::cout <<"ctm-cluster setSites unsupported option: "<< option << std::endl;
+        exit(EXIT_FAILURE);
     }
 }
 

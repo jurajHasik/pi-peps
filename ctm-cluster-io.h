@@ -56,6 +56,8 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
 
 void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg = false);
 
+void setOnSiteTensorsFromFile(Cluster & cls, std::string const& filename, bool dbg = false);
+
 void setOnSiteTensorsFromJSON(Cluster & cls, nlohmann::json const& j, bool dbg = false);
 
 /* 

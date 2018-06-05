@@ -224,6 +224,20 @@ void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
     }
 }
 
+void setOnSiteTensorsFromFile(Cluster & c, string const& filename, bool dbg) {
+    ifstream infile;
+    infile.open(filename, ios::in);
+
+    nlohmann::json jsonCls;
+    infile >> jsonCls;
+
+    // TODO - Warnings
+    //if (jsonCls["physDim"] != c.physDim) {}
+    //if (jsonCls["auxBondDim"] > c.auxBondDim) {}
+
+    setOnSiteTensorsFromJSON(c, jsonCls, dbg);
+}
+
 void setOnSiteTensorsFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
     for( const auto& siteEntry : 
         j["sites"].get < vector<nlohmann::json> >() ) 

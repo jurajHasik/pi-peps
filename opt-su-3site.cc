@@ -78,7 +78,7 @@ int main( int argc, char *argv[] ) {
 
     // choose initial wavefunction
     if (sitesInit == "FILE") {
-        setSites(cls, sitesInit);
+        setOnSiteTensorsFromFile(cls, inClusterFile);
     } else {
         setSites(cls, sitesInit);
     }
