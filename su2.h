@@ -1,14 +1,10 @@
 #ifndef __SU2_
 #define __SU2_
 
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wunused-result"
-#include "itensor/all.h"
-#pragma GCC diagnostic pop
-
 #include <algorithm>
 #include <complex>
 #include <cmath>
+#include "itensor/all.h"
 
 // Supported types of 1-site operators
 enum SU2O {

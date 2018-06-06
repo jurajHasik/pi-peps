@@ -34,8 +34,6 @@ const char* const TAG_IT_LLINK  = "Llink";
 const char* const TAG_IT_HSLINK = "HSlink";
 const char* const TAG_IT_VSLINK = "VSlink";
 
-const char* const TAG_IT_MPOLINK  = "MPOlink";
-
 // types for auxiliary indices of environment 
 const auto ULINK = itensor::IndexType(TAG_IT_ULINK);
 const auto RLINK = itensor::IndexType(TAG_IT_RLINK);

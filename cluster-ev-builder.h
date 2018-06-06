@@ -6,19 +6,9 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
+#include "mpo.h"
 #include "su2.h"
 #include "itensor/all.h"
-
-struct MpoNS {
-    // number of sites over which this MPO acts
-    int nSite;
-
-    // individual MPOs
-    std::vector<itensor::ITensor> mpo;
-
-    // siteId of sites on which the MPOs are constructed
-    std::vector<std::string> siteIds;
-};
 
 class EVBuilder {
 
