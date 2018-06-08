@@ -25,6 +25,8 @@ MPO_3site getMPO3s_Uladder(double tau, double J, double Jp);
 
 MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp);
 
+MPO_3site getMPO3s_NNHLadder_2site(double tau, double J, double alpha);
+
 MPO_3site getMPO3s_Ising_v2(double tau, double J, double h);
 
 MPO_3site getMPO3s_Ising_2site(double tau, double J, double h);

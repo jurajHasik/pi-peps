@@ -69,6 +69,7 @@ int main( int argc, char *argv[] ) {
     int arg_obsMaxIter = jsonCls.value("obsMaxIter",arg_maxInitEnvIter);
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
     bool arg_reinitEnv = json_ctmrg_params["reinitEnv"].get<bool>();
+    bool arg_reinitObsEnv = json_ctmrg_params.value("reinitObsEnv",false);
     bool arg_envDbg    = json_ctmrg_params["dbg"].get<bool>();
     int arg_envDbgLvl  = json_ctmrg_params["dbgLvl"].get<int>();
     // end reading CTMRG parameters
@@ -413,7 +414,7 @@ int main( int argc, char *argv[] ) {
         // SETUP ENVIRONMENT LOOP
         accT = std::vector<double>(8,0.0);
         // reset environment
-        if (arg_reinitEnv) 
+        if (arg_reinitEnv || ((fuI % arg_obsFreq == 0) && arg_reinitObsEnv) ) 
             switch (arg_initEnvType) {
                 case CtmEnv::INIT_ENV_const1: {
                     ctmEnv.initMockEnv();

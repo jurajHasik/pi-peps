@@ -213,6 +213,30 @@ MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp) {
     return symmMPO3Sdecomp(u123, s1, s2, s3);
 }
 
+MPO_3site getMPO3s_NNHLadder_2site(double tau, double J, double alpha) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    // STEP1 define exact U_123 = exp(-J(Sz_1.Sz_2 + Sz_2.Sz_3) - h(Sx_1+Sx_2+Sx_3))
+    ITensor h123 = ITensor(s1,s2,s1p,s2p);
+    h123 += -alpha*J*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    auto cmbI = combiner(s1,s2);
+    h123 = (cmbI * h123 ) * prime(cmbI);
+    ITensor u123 = expHermitian(h123, {-tau, 0.0});
+    u123 = (cmbI * u123 ) * prime(cmbI);
+    // definition of U_123 done
+
+    return ltorMPO2StoMPO3Sdecomp(u123, s1, s2);
+}
+
 MPO_3site getMPO3s_Ising_v2(double tau, double J, double h) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
     std::cout.precision(10);
@@ -904,8 +928,8 @@ void getModel_NNHLadder(nlohmann::json & json_model,
             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
         };
 
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, 0.0) );
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_alpha*arg_J1, 0.0) );
+        gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
+        gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
 
         for (int i=0; i<6; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
         for (int i=0; i<2; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
@@ -1066,7 +1090,7 @@ void getModel_Ising(nlohmann::json & json_model,
             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
         };
 
-        gateMPO.push_back( getMPO3s_Ising_2site(arg_tau, arg_J1, arg_h) );
+        gateMPO.push_back( getMPO3s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
         ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
     } else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
