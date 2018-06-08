@@ -66,6 +66,7 @@ int main( int argc, char *argv[] ) {
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>()); 
 	int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
+    int arg_obsMaxIter = jsonCls.value("obsMaxIter",arg_maxInitEnvIter);
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
     bool arg_reinitEnv = json_ctmrg_params["reinitEnv"].get<bool>();
     bool arg_reinitObsEnv = json_ctmrg_params.value("reinitObsEnv",false);
