@@ -246,7 +246,7 @@ int main( int argc, char *argv[] ) {
         // Compute initial properties
         ptr_model->setObservablesHeader(out_file_energy);
         ptr_model->computeAndWriteObservables(ev, out_file_energy,{"lineNo",0});
-    //}
+    
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
 

@@ -46,8 +46,8 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
 
     // Define indices between corner matrices "C_*" and row/column 
     // tensors "T_*"
-    I_U = Index(TAG_I_U, x, ULINK); 
-    I_R = Index(TAG_I_R, x, RLINK);   
+    I_U = Index(TAG_I_U, x, ULINK);
+    I_R = Index(TAG_I_R, x, RLINK);
     I_D = Index(TAG_I_D, x, DLINK);
     I_L = Index(TAG_I_L, x, LLINK);
     
@@ -98,6 +98,7 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
  * Assume the whole environment is delivered as a set of simple
  * environments for each of non-equivalent sites within cluster
  * Preserves compatibility with LEGACY ctm-cluster-io.h
+ *
  */
 CtmEnv::CtmEnv (std::string t_name,  std::vector<CtmData> const& ctmD, 
     Cluster const& c)

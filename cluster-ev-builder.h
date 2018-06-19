@@ -119,6 +119,20 @@ class EVBuilder {
     std::complex<double> expVal_1sO1sO_H(MPO_1S o1, 
         MPO_1S o2, std::pair< int, int > site, int dist);
 
+    /*
+     * Evaluate 2 site operator along diagonal using corner construction 
+     * Diagonal is defined with respect to a position of O1 given by site s1,
+     * with operator O2 being inserted at s1 + [1,1]
+     * 
+     * |C|--|T|---|T|--|C|
+     *  |    |     |    |
+     * |T|--|O1|--|X|--|T| 
+     *  |    |     |    |
+     * |C|--|X|--|O2|--|T|
+     *  |    |    |     |
+     * |C|--|T|--|T |--|C|
+     * 
+     */
     double eval2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
 
@@ -131,11 +145,36 @@ class EVBuilder {
     // double contract2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
     //     bool DBG = false) const;
 
+
+    /*
+     * Evaluate 2 site operator along diagonal using corner construction 
+     * Diagonal is defined with respect to a position of O1 given by site s1,
+     * with operator O2 being inserted at s1 + [-1,-1]
+     * 
+     * |C|--|T|---|T|--|C|
+     *  |    |     |    |
+     * |T|--|X|--|O1|--|T| 
+     *  |    |     |    |
+     * |C|--|O2|--|X|--|T|
+     *  |    |     |    |
+     * |C|--|T|---|T|--|C|
+     * 
+     */
     double eval2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
 
     double contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
         bool DBG = false) const;
+
+
+    itensor::ITensor getT(itensor::ITensor const& s, 
+        std::array< itensor::Index, 4> const& plToEnv, bool dbg) const; 
+
+    double contract3Smpo2x2(MPO_3site const& mpo3s,
+        std::vector< std::pair<int,int> > siteSeq, bool dbg = false) const;
+
+    double contract3Smpo2x2(MPO_3site const& mpo3s,
+        std::vector<std::string> tn, std::vector<int> pl, bool dbg = false) const; 
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
@@ -202,6 +241,8 @@ class EVBuilder {
     void setCtmData(CtmData const& new_cd);
 
     void setCtmData_Full(CtmData_Full const& new_cd_f);
+
+    MPO_3site get3Smpo(std::string mpo3s, bool DBG = false) const;
 
     static std::pair< itensor::ITensor, itensor::ITensor > 
         get2SiteSpinOP(OP_2S op2s,

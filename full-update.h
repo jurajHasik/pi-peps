@@ -131,7 +131,4 @@ itensor::Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv 
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
 
-std::ostream& 
-operator<<(std::ostream& s, MPO_3site const& mpo3s);
-
 #endif

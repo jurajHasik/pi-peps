@@ -529,7 +529,6 @@ void IsingModel::computeAndWriteObservables(EVBuilder const& ev,
 
     // write Energy 
     // * working with spin DoFs instead of Ising DoFs hence factor of 2
-    // * h_hamiltonian = 3.0 * h_trotterGate 
     double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg;
     output <<" "<< energy;
 
@@ -555,6 +554,7 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
     auto lineNo = metaInf.getInt("lineNo",0);
 
     std::vector<double> evNN;
+    std::vector<double> ev3SZ;
     std::vector<double> ev_sA(3,0.0);
     std::vector<double> ev_sB(3,0.0);
     std::vector<double> ev_sC(3,0.0);
@@ -579,6 +579,43 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
         std::make_pair(1,1), std::make_pair(2,1))); //DC
 
     // compute "3-site" terms Sz_i Sz_j Sz_k
+    // 4 triangles centered on site [0,0]
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,-1), std::make_pair(0,0), std::make_pair(1,0), std::make_pair(1,-1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,-1), std::make_pair(0,0), std::make_pair(-1,0), std::make_pair(-1,-1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,1), std::make_pair(0,0), std::make_pair(1,0), std::make_pair(1,1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,1), std::make_pair(0,0), std::make_pair(-1,0), std::make_pair(-1,1)}) );
+    // 4 triangles centered on site [1,0]
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,-1), std::make_pair(1,0), std::make_pair(2,0), std::make_pair(2,-1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,-1), std::make_pair(1,0), std::make_pair(0,0), std::make_pair(0,-1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,1), std::make_pair(1,0), std::make_pair(2,0), std::make_pair(2,1)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,1), std::make_pair(1,0), std::make_pair(0,0), std::make_pair(0,1)}) );
+    // 4 triangles centered on site [0,1]
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,0), std::make_pair(0,1), std::make_pair(1,1), std::make_pair(1,0)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,0), std::make_pair(0,1), std::make_pair(-1,1), std::make_pair(-1,0)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,2), std::make_pair(0,1), std::make_pair(1,1), std::make_pair(1,2)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(0,2), std::make_pair(0,1), std::make_pair(-1,1), std::make_pair(-1,2)}) );
+    // 4 triangles centered on site [1,1]
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,0), std::make_pair(1,1), std::make_pair(2,1), std::make_pair(2,0)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,0), std::make_pair(1,1), std::make_pair(0,1), std::make_pair(0,0)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,2), std::make_pair(1,1), std::make_pair(2,1), std::make_pair(2,2)}) );
+    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+        {std::make_pair(1,2), std::make_pair(1,1), std::make_pair(0,1), std::make_pair(0,2)}) );
+    // end computing "3-site" terms Sz_i Sz_j Sz_k
 
     ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
     ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
@@ -606,6 +643,14 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
     avgE_8links = avgE_8links/8.0;
     output <<" "<< avgE_8links;
     
+    // write energy
+    double avgE_3sz = 0.;
+    for ( unsigned int j=0; j<ev3SZ.size(); j++ ) {
+        avgE_3sz += ev3SZ[j];
+    }
+    avgE_3sz = avgE_3sz/16.0;
+    output <<" "<< avgE_3sz;
+
     // write Z magnetization
     double evMagZ_avg = 0.;
     double evMagX_avg = 0.;
@@ -626,8 +671,8 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
 
     // write Energy 
     // * working with spin DoFs instead of Ising DoFs hence factor of 2
-    // * h_hamiltonian = 3.0 * h_trotterGate 
-    double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * (3.0 * h) * evMagX_avg; 
+    double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg
+        -8.0*(16.0*avgE_3sz) * J2; 
     output <<" "<< energy; 
 
     output << std::endl;
@@ -1146,7 +1191,7 @@ void getModel_Ising3Body(nlohmann::json & json_model,
             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
         };
 
-        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1, arg_J2, arg_h) );
+        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
     } else if (arg_fuGateSeq == "SYM3") {
         gates = {
@@ -1193,38 +1238,8 @@ void getModel_Ising3Body(nlohmann::json & json_model,
             {1,2, 0,1, 3,0, 2,3}
         };
 
-        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1, arg_J2, arg_h) );
+        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } else if (arg_fuGateSeq == "SYM4") {
-        gates = {
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"}
-        };
-
-        gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}
-        };
-        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1, arg_J2, arg_h) );
-        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
     } else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);

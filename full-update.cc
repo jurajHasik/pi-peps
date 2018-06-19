@@ -3473,14 +3473,3 @@ Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 	return diag_data;
 }
-
-std::ostream& 
-operator<<(std::ostream& s, MPO_3site const& mpo3s) {
-	s <<"----- BEGIN MPO_3site "<< std::string(50,'-') << std::endl;
-	s << mpo3s.Is1 <<" "<< mpo3s.Is2 <<" "<< mpo3s.Is3 << std::endl;
-	s <<"H1 "<< mpo3s.H1 << std::endl;
-	s <<"H2 "<< mpo3s.H2 << std::endl;
-	s <<"H3 "<< mpo3s.H3;
-	s <<"----- END MPO_3site "<< std::string(52,'-') << std::endl;
-	return s; 
-}

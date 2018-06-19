@@ -896,14 +896,3 @@ operator<<(std::ostream& s, MPO_2site const& mpo2s) {
 	s <<"----- END MPO_2site "<< std::string(52,'-') << std::endl;
 	return s; 
 }
-
-std::ostream& 
-operator<<(std::ostream& s, MPO_3site const& mpo3s) {
-	s <<"----- BEGIN MPO_3site "<< std::string(50,'-') << std::endl;
-	s << mpo3s.Is1 <<" "<< mpo3s.Is2 <<" "<< mpo3s.Is3 << std::endl;
-	s <<"H1 "<< mpo3s.H1 << std::endl;
-	s <<"H2 "<< mpo3s.H2 << std::endl;
-	s <<"H3 "<< mpo3s.H3;
-	s <<"----- END MPO_3site "<< std::string(52,'-') << std::endl;
-	return s; 
-} 

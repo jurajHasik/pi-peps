@@ -59,7 +59,4 @@ itensor::ITensor getInvDiagT(itensor::ITensor const& t);
 std::ostream& 
 operator<<(std::ostream& s, MPO_2site const& mpo2s);
 
-std::ostream& 
-operator<<(std::ostream& s, MPO_3site const& mpo3s);
-
 #endif

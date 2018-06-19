@@ -1378,6 +1378,336 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1,
 }
 
 
+
+ITensor EVBuilder::getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
+    bool dbg) const
+{  
+
+    Index aS(noprime(findtype(s, AUXLINK)));
+    Index pS(noprime(findtype(s, PHYS)));
+
+    // build |ket> part
+    ITensor res = s;
+    res = res * prime(conj(s), AUXLINK, 4);
+    if (dbg) Print(res);
+
+    // contract given indices into ENV compatible indices
+    auto cmb = combiner(aS,prime(aS,4));
+    for (int i=0; i<=3; i++) {
+        if(plToEnv[i]) {
+            res = res * prime(cmb,i);
+            res = res * delta(plToEnv[i],commonIndex(res,prime(cmb,i)));    
+            if (dbg) {
+                Print(plToEnv[i]);
+                Print(res);
+            }
+        }
+    }
+
+    return res;
+}
+
+double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
+    std::vector< std::pair<int,int> > siteSeq, bool dbg) const
+{
+
+    if(siteSeq.size() != 4) {
+        std::cout<<"EVBuilder::contract3Smpo2x2: siteSeq.size() != 4"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    std::vector< std::string > tn(4);
+    std::vector<int> pl(8);
+
+    for (int i=0; i<4; i++) {
+        // shift to unit cell
+        auto pos = std::make_pair(
+            (siteSeq[i].first + cls.sizeM * std::abs(siteSeq[i].first)) % cls.sizeM,
+            (siteSeq[i].second + cls.sizeN * std::abs(siteSeq[i].second)) % cls.sizeN
+        );
+
+        tn[i] = cls.cToS.at(pos);
+
+        int j = (i + 4 - 1) % 4; 
+        auto sv = std::make_pair(siteSeq[i].first - siteSeq[j].first,
+            siteSeq[i].second - siteSeq[j].second); 
+
+        int plI0 = 2*j+1;
+        int plI1 = 2*i; 
+        if (sv == std::make_pair(1,0)) {
+            pl[plI0] = 2;
+            pl[plI1] = 0;
+        } else if (sv == std::make_pair(-1,0)) {
+            pl[plI0] = 0;
+            pl[plI1] = 2;
+        } else if (sv == std::make_pair(0,1)) {
+            pl[plI0] = 3;
+            pl[plI1] = 1;
+        } else {
+            pl[plI0] = 1;
+            pl[plI1] = 3;
+        }
+    }
+
+    return contract3Smpo2x2(mpo3s, tn, pl, dbg);
+}
+
+double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
+    std::vector<std::string> tn, std::vector<int> pl, bool dbg) const
+{
+    int dbgLvl = 3;
+
+    std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+
+    if (dbg) {
+        std::cout<<"GATE: ";
+        for(int i=0; i<=3; i++) {
+            std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+        }
+        std::cout<< std::endl;
+    }
+
+    if(dbg && (dbgLvl >= 2)) {
+        std::cout<< mpo3s;
+        PrintData(mpo3s.H1);
+        PrintData(mpo3s.H2);
+        PrintData(mpo3s.H3);
+    }
+
+    // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+
+    // map MPOs
+    ITensor dummyMPO = ITensor();
+    std::array<const ITensor *, 4> mpo({&mpo3s.H1, &mpo3s.H2, &mpo3s.H3, &dummyMPO});
+
+    // find integer identifier of on-site tensors within CtmEnv
+    std::vector<int> si;
+    for (int i=0; i<=3; i++) {
+        si.push_back(std::distance(cls.siteIds.begin(),
+                std::find(std::begin(cls.siteIds), 
+                    std::end(cls.siteIds), tn[i])));
+    }
+    if(dbg) {
+        std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+        for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+    }
+
+    // read off auxiliary and physical indices of the cluster sites
+    std::array<Index, 4> aux({
+        noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
+        noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
+        noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
+        noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+
+    std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
+    std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
+
+    std::array<Index, 4> phys({
+        noprime(findtype(cls.sites.at(tn[0]), PHYS)),
+        noprime(findtype(cls.sites.at(tn[1]), PHYS)),
+        noprime(findtype(cls.sites.at(tn[2]), PHYS)),
+        noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
+
+    std::array<Index, 3> opPI({
+        noprime(findtype(mpo3s.H1, PHYS)),
+        noprime(findtype(mpo3s.H2, PHYS)),
+        noprime(findtype(mpo3s.H3, PHYS)) });
+
+    // prepare map from on-site tensor aux-indices to half row/column T
+    // environment tensors
+    std::array<const std::vector<ITensor> * const, 4> iToT(
+        {&cd_f.T_L, &cd_f.T_U, &cd_f.T_R ,&cd_f.T_D});
+
+    // prepare map from on-site tensor aux-indices pair to half corner T-C-T
+    // environment tensors
+    const std::map<int, const std::vector<ITensor> * const > iToC(
+        {{23, &cd_f.C_LU}, {32, &cd_f.C_LU},
+        {21, &cd_f.C_LD}, {12, &cd_f.C_LD},
+        {3, &cd_f.C_RU}, {30, &cd_f.C_RU},
+        {1, &cd_f.C_RD}, {10, &cd_f.C_RD}});
+
+    // for every on-site tensor point from primeLevel(index) to ENV index
+    // eg. I_XH or I_XV (with appropriate prime level). 
+    std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+
+    // Find for site 0 through 3 which are connected to ENV
+    std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+
+    Index iQA, iQD, iQB;
+    ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
+    ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
+    ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+    
+    ITensor eRE;
+    ITensor deltaBra, deltaKet;
+
+    {
+        // precompute 4 (proto)corners of 2x2 environment
+        std::vector<ITensor> pc(4);
+        for (int s=0; s<=3; s++) {
+            // aux-indices connected to sites
+            std::vector<int> connected({pl[s*2], pl[s*2+1]});
+            // set_difference gives aux-indices connected to ENV
+            std::sort(connected.begin(), connected.end());
+            std::vector<int> tmp_iToE;
+            std::set_difference(plOfSite.begin(), plOfSite.end(), 
+                connected.begin(), connected.end(), 
+                std::inserter(tmp_iToE, tmp_iToE.begin())); 
+            tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
+            if(dbg) { 
+                std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
+                    << tn[s] << std::endl;
+                std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
+            }
+
+            // Assign indices by which site is connected to ENV
+            if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
+                iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
+                iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
+            } else {
+                iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
+                iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+            }
+
+            pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
+                (*iToT.at(tmp_iToE[1]))[si[s]];
+            if(dbg) Print(pc[s]);
+            // set primeLevel of ENV indices between T's to 0 to be ready for contraction
+            pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
+        }
+        if(dbg) {
+            for(int i=0; i<=3; i++) {
+                std::cout <<"Site: "<< tn[i] <<" ";
+                for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
+                std::cout << std::endl;
+            }
+        }
+        // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+        // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+        t_begin_int = std::chrono::steady_clock::now();
+
+        // C  D
+        //    |
+        // A--B
+        // ITensor eRE;
+        // ITensor deltaBra, deltaKet;
+
+        // Decompose A tensor on which the gate is applied
+        //ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+        ITensor tempSA;
+        svd(cls.sites.at(tn[0]), eA, tempSA, QA);
+        iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+        eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
+        QA *= delta(commonIndex(QA,tempSA), iQA);
+
+        // Prepare corner of A
+        ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+
+        deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
+        deltaBra = prime(deltaKet,4);
+        tempC = (tempC * deltaBra) * deltaKet;
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+
+        eRE = tempC;
+
+        // Prepare corner of C
+        tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+        
+        deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
+        deltaBra = prime(deltaKet,4);
+        tempC = (tempC * deltaBra) * deltaKet;
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+
+        eRE = eRE * tempC;
+
+        // Decompose D tensor on which the gate is applied
+        //ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+        ITensor tempSD;
+        svd(cls.sites.at(tn[2]), eD, tempSD, QD);
+        iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+        eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
+        QD *= delta(commonIndex(QD,tempSD), iQD);
+
+        // Prepare corner of D
+        tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+
+        eRE = eRE * tempC;
+
+        // Decompose B tensor on which the gate is applied
+        //ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+        ITensor tempSB;
+        svd(cls.sites.at(tn[1]), eB, tempSB, QB);
+        iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+        eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
+        QB *= delta(commonIndex(QB,tempSB), iQB);
+
+        tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
+        if(dbg && (dbgLvl >=3)) Print(tempC);
+
+        eRE = eRE * tempC;
+
+        t_end_int = std::chrono::steady_clock::now();
+        if (dbg) std::cout<<"Constructed reduced Env - T: "<< 
+            std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+        if(dbg && (dbgLvl >=3)) Print(eRE);
+        // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
+    }
+
+    // ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
+    t_begin_int = std::chrono::steady_clock::now();
+
+    ITensor protoK = (eRE * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
+    protoK = (protoK * eB) * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4]));
+    protoK = (protoK * eD);
+    if(dbg && (dbgLvl >=3)) Print(protoK);
+
+    auto protoKId = protoK;
+    protoK = ( protoK * delta(opPI[0],phys[0]) ) * mpo3s.H1;
+    protoK = ( protoK * delta(opPI[1],phys[1]) ) * mpo3s.H2;
+    protoK = ( protoK * delta(opPI[2],phys[2]) ) * mpo3s.H3;
+    protoK = (( protoK * delta(prime(opPI[0],1),phys[0]) ) * 
+        delta(prime(opPI[1],1),phys[1]) ) * delta(prime(opPI[2],1),phys[2]);
+    if(dbg && (dbgLvl >=3)) Print(protoK);
+
+    // PROTOK - VARIANT 1
+    protoKId *= conj(eA).prime(AUXLINK,4);
+    protoKId *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
+    protoK = protoK * conj(eA).prime(AUXLINK,4);
+    protoK *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
+    if(dbg && (dbgLvl >=3)) Print(protoK);
+
+    protoKId *= conj(eB).prime(AUXLINK,4);
+    protoKId *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
+    protoK = protoK * conj(eB).prime(AUXLINK,4);
+    protoK *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
+    if(dbg && (dbgLvl >=3)) Print(protoK);
+
+    protoKId *= conj(eD).prime(AUXLINK,4);
+    protoK = protoK * conj(eD).prime(AUXLINK,4);
+    if(dbg && (dbgLvl >=3)) Print(protoK);
+
+    if (rank(protoK) > 0) std::cout<<"ERROR - protoK not a scalar"<<std::endl;
+    if (rank(protoKId) > 0) std::cout<<"ERROR - protoKId not a scalar"<<std::endl;
+    std::complex<double> ev   = sumelsC(protoK);
+    std::complex<double> evId = sumelsC(protoKId);
+    if (isComplex(protoK)) {
+        std::cout<<"Expectation value is Complex: imag(ev)="<< ev.imag() << std::endl;
+    }
+    if (isComplex(protoKId)) {
+        std::cout<<"evId is Complex: imag(evId)="<< evId.imag() << std::endl;
+    }
+
+    t_end_int = std::chrono::steady_clock::now();
+    if (dbg) std::cout<<"EVBuilder::contract3Smpo2x2 - T: "<< 
+        std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+
+    return ev.real()/evId.real();
+}
+
 // std::complex<double> ExpValBuilder::expVal_1sO1sO_V(int dist, 
 //         itensor::ITensor const& op1, itensor::ITensor const& op2)
 // {
@@ -1633,6 +1963,27 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1,
 
 //     return sumelsC(ccBare)/sumelsC(ccNorm);
 // }
+
+MPO_3site EVBuilder::get3Smpo(std::string mpo3s, bool DBG) const {
+    int physDim = 2;
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+
+    ITensor h123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+    if (mpo3s == "3SZ") {
+        h123 = SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2) 
+            * SU2_getSpinOp(SU2_S_Z, s3);
+    } else {
+        std::cout << "Invalid MPO selection mpo3s: "<< mpo3s << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return symmMPO3Sdecomp(h123, s1, s2, s3);
+}
 
 std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     Index const& sA, Index const& sB, bool dbg) 

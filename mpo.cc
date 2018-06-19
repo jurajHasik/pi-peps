@@ -4,7 +4,7 @@ using namespace itensor;
 
 // ----- MPOs construction --------------------------------------------
 MPO_3site symmMPO3Sdecomp(ITensor const& u123, Index const& s1, 
-	Index const& s2, Index const& s3) {
+	Index const& s2, Index const& s3, bool dbg) {
 	
 	Index s1p = prime(s1);
 	Index s2p = prime(s2);
@@ -87,13 +87,13 @@ MPO_3site symmMPO3Sdecomp(ITensor const& u123, Index const& s1,
 	mpo3s.H3 = ((O3*delta(s3,mpo3s.Is3)) *delta(s3p,prime(mpo3s.Is3)))
 		*delta(mpo3s.a23,a1R);
 
-	PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+	if (dbg) PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
 
 	return mpo3s;
 }
 
 MPO_3site ltorMPO3Sdecomp(ITensor const& u123, 
-    Index const& s1, Index const& s2, Index const& s3) {
+    Index const& s1, Index const& s2, Index const& s3, bool dbg) {
     
     Index s1p = prime(s1);
     Index s2p = prime(s2);
@@ -158,10 +158,12 @@ MPO_3site ltorMPO3Sdecomp(ITensor const& u123,
 
     O2_LR = O2_LR * SV_23_LR; // --a4_LR
     O3_LR = O3_LR * SV_23_LR; // --a3_LR
-     
-    PrintData(O1_LR);
-    PrintData(O2_LR);
-    PrintData(O3_LR);
+    
+    if (dbg) { 
+        PrintData(O1_LR);
+        PrintData(O2_LR);
+        PrintData(O3_LR);
+    }
 
     MPO_3site mpo3s;
     // Define physical indices
@@ -189,16 +191,18 @@ MPO_3site ltorMPO3Sdecomp(ITensor const& u123,
     mpo3s.H2 = (O2_LR*delta(s2,mpo3s.Is2))*delta(s2p,prime(mpo3s.Is2));
     mpo3s.H3 = (O3_LR*delta(s3,mpo3s.Is3))*delta(s3p,prime(mpo3s.Is3));
 
-    PrintData(mpo3s.H1);
-    PrintData(mpo3s.H2);
-    PrintData(mpo3s.H3);
-    PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+    if (dbg) {
+        PrintData(mpo3s.H1);
+        PrintData(mpo3s.H2);
+        PrintData(mpo3s.H3);
+        PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+    }
 
     return mpo3s;
 }
 
 MPO_3site ltorMPO2StoMPO3Sdecomp(ITensor const& u123, 
-    Index const& s1, Index const& s2) {
+    Index const& s1, Index const& s2, bool dbg) {
 
     Index s1p = prime(s1);
     Index s2p = prime(s2);
@@ -239,8 +243,10 @@ MPO_3site ltorMPO2StoMPO3Sdecomp(ITensor const& u123,
     O2_R = (O2_R * SV_12); // --a1_LR
     O1_L = O1_L * SV_12; // --a2_LR 
 
-    PrintData(O1_L);
-    PrintData(O2_R);
+    if (dbg) {
+        PrintData(O1_L);
+        PrintData(O2_R);
+    }
 
     MPO_3site mpo3s;
     // Define physical indices
@@ -274,11 +280,24 @@ MPO_3site ltorMPO2StoMPO3Sdecomp(ITensor const& u123,
     mpo3s.H2 = (O2_R*delta(s2,mpo3s.Is2))*delta(s2p,prime(mpo3s.Is2));
     mpo3s.H3 = tempO2*delta(mpo3s.Is3,prime(mpo3s.Is3));
 
-    PrintData(mpo3s.H1);
-    PrintData(mpo3s.H2);
-    PrintData(mpo3s.H3);
-    PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+    if (dbg) {
+        PrintData(mpo3s.H1);
+        PrintData(mpo3s.H2);
+        PrintData(mpo3s.H3);
+        PrintData(mpo3s.H1*mpo3s.H2*mpo3s.H3);
+    }
 
     return mpo3s;
 }
 // ----- END MPOs construction ----------------------------------------
+
+std::ostream& 
+operator<<(std::ostream& s, MPO_3site const& mpo3s) {
+    s <<"----- BEGIN MPO_3site "<< std::string(50,'-') << std::endl;
+    s << mpo3s.Is1 <<" "<< mpo3s.Is2 <<" "<< mpo3s.Is3 << std::endl;
+    s <<"H1 "<< mpo3s.H1 << std::endl;
+    s <<"H2 "<< mpo3s.H2 << std::endl;
+    s <<"H3 "<< mpo3s.H3;
+    s <<"----- END MPO_3site "<< std::string(52,'-') << std::endl;
+    return s;
+}

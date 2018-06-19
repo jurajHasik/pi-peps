@@ -100,6 +100,28 @@ void setSites(Cluster & c, std::string option, bool dbg) {
                 tmpPI(2), 1.0/std::sqrt(2.0));            
         }
 
+    } else if (option == "NEEL") {
+        if ( !((c.sizeN % 2 == 0) && (c.sizeM % 2 == 0)) ) {
+            std::cout <<"ctm-cluster setSites option: NEEL unit cell is not" 
+                <<"even in both dimensions"<< std::endl;
+            exit(EXIT_FAILURE);
+        }
+        std::cout <<"Initializing by NEEL STATE"<< std::endl;
+        
+        for (int y=0; y<c.sizeN; y++) { 
+            for (int x=0; x<c.sizeM; x++) {
+                auto pos = std::make_pair(x,y);
+
+                auto sId = c.cToS.at(pos);
+                auto tmpPI = c.phys.at(c.SI.at(sId));
+                auto tmpAI = c.aux.at(c.SI.at(sId));
+
+                int p = 1 + ((y % 2) + (x % 2)) % 2;
+                c.sites.at(sId).set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
+                    tmpPI(p), 1.0);           
+            }
+        }
+
     } else {
         std::cout <<"ctm-cluster setSites unsupported option: "<< option << std::endl;
         exit(EXIT_FAILURE);

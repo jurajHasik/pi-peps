@@ -63,14 +63,17 @@ struct MpoNS {
 // ----- MPOs construction --------------------------------------------
 MPO_3site symmMPO3Sdecomp(itensor::ITensor const& u123, 
     itensor::Index const& s1, itensor::Index const& s2, 
-    itensor::Index const& s3);
+    itensor::Index const& s3, bool dbg = false);
 
 MPO_3site ltorMPO3Sdecomp(itensor::ITensor const& u123, 
     itensor::Index const& s1, itensor::Index const& s2, 
-    itensor::Index const& s3);
+    itensor::Index const& s3, bool dbg = false);
 
 MPO_3site ltorMPO2StoMPO3Sdecomp(itensor::ITensor const& u123, 
-    itensor::Index const& s1, itensor::Index const& s2);
+    itensor::Index const& s1, itensor::Index const& s2, bool dbg = false);
 // ----- END MPOs construction ----------------------------------------
+
+std::ostream& 
+operator<<(std::ostream& s, MPO_3site const& mpo3s);
 
 #endif
