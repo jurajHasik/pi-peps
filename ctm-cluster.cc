@@ -100,6 +100,18 @@ void setSites(Cluster & c, std::string option, bool dbg) {
                 tmpPI(2), 1.0/std::sqrt(2.0));            
         }
 
+    } else if (option == "ZPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along Z"<< std::endl;
+        
+        for (auto & se : c.sites) {
+            auto sId = se.first;
+            auto tmpPI = c.phys.at(c.SI.at(sId));
+            auto tmpAI = c.aux.at(c.SI.at(sId));
+
+            se.second.set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
+                tmpPI(1), 1.0);            
+        }
+
     } else if (option == "NEEL") {
         if ( !((c.sizeN % 2 == 0) && (c.sizeM % 2 == 0)) ) {
             std::cout <<"ctm-cluster setSites option: NEEL unit cell is not" 

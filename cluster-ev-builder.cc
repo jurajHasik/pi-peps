@@ -1702,8 +1702,11 @@ double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
     }
 
     t_end_int = std::chrono::steady_clock::now();
-    if (dbg) std::cout<<"EVBuilder::contract3Smpo2x2 - T: "<< 
+    if (dbg) {
+        std::cout<<"ev: "<< ev <<" evId: "<< evId << std::endl;
+        std::cout<<"EVBuilder::contract3Smpo2x2 - T: "<< 
         std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+    }
 
     return ev.real()/evId.real();
 }

@@ -512,19 +512,9 @@ void IsingModel::computeAndWriteObservables(EVBuilder const& ev,
     // write Z magnetization
     double evMagZ_avg = 0.;
     double evMagX_avg = 0.;
-    evMagZ_avg = 0.25*(
-        sqrt(ev_sA[0]*ev_sA[0])
-        + sqrt(ev_sB[0]*ev_sB[0])
-        + sqrt(ev_sC[0]*ev_sC[0])
-        + sqrt(ev_sD[0]*ev_sD[0])
-        );
+    evMagZ_avg = 0.25*(ev_sA[0] + ev_sB[0] + ev_sC[0] + ev_sD[0]);
     output <<" "<< evMagZ_avg;
-    evMagX_avg = 0.25*(
-        sqrt(ev_sA[1]*ev_sA[1])
-        + sqrt(ev_sB[1]*ev_sB[1])
-        + sqrt(ev_sC[1]*ev_sC[1])
-        + sqrt(ev_sD[1]*ev_sD[1])
-        );
+    evMagX_avg = 0.25*(ev_sA[1] + ev_sB[1] + ev_sC[1] + ev_sD[1]);
     output <<" "<< evMagX_avg;
 
     // write Energy 
@@ -672,7 +662,7 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
     // write Energy 
     // * working with spin DoFs instead of Ising DoFs hence factor of 2
     double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg
-        -8.0*(16.0*avgE_3sz) * J2; 
+        -8.0*(16.0*avgE_3sz) * J2;
     output <<" "<< energy; 
 
     output << std::endl;
