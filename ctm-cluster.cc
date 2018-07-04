@@ -100,8 +100,8 @@ void setSites(Cluster & c, std::string option, bool dbg) {
                 tmpPI(2), 1.0/std::sqrt(2.0));            
         }
 
-    } else if (option == "ZPRST") {
-        std::cout <<"Initializing by PRODUCT STATE along Z"<< std::endl;
+    } else if (option == "mZPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = -1/2"<< std::endl;
         
         for (auto & se : c.sites) {
             auto sId = se.first;
@@ -110,6 +110,18 @@ void setSites(Cluster & c, std::string option, bool dbg) {
 
             se.second.set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
                 tmpPI(1), 1.0);            
+        }
+
+    } else if (option == "ZPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = 1/2"<< std::endl;
+        
+        for (auto & se : c.sites) {
+            auto sId = se.first;
+            auto tmpPI = c.phys.at(c.SI.at(sId));
+            auto tmpAI = c.aux.at(c.SI.at(sId));
+
+            se.second.set(tmpAI(1), prime(tmpAI,1)(1), prime(tmpAI,2)(1), prime(tmpAI,3)(1),
+                tmpPI(2), 1.0);            
         }
 
     } else if (option == "NEEL") {
