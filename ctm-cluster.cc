@@ -100,8 +100,8 @@ void setSites(Cluster & c, std::string option, bool dbg) {
                 tmpPI(2), 1.0/std::sqrt(2.0));            
         }
 
-    } else if (option == "mZPRST") {
-        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = -1/2"<< std::endl;
+    } else if (option == "ZPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = 1/2"<< std::endl;
         
         for (auto & se : c.sites) {
             auto sId = se.first;
@@ -112,8 +112,8 @@ void setSites(Cluster & c, std::string option, bool dbg) {
                 tmpPI(1), 1.0);            
         }
 
-    } else if (option == "ZPRST") {
-        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = 1/2"<< std::endl;
+    } else if (option == "mZPRST") {
+        std::cout <<"Initializing by PRODUCT STATE along Z, m_z = -1/2"<< std::endl;
         
         for (auto & se : c.sites) {
             auto sId = se.first;

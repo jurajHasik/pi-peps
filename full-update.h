@@ -12,6 +12,7 @@
 #include "ctm-cluster-global.h"
 #include "ctm-cluster.h"
 #include "su2.h"
+#include "cg_rc.h"
 #include "itensor/all.h"
 
 const int IOFFSET = 100;
@@ -121,10 +122,13 @@ itensor::Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
 
-// itensor::Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-// 	std::vector<std::string> tn, std::vector<int> pl,
-// 	std::vector< itensor::ITensor > & iso_store, 
-// 	itensor::Args const& args = itensor::Args::global());
+itensor::Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_rezaV2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
 
 itensor::Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
@@ -136,7 +140,7 @@ itensor::Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv 
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
 
-// itensor::ITensor psInv(itensor::ITensor const& M,
-// 	itensor::Args const& args = itensor::Args::global());
+itensor::ITensor psInv(itensor::ITensor const& M,
+	itensor::Args const& args = itensor::Args::global());
 
 #endif
