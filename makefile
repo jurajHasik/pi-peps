@@ -24,7 +24,7 @@ APP8=opt-su-3site
 #    will auto-detect if these headers have changed and recompile your app.
 HEADERS =models.h full-update.h simple-update.h cluster-ev-builder.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h mpo.h \
-	su2.h json.hpp
+	su2.h json.hpp cg_rc.h
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 #HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
@@ -36,7 +36,7 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS6=cluster-ev-builder.h models.h full-update.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h \
-	mpo.h su2.h json.hpp
+	mpo.h su2.h json.hpp cg_rc.h
 
 HEADERSN=ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h
 
@@ -53,12 +53,12 @@ CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
 CCFILES6=$(APP6).cc cluster-ev-builder.cc full-update.cc models.cc \
-	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
+	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc cg_rc.cc
 CCFILES7=$(APP7).cc cluster-ev-builder.cc full-update.cc  models.cc \
 	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
 CCFILES8=$(APP8).cc simple-update_v2.cc models.cc \
 	cluster-ev-builder.cc ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc \
-	mpo.cc su2.cc
+	mpo.cc su2.cc cg_rc.cc
 
 CCFILESN=ctm-cluster-io.cc ctm-cluster.cc
 
@@ -147,6 +147,8 @@ test-mklsvd: $(ITENSOR_LIBS)
 test-mklsvd-g: mkdebugdir $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) test-mklsvd.cc -o test-mklsvd-g.x $(LIBGFLAGS)
 
+test-cg_rc:
+	$(CCCOM) $(CCGFLAGS) cg_rc_prb.cc cg_rc.cc -o cg_rc_prb.x $(LIBFLAGS)
 
 clean:
 	rm -fr .debug_objs *.o $(APP).x $(APP)-g.x
