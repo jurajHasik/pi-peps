@@ -809,7 +809,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			K = K * conj(rt[current_rt]).prime(4);
 			if(dbg && (dbgLvl >= 3)) Print(K);
 
-
 			// ***** SOLVE LINEAR SYSTEM M*rt = K ******************************
 			if(dbg && (dbgLvl >= 3)) { 
 				PrintData(M);
@@ -879,6 +878,9 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					<< std::endl;
 			}
 
+			m = 0.;
+		    K.visit(max_m);
+		    std::cout <<"Max element of K: "<< m <<std::endl;
 			// Find largest (absolute) EV and in the case of msign * mval < 0, multiply
 			// dM by -1 as to set the sign of largest (and consecutive) EV to +1
 			// SYM SOLUTION
@@ -896,6 +898,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				for (auto & elem : dM_elems) elem = elem*(-1.0);
 				std::reverse(dM_elems.begin(),dM_elems.end());
 			}
+			std::cout <<"Ratio Max(M)/Max(K): "<< mval/m <<std::endl;
+			mval = std::max(m,mval);
 
 			// In the case of msign < 0.0, for REFINING spectrum we reverse dM_elems
 			// Drop small (and negative) EV's
@@ -1977,6 +1981,10 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	std::vector<double> vecMX( vecX.size() );
 	std::vector<double> vecB( vecX.size() );
 
+	std::vector<double> EdvecX2( vecX.size() );
+	std::vector<double> gradX( vecX.size() );
+	std::vector<double> Egrad2( vecX.size() );
+	
 	Print(eA);
 	Print(eB);
 	Print(eD);
@@ -1990,391 +1998,248 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	eA *= cmbX1;
 	eB *= cmbX2;
 	eD *= cmbX3;
-
-	int it = 0;
-  	int it_max = 30;
-  	double tol = 1.0E-05;
-  	double bnrm2, rnrm2;
-
-  	std::vector<double> vec_rnrm2;
-
-  	//
-	//  Set parameters for the CG_RC code.
-	//
-	double* cg_r = new double[vecX.size()];
-  	double* cg_z = new double[vecX.size()];
-  	double* cg_p = new double[vecX.size()];
-  	double* cg_q = new double[vecX.size()];
-  	int cg_job = 1;
-
-
-	// construct vector K, which is defined as <psi~|psi'> = eA^dag * K
-	if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
-	
-	ITensor K = protoK * prime(conj(eD), AUXLINK,4);
-	K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-	K *= prime(conj(eB), AUXLINK,4);
-	K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-	K.prime(PHYS,4);
-	if(dbg && (dbgLvl >= 2)) Print(K);
-
-	// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-	if(dbg && (dbgLvl >= 3)) {
-		PrintData(K);
+	for(int i=1; i<vecX.size(); i++) {
+		EdvecX2[i] = 0.01;
+		Egrad2[i] = 0.0;
 	}
 
-    auto cmbM = prime(cmbX1, AUXLINK, PHYS, 4);
-    if(dbg && (dbgLvl >= 2)) {
-    	for (int i=0; i<3; i++) Print(K.inds()[i]);
-    	Print(cmbM);
-    }
-
-    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-    // is given by M^dag K = rt[r]
-    K *= cmbM;
-
-    for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
-    	vecB[i-1] = K.real( combinedIndex(cmbX1)(i) );
-	
-	// construct vector K, which is defined as <psi~|psi'> = eB^dag * K
-	if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
-	
-	K = protoK * prime(conj(eD), AUXLINK,4);
-	K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-	K *= prime(conj(eA), AUXLINK,4);
-	K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	K.prime(PHYS,4);
-	if(dbg && (dbgLvl >= 2)) Print(K);
-
-	// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-	if(dbg && (dbgLvl >= 3)) {
-		PrintData(K);
-	}
-
-    cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
-    if(dbg && (dbgLvl >= 2)) {
-    	for (int i=0; i<4; i++) Print(K.inds()[i]);
-    	Print(cmbM);
-    }
-
-    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-    // is given by M^dag K = rt[r]
-    K *= cmbM;
-
-    for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
-    	vecB[combinedIndex(cmbX1).m() + i-1] = K.real( combinedIndex(cmbX2)(i) );
-
- 
-	// construct vector K, which is defined as <psi~|psi'> = eD^dag * K
-	if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
-	
-	K = protoK * prime(conj(eA), AUXLINK,4);
-	K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	K *= prime(conj(eB), AUXLINK,4);
-	K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	K.prime(PHYS,4);
-	if(dbg && (dbgLvl >= 2)) Print(K);
-
-	// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-	if(dbg && (dbgLvl >= 3)) {
-		PrintData(K);
-	}
-
-    cmbM  = prime(cmbX3, AUXLINK, PHYS, 4);
-    if(dbg && (dbgLvl >= 2)) {
-    	for (int i=0; i<3; i++) Print(K.inds()[i]);
-    	Print(cmbM);
-    }
-
-    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-    // is given by M^dag K = rt[r]
-    K *= cmbM;
-
-    for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
-    	vecB[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1] = 
-    	K.real( combinedIndex(cmbX3)(i) );
-
-  	bnrm2 = 0.0;
-	for ( int i = 0; i < vecB.size(); i++ ) bnrm2 = bnrm2 + vecB[i] * vecB[i];
-  	bnrm2 = std::sqrt ( bnrm2 );
+  	double tstep = 0.1;
+  	double mass = 0.4;
+  	double eps_reg = 1.0e-15;
+  	double grad2, egrad2 = 0.0;
+  	double rnrm2, tmp, tmp2;
+  	std::vector<double> vec_rnrm2, vec_tstep;
 
   	std::cout << "ENTERING CG LOOP" << std::endl;
 	while (not converged) {
 
-  		cg_job = cg_rc ( vecX.size(), vecB.data(), vecX.data(), cg_r, cg_z, cg_p, cg_q, cg_job );
+		// Optimizing eA
+		// construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA	
 
-		//  Compute q = A * p.
-		if ( cg_job == 1 ) {
-			ITensor tmpA(combinedIndex(cmbX1)); 
-			ITensor tmpB(combinedIndex(cmbX2)); 
-			ITensor tmpD(combinedIndex(cmbX3));
-			for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
-				tmpA.set( combinedIndex(cmbX1)(i), cg_p[i] );
-			for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
-				tmpB.set( combinedIndex(cmbX2)(i), cg_p[combinedIndex(cmbX1).m() + i-1]);
-			for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
-				tmpD.set( combinedIndex(cmbX3)(i), cg_p[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1]);
-			tmpA *= cmbX1;
-			tmpB *= cmbX2;
-			tmpD *= cmbX3;
+		// bra
+		ITensor M = eRE * prime(conj(eD), AUXLINK,4);
+		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		M *= prime(conj(eB), AUXLINK,4);
+		M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+		if(dbg && (dbgLvl >= 3)) Print(M);
 
-			// Optimizing eA
-			// construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA	
+		// KET
+		M = M * eD;
+		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+		M *= eB;
+		M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
+		M *= prime(eA, phys[0], 4);
+		if(dbg && (dbgLvl >= 2)) Print(M);
 
-			// bra
-			ITensor M = eRE * prime(conj(eD), AUXLINK,4);
-			M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-			M *= prime(conj(eB), AUXLINK,4);
-			M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
-
-			// KET
-			M = M * eD;
-			M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-			M *= eB;
-			M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
-			M *= prime(tmpA, phys[0], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
-
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
-
-		    auto cmbM = prime(cmbX1, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<3; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
-
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
-
-		    for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
-		    	cg_q[i-1] = M.real( combinedIndex(cmbX1)(i) );
-
-		    // Optimizing eB
-			// construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB	
-
-			// BRA
-			M = eRE * prime(conj(eD), AUXLINK,4);
-			M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-			M *= prime(conj(eA), AUXLINK,4);
-			M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
-
-			// KET
-			M = M * eD;
-			M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-			M *= eA;
-			M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-			M *= prime(tmpB, phys[1], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
-
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
-
-		    cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<4; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
-
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
-
-		    for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
-		    	cg_q[combinedIndex(cmbX1).m() + i-1] = M.real( combinedIndex(cmbX2)(i) );
-		    
-			// Optimizing eD
-			// construct matrix M, which is defined as <psi~|psi~> = eD^dag * M * eD	
-
-			// BRA
-			M = eRE * prime(conj(eA), AUXLINK,4);
-			M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-			M *= prime(conj(eB), AUXLINK,4);
-			M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
-
-			// KET
-			M = M * eA;
-			M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-			M *= eB;
-			M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
-			M *= prime(tmpD, phys[2], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
-
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
-
-		    cmbM  = prime(cmbX3, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<3; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
-
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
-
-		    for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
-		    	cg_q[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1] = 
-		    	M.real( combinedIndex(cmbX3)(i) );
-		  
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) { 
+			PrintData(M);
 		}
-		// Solve M * z = r.
-		// TODO: put some preconditioner here ???
-		else if ( cg_job == 2 ) {
-			//for ( i = 0; i < n; i++ ) z[i] = r[i] / a[i+i*n];
 
-			// Identity "Preconditioner"
-			for ( int i = 0; i < vecX.size(); i++ ) cg_z[i] = cg_r[i];
+	    auto cmbM = prime(cmbX1, AUXLINK, PHYS, 4);
+	    if(dbg && (dbgLvl >= 2)) {
+	    	for (int i=0; i<3; i++) Print(M.inds()[i]);
+	    	Print(cmbM);
+	    }
+
+	    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+	    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+	    // is given by M^dag K = rt[r]
+	    M *= cmbM;
+
+	    for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
+	    	vecMX[i-1] = M.real( combinedIndex(cmbX1)(i) );
+
+	    // Optimizing eB
+		// construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB	
+
+		// BRA
+		M = eRE * prime(conj(eD), AUXLINK,4);
+		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		M *= prime(conj(eA), AUXLINK,4);
+		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		if(dbg && (dbgLvl >= 3)) Print(M);
+
+		// KET
+		M = M * eD;
+		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+		M *= eA;
+		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+		M *= prime(eB, phys[1], 4);
+		if(dbg && (dbgLvl >= 2)) Print(M);
+
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) { 
+			PrintData(M);
 		}
-		//
-		//  Compute r = r - A * x.
-		//
-		else if ( cg_job == 3 ) {
-			// Optimizing eA
-			// construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA	
 
-			// bra
-			ITensor M = eRE * prime(conj(eD), AUXLINK,4);
-			M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-			M *= prime(conj(eB), AUXLINK,4);
-			M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
+	    cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
+	    if(dbg && (dbgLvl >= 2)) {
+	    	for (int i=0; i<4; i++) Print(M.inds()[i]);
+	    	Print(cmbM);
+	    }
 
-			// KET
-			M = M * eD;
-			M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-			M *= eB;
-			M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
-			M *= prime(eA, phys[0], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
+	    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+	    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+	    // is given by M^dag K = rt[r]
+	    M *= cmbM;
 
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
+	    for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
+	    	vecMX[combinedIndex(cmbX1).m() + i-1] = M.real( combinedIndex(cmbX2)(i) );
+	    
+		// Optimizing eD
+		// construct matrix M, which is defined as <psi~|psi~> = eD^dag * M * eD	
 
-		    auto cmbM = prime(cmbX1, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<3; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
+		// BRA
+		M = eRE * prime(conj(eA), AUXLINK,4);
+		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		M *= prime(conj(eB), AUXLINK,4);
+		M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+		if(dbg && (dbgLvl >= 3)) Print(M);
 
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
+		// KET
+		M = M * eA;
+		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+		M *= eB;
+		M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
+		M *= prime(eD, phys[2], 4);
+		if(dbg && (dbgLvl >= 2)) Print(M);
 
-		    for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
-		    	vecMX[i-1] = M.real( combinedIndex(cmbX1)(i) );
-
-		    // Optimizing eB
-			// construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB	
-
-			// BRA
-			M = eRE * prime(conj(eD), AUXLINK,4);
-			M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-			M *= prime(conj(eA), AUXLINK,4);
-			M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
-
-			// KET
-			M = M * eD;
-			M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-			M *= eA;
-			M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-			M *= prime(eB, phys[1], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
-
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
-
-		    cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<4; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
-
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
-
-		    for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
-		    	vecMX[combinedIndex(cmbX1).m() + i-1] = M.real( combinedIndex(cmbX2)(i) );
-
-		    
-			// Optimizing eD
-			// construct matrix M, which is defined as <psi~|psi~> = eD^dag * M * eD	
-
-			// BRA
-			M = eRE * prime(conj(eA), AUXLINK,4);
-			M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-			M *= prime(conj(eB), AUXLINK,4);
-			M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-			if(dbg && (dbgLvl >= 3)) Print(M);
-
-			// KET
-			M = M * eA;
-			M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-			M *= eB;
-			M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
-			M *= prime(eD, phys[2], 4);
-			if(dbg && (dbgLvl >= 2)) Print(M);
-
-			// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-			}
-
-		    cmbM  = prime(cmbX3, AUXLINK, PHYS, 4);
-		    if(dbg && (dbgLvl >= 2)) {
-		    	for (int i=0; i<3; i++) Print(M.inds()[i]);
-		    	Print(cmbM);
-		    }
-
-		    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
-		    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
-		    // is given by M^dag K = rt[r]
-		    M *= cmbM;
-
-		    for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
-		    	vecMX[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1] = 
-		    	M.real( combinedIndex(cmbX3)(i) );
-
-		    for ( int i = 0; i < vecX.size(); i++ ) cg_r[i] = cg_r[i] - vecMX[i];
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) { 
+			PrintData(M);
 		}
+
+	    cmbM  = prime(cmbX3, AUXLINK, PHYS, 4);
+	    if(dbg && (dbgLvl >= 2)) {
+	    	for (int i=0; i<3; i++) Print(M.inds()[i]);
+	    	Print(cmbM);
+	    }
+
+	    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+	    // of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+	    // is given by M^dag K = rt[r]
+	    M *= cmbM;
+
+	    for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
+	    	vecMX[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1] = 
+	    	M.real( combinedIndex(cmbX3)(i) ); 
+	
+
+
+		// construct vector K, which is defined as <psi~|psi'> = eA^dag * K
+		if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
+
+		ITensor K = protoK * prime(conj(eD), AUXLINK,4);
+		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		K *= prime(conj(eB), AUXLINK,4);
+		K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+		K.prime(PHYS,4);
+		if(dbg && (dbgLvl >= 2)) Print(K);
+
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) {
+			PrintData(K);
+		}
+
+		cmbM = prime(cmbX1, AUXLINK, PHYS, 4);
+		if(dbg && (dbgLvl >= 2)) {
+			for (int i=0; i<3; i++) Print(K.inds()[i]);
+			Print(cmbM);
+		}
+
+		// Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+		// of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+		// is given by M^dag K = rt[r]
+		K *= cmbM;
+
+		for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) 
+			vecB[i-1] = K.real( combinedIndex(cmbX1)(i) );
+
+		// construct vector K, which is defined as <psi~|psi'> = eB^dag * K
+		if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
+
+		K = protoK * prime(conj(eD), AUXLINK,4);
+		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		K *= prime(conj(eA), AUXLINK,4);
+		K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		K.prime(PHYS,4);
+		if(dbg && (dbgLvl >= 2)) Print(K);
+
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) {
+			PrintData(K);
+		}
+
+		cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
+		if(dbg && (dbgLvl >= 2)) {
+			for (int i=0; i<4; i++) Print(K.inds()[i]);
+			Print(cmbM);
+		}
+
+		// Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+		// of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+		// is given by M^dag K = rt[r]
+		K *= cmbM;
+
+		for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) 
+			vecB[combinedIndex(cmbX1).m() + i-1] = K.real( combinedIndex(cmbX2)(i) );
+
+
+		// construct vector K, which is defined as <psi~|psi'> = eD^dag * K
+		if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
+
+		K = protoK * prime(conj(eA), AUXLINK,4);
+		K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		K *= prime(conj(eB), AUXLINK,4);
+		K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+		K.prime(PHYS,4);
+		if(dbg && (dbgLvl >= 2)) Print(K);
+
+		// ***** SOLVE LINEAR SYSTEM M*eA = K ******************************
+		if(dbg && (dbgLvl >= 3)) {
+			PrintData(K);
+		}
+
+		cmbM  = prime(cmbX3, AUXLINK, PHYS, 4);
+		if(dbg && (dbgLvl >= 2)) {
+			for (int i=0; i<3; i++) Print(K.inds()[i]);
+			Print(cmbM);
+		}
+
+		// Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
+		// of M via SVD. Then the solution, which minimizes norm distance |M rt[r] - K|
+		// is given by M^dag K = rt[r]
+		K *= cmbM;
+
+		for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) 
+			vecB[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1] = 
+			K.real( combinedIndex(cmbX3)(i) );
+
+	
+		// compute the gradient
+		for (int i=0; i<vecX.size(); i++) {
+			gradX[i] = vecMX[i] - vecB[i];
+			Egrad2[i] = mass * Egrad2[i] + (1.0 - mass) * gradX[i]*gradX[i];
+			//vecX[i] = vecX[i] - gradX[i] * std::sqrt(EdvecX2[i] + eps_reg) / std::sqrt(Egrad2[i] + eps_reg);
+			vecX[i] = vecX[i] - gradX[i] * tstep;
+			EdvecX2[i] = mass * EdvecX2[i] + (1.0 - mass) * gradX[i] * gradX[i] * (EdvecX2[i] + eps_reg) / (Egrad2[i] + eps_reg);
+		}
+
 		//
 		//  Stopping test.
 		//
-		else if ( cg_job == 4 ) {
-	      	// update tensor with new solution
-	      	eA *= cmbX1;
-			eB *= cmbX2;
-			eD *= cmbX3;
-			for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) eA.set( combinedIndex(cmbX1)(i), vecX[i-1]);
-			for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) eB.set( combinedIndex(cmbX2)(i), vecX[combinedIndex(cmbX1).m() + i-1]);
-			for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) eD.set( combinedIndex(cmbX3)(i), vecX[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1]);
-			eA *= cmbX1;
-			eB *= cmbX2;
-			eD *= cmbX3;
+
+      	// update tensor with new solution
+      	eA *= cmbX1;
+		eB *= cmbX2;
+		eD *= cmbX3;
+		for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) eA.set( combinedIndex(cmbX1)(i), vecX[i-1]);
+		for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) eB.set( combinedIndex(cmbX2)(i), vecX[combinedIndex(cmbX1).m() + i-1]);
+		for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) eD.set( combinedIndex(cmbX3)(i), vecX[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1]);
+		eA *= cmbX1;
+		eB *= cmbX2;
+		eD *= cmbX3;
 
 			// // construct vector K, which is defined as <psi~|psi'> = eA^dag * K
 			// if(dbg && (dbgLvl >= 2)) std::cout <<"COMPUTING Vector K"<< std::endl;
@@ -2423,7 +2288,7 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 		 //    cmbM  = prime(cmbX2, AUXLINK, PHYS, 4);
 		 //    if(dbg && (dbgLvl >= 2)) {
 		 //    	for (int i=0; i<4; i++) Print(K.inds()[i]);
-		 //    	Print(cmbM);
+		 //    	Print(cmbM);is
 		 //    }
 
 		 //    // Solve linear system M*rt[r] = K for rt[r] by constructing the pseudoinverse M^dag
@@ -2466,37 +2331,19 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 		 //    	K.real( combinedIndex(cmbX3)(i) );
 
 
-	      	rnrm2 = 0.0;
-	      	for ( int i = 0; i < vecX.size(); i++ ) rnrm2 = rnrm2 + cg_r[i] * cg_r[i];
-	     	rnrm2 = std::sqrt( rnrm2 );
-	     	vec_rnrm2.push_back(rnrm2);
+      	rnrm2 = 0.0;
+      	for ( int i = 0; i < vecX.size(); i++ ) rnrm2 = rnrm2 + gradX[i] * gradX[i];
+     	rnrm2 = std::sqrt( rnrm2 );
+     	vec_rnrm2.push_back(rnrm2);
+     	vec_tstep.push_back(tstep);
 
-	     	if ( bnrm2 == 0.0 ) {
-	        	if ( rnrm2 <= tol ) {
-	        		converged = true;
-	        		break;
-	        	}
-	        } else {
-	        	if ( rnrm2 <= tol * bnrm2 ) {
-	        		converged = true;
-	        		break;
-	        	}
-	        }
+     	if ( rnrm2 <= iso_eps ) {
+        	converged = true;
+        	break;
+        }
+	    
 
-	        it = it + 1;
-	        altlstsquares_iter++;
-
-	        if ( it_max <= it ) {
-	        	converged = true;
-	        	std::cout << "\n";
-	        	std::cout << "  Iteration limit exceeded.\n";
-	        	std::cout << "  Terminating early.\n";
-	        	break;
-	      	}
-	    }
-	    cg_job = 2;
-
-		// altlstsquares_iter++;	
+		altlstsquares_iter++;	
 		// // check convergence
 		// if (altlstsquares_iter > 1) {
 		// 	auto dist_init = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
@@ -2507,13 +2354,8 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 		// 		converged = true;
 		// }
 		
-		// if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
+		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
-
- 	delete [] cg_p;
-	delete [] cg_q;
-	delete [] cg_r;
-	delete [] cg_z;
 
 	// for(int i=0; i<(overlaps.size()/3); i++) {
 	// 	std::cout<<"M: "<< overlaps[3*i] <<" K: "<< overlaps[3*i+1]
@@ -2522,7 +2364,8 @@ Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	// 		//<<" "<< lambdas[i] << std::endl;
 	// }
 
-	for (int i=0; i < vec_rnrm2.size(); i++) std::cout <<"STEP "<< i <<" rnrm2: "<< vec_rnrm2[i] << std::endl;
+	for (int i=0; i < vec_rnrm2.size(); i++) std::cout <<"STEP "<< i 
+		<<" rnrm2: "<< vec_rnrm2[i] <<" tstep: "<< vec_tstep[i] << std::endl;
 
 	eA *= cmbX1;
 	eB *= cmbX2;
@@ -3187,7 +3030,7 @@ Args fullUpdate_rezaV2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	// for (int i=0; i < vec_rnrm2.size(); i++) std::cout <<"STEP "<< i <<" rnrm2: "<< vec_rnrm2[i] << std::endl;
 
 	double gnorm;
-	double mag_step = 0.01;
+	double mag_step = 0.1;
 	std::vector<double> vec_gnorm;
 	std::cout << "ENTERING SD LOOP" << std::endl;
 	while (not converged) {
@@ -3252,6 +3095,7 @@ Args fullUpdate_rezaV2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 
 	nEB = (nEB * tempSV) * delta( commonIndex(tempSV,nED), prime(aux[1],pl[3]) );
 	nED = (nED * tempSV) * delta( tempInd, prime(aux[2],pl[4]) );
+	// reconstructing sites DONE
 
 	// update on-site tensors of cluster
 	cls.sites.at(tn[0]) = QA * nEA;
@@ -3321,6 +3165,534 @@ Args fullUpdate_rezaV2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
 	// 	- overlaps[overlaps.size()-1];
 	//diag_data.add("finalDist0",dist0);
+	//diag_data.add("finalDist1",dist1);
+
+	//minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
+	//diag_data.add("minGapDisc",minGapDisc);
+	//diag_data.add("minEvKept",minEvKept);
+	//diag_data.add("maxEvDisc",maxEvDisc);
+
+	return diag_data;
+}
+
+Args fullUpdate_TEST(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
+    auto dbg = args.getBool("fuDbg",false);
+    auto dbgLvl = args.getInt("fuDbgLevel",0);
+    auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
+    auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
+    auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
+	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
+	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
+    auto otNormType = args.getString("otNormType");
+
+    double machine_eps = std::numeric_limits<double>::epsilon();
+	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
+
+	double lambda = 0.01;
+	double lstep  = 0.1;
+
+	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+
+    // prepare to hold diagnostic data
+    Args diag_data = Args::global();
+
+	std::cout<<"GATE: ";
+	for(int i=0; i<=3; i++) {
+		std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+	}
+	std::cout<< std::endl;
+
+	if(dbg && (dbgLvl >= 2)) {
+		std::cout<< uJ1J2;
+		PrintData(uJ1J2.H1);
+		PrintData(uJ1J2.H2);
+		PrintData(uJ1J2.H3);
+	}
+
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+	double m = 0.;
+	auto max_m = [&m](double d) {
+		if(std::abs(d) > m) m = std::abs(d);
+	};
+
+	// map MPOs
+	ITensor dummyMPO = ITensor();
+	std::array<const ITensor *, 4> mpo({&uJ1J2.H1, &uJ1J2.H2, &uJ1J2.H3, &dummyMPO});
+
+	// find integer identifier of on-site tensors within CtmEnv
+	std::vector<int> si;
+	for (int i=0; i<=3; i++) {
+		si.push_back(std::distance(ctmEnv.siteIds.begin(),
+				std::find(std::begin(ctmEnv.siteIds), 
+					std::end(ctmEnv.siteIds), tn[i])));
+	}
+	if(dbg) {
+		std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+		for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+	}
+
+	// read off auxiliary and physical indices of the cluster sites
+	std::array<Index, 4> aux({
+		noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
+		noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
+		noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
+		noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+
+	std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
+	std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
+
+	std::array<Index, 4> phys({
+		noprime(findtype(cls.sites.at(tn[0]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[1]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[2]), PHYS)),
+		noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
+
+	std::array<Index, 3> opPI({
+		noprime(findtype(uJ1J2.H1, PHYS)),
+		noprime(findtype(uJ1J2.H2, PHYS)),
+		noprime(findtype(uJ1J2.H3, PHYS)) });
+
+	// prepare map from on-site tensor aux-indices to half row/column T
+	// environment tensors
+	std::array<const std::vector<ITensor> * const, 4> iToT(
+		{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
+
+	// prepare map from on-site tensor aux-indices pair to half corner T-C-T
+	// environment tensors
+	const std::map<int, const std::vector<ITensor> * const > iToC(
+		{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
+		{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
+		{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
+		{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
+
+	// for every on-site tensor point from primeLevel(index) to ENV index
+	// eg. I_XH or I_XV (with appropriate prime level). 
+	std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+
+	// Find for site 0 through 3 which are connected to ENV
+	std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+
+	Index iQA, iQD, iQB;
+	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
+	ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
+	ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+	
+	ITensor eRE, INVeRE;
+	ITensor deltaBra, deltaKet;
+
+	{
+		// precompute 4 (proto)corners of 2x2 environment
+		std::vector<ITensor> pc(4);
+		for (int s=0; s<=3; s++) {
+			// aux-indices connected to sites
+			std::vector<int> connected({pl[s*2], pl[s*2+1]});
+			// set_difference gives aux-indices connected to ENV
+			std::sort(connected.begin(), connected.end());
+			std::vector<int> tmp_iToE;
+			std::set_difference(plOfSite.begin(), plOfSite.end(), 
+				connected.begin(), connected.end(), 
+	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
+			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
+			if(dbg) { 
+				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
+					<< tn[s] << std::endl;
+				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
+			}
+
+			// Assign indices by which site is connected to ENV
+			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
+				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
+				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
+			} else {
+				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
+				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+			}
+
+			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
+				(*iToT.at(tmp_iToE[1]))[si[s]];
+			if(dbg) Print(pc[s]);
+			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
+			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
+		}
+		if(dbg) {
+			for(int i=0; i<=3; i++) {
+				std::cout <<"Site: "<< tn[i] <<" ";
+				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
+				std::cout << std::endl;
+			}
+		}
+		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+		t_begin_int = std::chrono::steady_clock::now();
+
+		// C  D
+		//    |
+		// A--B
+		// ITensor eRE;
+		// ITensor deltaBra, deltaKet;
+
+		// Decompose A tensor on which the gate is applied
+		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+		ITensor tempSA;
+		svd(cls.sites.at(tn[0]), eA, tempSA, QA);
+		//Index iQA("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+		iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+		eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
+		QA *= delta(commonIndex(QA,tempSA), iQA);
+
+		// Prepare corner of A
+		ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+
+		deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
+		deltaBra = prime(deltaKet,4);
+		tempC = (tempC * deltaBra) * deltaKet;
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+
+		eRE = tempC;
+
+		// Prepare corner of C
+		tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+		
+		deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
+		deltaBra = prime(deltaKet,4);
+		tempC = (tempC * deltaBra) * deltaKet;
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+
+		eRE = eRE * tempC;
+
+		// Decompose D tensor on which the gate is applied
+		//ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+		ITensor tempSD;
+		svd(cls.sites.at(tn[2]), eD, tempSD, QD);
+		//Index iQD("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+		iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+		eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
+		QD *= delta(commonIndex(QD,tempSD), iQD);
+
+		// Prepare corner of D
+		tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+
+		eRE = eRE * tempC;
+
+		// Decompose B tensor on which the gate is applied
+		//ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+		ITensor tempSB;
+		svd(cls.sites.at(tn[1]), eB, tempSB, QB);
+		//Index iQB("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+		iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+		eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
+		QB *= delta(commonIndex(QB,tempSB), iQB);
+
+		tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
+		if(dbg && (dbgLvl >=3)) Print(tempC);
+
+		eRE = eRE * tempC;
+
+		t_end_int = std::chrono::steady_clock::now();
+		std::cout<<"Constructed reduced Env - T: "<< 
+			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+		if(dbg && (dbgLvl >=3)) Print(eRE);
+		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
+	}
+
+	double diag_maxMsymLE, diag_maxMasymLE;
+	double diag_maxMsymFN, diag_maxMasymFN;
+	if (symmProtoEnv) {
+		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
+		t_begin_int = std::chrono::steady_clock::now();
+		auto cmbKet = combiner(iQA, iQB, iQD);
+		auto cmbBra = prime(cmbKet,4);
+
+		eRE = (eRE * cmbKet) * cmbBra;
+
+		ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
+		ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
+
+		m = 0.;
+	    eRE_sym.visit(max_m);
+	    diag_maxMsymLE = m;
+	    std::cout<<"eRE_sym max element: "<< m <<std::endl;
+		m = 0.;
+	    eRE_asym.visit(max_m);
+	    diag_maxMasymLE = m;
+	    std::cout<<"eRE_asym max element: "<< m <<std::endl;
+
+		diag_maxMsymFN  = norm(eRE_sym);
+		diag_maxMasymFN = norm(eRE_asym);
+	
+		if (posDefProtoEnv) {
+			eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+			
+			// ##### V3 ######################################################
+			ITensor U_eRE, D_eRE, INVD_eRE;
+			diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			double msign = 1.0;
+			double mval = 0.;
+			std::vector<double> dM_elems, invElems;
+			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+				if (std::abs(dM_elems.back()) > mval) {
+					mval = std::abs(dM_elems.back());
+					msign = dM_elems.back()/mval;
+				}
+			}
+			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// Drop negative EV's
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"REFINED SPECTRUM"<< std::endl;
+				std::cout<<"MAX EV: "<< mval << std::endl;
+			}
+			for (auto & elem : dM_elems) {
+				if (elem < 0.0) {
+					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+					elem = 0.0;
+				}
+				if (elem > svd_cutoff) 
+					invElems.push_back(1.0/elem);
+				else
+					invElems.push_back(0.0);
+			}
+			// ##### END V3 ##################################################
+
+			// ##### V4 ######################################################
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// double msign = 1.0;
+			// double mval = 0.;
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+			// 	if (std::abs(dM_elems.back()) > mval) {
+			// 		mval = std::abs(dM_elems.back());
+			// 		msign = dM_elems.back()/mval;
+			// 	}
+			// }
+			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// // Set EV's to ABS Values
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+			// }
+			// for (auto & elem : dM_elems) elem = std::fabs(elem);
+			// ##### END V4 ##################################################
+
+			// ##### V5 ######################################################
+			// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
+			
+			// eRE_sym = conj(eRE); // 0--eRE*--1
+			// eRE.mapprime(1,2);   // 0--eRE---2
+			// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
+			// eRE_sym.prime(-1);
+
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
+			// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
+			// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+			// ##### END V5 ##################################################
+
+			// ##### V6 ######################################################
+			// ITensor U_eRE, D_eRE;
+			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+
+			// double msign = 1.0;
+			// double mval = 0.;
+			// std::vector<double> dM_elems;
+			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+			// 	if (std::abs(dM_elems.back()) > mval) {
+			// 		mval = std::abs(dM_elems.back());
+			// 		msign = dM_elems.back()/mval;
+			// 	}
+			// }
+			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+
+			// // Drop negative EV's
+			// if(dbg && (dbgLvl >= 1)) {
+			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+			// }
+			// for (auto & elem : dM_elems) {
+			// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
+			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+			// 		elem = 0.0;
+			// 	} else if (elem < 0.0) {
+			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
+			// 		elem = std::fabs(elem);
+			// 	}
+			// }
+			// ##### END V6 ##################################################
+
+			
+			D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+			INVD_eRE = diagTensor(invElems,D_eRE.inds().front(),D_eRE.inds().back());
+
+			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
+				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+			INVeRE = ((conj(U_eRE)*INVD_eRE)*prime(U_eRE))
+				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+		}
+
+		eRE = (eRE_sym * cmbKet) * cmbBra;
+		INVeRE = (INVeRE * cmbKet) * cmbBra;
+
+		t_end_int = std::chrono::steady_clock::now();
+		std::cout<<"Symmetrized reduced env - T: "<< 
+			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
+	}
+
+	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
+	t_begin_int = std::chrono::steady_clock::now();
+
+	ITensor protoK = (eRE * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
+	protoK = (protoK * eB) * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4]));
+	protoK = (protoK * eD);
+	if(dbg && (dbgLvl >=2)) Print(protoK);
+
+	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
+	protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
+	protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
+	protoK.prime(PHYS,-1);
+	if(dbg && (dbgLvl >=2)) Print(protoK);
+	Print(eRE);
+
+	std::cout<<"eRE.scale(): "<< eRE.scale()<<" protoK.scale(): "<< protoK.scale() <<std::endl;
+	t_end_int = std::chrono::steady_clock::now();
+	std::cout<<"Proto Envs for M and K constructed - T: "<< 
+		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
+	
+	std::vector<double> overlaps;
+	std::vector<double> rt_diffs, lambdas;
+	//int min_indexCutoff = cls.auxBondDim*cls.auxBondDim*uJ1J2.a12.m();
+	double minGapDisc = 100.0; // in logscale
+	double minEvKept  = svd_cutoff;
+	//double maxEvDisc  = 0.0;
+
+	INVeRE *= protoK;
+	Print(INVeRE);
+
+	// compute overlap
+	eRE *= INVeRE;
+	eRE *= prime(INVeRE,AUXLINK,4);
+	if (eRE.r() > 0) {
+		std::cout <<"ERROR: non-scalar"<< std::endl;
+		exit(EXIT_FAILURE);
+	}
+	overlaps.push_back(sumelsC(eRE).real());
+
+	// reconstruct the sites
+	double pw;
+	auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+	ITensor tempT, tempSV;
+	ITensor nEA(iQA, phys[0]);
+
+	svd(INVeRE, nEA, tempSV, tempT);
+
+	pw = 1.0/3.0;
+	tempSV.apply(pow_T);
+	Index tempInd = commonIndex(nEA,tempSV);
+	nEA = (nEA * tempSV) * delta( commonIndex(tempSV,tempT), prime(aux[0],pl[1]) );
+
+	pw = 2.0;
+	tempSV.apply(pow_T);
+	tempT = (tempT * tempSV) * delta( tempInd, prime(aux[1],pl[2]) );
+
+	ITensor nEB(prime(aux[1],pl[2]), iQB, phys[1]);
+	ITensor nED;
+
+	svd(tempT, nEB, tempSV, nED);
+
+	pw = 0.5;
+	tempSV.apply(pow_T);
+	tempInd = commonIndex(nEB,tempSV);
+
+	nEB = (nEB * tempSV) * delta( commonIndex(tempSV,nED), prime(aux[1],pl[3]) );
+	nED = (nED * tempSV) * delta( tempInd, prime(aux[2],pl[4]) );
+	// reconstructing sites DONE
+
+	// update on-site tensors of cluster
+	cls.sites.at(tn[0]) = QA * nEA;
+	cls.sites.at(tn[1]) = QB * nEB;
+	cls.sites.at(tn[2]) = QD * nED;
+
+	// max element of on-site tensors
+	std::string diag_maxElem;
+	for (int i=0; i<4; i++) {
+		m = 0.;
+		cls.sites.at(tn[i]).visit(max_m);
+		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m) +" ";
+	}
+	std::cout << diag_maxElem << std::endl;
+
+	// normalize updated tensors
+	if (otNormType == "PTN3") {
+		double nn = std::pow(std::abs(overlaps[overlaps.size()-3]), (1.0/6.0));
+		for (int i=0; i<3; i++) cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / nn;
+	} else if (otNormType == "PTN4") {
+		double nn = std::sqrt(std::abs(overlaps[overlaps.size()-3]));
+		double ot_norms_tot = 0.0;
+		std::vector<double> ot_norms;
+		for (int i=0; i<4; i++) 
+			{ ot_norms.push_back(norm(cls.sites.at(tn[i]))); ot_norms_tot += ot_norms.back(); } 
+		for (int i=0; i<4; i++) cls.sites.at(tn[i]) = 
+			cls.sites.at(tn[i]) / std::pow(nn, (ot_norms[i]/ot_norms_tot));
+	} else if (otNormType == "BLE") {
+		for (int i=0; i<3; i++) {
+			m = 0.;
+			cls.sites.at(tn[i]).visit(max_m);
+			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
+		}
+	} else if (otNormType == "BALANCE") {
+		double iso_tot_mag = 1.0;
+	    for ( auto & site_e : cls.sites)  {
+	    	m = 0.;
+			site_e.second.visit(max_m);
+	    	site_e.second = site_e.second / m;
+	    	iso_tot_mag = iso_tot_mag * m;
+	    }
+	    for (auto & site_e : cls.sites) {
+	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/8.0) );
+	    }
+	} else if (otNormType == "NONE") {
+	} else {
+		std::cout<<"Unsupported on-site tensor normalisation after full update: "
+			<< otNormType << std::endl;
+		exit(EXIT_FAILURE);
+	}
+
+	// max element of on-site tensors after normalization
+    for (int i=0; i<4; i++) {
+        m = 0.;
+        cls.sites.at(tn[i]).visit(max_m);
+        std::cout << tn[i] <<" : "<< std::to_string(m) <<" ";
+    }
+    std::cout << std::endl;
+
+	// prepare and return diagnostic data
+	diag_data.add("alsSweep",0);
+	diag_data.add("siteMaxElem",diag_maxElem);
+	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
+	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
+	auto dist0 = overlaps.back();
+	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
+	// 	- overlaps[overlaps.size()-1];
+	diag_data.add("finalDist0",dist0);
 	//diag_data.add("finalDist1",dist1);
 
 	//minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken

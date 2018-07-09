@@ -46,6 +46,7 @@ int main( int argc, char *argv[] ) {
 
     int arg_suIter  = jsonCls["suIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
+    bool arg_stopEnergyInc = jsonCls.value("stopEnergyInc",false);
     bool arg_suDbg  = jsonCls["suDbg"].get<bool>();
     int arg_suDbgLevel = jsonCls["suDbgLevel"].get<int>();
 
@@ -419,6 +420,12 @@ int main( int argc, char *argv[] ) {
             //         <<" [sec] "<< std::endl;
 
             writeCluster(outClusterFile, evCls);
+            
+            // TODO current energy is higher than energy at previous step STOP
+            // if (arg_stopEnergyInc && *energyDiff*) {
+            //     break;
+            //     std::cout<< "CURRENT ENERGY > PREVIOUS ENERGY: STOPPING"<<std::endl;
+            // }
         }
 
     }
