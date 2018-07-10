@@ -7,6 +7,7 @@
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include "full-update.h"
+#include "full-update-TEST.h"
 #include "models.h"
 
 using namespace itensor;
@@ -406,7 +407,7 @@ int main( int argc, char *argv[] ) {
          //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
          //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_reza(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_CG(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
