@@ -59,4 +59,25 @@ struct FuncCG {
 	void df(VecDoub_I &x, VecDoub_O &deriv);
 };
 
+
+itensor::Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
+struct FuncALS_CG {
+	itensor::ITensor const& M;
+	itensor::ITensor & K;
+	itensor::ITensor cmbKet;
+	double fconst;
+
+	FuncALS_CG(itensor::ITensor const& MM, itensor::ITensor & KK,
+		itensor::ITensor ccmbKet, double ffconst);
+
+	void setup(itensor::ITensor ccmbKet, double ffconst);
+
+	Doub operator() (VecDoub_I &x);
+
+	void df(VecDoub_I &x, VecDoub_O &deriv);
+};
+
 #endif

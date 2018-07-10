@@ -122,10 +122,6 @@ itensor::Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
 
-itensor::Args fullUpdate_reza(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl,
-	itensor::Args const& args = itensor::Args::global());
-
 itensor::Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	std::vector< itensor::ITensor > & iso_store, 
