@@ -51,6 +51,11 @@ int main( int argc, char *argv[] ) {
     double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
     double pseudoInvMaxLogGap = jsonCls["pseudoInvMaxLogGap"].get<double>();
     double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
+    
+    double cg_linesearch_eps = jsonCls.value("cgLineSearchEps",1.0e-8);
+    double cg_fdistance_eps  = jsonCls.value("cgFDistanceEps",1.0e-8);
+    double cg_gradientNorm_eps = jsonCls.value("cgGradientNormEps",1.0e-8);
+
     std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
@@ -119,6 +124,7 @@ int main( int argc, char *argv[] ) {
         D_I = delta(taID,aID);
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
+        cls.aux  = {aIA, aIB, aIC, aID};
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
 	} else {
         Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
@@ -184,7 +190,6 @@ int main( int argc, char *argv[] ) {
             // B.apply(shift05);
             // C.apply(shift05);
             // D.apply(shift05);
-
         } else if (initBy == "AFM") {
             std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;
             // Spin DOWN on site A, spin   UP on site B
@@ -231,6 +236,9 @@ int main( int argc, char *argv[] ) {
         } else {
             std::cout <<"Unsupported cluster initialization: "<< initBy << std::endl;
         }
+
+        cls.aux  = {aIA, aIB, aIC, aID};
+        cls.phys = {pIA, pIB, pIC, pID};
 
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
         // ----- END DEFINE CLUSTER ------------------------------------
@@ -312,7 +320,10 @@ int main( int argc, char *argv[] ) {
         "pseudoInvCutoff",pseudoInvCutoff,
         "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
         "isoEpsilon",isoEpsilon,
-        "otNormType",arg_otNormType
+        "otNormType",arg_otNormType,
+        "cgLineSearchEps",cg_linesearch_eps,
+        "cgFDistanceEps",cg_fdistance_eps,
+        "cgGradientNormEps",cg_gradientNorm_eps
     };
     // Diagnostic data
     std::vector<int> diag_ctmIter;
@@ -407,15 +418,16 @@ int main( int argc, char *argv[] ) {
          //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
          //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_ALS_CG(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_CG(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
 
         out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
             <<" "<< diag_fu.getString("siteMaxElem")
-            <<" "<< diag_fu.getReal("finalDist0",0.0)
-            <<" "<< diag_fu.getReal("finalDist1",0.0);
+            //<<" "<< diag_fu.getReal("finalDist0",0.0)
+            //<<" "<< diag_fu.getReal("finalDist1",0.0);
+            <<" "<< diag_fu.getString("locMinDiag");
         out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
             <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
         out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 

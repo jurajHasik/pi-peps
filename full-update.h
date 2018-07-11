@@ -12,7 +12,6 @@
 #include "ctm-cluster-global.h"
 #include "ctm-cluster.h"
 #include "su2.h"
-#include "cg_rc.h"
 #include "itensor/all.h"
 
 const int IOFFSET = 100;

@@ -69,7 +69,12 @@ struct Dlinemethod {
 	VecDoub xi;
 	T &func;
 	Int n;
+	Doub LSOTL = 3.0e-8;
+
 	Dlinemethod(T &funcc) : func(funcc) {}
+	
+	Dlinemethod(T &funcc, Doub LLSOTL) : func(funcc), LSOTL(LLSOTL) {}
+
 	Doub linmin()
 	{
 		Doub ax,xx,xmin;
@@ -77,7 +82,7 @@ struct Dlinemethod {
 		Df1dim<T> df1dim(p,xi,func);
 		ax=0.0;
 		xx=1.0;
-		Dbrent dbrent;
+		Dbrent dbrent(LSOTL);
 		dbrent.bracket(ax,xx,df1dim);
 		xmin=dbrent.minimize(df1dim);
 		for (Int j=0;j<n;j++) {
@@ -152,6 +157,100 @@ struct Powell : Linemethod<T> {
 		}
 	}
 };
+
+
+struct Output_FrprmnV2 {
+	int iter;
+	Doub final_f;
+	Doub final_g2;
+	VecDoub final_p;
+
+	Output_FrprmnV2(int iiter, Doub ffinal_f, Doub ffinal_g2, VecDoub & ffinal_p) :
+		iter(iiter), final_f(ffinal_f), final_g2(ffinal_g2), final_p(std::move(ffinal_p)) {}
+};
+
+template <class T>
+struct FrprmnV2 : Dlinemethod<T> {
+	Int iter;
+	Doub fret;
+	using Dlinemethod<T>::func;
+	using Dlinemethod<T>::linmin;
+	using Dlinemethod<T>::p;
+	using Dlinemethod<T>::xi;
+	const Doub ftol;
+	const Int ITMAX;
+	const Doub GTOL; 
+	const Doub LSTOL;
+
+	FrprmnV2(T &funcd, const Doub ftoll=3.0e-8, const Doub GGTOL=1.0e-8, const Int IITMAX=200)
+	 : Dlinemethod<T>(funcd), ftol(ftoll), GTOL(GGTOL), ITMAX(IITMAX) {
+	 	std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+	}
+	
+	FrprmnV2(T &funcd, const Doub ftoll, const Doub GGTOL, const Doub LLSTOL, const Int IITMAX)
+	 : Dlinemethod<T>(funcd, LLSTOL), ftol(ftoll), GTOL(GGTOL), LSTOL(LLSTOL), ITMAX(IITMAX) {
+		std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+		std::cout<<"LSOTL: "<< LSTOL << std::endl;
+	}
+	
+	Output_FrprmnV2 minimize(VecDoub_I &pp)
+	{
+		//const Int ITMAX=200;
+		const Doub EPS=1.0e-18;
+		//const Doub GTOL=1.0e-8;
+		Doub gg,dgg,test;
+		Int n=pp.size();
+		p=pp;
+		VecDoub g(n),h(n);
+		xi.resize(n);
+		Doub fp=func(p);
+		func.df(p,xi);
+		for (Int j=0;j<n;j++) {
+			g[j] = -xi[j];
+			xi[j]=h[j]=g[j];
+		}
+		for (Int its=0;its<ITMAX;its++) {
+			iter=its;
+			fret=linmin();
+			if (2.0*abs(fret-fp) <= ftol*(abs(fret)+abs(fp)+EPS)) {
+				std::cout << "Frprmn: converged iter="<< its 
+					<<". ||psi'> - |psi>|^2 = "<< abs(fret-fp) << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			fp=fret;
+			func.df(p,xi);
+			test=0.0;
+			Doub den=MAX(abs(fp),1.0);
+			for (Int j=0;j<n;j++) {
+				Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
+				if (temp > test) test=temp;
+			}
+			if (test < GTOL) { 
+				std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			dgg=gg=0.0;
+			for (Int j=0;j<n;j++) {
+				gg += g[j]*g[j];
+			//	dgg += xi[j]*xi[j];
+				dgg += (xi[j]+g[j])*xi[j];
+			}
+			if (gg == 0.0)
+				return Output_FrprmnV2(its, fret, gg, p);
+			Doub gam=dgg/gg;
+			for (Int j=0;j<n;j++) {
+				g[j] = -xi[j];
+				xi[j]=h[j]=g[j]+gam*h[j];
+			}
+		}
+		// throw("Too many iterations in frprmn");
+		std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
+		return Output_FrprmnV2(ITMAX, fret, gg, p);
+	}
+};
+
 template <class T>
 struct Frprmn : Linemethod<T> {
 	Int iter;
@@ -204,7 +303,7 @@ struct Frprmn : Linemethod<T> {
 			dgg=gg=0.0;
 			for (Int j=0;j<n;j++) {
 				gg += g[j]*g[j];
-//			  dgg += xi[j]*xi[j];
+			//	dgg += xi[j]*xi[j];
 				dgg += (xi[j]+g[j])*xi[j];
 			}
 			if (gg == 0.0)

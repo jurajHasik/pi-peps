@@ -24,7 +24,7 @@ APP8=opt-su-3site
 #    will auto-detect if these headers have changed and recompile your app.
 HEADERS =models.h full-update.h simple-update.h cluster-ev-builder.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h mpo.h \
-	su2.h json.hpp cg_rc.h
+	su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 #HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
@@ -53,7 +53,7 @@ CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
 CCFILES6=$(APP6).cc cluster-ev-builder.cc full-update-TEST.cc full-update.cc models.cc \
-	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc cg_rc.cc
+	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
 CCFILES7=$(APP7).cc cluster-ev-builder.cc full-update.cc  models.cc \
 	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
 CCFILES8=$(APP8).cc simple-update_v2.cc models.cc \

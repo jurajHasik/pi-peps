@@ -1290,31 +1290,33 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
+	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
+	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
+	auto cg_gradientNorm_eps = args.getReal("cgGradientNormEps",1.0e-8);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
 
     double machine_eps = std::numeric_limits<double>::epsilon();
 	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
 
-	double lambda = 0.01;
-	double lstep  = 0.1;
-
 	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
     // prepare to hold diagnostic data
     Args diag_data = Args::global();
 
-	std::cout<<"GATE: ";
-	for(int i=0; i<=3; i++) {
-		std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
-	}
-	std::cout<< std::endl;
+	if(dbg) {
+		std::cout<<"GATE: ";
+		for(int i=0; i<=3; i++) {
+			std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+		}
+		std::cout<< std::endl;
 
-	if(dbg && (dbgLvl >= 2)) {
-		std::cout<< uJ1J2;
-		PrintData(uJ1J2.H1);
-		PrintData(uJ1J2.H2);
-		PrintData(uJ1J2.H3);
+		if (dbgLvl >= 2) {
+			std::cout<< uJ1J2;
+			PrintData(uJ1J2.H1);
+			PrintData(uJ1J2.H2);
+			PrintData(uJ1J2.H3);
+		}
 	}
 
 	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
@@ -1323,62 +1325,24 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		if(std::abs(d) > m) m = std::abs(d);
 	};
 
-	// map MPOs
-	ITensor dummyMPO = ITensor();
-	std::array<const ITensor *, 4> mpo({&uJ1J2.H1, &uJ1J2.H2, &uJ1J2.H3, &dummyMPO});
-
-	// find integer identifier of on-site tensors within CtmEnv
-	std::vector<int> si;
-	for (int i=0; i<=3; i++) {
-		si.push_back(std::distance(ctmEnv.siteIds.begin(),
-				std::find(std::begin(ctmEnv.siteIds), 
-					std::end(ctmEnv.siteIds), tn[i])));
-	}
-	if(dbg) {
-		std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-		for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-	}
-
 	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux({
-		noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+	std::array<Index, 4> aux;
+	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
 
-	std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
-	std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
-
-	std::array<Index, 4> phys({
-		noprime(findtype(cls.sites.at(tn[0]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[1]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[2]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
-
+	std::array<Index, 4> phys;
+	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
+	
 	std::array<Index, 3> opPI({
 		noprime(findtype(uJ1J2.H1, PHYS)),
 		noprime(findtype(uJ1J2.H2, PHYS)),
 		noprime(findtype(uJ1J2.H3, PHYS)) });
-
-	// prepare map from on-site tensor aux-indices to half row/column T
-	// environment tensors
-	std::array<const std::vector<ITensor> * const, 4> iToT(
-		{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
-
-	// prepare map from on-site tensor aux-indices pair to half corner T-C-T
-	// environment tensors
-	const std::map<int, const std::vector<ITensor> * const > iToC(
-		{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
-		{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
-		{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
-		{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
-
-	// for every on-site tensor point from primeLevel(index) to ENV index
-	// eg. I_XH or I_XV (with appropriate prime level). 
-	std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
-
-	// Find for site 0 through 3 which are connected to ENV
-	std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+	
+	if (dbg) {
+		std::cout << "On-site indices:" << std::endl;
+		for (int i=0; i<4; i++) {
+			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+		}
+	}
 
 	Index iQA, iQD, iQB;
 	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
@@ -1389,6 +1353,40 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	ITensor deltaBra, deltaKet;
 
 	{
+		t_begin_int = std::chrono::steady_clock::now();
+
+		// find integer identifier of on-site tensors within CtmEnv
+		std::vector<int> si;
+		for (int i=0; i<=3; i++) {
+			si.push_back(std::distance(ctmEnv.siteIds.begin(),
+					std::find(std::begin(ctmEnv.siteIds), 
+						std::end(ctmEnv.siteIds), tn[i])));
+		}
+		if(dbg) {
+			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+		}
+
+		// prepare map from on-site tensor aux-indices to half row/column T
+		// environment tensors
+		std::array<const std::vector<ITensor> * const, 4> iToT(
+			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
+
+		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
+		// environment tensors
+		const std::map<int, const std::vector<ITensor> * const > iToC(
+			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
+			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
+			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
+			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
+
+		// for every on-site tensor point from primeLevel(index) to ENV index
+		// eg. I_XH or I_XV (with appropriate prime level). 
+		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+
+		// Find for site 0 through 3 which are connected to ENV
+		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+
 		// precompute 4 (proto)corners of 2x2 environment
 		std::vector<ITensor> pc(4);
 		for (int s=0; s<=3; s++) {
@@ -1429,6 +1427,10 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 				std::cout << std::endl;
 			}
 		}
+
+		t_end_int = std::chrono::steady_clock::now();
+		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
+			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
 		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
 
 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
@@ -1551,16 +1553,23 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
+			int count = 0;
+			for (auto & elem : dM_elems) {
+				if (elem < svd_cutoff) {
+					std::cout<< elem << std::endl;
+					count += 1;
+				}
+				if (elem < 0.0) {
+					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+					elem = 0.0;
+					count += 1;
+				}
+			}
 			// Drop negative EV's
 			if(dbg && (dbgLvl >= 1)) {
 				std::cout<<"REFINED SPECTRUM"<< std::endl;
 				std::cout<<"MAX EV: "<< mval << std::endl;
-			}
-			for (auto & elem : dM_elems) {
-				if (elem < 0.0) {
-					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-					elem = 0.0;
-				}
+				std::cout <<"RATIO svd_cutoff/all "<< count <<"/"<< dM_elems.size() << std::endl;
 			}
 			// ##### END V3 ##################################################
 
@@ -1696,12 +1705,15 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	NORMPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
 	NORMPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
 	NORMPSI *= prime(conj(eD), AUXLINK, 4);
-	if (NORMPSI.r() > 0) { 
-		std::cout<< "ERROR: NORMPSI tensor is not a scalar" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	double fconst = sumels(NORMPSI);
+	
+	auto OVERLAP = protoK * (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	OVERLAP *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	OVERLAP *= prime(conj(eD), AUXLINK, 4);
+	
+	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
 
+	double fconst = sumels(NORMPSI);
+	
 	VecDoub_IO vecX( combinedIndex(cmbX1).m() + 
 		combinedIndex(cmbX2).m() + combinedIndex(cmbX3).m() );
 	
@@ -1719,10 +1731,15 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	eB *= cmbX2;
 	eD *= cmbX3;
 
+	std::cout << "f_init= "<< 2.0 * ( fconst + sumels(OVERLAP) ) << std::endl;
   	std::cout << "ENTERING CG LOOP" << std::endl;
 	FuncCG funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, fconst);
-	Frprmn<FuncCG> frprmn(funcCG, iso_eps, iso_eps, maxAltLstSqrIter);
-	vecX = frprmn.minimize(vecX);
+	FrprmnV2<FuncCG> frprmn(funcCG, cg_fdistance_eps, cg_gradientNorm_eps, 
+		cg_linesearch_eps, maxAltLstSqrIter);
+	//vecX = frprmn.minimize(vecX);
+	auto locMinData = frprmn.minimize(vecX);
+	vecX = std::move(locMinData.final_p);
+	std::cout << "f_final= "<< locMinData.final_f << std::endl;
 
 	eA *= cmbX1;
 	eB *= cmbX2;
@@ -1793,10 +1810,18 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
     std::cout << std::endl;
 
 	// prepare and return diagnostic data
-	diag_data.add("alsSweep",altlstsquares_iter);
+	diag_data.add("alsSweep", locMinData.iter);
 	diag_data.add("siteMaxElem",diag_maxElem);
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
+	
+	std::ostringstream oss;
+	//Add double to stream
+	oss << std::scientific << " " << locMinData.final_f << " " << locMinData.final_g2;
+
+	diag_data.add("locMinDiag", oss.str());
+	// diag_data.add("locMinDiag", "CG "+ std::to_string(locMinData.final_f)
+	// 	+ " " + std::to_string(locMinData.final_g2) );
 	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
 	// 	- overlaps[overlaps.size()-4];
 	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
