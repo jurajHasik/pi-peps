@@ -1553,23 +1553,24 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			int count = 0;
+			int countCTF = 0;
+			int countNEG = 0;
 			for (auto & elem : dM_elems) {
-				if (elem < svd_cutoff) {
-					std::cout<< elem << std::endl;
-					count += 1;
-				}
 				if (elem < 0.0) {
 					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
 					elem = 0.0;
-					count += 1;
-				}
+					countNEG += 1;
+				} else if (elem < svd_cutoff) {
+					countCTF += 1;
+					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
+				} 
 			}
-			// Drop negative EV's
+			// Drop negative EV'std
 			if(dbg && (dbgLvl >= 1)) {
 				std::cout<<"REFINED SPECTRUM"<< std::endl;
 				std::cout<<"MAX EV: "<< mval << std::endl;
-				std::cout <<"RATIO svd_cutoff/all "<< count <<"/"<< dM_elems.size() << std::endl;
+				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
+					<< dM_elems.size() << std::endl;
 			}
 			// ##### END V3 ##################################################
 
@@ -1700,19 +1701,31 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	auto cmbX2 = combiner(eB.inds()[0], eB.inds()[1], eB.inds()[2], eB.inds()[3]);
 	auto cmbX3 = combiner(eD.inds()[0], eD.inds()[1], eD.inds()[2]);
 
+	// <psi'|psi'> = <psi|psi>
 	auto NORMPSI = ( (eRE * (eA * delta(prime(aux[0],pl[1]),prime(aux[1],pl[2])) ) )
 		* ( eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) ) ) * eD;
 	NORMPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
 	NORMPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
 	NORMPSI *= prime(conj(eD), AUXLINK, 4);
 	
+	// <psi|U^dag U|psi>
+	auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
+	NORMUPSI.prime(PHYS,-1);
+	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
+
+	// <psi'|U|psi> = <psi|U|psi>
 	auto OVERLAP = protoK * (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
 	OVERLAP *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
 	OVERLAP *= prime(conj(eD), AUXLINK, 4);
 	
-	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
+	if (NORMPSI.r() > 0 || NORMUPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<
+		"NORMPSI or OVERLAP rank > 0"<<std::endl;
 
-	double fconst = sumels(NORMPSI);
+	double normUPsi = sumels(NORMUPSI);
 	
 	VecDoub_IO vecX( combinedIndex(cmbX1).m() + 
 		combinedIndex(cmbX2).m() + combinedIndex(cmbX3).m() );
@@ -1731,11 +1744,13 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	eB *= cmbX2;
 	eD *= cmbX3;
 
-	std::cout << "f_init= "<< 2.0 * ( fconst + sumels(OVERLAP) ) << std::endl;
+	//double initDist = 2.0 * (1.0 - sumels(OVERLAP) / std::sqrt(normUPsi * sumels(NORMPSI)) );
+	double initDist = sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
+	std::cout << "f_init= "<< initDist << std::endl;
   	std::cout << "ENTERING CG LOOP" << std::endl;
-	FuncCG funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, fconst);
+	FuncCG funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, normUPsi, initDist);
 	FrprmnV2<FuncCG> frprmn(funcCG, cg_fdistance_eps, cg_gradientNorm_eps, 
-		cg_linesearch_eps, maxAltLstSqrIter);
+		cg_linesearch_eps, maxAltLstSqrIter, initDist);
 	//vecX = frprmn.minimize(vecX);
 	auto locMinData = frprmn.minimize(vecX);
 	vecX = std::move(locMinData.final_p);
@@ -1840,9 +1855,9 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 FuncCG::FuncCG(ITensor const& NN, ITensor const& pprotoK, 
 	ITensor const& ccmbX1, ITensor const& ccmbX2, ITensor const& ccmbX3, 
 	std::array<Index, 4> const& aaux, std::vector<int> const& ppl,
-	double ffconst) : N(NN), protoK(pprotoK),
+	double ppsiUNorm, double ffinit) : N(NN), protoK(pprotoK),
 	cmbX1(ccmbX1), cmbX2(ccmbX2), cmbX3(ccmbX3), 
-	aux(aaux), pl(ppl), fconst(ffconst) {}
+	aux(aaux), pl(ppl), psiUNorm(ppsiUNorm), finit(ffinit), psiNorm(ppsiUNorm) {}
 
 Doub FuncCG::operator() (VecDoub_I &x) {
 	auto eA = ITensor(combinedIndex(cmbX1));
@@ -1855,19 +1870,23 @@ Doub FuncCG::operator() (VecDoub_I &x) {
 	eB *= cmbX2;
 	eD *= cmbX3;
 
+	// <psi'|psi'>
 	auto NORM = ( (N * (eA * delta(prime(aux[0],pl[1]),prime(aux[1],pl[2])) ) )
 		* ( eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) ) ) * eD;
 	NORM *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
 	NORM *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
 	NORM *= prime(conj(eD), AUXLINK, 4);
 
+	// <psi'|U|psi>
 	auto OVERLAP = protoK * (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
 	OVERLAP *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
 	OVERLAP *= prime(conj(eD), AUXLINK, 4);
 	
 	if (NORM.r() > 0 || OVERLAP.r() > 0) std::cout<<"Funcd() NORM or OVERLAP rank > 0"<<std::endl;
 
-	return fconst + sumels(NORM) - 2.0 * sumels(OVERLAP);
+	psiNorm = sumels(NORM);
+	//return 2.0 * ( 1.0 - sumels(OVERLAP)/std::sqrt(psiUNorm * psiNorm) ) / finit;
+	return psiNorm - 2.0 * sumels(OVERLAP) + psiUNorm;
 }
 
 void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
@@ -1895,10 +1914,11 @@ void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
 
 	M *= prime(cmbX1,AUXLINK,4);
 	K *= prime(cmbX1,AUXLINK,4);
-	for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) deriv[i-1] = M.real( combinedIndex(cmbX1)(i) ) 
+	for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) deriv[i-1] = 
+		M.real( combinedIndex(cmbX1)(i) )
 		- K.real( combinedIndex(cmbX1)(i) );
 
-	// compute eB part of gradient	   
+	// compute eB part of gradient
 	M = protoM * (prime(conj(eD),AUXLINK,4) * delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) ) );
 	M *= (prime(conj(eA),AUXLINK,4) *delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4)) );
 
@@ -1908,7 +1928,8 @@ void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
 	M *= prime(cmbX2,AUXLINK,4);
 	K *= prime(cmbX2,AUXLINK,4);
 	for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) deriv[combinedIndex(cmbX1).m() + i-1] = 
-		M.real( combinedIndex(cmbX2)(i) ) - K.real( combinedIndex(cmbX2)(i) );
+		M.real( combinedIndex(cmbX2)(i) )
+	    - K.real( combinedIndex(cmbX2)(i) );
 
 	// compute eD part of gradient	
 	M = protoM * (prime(conj(eA),AUXLINK,4) * delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) ) );
@@ -1920,7 +1941,9 @@ void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
 	M *= prime(cmbX3,AUXLINK,4);
 	K *= prime(cmbX3,AUXLINK,4);
 	for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) deriv[combinedIndex(cmbX1).m() 
-		+ combinedIndex(cmbX2).m() + i-1] = M.real( combinedIndex(cmbX3)(i) ) - K.real( combinedIndex(cmbX3)(i) );
+		+ combinedIndex(cmbX2).m() + i-1] = 
+		M.real( combinedIndex(cmbX3)(i) )
+	    - K.real( combinedIndex(cmbX3)(i) );
 }
 
 Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,

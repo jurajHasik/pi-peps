@@ -45,14 +45,17 @@ struct FuncCG {
 	itensor::ITensor const& cmbX1, cmbX2, cmbX3;
 	std::array<itensor::Index, 4> const& aux;
 	std::vector<int> const& pl;
-	double fconst;
+	double psiUNorm;
+	double finit;
+	double psiNorm;
 
 	FuncCG(itensor::ITensor const& NN, itensor::ITensor const& pprotoK, 
 		itensor::ITensor const& ccmbX1, itensor::ITensor const& ccmbX2,
 		itensor::ITensor const& ccmbX3, 
 		std::array<itensor::Index, 4> const& aaux,
 		std::vector<int> const& ppl,
-		double ffconst);
+		double ppsiUNorm,
+		double ffinit);
 
 	Doub operator() (VecDoub_I &x);
 

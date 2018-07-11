@@ -330,12 +330,15 @@ void J1J2Model::setObservablesHeader(std::ofstream & output) {
         <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
         <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
         <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
+        <<"Avg SS_NN, "<<"Avg SS_NNN, "
         <<"Avg mag=|S|, "<<"Energy"
         <<std::endl;
 }
 
 void J1J2Model::computeAndWriteObservables(EVBuilder const& ev, 
     std::ofstream & output, Args const& metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
 
     std::vector<double> evNN;
     std::vector<double> evNNN;
@@ -344,16 +347,89 @@ void J1J2Model::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sC(3,0.0);
     std::vector<double> ev_sD(3,0.0);
 
-    // compute energies NNN links
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+    bool compute_SS_NNN = ( std::abs(J2) > 1.0e-15 );
 
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-    evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(1,0)) ); //AB
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,0), std::make_pair(0,1)) ); //AC
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(1,1)) ); //BD
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(1,1)) ); //CD
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,0), std::make_pair(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(0,1), std::make_pair(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        std::make_pair(1,1), std::make_pair(2,1))); //DC
+
+    // compute energies NNN links
+    if ( compute_SS_NNN ) {
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+    }
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+
+    
+    output << lineNo <<" "; 
+    // write individual NN SS terms and average over all non-eq links
+    double avgSS_NN = 0.;
+    for ( unsigned int j=0; j<evNN.size(); j++ ) {
+        output<<" "<< evNN[j];
+        avgSS_NN += evNN[j];
+    }
+    avgSS_NN = avgSS_NN / 8.0; 
+    output <<" "<< avgSS_NN;
+    
+    // write average NNN SS term over all non-eq NNN
+    double avgSS_NNN = 0.;
+    if (compute_SS_NNN) {
+        for ( unsigned int j=0; j<evNNN.size(); j++ ) avgSS_NNN += evNNN[j];
+        avgSS_NNN = avgSS_NNN / 8.0;
+    }    
+    output <<" "<< avgSS_NNN;
+
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.25*(
+        sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
+        + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
+        + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )
+        + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )
+    );
+    output <<" "<< evMag_avg;
+
+    // write Energy
+    double energy = 2.0 * avgSS_NN * J1 + 2.0 * avgSS_NNN * J2; 
+    output <<" "<< energy;
+
+    output << std::endl;
 }
 
 NNHLadderModel::NNHLadderModel(double arg_J1, double arg_alpha)
@@ -381,13 +457,13 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sD(3,0.0);
 
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,0)) );    //AB
+        std::make_pair(0,0), std::make_pair(1,0)) ); //AB
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(0,1)) );    //AC
+        std::make_pair(0,0), std::make_pair(0,1)) ); //AC
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(1,1)) );    //BD
+        std::make_pair(1,0), std::make_pair(1,1)) ); //BD
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(1,1)) );    //CD
+        std::make_pair(0,1), std::make_pair(1,1)) ); //CD
 
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
         std::make_pair(1,0), std::make_pair(2,0))); //BA

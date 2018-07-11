@@ -20,7 +20,11 @@ struct Linemethod {
 	VecDoub xi;
 	T &func;
 	Int n;
+	Doub LSOTL = 3.0e-8;
+
 	Linemethod(T &funcc) : func(funcc) {}
+	Linemethod(T &funcc, Doub LLSOTL) : func(funcc), LSOTL(LLSOTL) {}
+
 	Doub linmin()
 	{
 		Doub ax,xx,xmin;
@@ -28,7 +32,7 @@ struct Linemethod {
 		F1dim<T> f1dim(p,xi,func);
 		ax=0.0;
 		xx=1.0;
-		Brent brent;
+		Brent brent(LSOTL);
 		brent.bracket(ax,xx,f1dim);
 		xmin=brent.minimize(f1dim);
 		for (Int j=0;j<n;j++) {
@@ -178,6 +182,7 @@ struct FrprmnV2 : Dlinemethod<T> {
 	using Dlinemethod<T>::p;
 	using Dlinemethod<T>::xi;
 	const Doub ftol;
+	const Doub finit;
 	const Int ITMAX;
 	const Doub GTOL; 
 	const Doub LSTOL;
@@ -188,8 +193,10 @@ struct FrprmnV2 : Dlinemethod<T> {
 		std::cout<<"GTOL: "<< GTOL << std::endl;
 	}
 	
-	FrprmnV2(T &funcd, const Doub ftoll, const Doub GGTOL, const Doub LLSTOL, const Int IITMAX)
-	 : Dlinemethod<T>(funcd, LLSTOL), ftol(ftoll), GTOL(GGTOL), LSTOL(LLSTOL), ITMAX(IITMAX) {
+	FrprmnV2(T &funcd, const Doub ftoll, const Doub GGTOL, const Doub LLSTOL, 
+		const Int IITMAX, const Doub ffinit)
+	 : Dlinemethod<T>(funcd, LLSTOL), ftol(ftoll), GTOL(GGTOL), LSTOL(LLSTOL), 
+	 	ITMAX(IITMAX), finit(ffinit) {
 		std::cout<<"FTOL: "<< ftol << std::endl;
 		std::cout<<"GTOL: "<< GTOL << std::endl;
 		std::cout<<"LSOTL: "<< LSTOL << std::endl;
@@ -214,9 +221,10 @@ struct FrprmnV2 : Dlinemethod<T> {
 		for (Int its=0;its<ITMAX;its++) {
 			iter=its;
 			fret=linmin();
-			if (2.0*abs(fret-fp) <= ftol*(abs(fret)+abs(fp)+EPS)) {
+			//if (2.0*abs(fret-fp) <= ftol*(abs(fret)+abs(fp)+EPS)) {
+			if  (std::abs((fret-fp)/finit) <= ftol) {
 				std::cout << "Frprmn: converged iter="<< its 
-					<<". ||psi'> - |psi>|^2 = "<< abs(fret-fp) << std::endl;
+					<<". f(i) - f(i-1) = "<< abs(fret-fp) << std::endl;
 				return Output_FrprmnV2(its, fret, gg, p);
 			}
 			fp=fret;

@@ -139,6 +139,7 @@ int main( int argc, char *argv[] ) {
 
         cls.siteIds = std::vector< std::string >(4);
         cls.siteIds = { "A", "B", "C", "D" };
+        cls.SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
 
         cls.cToS  = {
             {std::make_pair(0,0),"A"},
