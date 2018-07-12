@@ -96,6 +96,9 @@ struct Dlinemethod {
 		return dbrent.fmin;
 	}
 };
+
+
+
 template <class T>
 struct Powell : Linemethod<T> {
 	Int iter;
@@ -162,12 +165,13 @@ struct Powell : Linemethod<T> {
 	}
 };
 
-
 struct Output_FrprmnV2 {
 	int iter;
 	Doub final_f;
 	Doub final_g2;
 	VecDoub final_p;
+
+	Output_FrprmnV2() {}
 
 	Output_FrprmnV2(int iiter, Doub ffinal_f, Doub ffinal_g2, VecDoub & ffinal_p) :
 		iter(iiter), final_f(ffinal_f), final_g2(ffinal_g2), final_p(std::move(ffinal_p)) {}
@@ -256,6 +260,246 @@ struct FrprmnV2 : Dlinemethod<T> {
 		// throw("Too many iterations in frprmn");
 		std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
 		return Output_FrprmnV2(ITMAX, fret, gg, p);
+	}
+};
+
+
+// -----
+template <class T>
+struct Df1dimCG {
+	const VecDoub &p;
+	const VecDoub &xi;
+	Int n;
+	T &funcd;
+	VecDoub xt;
+	VecDoub dft;
+	Df1dimCG(VecDoub_I &pp, VecDoub_I &xii, T &funcdd) : p(pp),
+		xi(xii), n(pp.size()), funcd(funcdd), xt(n), dft(n) {}
+	Doub operator()(const Doub x)
+	{
+		for (Int j=0;j<n;j++)
+			xt[j]=p[j]+x*xi[j];
+		return funcd(xt);
+	}
+	Doub df(const Doub x)
+	{
+		Doub df1=0.0;
+		funcd.df(xt,dft);
+		for (Int j=0;j<n;j++)
+			df1 += dft[j]*xi[j];
+		return df1;
+	}
+};
+
+template <class T>
+struct DlinemethodCG {
+	VecDoub p;
+	VecDoub xi;
+	T &func;
+	Int n;
+	Doub LSOTL = 3.0e-8;
+
+	DlinemethodCG(T &funcc) : func(funcc) {}
+	
+	DlinemethodCG(T &funcc, Doub LLSOTL) : func(funcc), LSOTL(LLSOTL) {}
+
+	Doub linmin()
+	{
+		Doub ax,xx,xmin;
+		n=p.size();
+		Df1dimCG<T> df1dim(p,xi,func);
+		ax=0.0;
+		xx=1.0;
+		Dbrent dbrent(LSOTL);
+		dbrent.bracket(ax,xx,df1dim);
+		xmin=dbrent.minimize(df1dim);
+		for (Int j=0;j<n;j++) {
+			xi[j] *= xmin;
+			p[j] += xi[j];
+		}
+		return dbrent.fmin;
+	}
+};
+
+template <class T>
+struct FrprmnCG : DlinemethodCG<T> {
+	Int iter;
+	Doub fret;
+	using DlinemethodCG<T>::func;
+	using DlinemethodCG<T>::linmin;
+	using DlinemethodCG<T>::p;
+	using DlinemethodCG<T>::xi;
+	const Doub ftol;
+	const Doub finit;
+	const Int ITMAX;
+	const Doub GTOL; 
+	const Doub LSTOL;
+
+	FrprmnCG(T &funcd, const Doub ftoll=3.0e-8, const Doub GGTOL=1.0e-8, const Int IITMAX=200)
+	 : DlinemethodCG<T>(funcd), ftol(ftoll), GTOL(GGTOL), ITMAX(IITMAX) {
+	 	std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+	}
+	
+	FrprmnCG(T &funcd, const Doub ftoll, const Doub GGTOL, const Doub LLSTOL, 
+		const Int IITMAX, const Doub ffinit)
+	 : DlinemethodCG<T>(funcd, LLSTOL), ftol(ftoll), GTOL(GGTOL), LSTOL(LLSTOL), 
+	 	ITMAX(IITMAX), finit(ffinit) {
+		std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+		std::cout<<"LSOTL: "<< LSTOL << std::endl;
+	}
+	
+	Output_FrprmnV2 minimize(VecDoub_I &pp)
+	{
+		//const Int ITMAX=200;
+		const Doub EPS=1.0e-18;
+		//const Doub GTOL=1.0e-8;
+		Doub gg,dgg,test;
+		Int n=pp.size();
+		p=pp;
+		VecDoub g(n),h(n);
+		xi.resize(n);
+		Doub fp=func(p);
+		func.df(p,xi);
+		for (Int j=0;j<n;j++) {
+			g[j] = -xi[j];
+			xi[j]=h[j]=g[j];
+		}
+		for (Int its=0;its<ITMAX;its++) {
+			iter=its;
+			fret=linmin();
+			//if (2.0*abs(fret-fp) <= ftol*(abs(fret)+abs(fp)+EPS)) {
+			if  (std::abs((fret-fp)/finit) <= ftol) {
+				std::cout << "Frprmn: converged iter="<< its 
+					<<". f(i) - f(i-1) = "<< abs(fret-fp) << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			fp=fret;
+			func.df(p,xi);
+			test=0.0;
+			Doub den=MAX(abs(fp),1.0);
+			for (Int j=0;j<n;j++) {
+				Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
+				if (temp > test) test=temp;
+			}
+			if (test < GTOL) { 
+				std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			dgg=gg=0.0;
+			for (Int j=0;j<n;j++) {
+				gg += g[j]*g[j];
+			//	dgg += xi[j]*xi[j];
+				dgg += (xi[j]+g[j])*xi[j];
+			}
+			if (gg == 0.0)
+				return Output_FrprmnV2(its, fret, gg, p);
+			Doub gam=dgg/gg;
+			for (Int j=0;j<n;j++) {
+				g[j] = -xi[j];
+				xi[j]=h[j]=g[j]+gam*h[j];
+			}
+		}
+		// throw("Too many iterations in frprmn");
+		std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
+		return Output_FrprmnV2(ITMAX, fret, gg, p);
+	}
+};
+// -----
+
+template <class T>
+struct FrprmnALSCG : Dlinemethod<T> {
+	Int iter;
+	Doub fret;
+	using Dlinemethod<T>::func;
+	using Dlinemethod<T>::linmin;
+	using Dlinemethod<T>::p;
+	using Dlinemethod<T>::xi;
+	const Doub ftol;
+	Doub finit;
+	const Int ITMAX;
+	const Doub GTOL;
+	const Doub LSTOL;
+
+	FrprmnALSCG(T &funcd, const Doub ftoll=3.0e-8, const Doub GGTOL=1.0e-8, const Int IITMAX=200)
+	 : Dlinemethod<T>(funcd), ftol(ftoll), GTOL(GGTOL), ITMAX(IITMAX) {
+	 	std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+	}
+	
+	FrprmnALSCG(T &funcd, const Doub ftoll, const Doub GGTOL, const Doub LLSTOL, 
+		const Int IITMAX, const Doub ffinit)
+	 : Dlinemethod<T>(funcd, LLSTOL), ftol(ftoll), GTOL(GGTOL), LSTOL(LLSTOL), 
+	 	ITMAX(IITMAX), finit(ffinit) {
+		std::cout<<"FTOL: "<< ftol << std::endl;
+		std::cout<<"GTOL: "<< GTOL << std::endl;
+		std::cout<<"LSOTL: "<< LSTOL << std::endl;
+	}
+	
+	Output_FrprmnV2 minimize(VecDoub_I &pp)
+	{
+		//const Int ITMAX=200;
+		const Doub EPS=1.0e-18;
+		//const Doub GTOL=1.0e-8;
+		Doub gg,dgg,test;
+		Int n=pp.size();
+		p=pp;
+		VecDoub g(n),h(n);
+		xi.resize(n);
+		Doub fp=func(p);
+		func.df(p,xi);
+		for (Int j=0;j<n;j++) {
+			g[j] = -xi[j];
+			xi[j]=h[j]=g[j];
+		}
+		for (Int its=0;its<ITMAX;its++) {
+			iter=its;
+			fret=linmin();
+			//if (2.0*abs(fret-fp) <= ftol*(abs(fret)+abs(fp)+EPS)) {
+			if  (std::abs((fret-fp)/finit) <= ftol) {
+				std::cout << "Frprmn: converged iter="<< its 
+					<<". f(i) - f(i-1) = "<< abs(fret-fp) << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			if  (std::abs(fret) <= ftol) {
+				std::cout << "Frprmn: converged iter="<< its 
+					<<". f(i) = "<< fret << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			fp=fret;
+			func.df(p,xi);
+			test=0.0;
+			Doub den=MAX(abs(fp),1.0);
+			for (Int j=0;j<n;j++) {
+				Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
+				if (temp > test) test=temp;
+			}
+			if (test < GTOL) { 
+				std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
+				return Output_FrprmnV2(its, fret, gg, p);
+			}
+			dgg=gg=0.0;
+			for (Int j=0;j<n;j++) {
+				gg += g[j]*g[j];
+			//	dgg += xi[j]*xi[j];
+				dgg += (xi[j]+g[j])*xi[j];
+			}
+			if (gg == 0.0)
+				return Output_FrprmnV2(its, fret, gg, p);
+			Doub gam=dgg/gg;
+			for (Int j=0;j<n;j++) {
+				g[j] = -xi[j];
+				xi[j]=h[j]=g[j]+gam*h[j];
+			}
+		}
+		// throw("Too many iterations in frprmn");
+		std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
+		return Output_FrprmnV2(ITMAX, fret, gg, p);
+	}
+
+	void setup(Doub ffinit) {
+		finit = ffinit;
 	}
 };
 

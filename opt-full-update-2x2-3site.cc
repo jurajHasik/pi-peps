@@ -429,6 +429,7 @@ int main( int argc, char *argv[] ) {
             //<<" "<< diag_fu.getReal("finalDist0",0.0)
             //<<" "<< diag_fu.getReal("finalDist1",0.0);
             <<" "<< diag_fu.getString("locMinDiag");
+        if (symmetrizeProtoEnv) out_file_diag << " " << diag_fu.getString("diag_protoEnv");
         out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
             <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
         out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 

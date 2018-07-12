@@ -1511,6 +1511,7 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
+	std::string diag_protoEnv;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -1543,6 +1544,7 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 			double msign = 1.0;
 			double mval = 0.;
+			double nval = 0.;
 			std::vector<double> dM_elems;
 			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
 				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
@@ -1550,9 +1552,11 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					mval = std::abs(dM_elems.back());
 					msign = dM_elems.back()/mval;
 				}
+				if (std::abs(dM_elems.back()) < nval) nval = std::abs(dM_elems.back());
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
+			// Drop negative EV'std
 			int countCTF = 0;
 			int countNEG = 0;
 			for (auto & elem : dM_elems) {
@@ -1565,10 +1569,12 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
 				} 
 			}
-			// Drop negative EV'std
+			
+			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
+				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
 			if(dbg && (dbgLvl >= 1)) {
 				std::cout<<"REFINED SPECTRUM"<< std::endl;
-				std::cout<<"MAX EV: "<< mval << std::endl;
+				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
 				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
 					<< dM_elems.size() << std::endl;
 			}
@@ -1748,13 +1754,22 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	double initDist = sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
 	std::cout << "f_init= "<< initDist << std::endl;
   	std::cout << "ENTERING CG LOOP" << std::endl;
-	FuncCG funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, normUPsi, initDist);
-	FrprmnV2<FuncCG> frprmn(funcCG, cg_fdistance_eps, cg_gradientNorm_eps, 
+
+	t_begin_int = std::chrono::steady_clock::now();
+	//FuncCG funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, normUPsi, initDist);
+	//FrprmnV2<FuncCG> frprmn(funcCG, cg_fdistance_eps, cg_gradientNorm_eps, 
+	//	cg_linesearch_eps, maxAltLstSqrIter, initDist);
+
+	FuncCGV2 funcCG(eRE, protoK, cmbX1, cmbX2, cmbX3, aux, pl, normUPsi, initDist);
+	FrprmnCG<FuncCGV2> frprmn(funcCG, cg_fdistance_eps, cg_gradientNorm_eps, 
 		cg_linesearch_eps, maxAltLstSqrIter, initDist);
-	//vecX = frprmn.minimize(vecX);
 	auto locMinData = frprmn.minimize(vecX);
 	vecX = std::move(locMinData.final_p);
-	std::cout << "f_final= "<< locMinData.final_f << std::endl;
+
+	t_end_int = std::chrono::steady_clock::now();
+	std::cout << "f_final= "<< locMinData.final_f <<" "	
+		<<"T: "<< std::chrono::duration_cast<std::chrono::microseconds>
+		(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
 
 	eA *= cmbX1;
 	eB *= cmbX2;
@@ -1832,9 +1847,11 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	
 	std::ostringstream oss;
 	//Add double to stream
-	oss << std::scientific << " " << locMinData.final_f << " " << locMinData.final_g2;
+	oss << std::scientific << " " << locMinData.final_f << " " << locMinData.final_g2
+		<< " " << funcCG.evalCount << " " << funcCG.dfCount;
 
 	diag_data.add("locMinDiag", oss.str());
+	if (symmProtoEnv) diag_data.add("diag_protoEnv", diag_protoEnv);
 	// diag_data.add("locMinDiag", "CG "+ std::to_string(locMinData.final_f)
 	// 	+ " " + std::to_string(locMinData.final_g2) );
 	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
@@ -1855,11 +1872,14 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 FuncCG::FuncCG(ITensor const& NN, ITensor const& pprotoK, 
 	ITensor const& ccmbX1, ITensor const& ccmbX2, ITensor const& ccmbX3, 
 	std::array<Index, 4> const& aaux, std::vector<int> const& ppl,
-	double ppsiUNorm, double ffinit) : N(NN), protoK(pprotoK),
-	cmbX1(ccmbX1), cmbX2(ccmbX2), cmbX3(ccmbX3), 
-	aux(aaux), pl(ppl), psiUNorm(ppsiUNorm), finit(ffinit), psiNorm(ppsiUNorm) {}
+	double ppsiUNorm, double ffinit) : 
+	N(NN), protoK(pprotoK),
+	cmbX1(ccmbX1), cmbX2(ccmbX2), cmbX3(ccmbX3), aux(aaux), pl(ppl), 
+	psiUNorm(ppsiUNorm), finit(ffinit), psiNorm(ppsiUNorm), evalCount(0), dfCount(0) {}
 
 Doub FuncCG::operator() (VecDoub_I &x) {
+	evalCount += 1;
+
 	auto eA = ITensor(combinedIndex(cmbX1));
 	auto eB = ITensor(combinedIndex(cmbX2));
 	auto eD = ITensor(combinedIndex(cmbX3));
@@ -1890,6 +1910,7 @@ Doub FuncCG::operator() (VecDoub_I &x) {
 }
 
 void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
+	dfCount += 1;
 	auto AUXLINK = aux[0].type();
 
 	auto eA = ITensor(combinedIndex(cmbX1));
@@ -1946,6 +1967,107 @@ void FuncCG::df(VecDoub_I &x, VecDoub_O &deriv) {
 	    - K.real( combinedIndex(cmbX3)(i) );
 }
 
+//-----------------------------------------------------------------------------
+FuncCGV2::FuncCGV2(ITensor const& NN, ITensor const& pprotoK, 
+	ITensor const& ccmbX1, ITensor const& ccmbX2, ITensor const& ccmbX3, 
+	std::array<Index, 4> const& aaux, std::vector<int> const& ppl,
+	double ppsiUNorm, double ffinit) : 
+	N(NN), protoK(pprotoK),
+	cmbX1(ccmbX1), cmbX2(ccmbX2), cmbX3(ccmbX3), aux(aaux), pl(ppl), 
+	psiUNorm(ppsiUNorm), finit(ffinit), psiNorm(ppsiUNorm), evalCount(0), dfCount(0) {}
+
+Doub FuncCGV2::operator() (VecDoub_I &x) {
+	evalCount += 1;
+
+	auto eA = ITensor(combinedIndex(cmbX1));
+	auto eB = ITensor(combinedIndex(cmbX2));
+	auto eD = ITensor(combinedIndex(cmbX3));
+	for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) eA.set( combinedIndex(cmbX1)(i), x[i-1]);
+	for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) eB.set( combinedIndex(cmbX2)(i), x[combinedIndex(cmbX1).m() + i-1]);
+	for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) eD.set( combinedIndex(cmbX3)(i), x[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1]);
+	eA *= cmbX1;
+	eB *= cmbX2;
+	eD *= cmbX3;
+
+	// <psi'|psi'>
+	auto NORM = ( (N * (eA * delta(prime(aux[0],pl[1]),prime(aux[1],pl[2])) ) )
+		* ( eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) ) ) * eD;
+	NORM *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	NORM *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORM *= prime(conj(eD), AUXLINK, 4);
+
+	// <psi'|U|psi>
+	auto OVERLAP = protoK * (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	OVERLAP *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	OVERLAP *= prime(conj(eD), AUXLINK, 4);
+	
+	if (NORM.r() > 0 || OVERLAP.r() > 0) std::cout<<"Funcd() NORM or OVERLAP rank > 0"<<std::endl;
+
+	psiNorm = sumels(NORM);
+	//return 2.0 * ( 1.0 - sumels(OVERLAP)/std::sqrt(psiUNorm * psiNorm) ) / finit;
+	return psiNorm - 2.0 * sumels(OVERLAP) + psiUNorm;
+}
+
+void FuncCGV2::df(VecDoub_I &x, VecDoub_O &deriv) {
+	dfCount += 1;
+	auto AUXLINK = aux[0].type();
+
+	auto eA = ITensor(combinedIndex(cmbX1));
+	auto eB = ITensor(combinedIndex(cmbX2));
+	auto eD = ITensor(combinedIndex(cmbX3));
+	for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) eA.set( combinedIndex(cmbX1)(i), x[i-1]);
+	for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) eB.set( combinedIndex(cmbX2)(i), x[combinedIndex(cmbX1).m() + i-1]);
+	for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) eD.set( combinedIndex(cmbX3)(i), x[combinedIndex(cmbX1).m() + combinedIndex(cmbX2).m() + i-1]);
+	eA *= cmbX1;
+	eB *= cmbX2;
+	eD *= cmbX3;
+
+	auto protoM = ( ( N * (eA * delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) )) )
+		* (eB * delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) )) ) * eD;
+
+	// compute eA part of gradient
+	auto M = protoM * (prime(conj(eD),AUXLINK,4) * delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) ) );
+	M *= (prime(conj(eB),AUXLINK,4) *delta(prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4)) );
+
+	auto K = protoK * (prime(conj(eD),AUXLINK,4) * delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) ) );
+	K *= (prime(conj(eB),AUXLINK,4) * delta( prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) ) );
+
+	M *= prime(cmbX1,AUXLINK,4);
+	K *= prime(cmbX1,AUXLINK,4);
+	for(int i=1; i<= combinedIndex(cmbX1).m(); i++ ) deriv[i-1] = 
+		M.real( combinedIndex(cmbX1)(i) )
+		- K.real( combinedIndex(cmbX1)(i) );
+
+	// compute eB part of gradient
+	M = protoM * (prime(conj(eD),AUXLINK,4) * delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) ) );
+	M *= (prime(conj(eA),AUXLINK,4) *delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4)) );
+
+	K = protoK * (prime(conj(eD),AUXLINK,4) * delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) ) );
+	K *= (prime(conj(eA),AUXLINK,4) * delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) ) );
+
+	M *= prime(cmbX2,AUXLINK,4);
+	K *= prime(cmbX2,AUXLINK,4);
+	for(int i=1; i<= combinedIndex(cmbX2).m(); i++ ) deriv[combinedIndex(cmbX1).m() + i-1] = 
+		M.real( combinedIndex(cmbX2)(i) )
+	    - K.real( combinedIndex(cmbX2)(i) );
+
+	// compute eD part of gradient	
+	M = protoM * (prime(conj(eA),AUXLINK,4) * delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) ) );
+	M *= (prime(conj(eB),AUXLINK,4) *delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4)) );
+
+	K = protoK * (prime(conj(eA),AUXLINK,4) * delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) ) );
+	K *= (prime(conj(eB),AUXLINK,4) * delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) ) );
+	    
+	M *= prime(cmbX3,AUXLINK,4);
+	K *= prime(cmbX3,AUXLINK,4);
+	for(int i=1; i<= combinedIndex(cmbX3).m(); i++ ) deriv[combinedIndex(cmbX1).m() 
+		+ combinedIndex(cmbX2).m() + i-1] = 
+		M.real( combinedIndex(cmbX3)(i) )
+	    - K.real( combinedIndex(cmbX3)(i) );
+}
+//-----------------------------------------------------------------------------
+
+
 Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -1956,6 +2078,9 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
+	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
+	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
+	auto cg_gradientNorm_eps = args.getReal("cgGradientNormEps",1.0e-8);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
@@ -1968,12 +2093,12 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
     // prepare to hold diagnostic data
     Args diag_data = Args::global();
 
-	if (dbg) {
+	if(dbg) {
 		std::cout<<"GATE: ";
 		for(int i=0; i<=3; i++) {
 			std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
 		}
-		std::cout<< std::endl;		
+		std::cout<< std::endl;
 
 		if (dbgLvl >= 2) {
 			std::cout<< uJ1J2;
@@ -1989,62 +2114,24 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 		if(std::abs(d) > m) m = std::abs(d);
 	};
 
-	// map MPOs
-	ITensor dummyMPO = ITensor();
-	std::array<const ITensor *, 4> mpo({&uJ1J2.H1, &uJ1J2.H2, &uJ1J2.H3, &dummyMPO});
-
-	// find integer identifier of on-site tensors within CtmEnv
-	std::vector<int> si;
-	for (int i=0; i<=3; i++) {
-		si.push_back(std::distance(ctmEnv.siteIds.begin(),
-				std::find(std::begin(ctmEnv.siteIds), 
-					std::end(ctmEnv.siteIds), tn[i])));
-	}
-	if(dbg) {
-		std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-		for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-	}
-
 	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux({
-		noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
-		noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+	std::array<Index, 4> aux;
+	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
 
-	std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
-	std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
-
-	std::array<Index, 4> phys({
-		noprime(findtype(cls.sites.at(tn[0]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[1]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[2]), PHYS)),
-		noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
-
+	std::array<Index, 4> phys;
+	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
+	
 	std::array<Index, 3> opPI({
 		noprime(findtype(uJ1J2.H1, PHYS)),
 		noprime(findtype(uJ1J2.H2, PHYS)),
 		noprime(findtype(uJ1J2.H3, PHYS)) });
-
-	// prepare map from on-site tensor aux-indices to half row/column T
-	// environment tensors
-	std::array<const std::vector<ITensor> * const, 4> iToT(
-		{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
-
-	// prepare map from on-site tensor aux-indices pair to half corner T-C-T
-	// environment tensors
-	const std::map<int, const std::vector<ITensor> * const > iToC(
-		{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
-		{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
-		{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
-		{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
-
-	// for every on-site tensor point from primeLevel(index) to ENV index
-	// eg. I_XH or I_XV (with appropriate prime level). 
-	std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
-
-	// Find for site 0 through 3 which are connected to ENV
-	std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+	
+	if (dbg) {
+		std::cout << "On-site indices:" << std::endl;
+		for (int i=0; i<4; i++) {
+			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+		}
+	}
 
 	Index iQA, iQD, iQB;
 	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
@@ -2055,6 +2142,40 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	ITensor deltaBra, deltaKet;
 
 	{
+		t_begin_int = std::chrono::steady_clock::now();
+
+		// find integer identifier of on-site tensors within CtmEnv
+		std::vector<int> si;
+		for (int i=0; i<=3; i++) {
+			si.push_back(std::distance(ctmEnv.siteIds.begin(),
+					std::find(std::begin(ctmEnv.siteIds), 
+						std::end(ctmEnv.siteIds), tn[i])));
+		}
+		if(dbg) {
+			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+		}
+
+		// prepare map from on-site tensor aux-indices to half row/column T
+		// environment tensors
+		std::array<const std::vector<ITensor> * const, 4> iToT(
+			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
+
+		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
+		// environment tensors
+		const std::map<int, const std::vector<ITensor> * const > iToC(
+			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
+			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
+			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
+			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
+
+		// for every on-site tensor point from primeLevel(index) to ENV index
+		// eg. I_XH or I_XV (with appropriate prime level). 
+		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+
+		// Find for site 0 through 3 which are connected to ENV
+		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+
 		// precompute 4 (proto)corners of 2x2 environment
 		std::vector<ITensor> pc(4);
 		for (int s=0; s<=3; s++) {
@@ -2095,6 +2216,10 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 				std::cout << std::endl;
 			}
 		}
+
+		t_end_int = std::chrono::steady_clock::now();
+		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
+			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
 		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
 
 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
@@ -2175,6 +2300,7 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
+	std::string diag_protoEnv;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -2217,16 +2343,26 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// Drop negative EV's
-			if(dbg && (dbgLvl >= 1)) {
-				std::cout<<"REFINED SPECTRUM"<< std::endl;
-				std::cout<<"MAX EV: "<< mval << std::endl;
-			}
+			// Drop negative EV'std
+			int countCTF = 0;
+			int countNEG = 0;
 			for (auto & elem : dM_elems) {
 				if (elem < 0.0) {
 					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
 					elem = 0.0;
-				}
+					countNEG += 1;
+				} else if (elem < svd_cutoff) {
+					countCTF += 1;
+					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
+				} 
+			}
+			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
+				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
+			if(dbg && (dbgLvl >= 1)) {
+				std::cout<<"REFINED SPECTRUM"<< std::endl;
+				std::cout<<"MAX EV: "<< mval << std::endl;
+				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
+					<< dM_elems.size() << std::endl;
 			}
 			// ##### END V3 ##################################################
 
@@ -2342,17 +2478,17 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	// 	     OPTIMIZE VIA CG                                                                      *
 	// ********************************************************************************************
 
-	ITensor NORMPSI = eRE * (eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) );
-	NORMPSI *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) );
-	NORMPSI *= eD;
-	NORMPSI *= (prime(conj(eA),AUXLINK,4) * delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4)) );
-	NORMPSI *= (prime(conj(eB),AUXLINK,4) * delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4)) );
-	NORMPSI *= prime(conj(eD),AUXLINK,4);
-	if (NORMPSI.r() > 0) { 
-		std::cout<< "ERROR: NORMPSI tensor is not a scalar" << std::endl;
-		exit(EXIT_FAILURE);
-	}
-	double fconst = sumels(NORMPSI);
+	// <psi|U^dag U|psi>
+	auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
+	NORMUPSI.prime(PHYS,-1);
+	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
+
+	if (NORMUPSI.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
+	double normUPsi = sumels(NORMUPSI);
 
 	auto cmbX1 = combiner(eA.inds()[0], eA.inds()[1], eA.inds()[2]); 
 	auto cmbX2 = combiner(eB.inds()[0], eB.inds()[1], eB.inds()[2], eB.inds()[3]);
@@ -2361,9 +2497,12 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	VecDoub_IO vecX1( combinedIndex(cmbX1).m() );
 	VecDoub_IO vecX2( combinedIndex(cmbX2).m() );
 	
-	ITensor M, K;
-	FuncALS_CG funcALS_CG(M, K, cmbX1, fconst);
-	Frprmn<FuncALS_CG> frprmn(funcALS_CG, iso_eps, iso_eps, maxAltLstSqrIter);
+	double normPsi, finit;
+	ITensor M, K, NORMPSI, OVERLAP;
+	Output_FrprmnV2 locMinData;
+	FuncALS_CG funcALS_CG(M, K, cmbX1, normUPsi, finit, normUPsi);
+	FrprmnALSCG<FuncALS_CG> frprmn(funcALS_CG, cg_fdistance_eps, cg_gradientNorm_eps, 
+		cg_linesearch_eps, maxAltLstSqrIter, 0.0);
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
@@ -2394,13 +2533,26 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 		K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
+
+		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+		normPsi = sumels(NORMPSI);
+		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+
 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
 		eA *= cmbX1;
 		for (int i=1; i<=combinedIndex(cmbX1).m(); i++) vecX1[i-1] = eA.real(combinedIndex(cmbX1)(i));
 
-		funcALS_CG.setup(cmbX1, fconst);
+		std::cout << "f_init= "<< finit << std::endl;
+		funcALS_CG.setup(cmbX1, normUPsi, finit, normPsi);
+		frprmn.setup(finit);
 		//Frprmn<FuncALS_CG> frprmn(funcALS_CG, iso_eps, iso_eps, maxAltLstSqrIter);
-		vecX1 = frprmn.minimize(vecX1);
+		locMinData = frprmn.minimize(vecX1);
+		vecX1 = std::move(locMinData.final_p);
+		std::cout << "f_final= "<< locMinData.final_f << std::endl;
 
 		for (int i=1; i<=combinedIndex(cmbX1).m(); i++) eA.set(combinedIndex(cmbX1)(i),vecX1[i-1]);
 		eA *= cmbX1;
@@ -2429,13 +2581,26 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 		K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
+
+		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+		normPsi = sumels(NORMPSI);
+		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+
 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
 		eB *= cmbX2;
 		for (int i=1; i<=combinedIndex(cmbX2).m(); i++) vecX2[i-1] = eB.real(combinedIndex(cmbX2)(i));
 
-		funcALS_CG.setup(cmbX2, fconst);
+		std::cout << "f_init= "<< finit << std::endl;
+		funcALS_CG.setup(cmbX2, normUPsi, finit, normPsi);
+		frprmn.setup(finit);
 		//Frprmn<FuncALS_CG> frprmn(funcALS_CG, iso_eps, iso_eps, maxAltLstSqrIter);
-		vecX2 = frprmn.minimize(vecX2);
+		locMinData = frprmn.minimize(vecX2);
+		vecX2 = std::move(locMinData.final_p);
+		std::cout << "f_final= "<< locMinData.final_f << std::endl;
 
 		for (int i=1; i<=combinedIndex(cmbX2).m(); i++) eB.set(combinedIndex(cmbX2)(i),vecX2[i-1]);
 		eB *= cmbX2;
@@ -2464,20 +2629,33 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 		K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
+
+		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+		normPsi = sumels(NORMPSI);
+		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+
 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
 		eD *= cmbX3;
 		for (int i=1; i<=combinedIndex(cmbX3).m(); i++) vecX1[i-1] = eD.real(combinedIndex(cmbX3)(i));
 
-		funcALS_CG.setup(cmbX3, fconst);
+		std::cout << "f_init= "<< finit << std::endl;
+		funcALS_CG.setup(cmbX3, normUPsi, finit, normPsi);
+		frprmn.setup(finit);
 		//Frprmn<FuncALS_CG> frprmn(funcALS_CG, iso_eps, iso_eps, maxAltLstSqrIter);
-		vecX1 = frprmn.minimize(vecX1);
+		locMinData = frprmn.minimize(vecX1);
+		vecX1 = std::move(locMinData.final_p);
+		std::cout << "f_final= "<< locMinData.final_f << std::endl;
 
 		for (int i=1; i<=combinedIndex(cmbX3).m(); i++) eD.set(combinedIndex(cmbX3)(i),vecX1[i-1]);
 		eD *= cmbX3;
 
 		// TEST CRITERION TO STOP THE ALS procedure
 		altlstsquares_iter++;
-		fdist.push_back( funcALS_CG(vecX1) );
+		fdist.push_back( locMinData.final_f );
 		if ( fdist.back() < iso_eps ) converged = true;
 
 		if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2]) < iso_eps ) converged = true;
@@ -2551,6 +2729,14 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 	diag_data.add("siteMaxElem",diag_maxElem);
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
+	
+	std::ostringstream oss;
+	//Add double to stream
+	oss << std::scientific << " " << locMinData.final_f << " " << locMinData.final_g2;
+
+	diag_data.add("locMinDiag", oss.str());
+	if (symmProtoEnv) diag_data.add("diag_protoEnv", diag_protoEnv);
+
 	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
 	// 	- overlaps[overlaps.size()-4];
 	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
@@ -2567,11 +2753,16 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmE
 }
 
 FuncALS_CG::FuncALS_CG(ITensor const& MM, ITensor & KK, ITensor ccmbKet, 
-	double ffconst) : M(MM), K(KK), cmbKet(ccmbKet), fconst(ffconst) {}
+	double ppsiUNorm, double ffinit, double ppsiNorm) : 
+	M(MM), K(KK), cmbKet(ccmbKet), 
+	psiUNorm(ppsiUNorm), finit(ffinit), psiNorm(ppsiUNorm) {}
 
-void FuncALS_CG::setup(ITensor ccmbKet, double ffconst) {
+void FuncALS_CG::setup(ITensor ccmbKet, double ppsiUNorm, double ffinit, 
+	double ppsiNorm) {
 	cmbKet = ccmbKet;
-	fconst = ffconst;
+	psiUNorm = ppsiUNorm;
+	finit = ffinit;
+	psiNorm = ppsiNorm;
 }
 
 Doub FuncALS_CG::operator() (VecDoub_I &x) {
@@ -2584,7 +2775,7 @@ Doub FuncALS_CG::operator() (VecDoub_I &x) {
 	
 	if (NORM.r() > 0 || OVERLAP.r() > 0) std::cout<<"Funcd() NORM or OVERLAP rank > 0"<<std::endl;
 
-	return fconst + sumels(NORM) - 2.0 * sumels(OVERLAP);
+	return psiUNorm + sumels(NORM) - 2.0 * sumels(OVERLAP);
 }
 
 void FuncALS_CG::df(VecDoub_I &x, VecDoub_O &deriv) {

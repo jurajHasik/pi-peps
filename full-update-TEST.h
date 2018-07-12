@@ -48,6 +48,8 @@ struct FuncCG {
 	double psiUNorm;
 	double finit;
 	double psiNorm;
+	int evalCount;
+	int dfCount;
 
 	FuncCG(itensor::ITensor const& NN, itensor::ITensor const& pprotoK, 
 		itensor::ITensor const& ccmbX1, itensor::ITensor const& ccmbX2,
@@ -62,6 +64,29 @@ struct FuncCG {
 	void df(VecDoub_I &x, VecDoub_O &deriv);
 };
 
+struct FuncCGV2 {
+	itensor::ITensor const& N, protoK;
+	itensor::ITensor const& cmbX1, cmbX2, cmbX3;
+	std::array<itensor::Index, 4> const& aux;
+	std::vector<int> const& pl;
+	double psiUNorm;
+	double finit;
+	double psiNorm;
+	int evalCount;
+	int dfCount;
+
+	FuncCGV2(itensor::ITensor const& NN, itensor::ITensor const& pprotoK, 
+		itensor::ITensor const& ccmbX1, itensor::ITensor const& ccmbX2,
+		itensor::ITensor const& ccmbX3, 
+		std::array<itensor::Index, 4> const& aaux,
+		std::vector<int> const& ppl,
+		double ppsiUNorm,
+		double ffinit);
+
+	Doub operator() (VecDoub_I &x);
+
+	void df(VecDoub_I &x, VecDoub_O &deriv);
+};
 
 itensor::Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
@@ -71,12 +96,14 @@ struct FuncALS_CG {
 	itensor::ITensor const& M;
 	itensor::ITensor & K;
 	itensor::ITensor cmbKet;
-	double fconst;
+	Doub psiUNorm;
+	Doub finit;
+	Doub psiNorm;
 
 	FuncALS_CG(itensor::ITensor const& MM, itensor::ITensor & KK,
-		itensor::ITensor ccmbKet, double ffconst);
+		itensor::ITensor ccmbKet, double ppsiUNorm, double ffinit, double ppsiNorm);
 
-	void setup(itensor::ITensor ccmbKet, double ffconst);
+	void setup(itensor::ITensor ccmbKet, double ppsiUNorm, double ffinit, double ppsiNorm);
 
 	Doub operator() (VecDoub_I &x);
 
