@@ -419,17 +419,19 @@ int main( int argc, char *argv[] ) {
          //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
          //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_CG(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
 
         out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
-            <<" "<< diag_fu.getString("siteMaxElem")
+            <<" "<< diag_fu.getString("siteMaxElem");
             //<<" "<< diag_fu.getReal("finalDist0",0.0)
             //<<" "<< diag_fu.getReal("finalDist1",0.0);
-            <<" "<< diag_fu.getString("locMinDiag");
-        if (symmetrizeProtoEnv) out_file_diag << " " << diag_fu.getString("diag_protoEnv");
+        if ( diag_fu.getString("locMinDiag","").length() > 0 )     
+            out_file_diag <<" "<< diag_fu.getString("locMinDiag","");
+        if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
+            out_file_diag << " " << diag_fu.getString("diag_protoEnv","");
         out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
             <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
         out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
@@ -515,7 +517,7 @@ int main( int argc, char *argv[] ) {
                     break;
                 }
 
-                if ( envI==arg_maxEnvIter )  {
+                if ( envI==currentMaxEnvIter )  {
                     diag_ctmIter.push_back(envI);
                     if (arg_envDbg) {
                         // diagnose spectra

@@ -273,10 +273,12 @@ struct Df1dimCG {
 	T &funcd;
 	VecDoub xt;
 	VecDoub dft;
+	int evalCount;
 	Df1dimCG(VecDoub_I &pp, VecDoub_I &xii, T &funcdd) : p(pp),
-		xi(xii), n(pp.size()), funcd(funcdd), xt(n), dft(n) {}
+		xi(xii), n(pp.size()), funcd(funcdd), xt(n), dft(n), evalCount(0) {}
 	Doub operator()(const Doub x)
 	{
+		evalCount += 1;
 		for (Int j=0;j<n;j++)
 			xt[j]=p[j]+x*xi[j];
 		return funcd(xt);
@@ -298,6 +300,9 @@ struct DlinemethodCG {
 	T &func;
 	Int n;
 	Doub LSOTL = 3.0e-8;
+	int d1evalCount = 0;
+	double log_xmin = 1.0e+16;
+	double log_xmax = 0.0;
 
 	DlinemethodCG(T &funcc) : func(funcc) {}
 	
@@ -313,10 +318,13 @@ struct DlinemethodCG {
 		Dbrent dbrent(LSOTL);
 		dbrent.bracket(ax,xx,df1dim);
 		xmin=dbrent.minimize(df1dim);
+		log_xmin = (log_xmin > xmin) ? xmin : log_xmin;
+		log_xmax = (log_xmax < xmin) ? xmin : log_xmax;
 		for (Int j=0;j<n;j++) {
 			xi[j] *= xmin;
 			p[j] += xi[j];
 		}
+		d1evalCount += df1dim.evalCount;
 		return dbrent.fmin;
 	}
 };
@@ -329,6 +337,9 @@ struct FrprmnCG : DlinemethodCG<T> {
 	using DlinemethodCG<T>::linmin;
 	using DlinemethodCG<T>::p;
 	using DlinemethodCG<T>::xi;
+	using DlinemethodCG<T>::d1evalCount;
+	using DlinemethodCG<T>::log_xmin;
+	using DlinemethodCG<T>::log_xmax;
 	const Doub ftol;
 	const Doub finit;
 	const Int ITMAX;

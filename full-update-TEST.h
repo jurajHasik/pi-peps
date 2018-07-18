@@ -6,6 +6,7 @@
 
 #include "full-update.h"
 #include "nr3.h"
+#include "linbcg.h"
 #include "mins.h"
 #include "mins_ndim.h"
 
@@ -109,5 +110,22 @@ struct FuncALS_CG {
 
 	void df(VecDoub_I &x, VecDoub_O &deriv);
 };
+
+itensor::Args fullUpdate_ALS_LSCG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_LSCG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
+// using CG implemented by ITensor
+itensor::Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
 
 #endif

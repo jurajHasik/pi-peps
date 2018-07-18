@@ -506,11 +506,43 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	protoK = (protoK * eD);
 	if(dbg && (dbgLvl >=3)) Print(protoK);
 
-	protoK = ( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1;
-	protoK = ( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2;
-	protoK = ( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3;
+	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
+	protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
+	protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
+	protoK.prime(PHYS,-1);
 	if(dbg && (dbgLvl >=3)) Print(protoK);
 
+	// <psi|U^dag U|psi>
+	auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
+	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
+	NORMUPSI.prime(PHYS,-1);
+	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
+
+	// <psi'|psi'> = <psi|psi>
+	auto NORMPSI = ( (eRE * (eA * delta(prime(aux[0],pl[1]),prime(aux[1],pl[2])) ) )
+		* ( eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) ) ) * eD;
+	NORMPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	NORMPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORMPSI *= prime(conj(eD), AUXLINK, 4);
+
+	// <psi'|U|psi> = <psi|U|psi>
+	auto OVERLAP = protoK * (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+	OVERLAP *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	OVERLAP *= prime(conj(eD), AUXLINK, 4);
+	
+	if (NORMPSI.r() > 0 || NORMUPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<
+		"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+
+	double normUPsi = sumels(NORMUPSI);
+
+	protoK.prime(PHYS,1);
+	protoK *= prime(delta(opPI[0],phys[0]));
+	protoK *= prime(delta(opPI[1],phys[1]));
+	protoK *= prime(delta(opPI[2],phys[2]));
+	
 	// PROTOK - VARIANT 1
 	protoK = protoK * conj(eA).prime(AUXLINK,4);
 	protoK = ( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1).prime(uJ1J2.a12, 4+pl[1]);
@@ -715,12 +747,14 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	int r, altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<double> overlaps;
+	std::vector<double> fdists;
 	std::vector<double> rt_diffs, lambdas;
 	//int min_indexCutoff = cls.auxBondDim*cls.auxBondDim*uJ1J2.a12.m();
 	double minGapDisc = 100.0; // in logscale
 	double minEvKept  = svd_cutoff;
 	//double maxEvDisc  = 0.0;
-
+	double initial_dist = normUPsi + sumels(NORMPSI) - 2.0 * sumels(OVERLAP);
+	fdists.push_back(initial_dist);
 	ITensor dbg_D, dbg_svM;
 	while (not converged) {
 		
@@ -1119,23 +1153,25 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		altlstsquares_iter++;
 		// check convergence
 		if (altlstsquares_iter > 1) {
-			auto dist_init = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
-				- overlaps[overlaps.size()-4];
-			auto dist_curr = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
-				- overlaps[overlaps.size()-1];
-			if (std::abs((dist_curr-dist_init)/overlaps[overlaps.size()-6]) < iso_eps)
+			auto dist_prev = normUPsi + overlaps[overlaps.size()-6] - 2.0 * overlaps[overlaps.size()-5]; 
+				//- overlaps[overlaps.size()-4];
+			auto dist_curr = normUPsi + overlaps[overlaps.size()-3] - 2.0 * overlaps[overlaps.size()-2]; 
+				//- overlaps[overlaps.size()-1];
+			fdists.push_back(dist_curr);
+			if (std::abs((dist_curr-dist_prev)/initial_dist) < iso_eps)
 				converged = true;
 		}
 		
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
 
-	for(int i=0; i<(overlaps.size()/3); i++) {
-		std::cout<<"M: "<< overlaps[3*i] <<" K: "<< overlaps[3*i+1]
-			<<" Kp: "<< overlaps[3*i+2] 
-			<< std::endl;
-			//<<" "<< lambdas[i] << std::endl;
-	}
+	// for(int i=0; i<(overlaps.size()/3); i++) {
+	// 	std::cout<<"M: "<< overlaps[3*i] <<" K: "<< overlaps[3*i+1]
+	// 		<<" Kp: "<< overlaps[3*i+2] 
+	// 		<< std::endl;
+	// 		//<<" "<< lambdas[i] << std::endl;
+	// }
+	for (int i=0; i<fdists.size(); i++) std::cout<< i << " " << fdists[i] << std::endl;
 	//std::cout<<"rt_diffs.size() = "<< rt_diffs.size() << std::endl;
 	for(int i=0; i<(rt_diffs.size()/4); i++) {
 		std::cout<<"rt_diffs: "<<rt_diffs[4*i]<<" "<<rt_diffs[4*i+1]
@@ -1175,7 +1211,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	for (int i=0; i<4; i++) {
 		m = 0.;
 		cls.sites.at(tn[i]).visit(max_m);
-		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m) +" ";
+		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m);
+		if (i < 3) diag_maxElem += " ";
 	}
 	std::cout << diag_maxElem << std::endl;
 
@@ -1230,12 +1267,15 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	diag_data.add("siteMaxElem",diag_maxElem);
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
-	auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
-		- overlaps[overlaps.size()-4];
-	auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
-		- overlaps[overlaps.size()-1];
+	auto dist0 = initial_dist;
+	auto dist1 = normUPsi + overlaps[overlaps.size()-3] - 2.0 * overlaps[overlaps.size()-2];
 	diag_data.add("finalDist0",dist0);
 	diag_data.add("finalDist1",dist1);
+
+	std::ostringstream oss;
+	//Add double to stream
+	oss << std::scientific << dist0 << " " << dist1;
+	diag_data.add("locMinDiag", oss.str());
 
 	minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
 	diag_data.add("minGapDisc",minGapDisc);

@@ -36,7 +36,7 @@ HEADERS5=cluster-ev-builder.h simple-update.h ctm-cluster-global.h \
 	ctm-cluster.h su2.h json.hpp
 HEADERS6=cluster-ev-builder.h models.h full-update-TEST.h full-update.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h \
-	mpo.h su2.h json.hpp nr3.h mins.h mins_ndim.h
+	mpo.h su2.h json.hpp nr3.h mins.h mins_ndim.h linbcg.h
 
 HEADERSN=ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h
 
