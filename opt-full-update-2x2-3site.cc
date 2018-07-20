@@ -415,9 +415,9 @@ int main( int argc, char *argv[] ) {
         // PERFORM FULL UPDATE
         std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             
-         // diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
-         //     iso_store[(fuI-1)%gates.size()], fuArgs);
+        // diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
+        //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
         diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);

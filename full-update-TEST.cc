@@ -3243,7 +3243,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	VecDoub_IO vecB1( combinedIndex(cmbX1).m() );
 	VecDoub_IO vecB2( combinedIndex(cmbX2).m() );
 
-	double normPsi, finit;
+	double normPsi, finit, finitN;
 	ITensor M, K, NORMPSI, OVERLAP;
 	double ferr;
 	int fiter;
@@ -3251,7 +3251,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
-  	std::vector<double> fdist;
+  	std::vector<double> fdist, fdistN;
   	std::cout << "ENTERING CG LOOP" << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
@@ -3287,8 +3287,10 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
 		normPsi = sumels(NORMPSI);
 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
 		fdist.push_back( finit );
+		fdistN.push_back( finitN );
 		if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
 		if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2]) < cg_fdistance_eps ) { 
 			converged = true; break; }
@@ -3303,7 +3305,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
 		//std::cout << "f_init= "<< finit << std::endl;
 		FULSCG_IT fulscg(M,K,eA,cmbX1, combiner(iQA, prime(aux[0],pl[1])), svd_cutoff );
-		fulscg.solveIT(K, eA, itol, cg_gradientNorm_eps, vecX1.size(), fiter, ferr);
+		fulscg.solveIT(K, eA, itol, cg_gradientNorm_eps, maxAltLstSqrIter, fiter, ferr);
 	
 		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 
@@ -3329,6 +3331,23 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 		M *= eA;
 		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
 		if(dbg && (dbgLvl >= 2)) Print(M);
+
+		// Symmetrize M
+		auto tmpCmb = combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3]));
+		auto tmpCI  = combinedIndex(tmpCmb);
+		M = (tmpCmb * M) * prime(prime(tmpCmb, AUXLINK, 4), tmpCI, 1);
+		auto asymM = 0.5 * (M - swapPrime(conj(M),0,1));
+		M = 0.5 * (M + swapPrime(conj(M),0,1));
+		
+		m = 0.;
+		asymM.visit(max_m);
+		double max_asymM = m;
+		m = 0.;
+		M.visit(max_m);
+
+		std::cout << "Max(Msym): "<< m << " Max(Masym): "<< max_asymM << std::endl;
+
+		M = (tmpCmb * M) * prime(prime(tmpCmb, AUXLINK, 4), tmpCI, 1);
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = eB^dag * K
 		K = protoK * prime(conj(eD), AUXLINK,4);
@@ -3356,10 +3375,12 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
 		// std::cout << "f_init= "<< finit << std::endl;
 
-		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), svd_cutoff );
-		fulscgEB.solveIT(K, eB, itol, cg_gradientNorm_eps, vecX2.size(), fiter, ferr);
-		
-		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+		ferr = 1.0;
+		while ( ferr > cg_gradientNorm_eps ) {
+			FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), svd_cutoff );
+			fulscgEB.solveIT(K, eB, itol, cg_gradientNorm_eps, vecX2.size(), fiter, ferr);
+			std::cout <<"EB f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+		}
 
 		//ITensor tempEB(combinedIndex(cmbX2));
 		// eB *= cmbX2;
@@ -3411,7 +3432,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 		// std::cout << "f_init= "<< finit << std::endl;
 
 		FULSCG_IT fulscgED(M,K,eD,cmbX3, combiner(iQD, prime(aux[2],pl[4])), svd_cutoff );
-		fulscgED.solveIT(K, eD, itol, cg_gradientNorm_eps, vecX1.size(), fiter, ferr);
+		fulscgED.solveIT(K, eD, itol, cg_gradientNorm_eps, maxAltLstSqrIter, fiter, ferr);
 
 		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 
@@ -3431,7 +3452,8 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	}
 	t_end_int = std::chrono::steady_clock::now();
 
-	for (int i=0; i < fdist.size(); i++) std::cout <<"STEP "<< i <<"||psi'>-|psi>|^2: "<< fdist[i] << std::endl;
+	for (int i=0; i < fdist.size(); i++) std::cout <<"STEP "<< i <<"||psi'>-|psi>|^2: "
+		<< fdist[i] << " " << fdistN[i] << std::endl;
 
 	// update on-site tensors of cluster
 	cls.sites.at(tn[0]) = QA * eA;
@@ -3501,7 +3523,8 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	
 	std::ostringstream oss;
 	//Add double to stream
-	oss << std::scientific << fdist[0] << " " << fdist.back() << " " << 
+	oss << std::scientific << fdist[0] << " " << fdist.back() << " " 
+		<< fdistN[0] << " " << fdistN.back() << " " << 
 		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
 
 	diag_data.add("locMinDiag", oss.str());
