@@ -3043,6 +3043,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
 	std::string diag_protoEnv;
+	double condNum = cg_gradientNorm_eps;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -3100,6 +3101,9 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
 				} 
 			}
+			
+			condNum = mval / nval;
+
 			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
 				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
 			if(dbg && (dbgLvl >= 1)) {
@@ -3251,8 +3255,10 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
+	cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
+	cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
   	std::vector<double> fdist, fdistN;
-  	std::cout << "ENTERING CG LOOP" << std::endl;
+  	std::cout << "ENTERING CG LOOP tol: " << cg_gradientNorm_eps << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
 		// Optimizing eA
@@ -3292,7 +3298,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 		fdist.push_back( finit );
 		fdistN.push_back( finitN );
 		if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
-		if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2]) < cg_fdistance_eps ) { 
+		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps ) { 
 			converged = true; break; }
 
 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
@@ -3778,6 +3784,7 @@ Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctm
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
 	std::string diag_protoEnv;
+	double condNum = cg_gradientNorm_eps;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -3835,6 +3842,9 @@ Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctm
 					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
 				} 
 			}
+			
+			condNum = mval / nval;
+
 			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
 				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
 			if(dbg && (dbgLvl >= 1)) {
@@ -3989,6 +3999,8 @@ Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctm
   	std::vector<double> fdist;
   	std::cout << "ENTERING CG LOOP" << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
+	
+  	cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, 1.0/condNum);
 	while (not converged) {
 		// Optimizing eA
 		// 1) construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA
@@ -4092,10 +4104,12 @@ Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctm
 
 		// std::cout << "f_init= "<< finit << std::endl;
 		auto tempEB = eB;
+		ferr = 1.0;
 		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), svd_cutoff );
-		fulscgEB.solveIT(K, tempEB, itol, cg_gradientNorm_eps, vecX2.size(), fiter, ferr);
-		
-		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+		while ( ferr > cg_gradientNorm_eps ) {
+			fulscgEB.solveIT(K, tempEB, itol, cg_gradientNorm_eps, vecX2.size(), fiter, ferr);
+			std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+		}
 
 		//ITensor tempEB(combinedIndex(cmbX2));
 		// eB *= cmbX2;
@@ -4319,7 +4333,7 @@ void FULSCG_IT::solveIT(ITensor const& b, ITensor &x, const Int itol, const Doub
 	atimes(x,r,0);
 	r = prime(b, AUXLINK, -4) - r;
 	rr = r;
-	//atimes(r,rr,0);
+	atimes(r,rr,0);
 	if (itol == 1) {
 		bnrm=snrmIT(b,itol);
 		asolve(r,z,0);
