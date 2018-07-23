@@ -329,6 +329,7 @@ int main( int argc, char *argv[] ) {
     // Diagnostic data
     std::vector<int> diag_ctmIter;
     std::vector< Args > diagData_fu;
+    std::vector<double> diag_minCornerSV(1, 0.);
     Args diag_fu;
 
     std::ofstream out_file_energy(outClusterFile+".energy.dat", std::ios::out);
@@ -424,14 +425,24 @@ int main( int argc, char *argv[] ) {
 
         diagData_fu.push_back(diag_fu);
 
+        if ( fuI == 1 ) {
+            out_file_diag << "fuI ctmIter alsSweep" <<" ";
+            out_file_diag << diag_fu.getString("siteMaxElem_descriptor") << " ";
+            if ( diag_fu.getString("locMinDiag","").length() > 0 )
+                out_file_diag << diag_fu.getString("locMinDiag_descriptor") << " ";
+            if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
+                out_file_diag << diag_fu.getString("diag_protoEnv_descriptor") << " ";
+            out_file_diag << "MinCornerSV" << " ";
+            out_file_diag << std::endl;
+        }
+
         out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
             <<" "<< diag_fu.getString("siteMaxElem");
-            //<<" "<< diag_fu.getReal("finalDist0",0.0)
-            //<<" "<< diag_fu.getReal("finalDist1",0.0);
         if ( diag_fu.getString("locMinDiag","").length() > 0 )     
             out_file_diag <<" "<< diag_fu.getString("locMinDiag","");
         if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
             out_file_diag << " " << diag_fu.getString("diag_protoEnv","");
+        out_file_diag <<" "<< diag_minCornerSV.back();
         out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
             <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
         out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
@@ -465,7 +476,8 @@ int main( int argc, char *argv[] ) {
 		
     	// ENTER ENVIRONMENT LOOP
         int currentMaxEnvIter = (fuI % arg_obsFreq == 0) ? arg_obsMaxIter : arg_maxEnvIter; 
-		for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
+		bool expValEnvConv = false;
+        for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
             t_begin_int = std::chrono::steady_clock::now();
 
 	        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
@@ -512,33 +524,60 @@ int main( int argc, char *argv[] ) {
                     (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
                     (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
-                    diag_ctmIter.push_back(envI);
                     std::cout<< " ENV CONVERGED ";
-                    break;
+                    expValEnvConv = true;
                 }
 
+                // if max number of iterations has been reached
                 if ( envI==currentMaxEnvIter )  {
+                    std::cout<< " MAX ENV iterations REACHED ";
+                    expValEnvConv = true;
+                }
+                e_prev = e_curr;
+
+                if (expValEnvConv) {
                     diag_ctmIter.push_back(envI);
-                    if (arg_envDbg) {
+
+                    //if (arg_envDbg) {
                         // diagnose spectra
+                        std::cout << std::endl;
+                        double tmpVal;
+                        double minCornerSV = 1.0e+16;
+
                         ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
                         auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
-                        Print(spec);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        std::cout << "Smallest SVs: " << tmpVal << " ";
+                        minCornerSV = std::min(minCornerSV, tmpVal);
 
                         tL = ITensor(ctmEnv.C_RU[0].inds().front());
                         spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
-                        Print(spec);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        std::cout << tmpVal << " ";
+                        minCornerSV = std::min(minCornerSV, tmpVal);
 
                         tL = ITensor(ctmEnv.C_RD[0].inds().front());
                         spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
-                        Print(spec);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        std::cout << tmpVal << " ";
+                        minCornerSV = std::min(minCornerSV, tmpVal);
 
                         tL = ITensor(ctmEnv.C_LD[0].inds().front());
                         spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
-                        Print(spec);
-                    }
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        std::cout << tmpVal << " ";
+                        minCornerSV = std::min(minCornerSV, tmpVal);
+                   
+                        diag_minCornerSV.push_back(minCornerSV);
+                    //}
+
+                    break;
                 }
-                e_prev = e_curr;
+
             }
             std::cout << std::endl;
 	    }
@@ -651,16 +690,16 @@ int main( int argc, char *argv[] ) {
     writeCluster(outClusterFile, cls);
 
     // write out diagnostic data of full-update
-    for (int i=0; i<arg_fuIter; i++) {
-        std::cout<< i <<" "<< diag_ctmIter[i] <<" "<< diagData_fu[i].getInt("alsSweep",0)
-            <<" "<< diagData_fu[i].getString("siteMaxElem")
-            <<" "<< diagData_fu[i].getReal("finalDist0",0.0)
-            <<" "<< diagData_fu[i].getReal("finalDist1",0.0);
-        if (arg_fuDbg && (arg_fuDbgLevel >=1))
-            std::cout<<" "<< diagData_fu[i].getReal("ratioNonSymLE",0.0)
-            <<" "<< diagData_fu[i].getReal("ratioNonSymFN",0.0);
-        std::cout<<std::endl;
-    }
+    // for (int i=0; i<arg_fuIter; i++) {
+    //     std::cout<< i <<" "<< diag_ctmIter[i] <<" "<< diagData_fu[i].getInt("alsSweep",0)
+    //         <<" "<< diagData_fu[i].getString("siteMaxElem")
+    //         <<" "<< diagData_fu[i].getReal("finalDist0",0.0)
+    //         <<" "<< diagData_fu[i].getReal("finalDist1",0.0);
+    //     if (arg_fuDbg && (arg_fuDbgLevel >=1))
+    //         std::cout<<" "<< diagData_fu[i].getReal("ratioNonSymLE",0.0)
+    //         <<" "<< diagData_fu[i].getReal("ratioNonSymFN",0.0);
+    //     std::cout<<std::endl;
+    // }
 
     ctmEnv.computeSVDspec();
     ctmEnv.printSVDspec();

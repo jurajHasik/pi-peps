@@ -355,6 +355,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
+	double condNum;
+	std::string diag_protoEnv, diag_protoEnv_descriptor;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -377,7 +379,6 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 		diag_maxMsymFN  = norm(eRE_sym);
 		diag_maxMasymFN = norm(eRE_asym);
-	
 		if (posDefProtoEnv) {
 			eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 			
@@ -385,8 +386,10 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			ITensor U_eRE, D_eRE;
 			diagHermitian(eRE_sym, U_eRE, D_eRE);
 
+			// find largest and smallest eigenvalues
 			double msign = 1.0;
 			double mval = 0.;
+			double nval = 1.0e+16;
 			std::vector<double> dM_elems;
 			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
 				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
@@ -394,20 +397,42 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					mval = std::abs(dM_elems.back());
 					msign = dM_elems.back()/mval;
 				}
+				if (std::abs(dM_elems.back()) < nval) nval = std::abs(dM_elems.back());
 			}
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// Drop negative EV's
-			if(dbg && (dbgLvl >= 1)) {
-				std::cout<<"REFINED SPECTRUM"<< std::endl;
-				std::cout<<"MAX EV: "<< mval << std::endl;
-			}
+			// Drop negative EV'std
+			int countCTF = 0;
+			int countNEG = 0;
 			for (auto & elem : dM_elems) {
 				if (elem < 0.0) {
 					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
 					elem = 0.0;
-				}
+					countNEG += 1;
+				} else if (elem < svd_cutoff) {
+					countCTF += 1;
+					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
+				} 
 			}
+
+			// estimate codition number
+			condNum = mval / std::max(nval, svd_cutoff);
+
+			std::ostringstream oss;
+			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
+				<< countNEG << " " << dM_elems.size();
+
+			diag_protoEnv_descriptor = "MaxEV condNum EV<CTF EV<0 TotalEV";
+			diag_protoEnv = oss.str();
+			if(dbg && (dbgLvl >= 1)) {
+				std::ostringstream dbg_oss;
+				dbg_oss<<"REFINED SPECTRUM"<< std::endl;
+				dbg_oss<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
+				dbg_oss<<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
+					<< dM_elems.size() << std::endl;
+				std::cout << dbg_oss.str();
+			}
+
 			// ##### END V3 ##################################################
 
 			// ##### V4 ######################################################
@@ -756,6 +781,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	double initial_dist = normUPsi + sumels(NORMPSI) - 2.0 * sumels(OVERLAP);
 	fdists.push_back(initial_dist);
 	ITensor dbg_D, dbg_svM;
+	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
 		
 		for (int i_rt=0; i_rt<=3; i_rt++) {
@@ -1164,6 +1190,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		
 		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
 	}
+	t_end_int = std::chrono::steady_clock::now();
 
 	// for(int i=0; i<(overlaps.size()/3); i++) {
 	// 	std::cout<<"M: "<< overlaps[3*i] <<" K: "<< overlaps[3*i+1]
@@ -1211,7 +1238,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	for (int i=0; i<4; i++) {
 		m = 0.;
 		cls.sites.at(tn[i]).visit(max_m);
-		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m);
+		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
 		if (i < 3) diag_maxElem += " ";
 	}
 	std::cout << diag_maxElem << std::endl;
@@ -1264,18 +1291,32 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
+
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
+
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	auto dist0 = initial_dist;
 	auto dist1 = normUPsi + overlaps[overlaps.size()-3] - 2.0 * overlaps[overlaps.size()-2];
-	diag_data.add("finalDist0",dist0);
-	diag_data.add("finalDist1",dist1);
+	//diag_data.add("finalDist0",dist0);
+	//diag_data.add("finalDist1",dist1);
 
 	std::ostringstream oss;
 	//Add double to stream
-	oss << std::scientific << dist0 << " " << dist1;
+	oss << std::scientific << dist0 <<" "<< dist1 <<" "<< sumels(NORMPSI) <<" "
+		<< overlaps[overlaps.size()-3] <<" "
+		<< std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0;
+
+	std::string logMinDiag_descriptor = "f_init f_final norm(psi')_init norm(psi')_final time[s]";
+	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
 	diag_data.add("locMinDiag", oss.str());
+
+	if (symmProtoEnv) {
+		diag_data.add("diag_protoEnv", diag_protoEnv);
+		diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
+	}
 
 	minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
 	diag_data.add("minGapDisc",minGapDisc);

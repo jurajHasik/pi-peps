@@ -3042,7 +3042,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
-	std::string diag_protoEnv;
+	std::string diag_protoEnv, diag_protoEnv_descriptor;
 	double condNum = cg_gradientNorm_eps;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
@@ -3074,6 +3074,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 			ITensor U_eRE, D_eRE;
 			diagHermitian(eRE_sym, U_eRE, D_eRE);
 
+			// find largest and smallest eigenvalues
 			double msign = 1.0;
 			double mval = 0.;
 			double nval = 1.0e+16;
@@ -3102,10 +3103,15 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 				} 
 			}
 			
-			condNum = mval / nval;
+			// estimate codition number
+			condNum = mval / std::max(nval, svd_cutoff);
 
-			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
-				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
+			std::ostringstream oss;
+			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
+				<< countNEG << " " << dM_elems.size();
+
+			diag_protoEnv_descriptor = "MaxEV condNum EV<CTF EV<0 TotalEV";
+			diag_protoEnv = oss.str();
 			if(dbg && (dbgLvl >= 1)) {
 				std::cout<<"REFINED SPECTRUM"<< std::endl;
 				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
@@ -3256,8 +3262,8 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
   	int altlstsquares_iter = 0;
 	bool converged = false;
 	cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
-	cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
-  	std::vector<double> fdist, fdistN;
+	// cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
+  	std::vector<double> fdist, fdistN, vec_normPsi;
   	std::cout << "ENTERING CG LOOP tol: " << cg_gradientNorm_eps << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
@@ -3297,7 +3303,9 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
 		fdist.push_back( finit );
 		fdistN.push_back( finitN );
-		if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
+		vec_normPsi.push_back( normPsi );
+		//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
+		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps ) { 
 			converged = true; break; }
 
@@ -3458,8 +3466,9 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	}
 	t_end_int = std::chrono::steady_clock::now();
 
-	for (int i=0; i < fdist.size(); i++) std::cout <<"STEP "<< i <<"||psi'>-|psi>|^2: "
-		<< fdist[i] << " " << fdistN[i] << std::endl;
+	std::cout <<"STEP f=||psi'>-|psi>|^2 f_normalized <psi'|psi'>" << std::endl;
+	for (int i=0; i < fdist.size(); i++) std::cout << i <<" "<< fdist[i] <<" "<< fdistN[i] 
+		<<" "<< vec_normPsi[i] << std::endl;
 
 	// update on-site tensors of cluster
 	cls.sites.at(tn[0]) = QA * eA;
@@ -3471,7 +3480,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	for (int i=0; i<4; i++) {
 		m = 0.;
 		cls.sites.at(tn[i]).visit(max_m);
-		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m);
+		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
 		if (i < 3) diag_maxElem +=  " ";
 	}
 	std::cout << diag_maxElem << std::endl;
@@ -3517,24 +3526,34 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
     for (int i=0; i<4; i++) {
         m = 0.;
         cls.sites.at(tn[i]).visit(max_m);
-        std::cout << tn[i] <<" : "<< std::to_string(m) <<" ";
+        if (i<3) 
+        	std::cout << tn[i] <<" "<< std::to_string(m) << " ";
+    	else 
+    		std::cout << tn[i] <<" "<< std::to_string(m);
     }
     std::cout << std::endl;
 
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
+
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	
 	std::ostringstream oss;
-	//Add double to stream
-	oss << std::scientific << fdist[0] << " " << fdist.back() << " " 
-		<< fdistN[0] << " " << fdistN.back() << " " << 
+	oss << std::scientific << fdist[0] <<" "<< fdist.back() <<" " 
+		<< fdistN[0] <<" "<< fdistN.back() <<" "<< vec_normPsi[0] <<" "<< vec_normPsi.back() <<" "<<
 		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
 
+	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
+	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
 	diag_data.add("locMinDiag", oss.str());
-	if (symmProtoEnv) diag_data.add("diag_protoEnv", diag_protoEnv);
+	if (symmProtoEnv) {
+		diag_data.add("diag_protoEnv", diag_protoEnv);
+		diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
+	}
 
 	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
 	// 	- overlaps[overlaps.size()-4];
@@ -4290,7 +4309,7 @@ void FULSCG_IT::asolve(ITensor const& b, ITensor & x, const Int itrnsp) {
 	std::vector<double> diagMvec(combinedIndex(cmbKet).size());
 	for (int i=0; i<combinedIndex(cmbKet).size(); i++) {
 		double elem = M.real(combinedIndex(cmbKet)(i+1), prime(combinedIndex(cmbKet),4)(i+1)); 
-		diagMvec[i] = (elem > svd_cutoff) ? 1.0 / elem : 0.0 ;
+		diagMvec[i] = (elem > svd_cutoff) ? 1.0 / elem : 1.0 ;
 	}
 
 	ITensor diagM = diagTensor(diagMvec, combinedIndex(cmbKet), prime(combinedIndex(cmbKet),4));
