@@ -44,6 +44,8 @@ struct FULSCG_IT {
 
 	void asolve(itensor::ITensor const& b, itensor::ITensor & x, const Int itrnsp);
     
+	void asolve_pinv(itensor::ITensor const& b, itensor::ITensor & x);
+
     void atimes(itensor::ITensor const& x, itensor::ITensor & r, const Int itrnsp);
 
     void solveIT(itensor::ITensor const& b, itensor::ITensor & x, const Int itol, const Doub tol,

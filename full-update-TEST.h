@@ -124,6 +124,10 @@ itensor::Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmE
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
 
+itensor::Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
 itensor::Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
