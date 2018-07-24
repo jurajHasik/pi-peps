@@ -3097,9 +3097,10 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
 					elem = 0.0;
 					countNEG += 1;
-				} else if (elem < svd_cutoff) {
+				} else if (elem/mval < svd_cutoff) {
 					countCTF += 1;
-					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
+					elem = 0.0;
+					if(dbg && (dbgLvl >= 2)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
 				} 
 			}
 			
@@ -4301,15 +4302,18 @@ void FULSCG_IT::asolve(ITensor const& b, ITensor & x, const Int itrnsp) {
 	// else 
 	// 	x = b;
 
-	// Diagonal preconditioner
-
-	// 1) construct diagonal tensor 
+	// Diagonal preconditioner 
 	M = (cmbKet * M) * prime(cmbKet,4);
 
+	double mval = 0.;
 	std::vector<double> diagMvec(combinedIndex(cmbKet).size());
 	for (int i=0; i<combinedIndex(cmbKet).size(); i++) {
 		double elem = M.real(combinedIndex(cmbKet)(i+1), prime(combinedIndex(cmbKet),4)(i+1)); 
-		diagMvec[i] = (elem > svd_cutoff) ? 1.0 / elem : 1.0 ;
+		mval = std::max(mval, std::abs(elem));
+	}
+	for (int i=0; i<combinedIndex(cmbKet).size(); i++) { 
+		double elem = M.real(combinedIndex(cmbKet)(i+1), prime(combinedIndex(cmbKet),4)(i+1));
+		diagMvec[i] = (elem/mval > svd_cutoff) ? 1.0/elem : 0.0 ;
 	}
 
 	ITensor diagM = diagTensor(diagMvec, combinedIndex(cmbKet), prime(combinedIndex(cmbKet),4));
