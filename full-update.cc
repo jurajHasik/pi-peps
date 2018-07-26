@@ -965,53 +965,53 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			// Drop small (and negative) EV's
 			int index_cutoff;
 			std::vector<double> log_dM_e, log_diffs;
-			for (int idm=0; idm<dM_elems.size(); idm++) {
-				if ( dM_elems[idm] > mval*machine_eps ) {
-					log_dM_e.push_back(std::log(dM_elems[idm]));
-					log_diffs.push_back(log_dM_e[std::max(idm-1,0)]-log_dM_e[idm]);
+			// for (int idm=0; idm<dM_elems.size(); idm++) {
+			// 	if ( dM_elems[idm] > mval*machine_eps ) {
+			// 		log_dM_e.push_back(std::log(dM_elems[idm]));
+			// 		log_diffs.push_back(log_dM_e[std::max(idm-1,0)]-log_dM_e[idm]);
 				
-					// candidate for cutoff
-					if ((dM_elems[idm]/mval < svd_cutoff) && 
-						(std::fabs(log_diffs.back()) > svd_maxLogGap) ) {
-						index_cutoff = idm;
+			// 		// candidate for cutoff
+			// 		if ((dM_elems[idm]/mval < svd_cutoff) && 
+			// 			(std::fabs(log_diffs.back()) > svd_maxLogGap) ) {
+			// 			index_cutoff = idm;
 
-						// log diagnostics
-						if ( minGapDisc > std::fabs(log_diffs.back()) ) {
-							minGapDisc = std::fabs(log_diffs.back());
-							//min_indexCutoff = std::min(min_indexCutoff, index_cutoff);
-							minEvKept = dM_elems[std::max(idm-1,0)];
-							//maxEvDisc  = dM_elems[idm];
-						}
+			// 			// log diagnostics
+			// 			if ( minGapDisc > std::fabs(log_diffs.back()) ) {
+			// 				minGapDisc = std::fabs(log_diffs.back());
+			// 				//min_indexCutoff = std::min(min_indexCutoff, index_cutoff);
+			// 				minEvKept = dM_elems[std::max(idm-1,0)];
+			// 				//maxEvDisc  = dM_elems[idm];
+			// 			}
 						
-						for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
+			// 			for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
 
-						//Dynamic setting of iso_eps
-						//iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
+			// 			//Dynamic setting of iso_eps
+			// 			//iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
 
-						break;
-					}
-				} else {
-					index_cutoff = idm;
-					for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
+			// 			break;
+			// 		}
+			// 	} else {
+			// 		index_cutoff = idm;
+			// 		for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm] = 0.0;
 
-					// log diagnostics
-					minEvKept  = dM_elems[std::max(idm-1,0)];
+			// 		// log diagnostics
+			// 		minEvKept  = dM_elems[std::max(idm-1,0)];
 
-					//Dynamic setting of iso_eps
-					//iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
+			// 		//Dynamic setting of iso_eps
+			// 		//iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
 					
-					break;
-				}
-				if (idm == dM_elems.size()-1) {
-					index_cutoff = -1;
+			// 		break;
+			// 	}
+			// 	if (idm == dM_elems.size()-1) {
+			// 		index_cutoff = -1;
 
-					// log diagnostics
-					minEvKept  = dM_elems[idm];
+			// 		// log diagnostics
+			// 		minEvKept  = dM_elems[idm];
 
-					//Dynamic setting of iso_eps
-					//iso_eps = std::min(iso_eps, dM_elems[idm]);
-				}
-			}
+			// 		//Dynamic setting of iso_eps
+			// 		//iso_eps = std::min(iso_eps, dM_elems[idm]);
+			// 	}
+			// }
 
 			if (msign < 0.0) {
 				//for (auto & elem : dM_elems) elem = elem*(-1.0);
@@ -1036,7 +1036,8 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 					elems_regInvDM.push_back(msign*1.0/dM.real(dM.inds().front()(idm),
 						dM.inds().back()(idm)) );
 				} else
-					elems_regInvDM.push_back(0.0);
+					// elems_regInvDM.push_back(0.0);
+					elems_regInvDM.push_back(1.0);
 			}
 			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
 			
