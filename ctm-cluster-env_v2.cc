@@ -1753,6 +1753,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
     std::vector<ITensor> isoZ;
     
     auto argsSVDRRt = Args(
+        "Cutoff",-1.0,
         "Maxm",x,
         "SVDThreshold",1E-2,
         "SVD_METHOD",SVD_METHOD
@@ -2089,6 +2090,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
     //auto argsSVDhalves = Args("Maxm",x);
     auto argsSVDhalves = Args();
     auto argsSVDRRt = Args(
+        "Cutoff",-1.0,
         "Maxm",x,
         "SVDThreshold",1E-2,
         "SVD_METHOD",SVD_METHOD
@@ -2103,7 +2105,11 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
     int p1, p2;
 
     // Take the square-root of SV's
-    auto oneOverSqrtT = [](double r) { return 1.0/sqrt(r); };
+     // Take the square-root of SV's
+    double loc_psdInvCutoff = isoPseudoInvCutoff;
+    double max_sv;
+    auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
+        { return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
 
     switch(ctmMove) {
         case 'L': {
@@ -2163,7 +2169,14 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
                 spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                //if(dbg) S.apply(printSVs); //PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -2175,6 +2188,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -2254,7 +2268,14 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
                 spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                //if(dbg) S.apply(printSVs); //PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -2265,6 +2286,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -2334,7 +2356,14 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
                 spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                //if(dbg) S.apply(printSVs); // PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -2345,6 +2374,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 
@@ -2422,7 +2452,14 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
                 spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
-                if(dbg) PrintData(S);
+                //if(dbg) S.apply(printSVs); // PrintData(S);
+                if(dbg || DBG) {
+                    Print(S);
+                    std::setprecision(std::numeric_limits<long double>::digits10 + 1);
+                    for(int isv=1; isv<=S.inds().front().m(); isv++) 
+                        std::cout << S.real(S.inds().front()(isv),S.inds().back()(isv)) 
+                            << std::endl;
+                }
 
                 t_iso_end = std::chrono::steady_clock::now();
                 accT[6] += std::chrono::duration_cast
@@ -2433,6 +2470,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 // Create inverse matrix
                 sIU = commonIndex(U,S);
                 sIV = commonIndex(S,V);
+                max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
                 S.apply(oneOverSqrtT);
                 if(dbg) PrintData(S);
 

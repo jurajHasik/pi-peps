@@ -157,6 +157,9 @@ int main( int argc, char *argv[] ) {
     
     ctmEnv.updateCluster(evCls);
     ev.setCluster(evCls);
+
+    std::vector<double> diag_minCornerSV(1, 0.);
+    bool expValEnvConv = false;
     // COMPUTE INITIAL OBSERVABLES
     //{
         for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
@@ -167,10 +170,10 @@ int main( int argc, char *argv[] ) {
             // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
             // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
-            ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-            ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-            ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-            ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+            ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
+            ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
+            ctmEnv.insRCol_DBG(iso_type, norm_type, accT, arg_envDbg);
+            ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
 
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -206,33 +209,66 @@ int main( int argc, char *argv[] ) {
                     (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
                     (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
-                    diag_ctmIter.push_back(envI);
+                    expValEnvConv = true;
                     std::cout<< " ENV CONVERGED ";
-                    break;
                 }
 
                 if ( envI==arg_maxEnvIter )  {
-                    diag_ctmIter.push_back(envI);
-                    if (arg_envDbg) {
-                        // diagnose spectra
-                        ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
-                        Print(spec);
-
-                        tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
-                        Print(spec);
-
-                        tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
-                        Print(spec);
-
-                        tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
-                        Print(spec);
-                    }
+                    expValEnvConv = true;
+                    std::cout<< " MAX ENV iterations REACHED ";
                 }
                 e_prev = e_curr;
+
+                if (expValEnvConv) {
+                    diag_ctmIter.push_back(envI);
+
+                    std::ostringstream oss;
+                    oss << std::scientific;
+
+                    // diagnose spectra
+                    std::cout << std::endl;
+                    double tmpVal;
+                    double minCornerSV = 1.0e+16;
+                    std::cout << "Spectra: " << std::endl;
+
+                    ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                        sv.inds().back()(auxEnvDim));
+                    PrintData(sv);
+                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    oss << tmpVal;
+
+                    tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                        sv.inds().back()(auxEnvDim));
+                    PrintData(sv);
+                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                        sv.inds().back()(auxEnvDim));
+                    PrintData(sv);
+                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                        sv.inds().back()(auxEnvDim));
+                    PrintData(sv);
+                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    diag_minCornerSV.push_back(minCornerSV);
+                    std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                    break;
+                }
+ 
             }
             std::cout << std::endl;
         }
@@ -298,6 +334,7 @@ int main( int argc, char *argv[] ) {
                 }
 
             // ENTER ENVIRONMENT LOOP
+            bool expValEnvConv = false;
             for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
                 t_begin_int = std::chrono::steady_clock::now();
 
@@ -345,33 +382,66 @@ int main( int argc, char *argv[] ) {
                         (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
                         (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
-                        diag_ctmIter.push_back(envI);
                         std::cout<< " ENV CONVERGED ";
-                        break;
+                        expValEnvConv = true;
                     }
 
                     if ( envI==arg_maxEnvIter )  {
-                        diag_ctmIter.push_back(envI);
-                        if (arg_envDbg) {
-                            // diagnose spectra
-                            ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                            auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
-                            Print(spec);
-
-                            tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                            spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
-                            Print(spec);
-
-                            tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                            spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
-                            Print(spec);
-
-                            tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                            spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
-                            Print(spec);
-                        }
+                        std::cout<< " MAX ENV iterations REACHED ";
+                        expValEnvConv = true;
                     }
                     e_prev = e_curr;
+
+                    if (expValEnvConv) {
+                        diag_ctmIter.push_back(envI);
+
+                        std::ostringstream oss;
+                        oss << std::scientific;
+
+                        // diagnose spectra
+                        std::cout << std::endl;
+                        double tmpVal;
+                        double minCornerSV = 1.0e+16;
+                        std::cout << "Spectra: " << std::endl;
+
+                        ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        PrintData(sv);
+                        minCornerSV = std::min(minCornerSV, tmpVal);
+                        oss << tmpVal;
+
+                        tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        PrintData(sv);
+                        minCornerSV = std::min(minCornerSV, tmpVal);
+                        oss <<" "<< tmpVal;
+
+                        tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        PrintData(sv);
+                        minCornerSV = std::min(minCornerSV, tmpVal);
+                        oss <<" "<< tmpVal;
+
+                        tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                            sv.inds().back()(auxEnvDim));
+                        PrintData(sv);
+                        minCornerSV = std::min(minCornerSV, tmpVal);
+                        oss <<" "<< tmpVal;
+
+                        diag_minCornerSV.push_back(minCornerSV);
+                        std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                        break;
+                    }
+                 
                 }
                 std::cout << std::endl;
             }
@@ -381,7 +451,8 @@ int main( int argc, char *argv[] ) {
             std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
                 <<" "<< accT[7] << std::endl;
 
-            out_file_diag << suI <<" "<< diag_ctmIter.back();
+            out_file_diag << suI <<" "<< diag_ctmIter.back()
+                <<" "<< diag_minCornerSV.back();
         //     <<" "<< diag_fu.getString("siteMaxElem")
         //     <<" "<< diag_fu.getReal("finalDist0",0.0)
         //     <<" "<< diag_fu.getReal("finalDist1",0.0);
