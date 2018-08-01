@@ -39,6 +39,8 @@ int main( int argc, char *argv[] ) {
 
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
+    bool symmTrotter  = json_model_params.value("symmTrotter",true);
+    bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 
 	// full update parameters
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
@@ -307,11 +309,13 @@ int main( int argc, char *argv[] ) {
     getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
-    int init_gate_size = gates.size();
-    for (int i=0; i<init_gate_size; i++) {
-        ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
-        gates.push_back(gates[init_gate_size-1-i]);
-        gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+    if (symmTrotter) {
+        int init_gate_size = gates.size();
+        for (int i=0; i<init_gate_size; i++) {
+            ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
+            gates.push_back(gates[init_gate_size-1-i]);
+            gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+        }
     }
 
     // STORE ISOMETRIES
@@ -367,15 +371,15 @@ int main( int argc, char *argv[] ) {
                 <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
                 << e_curr[3] << std::endl;
             
-            // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-            // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-            // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
 
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
+            // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
+            // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
+            // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
+            // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
 
             if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
                 (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
@@ -461,12 +465,12 @@ int main( int argc, char *argv[] ) {
         // PERFORM FULL UPDATE
         std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             
-        diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
-            iso_store[(fuI-1)%gates.size()], fuArgs);
+        // diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
+        //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        // diag_fu = fullUpdate_ALS_PINV_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-        //    gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+        diag_fu = fullUpdate_ALS_PINV_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+           gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
 

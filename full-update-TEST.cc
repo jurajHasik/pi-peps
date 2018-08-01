@@ -656,6 +656,7 @@ ITensor psInv(ITensor const& M, Args const& args) {
 	}
 
 	// Invert Hermitian matrix Msym
+	int countCTF = 0;
 	std::vector<double> elems_regInvDM;
 	for (int idm=1; idm<=dM.inds().front().m(); idm++) {
 		if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
@@ -664,12 +665,16 @@ ITensor psInv(ITensor const& M, Args const& args) {
 				dM.inds().back()(idm)) );
 		} else
 			// elems_regInvDM.push_back(0.0);
+			countCTF += 1;
 			elems_regInvDM.push_back(1.0);
 		
 	}
 	auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
 	
-	if(dbg && (dbgLvl >= 1)) { std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; }
+	if(dbg && (dbgLvl >= 1)) { 
+		std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; 
+		std::cout<<"cutoff/total: "<< countCTF <<" / "<< dM_elems.size() << std::endl; 
+	}
 	
 	Msym = (conj(uM)*regInvDM)*prime(uM);
 	Msym = Msym*delta(prime(i00,1),i11);
@@ -3751,7 +3756,7 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
 	std::string diag_protoEnv, diag_protoEnv_descriptor;
-	double condNum = cg_gradientNorm_eps;
+	double condNum = iso_eps;
 	if (symmProtoEnv) {
 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
 		t_begin_int = std::chrono::steady_clock::now();
@@ -3813,7 +3818,8 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 			}
 			
 			// estimate codition number
-			condNum = mval / std::max(nval, svd_cutoff);
+			condNum = ( std::abs(nval/mval) > svd_cutoff ) ? std::abs(mval/nval) : 1.0/svd_cutoff ;
+			// condNum = mval / std::max(nval, svd_cutoff);
 
 			std::ostringstream oss;
 			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
@@ -3938,7 +3944,7 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
 	
 	// ******************************************************************************************** 
-	// 	     OPTIMIZE VIA CG                                                                      *
+	// 	     OPTIMIZE VIA PSEUDOINV                                                               *
 	// ********************************************************************************************
 
 	// <psi|U^dag U|psi>
@@ -3965,10 +3971,9 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
-	cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
-	// cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
+	iso_eps = std::max(iso_eps, condNum * machine_eps);
   	std::vector<double> fdist, fdistN, vec_normPsi;
-  	std::cout << "ENTERING CG LOOP tol: " << cg_gradientNorm_eps << std::endl;
+  	std::cout << "ENTERING CG LOOP tol: " << iso_eps << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
 		// Optimizing eA
@@ -4008,9 +4013,9 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 		fdist.push_back( finit );
 		fdistN.push_back( finitN );
 		vec_normPsi.push_back( normPsi );
-		//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
+
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
-		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps ) { 
+		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < iso_eps ) { 
 			converged = true; break; }
 
 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
