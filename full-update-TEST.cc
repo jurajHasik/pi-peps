@@ -663,17 +663,17 @@ ITensor psInv(ITensor const& M, Args const& args) {
 				dM.real(dM.inds().front()(1),dM.inds().back()(1))  > svd_cutoff) {  
 			elems_regInvDM.push_back(msign*1.0/dM.real(dM.inds().front()(idm),
 				dM.inds().back()(idm)) );
-		} else
+		} else {
 			// elems_regInvDM.push_back(0.0);
 			countCTF += 1;
 			elems_regInvDM.push_back(1.0);
-		
+		}	
 	}
 	auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
 	
 	if(dbg && (dbgLvl >= 1)) { 
 		std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; 
-		std::cout<<"cutoff/total: "<< countCTF <<" / "<< dM_elems.size() << std::endl; 
+		std::cout<<"cutoff/total: "<< countCTF <<" / "<< regInvDM.inds().front().m() << std::endl; 
 	}
 	
 	Msym = (conj(uM)*regInvDM)*prime(uM);
