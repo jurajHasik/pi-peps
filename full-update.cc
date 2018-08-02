@@ -1029,6 +1029,7 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			}
 
 			// Invert Hermitian matrix Msym
+			int countCTF = 0;
 			std::vector<double> elems_regInvDM;
 			for (int idm=1; idm<=dM.inds().front().m(); idm++) {
 				if (dM.real(dM.inds().front()(idm),dM.inds().back()(idm))/
@@ -1037,11 +1038,15 @@ Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 						dM.inds().back()(idm)) );
 				} else
 					// elems_regInvDM.push_back(0.0);
+					countCTF += 1;
 					elems_regInvDM.push_back(1.0);
 			}
 			auto regInvDM = diagTensor(elems_regInvDM, dM.inds().front(),dM.inds().back());
 			
-			if(dbg && (dbgLvl >= 1)) { std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; }
+			if(dbg && (dbgLvl >= 1)) { 
+				std::cout<<"regInvDM.scale(): "<< regInvDM.scale() << std::endl; 
+				std::cout<<"cutoff/total: "<< countCTF <<" / "<< regInvDM.inds().front().m() << std::endl;
+			}
 			// END SYM SOLUTION
 
 			//Msym = (uM*dM)*prime(uM);	

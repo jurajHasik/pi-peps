@@ -469,7 +469,7 @@ int main( int argc, char *argv[] ) {
         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
         //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_ALS_PINV_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
