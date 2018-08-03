@@ -52,6 +52,7 @@ int main( int argc, char *argv[] ) {
     bool posDefProtoEnv = jsonCls["positiveDefiniteProtoEnv"].get<bool>();
     double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
     double pseudoInvMaxLogGap = jsonCls["pseudoInvMaxLogGap"].get<double>();
+    bool dynamicEps   = jsonCls.value("dynamicEps",false);
     double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
     
     double cg_linesearch_eps = jsonCls.value("cgLineSearchEps",1.0e-8);
@@ -332,6 +333,7 @@ int main( int argc, char *argv[] ) {
         "positiveDefiniteProtoEnv",posDefProtoEnv,
         "pseudoInvCutoff",pseudoInvCutoff,
         "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
+        "dynamicEps",dynamicEps,
         "isoEpsilon",isoEpsilon,
         "otNormType",arg_otNormType,
         "cgLineSearchEps",cg_linesearch_eps,
@@ -469,7 +471,7 @@ int main( int argc, char *argv[] ) {
         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
         //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_ALS_PINV_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);

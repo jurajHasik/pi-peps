@@ -2834,6 +2834,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
+    auto dynamicEps = args.getBool("dynamicEps",false);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
 	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
@@ -3273,7 +3274,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
-	cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
+	if (dynamicEps) cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
 	// cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
   	std::vector<double> fdist, fdistN, vec_normPsi;
   	std::cout << "ENTERING CG LOOP tol: " << cg_gradientNorm_eps << std::endl;
@@ -3533,6 +3534,7 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
+    auto dynamicEps = args.getBool("dynamicEps",false);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
 	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
 	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
@@ -3972,7 +3974,7 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
-	iso_eps = std::max(iso_eps, condNum * machine_eps);
+	if (dynamicEps) iso_eps = std::max(iso_eps, condNum * machine_eps);
   	std::vector<double> fdist, fdistN, vec_normPsi;
   	std::cout << "ENTERING CG LOOP tol: " << iso_eps << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
@@ -6860,7 +6862,13 @@ Doub Linbcg::snrm(VecDoub_I &sx, const Int itol)
 // 			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
 		
 // 			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
-			
+// 			// define combiner
+// 			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
+// 			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
+// 			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
+
+// 			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
+// 				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
 // 		}
 // 		if(dbg) {
 // 			for(int i=0; i<=3; i++) {
@@ -6881,8 +6889,8 @@ Doub Linbcg::snrm(VecDoub_I &sx, const Int itol)
 
 // 	// TODO
 
-
-// 	ITensor protoK = ...
+// 	ITensor protoK, eRE;
+// 	//ITensor protoK = ...
 
 // 	std::cout<<"protoK.scale(): "<< protoK.scale() <<std::endl;
 // 	t_end_int = std::chrono::steady_clock::now();
