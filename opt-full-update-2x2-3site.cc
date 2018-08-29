@@ -301,10 +301,17 @@ int main( int argc, char *argv[] ) {
 
     // DEFINE MODEL AND GATE SEQUENCE
     std::unique_ptr<Model> ptr_model;   
-    std::vector< MPO_3site > gateMPO;
-    std::vector< MPO_3site * > ptr_gateMPO;
+    std::vector< MPO_3site >                gateMPO;
+    std::vector< MPO_3site * >              ptr_gateMPO;
+    std::vector< std::vector<int> >         gate_auxInds;
     std::vector< std::vector<std::string> > gates;
-    std::vector< std::vector<int> > gate_auxInds;
+
+
+    // randomisation
+    std::vector<int> rndInds;
+    std::vector< MPO_3site * >              tmp_ptr_gateMPO;
+    std::vector< std::vector<std::string> > tmp_gates;
+    std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
     getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
@@ -317,6 +324,13 @@ int main( int argc, char *argv[] ) {
             gates.push_back(gates[init_gate_size-1-i]);
             gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
         }
+    }
+    // randomisation
+    if ( randomizeSeq && (symmTrotter==false) ) {
+        for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
+        tmp_ptr_gateMPO  = ptr_gateMPO;
+        tmp_gates        = gates;
+        tmp_gate_auxInds = gate_auxInds;
     }
 
     // STORE ISOMETRIES
@@ -464,6 +478,18 @@ int main( int argc, char *argv[] ) {
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
 
+        // randomisation
+        if ( randomizeSeq && (symmTrotter==false) && (fuI % gates.size() == 0) ) {
+            std::cout <<"Randomizing gate sequence"<< std::endl;
+            std::random_shuffle( rndInds.begin(), rndInds.end() );
+            for ( int i=0; i < gates.size(); i++ ) { 
+                ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
+                gates[i]        = tmp_gates[rndInds[i]];
+                gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
+            }
+        }
+
+
         // PERFORM FULL UPDATE
         std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
             
@@ -471,7 +497,7 @@ int main( int argc, char *argv[] ) {
         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
         //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_ALS_PINV_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_CG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);
