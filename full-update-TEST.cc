@@ -6890,19 +6890,45 @@ Args fullUpdate_CG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 	// TODO ?
 
 	ITensor protoK;
-	// Variant ONE - precompute U|psi> surrounded in environment
-	protoK = pc[0] * cls.sites.at(tn[0]);
-	protoK = protoK * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-	protoK = protoK * ( pc[1] * cls.sites.at(tn[1]) );
-	protoK = protoK * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-	protoK = protoK * ( pc[2] * cls.sites.at(tn[2]) );
-	protoK = protoK * delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-	protoK = protoK * delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
-	protoK = protoK * ( pc[3] * cls.sites.at(tn[3]) );
+	// 	// Variant ONE - precompute U|psi> surrounded in environment
+	// 	protoK = pc[0] * cls.sites.at(tn[0]);
+	// 	protoK = protoK * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
+	// 	protoK = protoK * ( pc[1] * cls.sites.at(tn[1]) );
+	// 	protoK = protoK * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
+		
+	// 	protoK = protoK * ( pc[2] * cls.sites.at(tn[2]) );
+	// 	protoK = protoK * delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
+	// 	protoK = protoK * delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
+	// 	protoK = protoK * ( pc[3] * cls.sites.at(tn[3]) );
+	{ 
+		ITensor temp;
+		// Variant ONE - precompute U|psi> surrounded in environment
+		protoK = pc[0] * cls.sites.at(tn[0]);
+		protoK *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
+		protoK *= ( pc[1] * cls.sites.at(tn[1]) );
+		protoK *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
+		protoK *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
+		
+		temp = pc[2] * cls.sites.at(tn[2]);
+		temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
+		temp *= ( pc[3] * cls.sites.at(tn[3]) );
+	
+		protoK *= temp;
+	}
+
 	// multiply by 4-site operator
-	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1 * delta(prime(opPI[0]),phys[0]));
-	protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2 * delta(prime(opPI[1]),phys[1]));
-	protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3 * delta(prime(opPI[2]),phys[2]));
+	// protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1 * delta(prime(opPI[0]),phys[0]));
+	// protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2 * delta(prime(opPI[1]),phys[1]));
+	// protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3 * delta(prime(opPI[2]),phys[2]));
+	{
+		ITensor temp;
+		temp = uJ1J2.H1 * uJ1J2.H2 * uJ1J2.H3;
+		temp = ((temp * delta(opPI[0],phys[0])) * delta(opPI[1],phys[1])) * delta(opPI[2],phys[2]);
+		
+		protoK *= temp;
+		protoK = ((protoK * delta(prime(opPI[0]),phys[0])) * delta(prime(opPI[1]),phys[1]) )
+			* delta(prime(opPI[2]),phys[2]);
+	}
 	// TODO For now, assume the operator does not act on 4th site - just a syntactic filler
 
 	if (dbg && dbgLvl >= 3) { Print(protoK); }
