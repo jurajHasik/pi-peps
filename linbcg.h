@@ -53,4 +53,43 @@ struct FULSCG_IT {
 	Doub snrmIT(itensor::ITensor const& sx, const Int itol);
 };
 
+struct CG4S_IT {
+	std::vector< itensor::ITensor > const& pc; // protocorners 
+	std::array< itensor::Index, 4 > const& aux;  // aux indices
+	std::vector< std::string > const& tn;      // site IDs
+	std::vector< int > const& pl;              // primelevels of aux indices          
+	itensor::ITensor const& op4s;              // four-site operator
+	Cluster & cls;
+	itensor::Args const& args;
+
+	itensor::ITensor protoK;
+	std::vector< itensor::ITensor > g, xi, h;
+
+	double normUPsi; // <psi|U^dag U|psi>
+
+	CG4S_IT(
+		std::vector< itensor::ITensor > const& ppc, // protocorners 
+		std::array< itensor::Index, 4 > const& aaux,  // aux indices
+		std::vector< std::string > const& ttn,      // site IDs
+		std::vector< int > const& ppl,              // primelevels of aux indices          
+		itensor::ITensor const& oop4s,              // four-site operator
+		Cluster & ccls,
+		itensor::Args const& aargs);
+
+	void minimize();
+	
+	double func();
+
+	double linmin(double fxi, std::vector< itensor::ITensor > const& g);
+
+	void grad(std::vector< itensor::ITensor > &grad);
+    
+ //    void atimes(itensor::ITensor const& x, itensor::ITensor & r, const Int itrnsp);
+
+ //    void solveIT(itensor::ITensor const& b, itensor::ITensor & x, const Int itol, const Doub tol,
+	// 	const Int itmax, Int &iter, Doub &err);
+
+	// Doub snrmIT(itensor::ITensor const& sx, const Int itol);
+};
+
 #endif

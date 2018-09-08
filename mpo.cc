@@ -2,7 +2,70 @@
 
 using namespace itensor;
 
+// ----- MPOs definition ----------------------------------------------
+MpoNS::MpoNS() {}
+
+MpoNS::MpoNS(int n) : nSite(n), mpo(n), siteIds(n), pi(n), ai(n-1) {}
+
+MPO_2site::MPO_2site() : MpoNS(2), H1(mpo.at(0)), H2(mpo.at(1)), Is1(pi.at(0)), 
+    Is2(pi.at(1)), a12(ai.at(0)) {}
+
+MPO_3site::MPO_3site() : MpoNS(3), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
+    Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
+// ----- END MPOs definition ------------------------------------------
+
+
 // ----- MPOs construction --------------------------------------------
+MPO_2site symmMPO2Sdecomp(ITensor const& u12, Index const& s1, 
+    Index const& s2, bool dbg) {
+    
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    // STEP2 decompose u12 from Left to Right (LR)
+    ITensor O1, O2, SVt;
+
+    double pw;
+    auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+
+    // first SVD
+    O1 = ITensor(s1,s1p);
+    svd(u12,O1,SVt,O2);
+    /*
+     *  s1'                    s2' 
+     *   |                     |
+     *  |O1|--a1--<SVt>--a2--|O2|
+     *   |                     |
+     *  s1                     s2
+     *
+     */
+    Index a1 = commonIndex(O1,SVt);
+    Index a2 = commonIndex(SVt,O2);
+
+    pw = 0.5;
+    SVt.apply(pow_T);
+
+    O1 = (O1*SVt) * delta(a2,a1);
+    O2 = O2*SVt;
+
+    MPO_2site mpo2s;
+    // Define physical indices
+    mpo2s.Is1 = Index(TAG_MPO3S_PHYS1,s1.m(),PHYS);
+    mpo2s.Is2 = Index(TAG_MPO3S_PHYS2,s2.m(),PHYS);
+
+    // Define aux indices linking the on-site MPOs
+    mpo2s.a12 = Index(TAG_MPO3S_12LINK,a1.m(),MPOLINK);
+
+    mpo2s.H1 = ((O1*delta(s1,mpo2s.Is1)) *delta(s1p,prime(mpo2s.Is1)))
+        *delta(a1,mpo2s.a12);
+    mpo2s.H2 = ((O2*delta(s2,mpo2s.Is2)) *delta(s2p,prime(mpo2s.Is2)))
+        *delta(a1,mpo2s.a12);
+
+    if (dbg) PrintData(mpo2s.H1*mpo2s.H2);
+
+    return mpo2s;
+}
+
 MPO_3site symmMPO3Sdecomp(ITensor const& u123, Index const& s1, 
 	Index const& s2, Index const& s3, bool dbg) {
 	

@@ -120,10 +120,11 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 
 void applyH_T1_L_T2_v2(MPO_2site const& mpo2s, 
 	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
-	if(dbg) {std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
-		std::cout << mpo2s;
+	if(dbg) {
+		std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
 		PrintData(mpo2s.H1);
-    	PrintData(mpo2s.H2);}
+    	PrintData(mpo2s.H2);
+    }
 
     auto sqrtT = [](double r) { return std::sqrt(r); };
 	/*
@@ -142,10 +143,12 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 	 *
 	 */
 
-	if(dbg) {std::cout <<"----- Initial |12> -----"<< std::endl;
+	if(dbg) {
+		std::cout <<"----- Initial |12> -----"<< std::endl;
 		Print(T1);
 		Print(L);
-		Print(T2);}
+		Print(T2);
+	}
 	auto ipT1 = findtype(T1.inds(), PHYS);
 	auto ipT2 = findtype(T2.inds(), PHYS);  
 	auto iT1_L = commonIndex(T1, L);
@@ -164,9 +167,9 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 	ITensor T1R(ipT1, iT1_L);
 	ITensor T2R(ipT2, iL_T2);
 	ITensor T1X, T2X, sv1XR, sv2XR;
-	auto spec = svd( (T1*L)*delta(iT1_L, iL_T2), T1R, sv1XR, T1X);
+	auto spec = svd( (T1*L)*delta(iT1_L, iL_T2), T1R, sv1XR, T1X, {"Truncate",false});
 	if(dbg) Print(spec);
-	spec = svd( (T2*L)*delta(iT1_L, iL_T2), T2R, sv2XR, T2X);
+	spec = svd( (T2*L)*delta(iT1_L, iL_T2), T2R, sv2XR, T2X, {"Truncate",false});
 	if(dbg) Print(spec);
 	T1R = T1R * sv1XR;
 	T2R = T2R * sv2XR;
@@ -180,9 +183,11 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 	T2R = (T2R * kd_phys2 ) * mpo2s.H2;
 	T2R = (T2R * kd_phys2.prime()).prime(PHYS,-1);
 
-	if(dbg) {std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
+	if(dbg) {
+		std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
 		Print(T1R);
-    	Print(T2R);}
+    	Print(T2R);
+    }
 
 	/*
 	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
@@ -203,9 +208,11 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 	ITensor SV_L12;
 	spec = svd(T1R*delta(iT1_L, iL_T2)*T2R, T1R, SV_L12, T2R, 
 		{"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
-	if(dbg) {Print(T1R);
+	if(dbg) {
+		Print(T1R);
 		Print(spec);
-		Print(T2R);}
+		Print(T2R);
+	}
 
 	// Set proper indices to resulting tensors from SVD routine
 	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
@@ -213,16 +220,20 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 
 	T1 = (T1R * delta(iT1_SV_L12, iT1_L)) * T1X;
 	
+	std::vector< double > elemsL(iT1_L.m());
 	for (int i=1; i<=iT1_L.m(); i++) {
-		L.set(iT1_L(i),iL_T2(i), SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i)));
+		elemsL[i-1] = SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i));
 	}
+	L = diagTensor(elemsL, iT1_L, iL_T2);
 	L = L / norm(L);
 
 	T2 = (T2R * delta(iSV_L12_T2, iL_T2)) * T2X;
 
-	if(dbg) {Print(T1);
+	if(dbg) {
+		Print(T1);
 		PrintData(L);
-		Print(T2);}
+		Print(T2);
+	}
 }
 
 // 3 SITE OPS #########################################################
@@ -306,6 +317,69 @@ Args simpleUpdate(MPO_3site const& u123, Cluster & cls,
 		if (lw.dirs[0] == pl[1]) cls.weights[lw.wId] = l12;
 	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
 		if (lw.dirs[0] == pl[3]) cls.weights[lw.wId] = l23;
+
+	return diag_data;
+}
+
+Args simpleUpdate(MPO_2site const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+    auto dbg = args.getBool("suDbg",false);
+    auto dbgLvl = args.getInt("suDbgLevel",0);
+
+    double machine_eps = std::numeric_limits<double>::epsilon();
+	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
+
+	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+
+    // prepare to hold diagnostic data
+    Args diag_data = Args::global();
+
+	if(dbg && dbgLvl >=2 ) {
+		std::cout<<"GATE: ";
+		std::cout<< tn[0] <<" >- "<<pl[0]<<" -> "<<pl[1]<<" >- "<<tn[1]<< std::endl; 
+
+		PrintData(u12.H1);
+		PrintData(u12.H2);
+	
+		Print(cls.sites.at(tn[0]));
+		Print(cls.sites.at(tn[1]));
+	}
+
+
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+	t_begin_int = std::chrono::steady_clock::now();
+
+	std::vector< ITensor > tmpT;
+	ITensor l12;
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[0]) l12 = cls.weights.at(lw.wId);
+
+	tmpT.push_back(cls.sites.at(tn[0]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[0]) tmpT.back() *= cls.weights.at(lw.wId);
+	
+	tmpT.push_back(cls.sites.at(tn[1]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( lw.dirs[0] != pl[1] ) tmpT.back() *= cls.weights.at(lw.wId);
+
+	applyH_T1_L_T2_v2(u12, tmpT[0], tmpT[1], l12, dbg && (dbgLvl>=3) );
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[0]) tmpT[0] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( lw.dirs[0] != pl[1] ) tmpT[1] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for (int i=0; i<2; i++) cls.sites[tn[i]] = tmpT[i];
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[0]) cls.weights[lw.wId] = l12;
 
 	return diag_data;
 }

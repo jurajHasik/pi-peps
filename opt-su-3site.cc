@@ -91,13 +91,13 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE GATE SEQUENCE
     std::unique_ptr<Model> ptr_model;
-    std::vector< MPO_3site > gateMPO;
-    std::vector< MPO_3site * > ptr_gateMPO;
+    std::vector< MPO_2site > gateMPO;
+    std::vector< MPO_2site * > ptr_gateMPO;
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    getModel_2site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
     int init_gate_size = gates.size();

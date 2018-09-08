@@ -17,6 +17,28 @@ const char* const TAG_IT_MPOLINK  = "MPOlink";
 // types for auxiliary indices of MPO tensors
 const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 
+
+struct MpoNS {
+    // number of sites over which this MPO acts
+    int nSite;
+
+    // individual MPOs
+    std::vector<itensor::ITensor> mpo;
+
+    // siteId of sites on which the MPOs are constructed (if any)
+    std::vector<std::string> siteIds;
+
+    // physical indices of MPO's
+    std::vector<itensor::Index> pi;
+
+    // aux indices of MPO's
+    std::vector<itensor::Index> ai;
+
+    MpoNS();
+
+    MpoNS(int n);
+};
+
 /*
  * this struct holds instance of particular 3-site MPO composed
  * by three tensors
@@ -30,37 +52,36 @@ const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
  * exposing the physical indices s1,s2,s3
  *
  */
-struct MPO_3site {
-    itensor::ITensor H1, H2, H3;
+struct MPO_3site : MpoNS {
+    itensor::ITensor & H1, & H2, & H3;
+
+    // expose physical indices
+    itensor::Index & Is1, & Is2, & Is3;
 
     // expose internal indices
-    itensor::Index a12, a23;
+    itensor::Index & a12, & a23;
 
-    // expose physical indices
-    itensor::Index Is1, Is2, Is3;
+    MPO_3site();
 };
 
-struct MPO_2site {
-    itensor::ITensor H1, H2;
+struct MPO_2site : MpoNS {
+    itensor::ITensor & H1, & H2;
 
     // expose physical indices
-    itensor::Index Is1, Is2;
-};
+    itensor::Index & Is1, & Is2;
 
-struct MpoNS {
-    // number of sites over which this MPO acts
-    int nSite;
+    // expose auxiliary indices
+    itensor::Index & a12;
 
-    // individual MPOs
-    std::vector<itensor::ITensor> mpo;
-
-    // siteId of sites on which the MPOs are constructed
-    std::vector<std::string> siteIds;
+    MPO_2site();
 };
 
 // ----- END Main MPO Structures --------------------------------------
 
 // ----- MPOs construction --------------------------------------------
+MPO_2site symmMPO2Sdecomp(itensor::ITensor const& u12, 
+    itensor::Index const& s1, itensor::Index const& s2, bool dbg = false);
+
 MPO_3site symmMPO3Sdecomp(itensor::ITensor const& u123, 
     itensor::Index const& s1, itensor::Index const& s2, 
     itensor::Index const& s3, bool dbg = false);

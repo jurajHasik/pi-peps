@@ -39,6 +39,10 @@ itensor::Args simpleUpdate(MPO_3site const& u123, Cluster & cls,
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
 
+itensor::Args simpleUpdate(MPO_2site const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
+
 void applyH_123_v1(MPO_3site const& mpo3s, 
 	itensor::ITensor & T1, itensor::ITensor & T2, itensor::ITensor & T3, 
 	itensor::ITensor & l12, itensor::ITensor & l23, bool dbg = false);

@@ -2,6 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include "omp.h"
+#include "mkl.h"
 #include "json.hpp"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
@@ -301,20 +303,20 @@ int main( int argc, char *argv[] ) {
 
     // DEFINE MODEL AND GATE SEQUENCE
     std::unique_ptr<Model> ptr_model;   
-    std::vector< MPO_3site >                gateMPO;
-    std::vector< MPO_3site * >              ptr_gateMPO;
+    std::vector< MPO_2site >                gateMPO;
+    std::vector< MPO_2site * >              ptr_gateMPO;
     std::vector< std::vector<int> >         gate_auxInds;
     std::vector< std::vector<std::string> > gates;
 
 
     // randomisation
     std::vector<int> rndInds;
-    std::vector< MPO_3site * >              tmp_ptr_gateMPO;
+    std::vector< MPO_2site * >              tmp_ptr_gateMPO;
     std::vector< std::vector<std::string> > tmp_gates;
     std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    getModel_2site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
     if (symmTrotter) {
@@ -497,7 +499,7 @@ int main( int argc, char *argv[] ) {
         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
         //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_CG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        diag_fu = fullUpdate_2site_PINV( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
         diagData_fu.push_back(diag_fu);

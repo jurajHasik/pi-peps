@@ -67,6 +67,10 @@ const std::array< std::array< std::array<int, 4>, 4>, 4> RTPK =
 		{{{-1,1,-1,2},{-1,0,-1,-1},{-1,-1,-1,-1},{-1,-1,-1,-1}}}
 	}};
 
+
+itensor::ITensor pseudoInverse(itensor::ITensor const& M,
+	itensor::Args const& args = itensor::Args::global());
+
 /*
  * Initialize isometry (reduction tensors - RT) which define a 
  * PEPS ansatz of auxDim d for a PEPS state with auxDim d and 
@@ -129,6 +133,10 @@ itensor::Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv con
 itensor::Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	std::vector< itensor::ITensor > & iso_store, 
+	itensor::Args const& args = itensor::Args::global());
+
+itensor::Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
+	std::vector<std::string> const& tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
 
 #endif
