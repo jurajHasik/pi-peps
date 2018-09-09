@@ -12,7 +12,14 @@
 #include "mpo.h"
 #include "itensor/all.h"
 
-// ----- Trotter gates (2Site, 3site, ...) MPOs -----------------------
+// ----- Trotter gates (2site, ...) MPOs ------------------------------
+MPO_2site getMPO2s_NNH_2site(double tau, double J, double h);
+
+MPO_2site getMPO2s_Ising_2site(double tau, double J, double h);
+// ----- END Trotter gates (2site, ...) MPOs --------------------------
+
+
+// ----- Trotter gates (3site, ...) MPOs ------------------------------
 MPO_3site getMPO3s_Id(int physDim);
 
 MPO_3site getMPO3s_Id_v2(int physDim, bool dbg = false);
@@ -25,8 +32,6 @@ MPO_3site getMPO3s_Uladder(double tau, double J, double Jp);
 
 MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp);
 
-MPO_2site getMPO2s_NNH_2site(double tau, double J, double h);
-
 MPO_3site getMPO3s_NNHLadder_2site(double tau, double J, double alpha);
 
 MPO_3site getMPO3s_Ising_v2(double tau, double J, double h);
@@ -34,7 +39,7 @@ MPO_3site getMPO3s_Ising_v2(double tau, double J, double h);
 MPO_3site getMPO3s_Ising_2site(double tau, double J, double h);
 
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
-// ----- END Trotter gates (2Site, 3site, ...) MPOs -------------------
+// ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 // ----- Definition of model base class and its particular instances --
 class Model {
@@ -152,6 +157,13 @@ void getModel_Ising(nlohmann::json & json_model,
     std::unique_ptr<Model> & ptr_model,
     std::vector< MPO_3site > & gateMPO,
     std::vector< MPO_3site *> & ptr_gateMPO,
+    std::vector< std::vector<std::string> > & gates,
+    std::vector< std::vector<int> > & gate_auxInds);
+
+void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
+    std::vector< MPO_2site > & gateMPO,
+    std::vector< MPO_2site *> & ptr_gateMPO,
     std::vector< std::vector<std::string> > & gates,
     std::vector< std::vector<int> > & gate_auxInds);
 

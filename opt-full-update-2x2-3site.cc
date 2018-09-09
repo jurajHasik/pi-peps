@@ -502,6 +502,10 @@ int main( int argc, char *argv[] ) {
         diag_fu = fullUpdate_2site_PINV( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
            gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
+        // diag_fu = fullUpdate_2site_v2( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //    gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()],
+        //    iso_store[(fuI-1)%gates.size()], fuArgs);
+
         diagData_fu.push_back(diag_fu);
 
         if ( fuI == 1 ) {

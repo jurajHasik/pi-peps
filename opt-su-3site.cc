@@ -40,6 +40,8 @@ int main( int argc, char *argv[] ) {
 
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
+    bool symmTrotter  = json_model_params.value("symmTrotter",true);
+    bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 	
     std::string sitesInit(jsonCls.value("sitesInit","FILE"));
     std::string suWeightsInit(jsonCls.value("suWeightsInit","DELTA"));
@@ -96,15 +98,30 @@ int main( int argc, char *argv[] ) {
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
 
+     // randomisation
+    std::vector<int> rndInds;
+    std::vector< MPO_2site * >              tmp_ptr_gateMPO;
+    std::vector< std::vector<std::string> > tmp_gates;
+    std::vector< std::vector<int> >         tmp_gate_auxInds;
+
     // Generate gates for given model by Trotter decomposition
     getModel_2site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
-    int init_gate_size = gates.size();
-    for (int i=0; i<init_gate_size; i++) {
-        ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
-        gates.push_back(gates[init_gate_size-1-i]);
-        gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+    if (symmTrotter) {
+        int init_gate_size = gates.size();
+        for (int i=0; i<init_gate_size; i++) {
+            ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
+            gates.push_back(gates[init_gate_size-1-i]);
+            gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+        }
+    }
+    // randomisation
+    if ( randomizeSeq && (symmTrotter==false) ) {
+        for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
+        tmp_ptr_gateMPO  = ptr_gateMPO;
+        tmp_gates        = gates;
+        tmp_gate_auxInds = gate_auxInds;
     }
     // ***** INITIALIZE MODEL DONE ********************************************
 
@@ -299,6 +316,17 @@ int main( int argc, char *argv[] ) {
     // ENTER OPTIMIZATION LOOP
     for (int suI = 1; suI <= arg_suIter; suI++) {
         std::cout <<"Simple Update - STEP "<< suI << std::endl;
+
+        // randomisation
+        if ( randomizeSeq && (symmTrotter==false) && (suI % gates.size() == 0) ) {
+            if(arg_suDbg) std::cout <<"Randomizing gate sequence"<< std::endl;
+            std::random_shuffle( rndInds.begin(), rndInds.end() );
+            for ( int i=0; i < gates.size(); i++ ) { 
+                ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
+                gates[i]        = tmp_gates[rndInds[i]];
+                gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
+            }
+        }
 
         // PERFORM SIMPLE UPDATE
         std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;

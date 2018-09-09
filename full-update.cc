@@ -28,7 +28,8 @@ ITensor pseudoInverse(ITensor const& M, Args const& args) {
 			dM_elems.push_back( 1.0/dM.real(dM.inds().front()(i),
 				dM.inds().back()(i)) );
 		} else {
-			dM_elems.push_back(0.0);
+			// dM_elems.push_back(0.0);
+			dM_elems.push_back(1.0);
 		}
 	}
 
@@ -1409,6 +1410,7 @@ Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 	MPO_3site tmpo3s = uJ1J2;
 	tmpo3s.H2 *= dummyCA23;
 	if(dbg && (dbgLvl >= 2)) {
+		std::cout<< uJ1J2;
 		std::cout<< tmpo3s;
 		PrintData(tmpo3s.H1);
 		PrintData(tmpo3s.H2);
@@ -2042,11 +2044,11 @@ Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 
 
 			// ***** SOLVE LINEAR SYSTEM M*rt = K ******************************
-			if(dbg && (dbgLvl >= 3)) { 
-				PrintData(M);
-				PrintData(K);
-				//PrintData(Kp);
-			}
+			// if(dbg && (dbgLvl >= 3)) { 
+			// 	PrintData(M);
+			// 	PrintData(K);
+			// 	//PrintData(Kp);
+			// }
 
 			// Check Hermicity of M
 			if (dbg && (dbgLvl >= 1)) {
@@ -2454,7 +2456,11 @@ Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
+
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
+
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
@@ -3587,7 +3593,11 @@ Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
+
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
+	
 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
@@ -3830,7 +3840,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 	}
 
 	double condNum = 1.0;
-	std::string diag_protoEnv;
+	std::string diag_protoEnv, diag_protoEnv_descriptor;
 	double diag_maxMsymLE, diag_maxMasymLE;
 	double diag_maxMsymFN, diag_maxMasymFN;
 	if (symmProtoEnv) {
@@ -3898,8 +3908,13 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 
 			condNum = mval / nval;
 
-			diag_protoEnv = std::to_string(mval) + " " +  std::to_string(countCTF) + " " +  
-				std::to_string(countNEG) + " " +  std::to_string(dM_elems.size());
+			std::ostringstream oss;
+			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
+				<< countNEG << " " << dM_elems.size();
+
+			diag_protoEnv_descriptor = "MaxEV condNum EV<CTF EV<0 TotalEV";
+			diag_protoEnv = oss.str();
+
 			if(dbg && (dbgLvl >= 1)) {
 				std::cout<<"REFINED SPECTRUM"<< std::endl;
 				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
@@ -3912,6 +3927,8 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 
 			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
 				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+
+			eRE_sym *= 1.0/mval;
 		}
 
 		eRE = (eRE_sym * cmbKet) * cmbBra;
@@ -3951,7 +3968,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 	// <psi|U^dag U|psi>
 	double normUPsi;
 	{
-		auto tempOp = mpo.H1 * mpo.H2;
+		auto tempOp = conj(mpo.H1) * conj(mpo.H2);
 		tempOp = (tempOp * delta(mpo.Is1, phys[0])) * delta(mpo.Is2, phys[1]);
 		tempOp = (tempOp * prime(delta(mpo.Is1, phys[0]))) * prime(delta(mpo.Is2, phys[1]));
 		
@@ -4055,17 +4072,32 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 	for (int i=0; i < fdist.size(); i++) std::cout <<"STEP "<< i <<"||psi'>-|psi>|^2: "
 		<< fdist[i] << std::endl;
 
+	// BALANCE tensors
+	double iso_tot_mag = 1.0;
+   	m = 0.;
+	eA.visit(max_m);
+	eA = eA / m;
+	iso_tot_mag = iso_tot_mag * m;
+	eB.visit(max_m);
+	eB = eB / m;
+	iso_tot_mag = iso_tot_mag * m;
+	eA = eA * std::pow(iso_tot_mag,(1.0/2.0));
+	eB = eB * std::pow(iso_tot_mag,(1.0/2.0));
+
 	// update on-site tensors of cluster
  	cls.sites.at(tn[0]) = QA * eA;
 	cls.sites.at(tn[1]) = QB * eB;
 
 	// max element of on-site tensors
 	std::string diag_maxElem;
-	for (int i=0; i<2; i++) {
+	std::ostringstream oss_diag_siteScale;
+	for ( auto const& site_e : cls.sites ) {
 		m = 0.;
-		cls.sites.at(tn[i]).visit(max_m);
-		diag_maxElem = diag_maxElem + tn[i] +" : "+ std::to_string(m) +" ";
+		site_e.second.visit(max_m);
+		diag_maxElem = diag_maxElem + site_e.first +" : "+ std::to_string(m) +" ";
+		oss_diag_siteScale << site_e.first << " : " << site_e.second.scale() << " ";
 	}
+	std::cout << oss_diag_siteScale.str() << std::endl;
 	std::cout << diag_maxElem << std::endl;
 
 	// normalize updated tensors
@@ -4076,16 +4108,24 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
 		}
 	} else if (otNormType == "BALANCE") {
-		double iso_tot_mag = 1.0;
-	    for ( auto & site_e : cls.sites)  {
-	    	m = 0.;
+		// double iso_tot_mag = 1.0;
+	 //    for ( auto & site_e : cls.sites)  {
+	 //    	m = 0.;
+		// 	site_e.second.visit(max_m);
+	 //    	site_e.second = site_e.second / m;
+	 //    	iso_tot_mag = iso_tot_mag * m;
+	 //    }
+	 //    for (auto & site_e : cls.sites) {
+	 //    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/(2.0 * cls.sites.size())) );
+	 //    }
+		for (auto & site_e : cls.sites) { 
+			m = 0.;
 			site_e.second.visit(max_m);
-	    	site_e.second = site_e.second / m;
-	    	iso_tot_mag = iso_tot_mag * m;
-	    }
-	    for (auto & site_e : cls.sites) {
-	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/(2.0 * cls.sites.size())) );
-	    }
+			site_e.second = site_e.second / m;
+		}
+		for (auto & site_e : cls.sites) {
+			site_e.second = site_e.second / std::pow(vec_normPsi.back(), (1.0/(2.0 * cls.sizeN * cls.sizeM)));
+		}
 	} else if (otNormType == "NONE") {
 	} else {
 		std::cout<<"Unsupported on-site tensor normalisation after full update: "
@@ -4104,7 +4144,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
 
-	std::string siteMaxElem_descriptor = "site max_elem site max_elem ";
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
 	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
 	
@@ -4119,7 +4159,10 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
 	diag_data.add("locMinDiag", oss.str());
 
-	if (symmProtoEnv) diag_data.add("diag_protoEnv", diag_protoEnv);
+	if (symmProtoEnv) { 
+		diag_data.add("diag_protoEnv", diag_protoEnv);
+		diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
+	}
 
 	return diag_data;
 }

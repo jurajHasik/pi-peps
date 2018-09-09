@@ -52,28 +52,24 @@ struct MpoNS {
  * exposing the physical indices s1,s2,s3
  *
  */
-struct MPO_3site : MpoNS {
-    itensor::ITensor & H1, & H2, & H3;
+struct MPO_3site {
+    itensor::ITensor H1, H2, H3;
 
     // expose physical indices
-    itensor::Index & Is1, & Is2, & Is3;
+    itensor::Index Is1, Is2, Is3;
 
     // expose internal indices
-    itensor::Index & a12, & a23;
-
-    MPO_3site();
+    itensor::Index a12, a23;
 };
 
 struct MPO_2site : MpoNS {
-    itensor::ITensor & H1, & H2;
+    itensor::ITensor H1, H2;
 
     // expose physical indices
-    itensor::Index & Is1, & Is2;
+    itensor::Index Is1, Is2;
 
     // expose auxiliary indices
-    itensor::Index & a12;
-
-    MPO_2site();
+    itensor::Index a12;
 };
 
 // ----- END Main MPO Structures --------------------------------------

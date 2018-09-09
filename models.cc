@@ -2,7 +2,59 @@
 
 using namespace itensor;
 
-// ----- Trotter gates (2Site, 3site, ...) MPOs -----------------------
+// ----- Trotter gates (2site, ...) MPOs ------------------------------
+MPO_2site getMPO2s_NNH_2site(double tau, double J, double h) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    // STEP1 define exact U_12 = exp(-J(S_1.S_2) - h(Sz_1+Sz_2))
+    ITensor h12 = ITensor(s1,s2,s1p,s2p);
+    h12 += J*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+    h12 += -h*(SU2_getSpinOp(SU2_S_Z, s1)*delta(s2,s2p) + delta(s1,s1p)*SU2_getSpinOp(SU2_S_Z, s2));
+
+    auto cmbI = combiner(s1,s2);
+    h12 = (cmbI * h12 ) * prime(cmbI);
+    ITensor u12 = expHermitian(h12, {-tau, 0.0});
+    u12 = (cmbI * u12 ) * prime(cmbI);
+    // definition of U_12 done
+
+    return symmMPO2Sdecomp(u12, s1, s2);
+}
+
+MPO_2site getMPO2s_Ising_2site(double tau, double J, double h) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    // STEP1 define exact U_123 = exp(-J(Sz_1.Sz_2 + Sz_2.Sz_3) - h(Sx_1+Sx_2+Sx_3))
+    ITensor h12 = ITensor(s1,s2,s1p,s2p);
+    h12 += -J*( 2*SU2_getSpinOp(SU2_S_Z, s1) * 2*SU2_getSpinOp(SU2_S_Z, s2) );
+    h12 += -h*( (SU2_getSpinOp(SU2_S_P, s1) + SU2_getSpinOp(SU2_S_M, s1))*delta(s2,s2p)
+        + delta(s1,s1p)*(SU2_getSpinOp(SU2_S_P, s2)+SU2_getSpinOp(SU2_S_M, s2)) );
+
+    auto cmbI = combiner(s1,s2);
+    h12 = (cmbI * h12 ) * prime(cmbI);
+    ITensor u12 = expHermitian(h12, {-tau, 0.0});
+    u12 = (cmbI * u12 ) * prime(cmbI);
+    // definition of U_123 done
+
+    return symmMPO2Sdecomp(u12, s1, s2);
+}
+// ----- END Trotter gates (2site, ...) MPOs --------------------------
+
+
+// ----- Trotter gates (3site, ...) MPOs ------------------------------
 MPO_3site getMPO3s_Id(int physDim) {
     MPO_3site mpo3s;
     
@@ -319,7 +371,7 @@ MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h) {
     return symmMPO3Sdecomp(u123, s1, s2, s3);
 }
 
-MPO_2site getMPO2s_NNH_2site(double tau, double J, double h) {
+MPO_3site getMPO3s_NNH_2site(double tau, double J, double h) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
     std::cout.precision(10);
 
@@ -341,9 +393,9 @@ MPO_2site getMPO2s_NNH_2site(double tau, double J, double h) {
     u12 = (cmbI * u12 ) * prime(cmbI);
     // definition of U_12 done
 
-    return symmMPO2Sdecomp(u12, s1, s2);
+    return ltorMPO2StoMPO3Sdecomp(u12, s1, s2, true);
 }
-// ----- END Trotter gates (2Site, 3site, ...) MPOs -------------------
+// ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 // ----- Definition of model base class and its particular instances --
 J1J2Model::J1J2Model(double arg_J1, double arg_J2)
@@ -932,11 +984,6 @@ void getModel_J1J2(nlohmann::json & json_model,
     // gate sequence
     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
 
-    gateMPO.push_back(
-        getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda)
-        );
-
-    ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
 
     if (arg_fuGateSeq == "SYM1") {
         gates = {
@@ -966,6 +1013,9 @@ void getModel_J1J2(nlohmann::json & json_model,
             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
         };
+
+        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
+        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
     } 
     else if (arg_fuGateSeq == "SYM2") {
         gates = {
@@ -995,6 +1045,9 @@ void getModel_J1J2(nlohmann::json & json_model,
             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},        
             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3}
         };
+
+        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
+        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
     }
     else if (arg_fuGateSeq == "SYM3") {
         gates = {
@@ -1040,6 +1093,9 @@ void getModel_J1J2(nlohmann::json & json_model,
             {1,0, 2,1, 3,2, 0,3},
             {1,2, 0,1, 3,0, 2,3}
         };
+
+        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
+        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
     } 
     else if (arg_fuGateSeq == "SYM4") {
         gates = {
@@ -1069,7 +1125,38 @@ void getModel_J1J2(nlohmann::json & json_model,
             {3,0, 2,3, 1,2, 0,1},
             {1,0, 2,1, 3,2, 0,3}
         };
+
+        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
+        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
     } 
+    else if (arg_fuGateSeq == "2SITE") {
+        gates = {
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"}, 
+            
+            {"C", "D", "B", "A"}, 
+            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+
+            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
+
+            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
+        };
+
+        gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
+
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3},
+
+            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
+            
+            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
+        };
+
+        gateMPO.push_back( getMPO3s_NNH_2site(arg_tau, arg_J1, 0.0) );
+        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) ); 
+    }
     else {
         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
@@ -1251,47 +1338,6 @@ void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
         for (int i=0; i<4; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
     } else {
         std::cout<<"Unsupported 2-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-    double arg_J1 = json_model["J1"].get<double>();
-    double arg_h = json_model["h"].get<double>();
-    
-    ptr_model = std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h));
-
-    // time step
-    double arg_tau = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-    if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"C", "D"}, {"D", "C"},
-            {"A", "C"}, {"B", "D"},
-            {"C", "A"}, {"D", "B"}
-        };
-
-        gate_auxInds = {
-            {2, 0}, {2, 0},
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-            {3, 1}, {3, 1}
-        };
-
-        gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, arg_h) );
-
-        for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -1581,6 +1627,89 @@ void getModel_3site(nlohmann::json & json_model,
     }
 }
 
+void getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
+    std::vector< MPO_2site > & gateMPO,
+    std::vector< MPO_2site *> & ptr_gateMPO,
+    std::vector< std::vector<std::string> > & gates,
+    std::vector< std::vector<int> > & gate_auxInds) {
+
+    double arg_J1 = json_model["J1"].get<double>();
+    double arg_h = json_model["h"].get<double>();
+    
+    ptr_model = std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h));
+
+    // time step
+    double arg_tau = json_model["tau"].get<double>();
+    // gate sequence
+    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+    
+    if (arg_fuGateSeq == "2SITE") {
+        gates = {
+            {"A", "B"}, {"B", "A"}, 
+            {"C", "D"}, {"D", "C"},
+            {"A", "C"}, {"B", "D"},
+            {"C", "A"}, {"D", "B"}
+        };
+
+        gate_auxInds = {
+            {2, 0}, {2, 0},
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1},
+            {3, 1}, {3, 1}
+        };
+
+        gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, arg_h) );
+        for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
+    } else {
+        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
+void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
+    std::unique_ptr<Model> & ptr_model,
+    std::vector< MPO_2site > & gateMPO,
+    std::vector< MPO_2site *> & ptr_gateMPO,
+    std::vector< std::vector<std::string> > & gates,
+    std::vector< std::vector<int> > & gate_auxInds) {
+
+    double arg_J1     = json_model["J1"].get<double>();
+    double arg_h      = json_model["h"].get<double>();
+    double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+    ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
+
+    // time step
+    double arg_tau    = json_model["tau"].get<double>();
+    // gate sequence
+    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+   
+    if (arg_fuGateSeq == "2SITE") {
+        gates = {
+            {"A", "B"}, {"B", "A"}, 
+            {"C", "D"}, {"D", "C"},
+            {"A", "C"}, {"B", "D"},
+            {"C", "A"}, {"D", "B"}
+        };
+
+        gate_auxInds = {
+            {2, 0}, {2, 0},
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1},
+            {3, 1}, {3, 1}
+        };
+
+        gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
+        ptr_gateMPO = std::vector< MPO_2site * >(8, &(gateMPO[0]) );
+    } else {
+        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+        exit(EXIT_FAILURE);
+    }
+}
+
 void getModel_2site(nlohmann::json & json_model,
     std::unique_ptr<Model> & ptr_model,
     std::vector< MPO_2site > & gateMPO,
@@ -1594,6 +1723,8 @@ void getModel_2site(nlohmann::json & json_model,
         getModel_NNH_2x2Cell_AB(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {
         getModel_NNH_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    } else if (arg_modelType == "Ising_2x2Cell_ABCD") {
+        getModel_Ising_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
     } else {
         std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
         exit(EXIT_FAILURE);

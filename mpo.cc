@@ -3,15 +3,16 @@
 using namespace itensor;
 
 // ----- MPOs definition ----------------------------------------------
+
 MpoNS::MpoNS() {}
 
 MpoNS::MpoNS(int n) : nSite(n), mpo(n), siteIds(n), pi(n), ai(n-1) {}
 
-MPO_2site::MPO_2site() : MpoNS(2), H1(mpo.at(0)), H2(mpo.at(1)), Is1(pi.at(0)), 
-    Is2(pi.at(1)), a12(ai.at(0)) {}
+// MPO_2site::MPO_2site() : MpoNS(2), H1(mpo.at(0)), H2(mpo.at(1)), Is1(pi.at(0)), 
+//     Is2(pi.at(1)), a12(ai.at(0)) {}
 
-MPO_3site::MPO_3site() : MpoNS(3), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
-    Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
+// MPO_3site::MPO_3site() : MpoNS(3), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
+//     Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
 // ----- END MPOs definition ------------------------------------------
 
 
@@ -30,7 +31,7 @@ MPO_2site symmMPO2Sdecomp(ITensor const& u12, Index const& s1,
 
     // first SVD
     O1 = ITensor(s1,s1p);
-    svd(u12,O1,SVt,O2);
+    svd(u12,O1,SVt,O2,{"Truncate",false});
     /*
      *  s1'                    s2' 
      *   |                     |
