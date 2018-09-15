@@ -3,16 +3,33 @@
 using namespace itensor;
 
 // ----- MPOs definition ----------------------------------------------
+OpNS::OpNS() {}
+
+OpNS::OpNS(int n) : nSite(n), siteIds(n), pi(n) {}
 
 MpoNS::MpoNS() {}
 
-MpoNS::MpoNS(int n) : nSite(n), mpo(n), siteIds(n), pi(n), ai(n-1) {}
+MpoNS::MpoNS(int n) : OpNS(n), mpo(n), ai(n-1) {}
+
+// MpoNS::MpoNS(MpoNS const& op) : nSite() mpo(op.mpo),  {
+
+// }
 
 // MPO_2site::MPO_2site() : MpoNS(2), H1(mpo.at(0)), H2(mpo.at(1)), Is1(pi.at(0)), 
 //     Is2(pi.at(1)), a12(ai.at(0)) {}
 
-// MPO_3site::MPO_3site() : MpoNS(3), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
-//     Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
+MPO_3site::MPO_3site() : MpoNS(3), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
+    Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
+
+MPO_3site::MPO_3site(MPO_3site const& op) : MpoNS(op), H1(mpo.at(0)), H2(mpo.at(1)), H3(mpo.at(2)),
+    Is1(pi.at(0)), Is2(pi.at(1)), Is3(pi.at(2)), a12(ai.at(0)), a23(ai.at(1)) {}
+
+
+MPO_2site::MPO_2site() : MpoNS(2), H1(mpo.at(0)), H2(mpo.at(1)),
+    Is1(pi.at(0)), Is2(pi.at(1)), a12(ai.at(0)) {}
+
+MPO_2site::MPO_2site(MPO_2site const& op) : MpoNS(op), H1(mpo.at(0)), H2(mpo.at(1)),
+    Is1(pi.at(0)), Is2(pi.at(1)), a12(ai.at(0)) {}
 // ----- END MPOs definition ------------------------------------------
 
 

@@ -2092,6 +2092,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
     auto argsSVDRRt = Args(
         "Cutoff",-1.0,
         "Maxm",x,
+        "Minm",x,
         "SVDThreshold",1E-2,
         "SVD_METHOD",SVD_METHOD
     );

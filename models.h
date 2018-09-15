@@ -13,6 +13,8 @@
 #include "itensor/all.h"
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
+MPO_2site getMPO2s_Id(int physDim);
+
 MPO_2site getMPO2s_NNH_2site(double tau, double J, double h);
 
 MPO_2site getMPO2s_Ising_2site(double tau, double J, double h);
@@ -40,6 +42,12 @@ MPO_3site getMPO3s_Ising_2site(double tau, double J, double h);
 
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
+
+
+// ----- Trotter gates (4site, ...) MPOs ------------------------------
+OpNS getOP4s_J1J2(double tau, double J1, double J2);
+// ----- END Trotter gates (4site, ...) MPOs --------------------------
+
 
 // ----- Definition of model base class and its particular instances --
 class Model {
@@ -125,68 +133,60 @@ class Ising3BodyModel : public Model {
 
 
 // ----- Model Definitions --------------------------------------------
-void getModel_J1J2(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-	std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-	std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model);
 
-void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+std::unique_ptr<Model> getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model);
 
-void getModel_NNHLadder(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-	std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-	std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_NNHLadder(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+// 	std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+// 	std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_Ising(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_Ising(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_Ising3Body(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_Ising3Body(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_3site(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_3site(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
 
-void getModel_2site(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds);
+// void getModel_2site(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds);
+
+std::unique_ptr<Model> getModel(nlohmann::json & json_model);
 // ----- END Model Definitions ----------------------------------------
 
 #endif

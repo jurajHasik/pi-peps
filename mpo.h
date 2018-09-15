@@ -17,13 +17,12 @@ const char* const TAG_IT_MPOLINK  = "MPOlink";
 // types for auxiliary indices of MPO tensors
 const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 
-
-struct MpoNS {
-    // number of sites over which this MPO acts
+// operator acting on n-sites
+struct OpNS {
+    // number of sites over which this operator acts
     int nSite;
 
-    // individual MPOs
-    std::vector<itensor::ITensor> mpo;
+    itensor::ITensor op;
 
     // siteId of sites on which the MPOs are constructed (if any)
     std::vector<std::string> siteIds;
@@ -31,12 +30,23 @@ struct MpoNS {
     // physical indices of MPO's
     std::vector<itensor::Index> pi;
 
+    OpNS();
+
+    OpNS(int n);
+};
+
+struct MpoNS : OpNS {
+    // individual MPOs
+    std::vector<itensor::ITensor> mpo;
+
     // aux indices of MPO's
     std::vector<itensor::Index> ai;
 
     MpoNS();
 
     MpoNS(int n);
+
+    // MpoNS(MpoNS const& op);
 };
 
 /*
@@ -52,24 +62,36 @@ struct MpoNS {
  * exposing the physical indices s1,s2,s3
  *
  */
-struct MPO_3site {
-    itensor::ITensor H1, H2, H3;
+struct MPO_3site : MpoNS {
+    itensor::ITensor & H1, & H2, & H3;
 
     // expose physical indices
-    itensor::Index Is1, Is2, Is3;
+    itensor::Index & Is1, & Is2, & Is3;
 
     // expose internal indices
-    itensor::Index a12, a23;
+    itensor::Index & a12, & a23;
+
+    // constructor
+    MPO_3site();
+
+    // copy-constructor
+    MPO_3site(MPO_3site const& op);
 };
 
 struct MPO_2site : MpoNS {
-    itensor::ITensor H1, H2;
+    itensor::ITensor & H1, & H2;
 
     // expose physical indices
-    itensor::Index Is1, Is2;
+    itensor::Index & Is1, & Is2;
 
     // expose auxiliary indices
-    itensor::Index a12;
+    itensor::Index & a12;
+
+    // constructor
+    MPO_2site();
+
+    // copy-constructor
+    MPO_2site(MPO_2site const& op);
 };
 
 // ----- END Main MPO Structures --------------------------------------

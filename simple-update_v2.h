@@ -8,6 +8,7 @@
 #include <cmath>
 #include <limits>
 #include "models.h"
+#include "mpo.h"
 #include "ctm-cluster.h"
 #include "ctm-cluster-global.h"
 #include "su2.h"
@@ -57,6 +58,11 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 	itensor::ITensor & l12I, itensor::ITensor & l23I, bool dbg = false);
 
 // ----- 3-Site operator functions ------------------------------------
+
+
+itensor::Args simpleUpdate(OpNS const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::Args const& args = itensor::Args::global());
 
 itensor::ITensor getInvDiagT(itensor::ITensor const& t);
 

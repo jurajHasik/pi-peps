@@ -8,9 +8,12 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
-#include "full-update.h"
-#include "full-update-TEST.h"
+//#include "simple-update_v2.h"
+//#include "full-update.h"
+//#include "full-update-TEST.h"
+#include "mpo.h"
 #include "models.h"
+#include "engine.h"
 
 using namespace itensor;
 
@@ -41,6 +44,7 @@ int main( int argc, char *argv[] ) {
 
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
+    std::string arg_modelType = json_model_params.value("modelType","UNSUPPORTED"); 
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 
@@ -65,6 +69,15 @@ int main( int argc, char *argv[] ) {
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
 	
+    bool arg_su_gauge_fix = jsonCls.value("suGaugeFix",false);
+    int arg_su_gauge_fix_freq = jsonCls.value("suGaugeFixFreq",arg_obsFreq);
+    auto json_gauge_fix_params(jsonCls["gaugeFix"]);
+    std::string arg_suWeightsInit = json_gauge_fix_params.value("suWeightsInit","DELTA");
+    int arg_suIter = json_gauge_fix_params.value("suIter",128);
+    bool arg_gf_dbg = json_gauge_fix_params.value("suDbg",false);
+    int arg_gf_dbgLvl = json_gauge_fix_params.value("suDbgLevel",0);
+    
+
 	// read CTMRG parameters
     auto json_ctmrg_params(jsonCls["ctmrg"]);
 	int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
@@ -255,6 +268,32 @@ int main( int argc, char *argv[] ) {
         cls.phys = {pIA, pIB, pIC, pID};
 
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
+
+        // Define siteToWeights
+        cls.siteToWeights["A"] = {
+            {{"A","B"},{2,0},"L1"},
+            {{"A","B"},{0,2},"L2"},
+            {{"A","C"},{1,3},"L3"},
+            {{"A","C"},{3,1},"L4"}
+        };
+        cls.siteToWeights["B"] = {
+            {{"B","A"},{2,0},"L2"},
+            {{"B","A"},{0,2},"L1"},
+            {{"B","D"},{1,3},"L5"},
+            {{"B","D"},{3,1},"L6"}
+        };
+        cls.siteToWeights["C"] = {
+            {{"C","D"},{2,0},"L7"},
+            {{"C","D"},{0,2},"L8"},
+            {{"C","A"},{1,3},"L4"},
+            {{"C","A"},{3,1},"L3"}
+        };
+        cls.siteToWeights["D"] = {
+            {{"D","B"},{3,1},"L5"},
+            {{"D","B"},{1,3},"L6"},
+            {{"D","C"},{2,0},"L8"},
+            {{"D","C"},{0,2},"L7"}
+        };
         // ----- END DEFINE CLUSTER ------------------------------------
     }
 
@@ -302,42 +341,67 @@ int main( int argc, char *argv[] ) {
     // ##################################################################
 
     // DEFINE MODEL AND GATE SEQUENCE
-    std::unique_ptr<Model> ptr_model;   
-    std::vector< MPO_2site >                gateMPO;
-    std::vector< MPO_2site * >              ptr_gateMPO;
-    std::vector< std::vector<int> >         gate_auxInds;
-    std::vector< std::vector<std::string> > gates;
+    std::unique_ptr<Model>  ptr_model;
+    std::unique_ptr<Engine> ptr_engine;     // full update engine
+    std::unique_ptr<Engine> ptr_gfe;        // gauge fixing engine 
+    // std::vector< std::unique_ptr<OpNS> >    gateMPO;
+    // std::vector< OpNS * >                   ptr_gateMPO;
+    // std::vector< std::vector<int> >         gate_auxInds;
+    // std::vector< std::vector<std::string> > gates;
 
 
-    // randomisation
-    std::vector<int> rndInds;
-    std::vector< MPO_2site * >              tmp_ptr_gateMPO;
-    std::vector< std::vector<std::string> > tmp_gates;
-    std::vector< std::vector<int> >         tmp_gate_auxInds;
+    // // randomisation
+    // std::vector<int> rndInds;
+    // std::vector< OpNS * >              tmp_ptr_gateMPO;
+    // std::vector< std::vector<std::string> > tmp_gates;
+    // std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel_2site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    // getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    // getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
-    // For symmetric Trotter decomposition
-    if (symmTrotter) {
-        int init_gate_size = gates.size();
-        for (int i=0; i<init_gate_size; i++) {
-            ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
-            gates.push_back(gates[init_gate_size-1-i]);
-            gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+    ptr_model =  getModel(json_model_params);
+    ptr_engine = buildEngine(json_model_params);
+    if (ptr_engine) {
+        std::cout<<"Valid Engine constructed"<<std::endl;
+    } else {
+        std::cout<<"Engine pointer is NULL"<<std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if (arg_su_gauge_fix) {
+        ptr_gfe = buildEngine(json_gauge_fix_params);
+        if (ptr_gfe) {
+            std::cout<<"Valid GaugeFix Engine constructed"<<std::endl;
+        } else {
+            std::cout<<"GaugeFix Engine pointer is NULL"<<std::endl;
+            exit(EXIT_FAILURE);
         }
     }
-    // randomisation
-    if ( randomizeSeq && (symmTrotter==false) ) {
-        for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
-        tmp_ptr_gateMPO  = ptr_gateMPO;
-        tmp_gates        = gates;
-        tmp_gate_auxInds = gate_auxInds;
-    }
+    
+
+
+    // For symmetric Trotter decomposition
+    // if (symmTrotter) {
+    //     int init_gate_size = ptr_model->gates.size();
+    //     for (int i=0; i<init_gate_size; i++) {
+    //         ptr_model->ptr_gateMPO.push_back(ptr_model->ptr_gateMPO[init_gate_size-1-i]);
+    //         ptr_model->gates.push_back(ptr_model->gates[init_gate_size-1-i]);
+    //         ptr_model->gate_auxInds.push_back(ptr_model->gate_auxInds[init_gate_size-1-i]);
+    //     }
+    // }
+    // // randomisation
+    // if ( randomizeSeq && (symmTrotter==false) ) {
+    //     for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
+    //     tmp_ptr_gateMPO  = ptr_gateMPO;
+    //     tmp_gates        = gates;
+    //     tmp_gate_auxInds = gate_auxInds;
+    // }
 
     // STORE ISOMETRIES
-    std::vector< std::vector< ITensor > > iso_store(
-        gates.size(), {ITensor(), ITensor(), ITensor(), ITensor()} );
+    // std::vector< std::vector< ITensor > > iso_store(
+        // ptr_model->gates.size(), {ITensor(), ITensor(), ITensor(), ITensor()} );
+     std::vector< std::vector< ITensor > > iso_store(
+        1, {ITensor(), ITensor(), ITensor(), ITensor()} );
 
     Args fuArgs = {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,
@@ -426,10 +490,11 @@ int main( int argc, char *argv[] ) {
                 std::cout << std::endl;
                 double tmpVal;
                 double minCornerSV = 1.0e+16;
+                Args args_dbg_cornerSVD = {"Truncate",false};
                 std::cout << "Spectra: " << std::endl;
 
                 ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR, args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
@@ -437,7 +502,7 @@ int main( int argc, char *argv[] ) {
                 oss << tmpVal;
 
                 tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                spec = svd(ctmEnv.C_RU[0],tL,sv,tR, args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
@@ -445,7 +510,7 @@ int main( int argc, char *argv[] ) {
                 oss <<" "<< tmpVal;
 
                 tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                spec = svd(ctmEnv.C_RD[0],tL,sv,tR, args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
@@ -453,7 +518,7 @@ int main( int argc, char *argv[] ) {
                 oss <<" "<< tmpVal;
 
                 tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                spec = svd(ctmEnv.C_LD[0],tL,sv,tR, args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
@@ -480,31 +545,41 @@ int main( int argc, char *argv[] ) {
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
 
-        // randomisation
-        if ( randomizeSeq && (symmTrotter==false) && (fuI % gates.size() == 0) ) {
-            std::cout <<"Randomizing gate sequence"<< std::endl;
-            std::random_shuffle( rndInds.begin(), rndInds.end() );
-            for ( int i=0; i < gates.size(); i++ ) { 
-                ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
-                gates[i]        = tmp_gates[rndInds[i]];
-                gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
-            }
-        }
+        // // randomisation
+        // if ( randomizeSeq && (symmTrotter==false) && (fuI % gates.size() == 0) ) {
+        //     std::cout <<"Randomizing gate sequence"<< std::endl;
+        //     std::random_shuffle( rndInds.begin(), rndInds.end() );
+        //     for ( int i=0; i < gates.size(); i++ ) { 
+        //         ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
+        //         gates[i]        = tmp_gates[rndInds[i]];
+        //         gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
+        //     }
+        // }
 
 
         // PERFORM FULL UPDATE
-        std::cout << "GATE: " << (fuI-1)%gates.size() << std::endl;
-            
-        // diag_fu = fullUpdate(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //std::cout << "GATE: " << (fuI-1)%ptr_model->gates.size() << std::endl;
+        
+        // diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
         //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
         //     iso_store[(fuI-1)%gates.size()], fuArgs);
 
-        diag_fu = fullUpdate_2site_PINV( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-           gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+        // diag_fu = fullUpdate_CG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
 
-        // diag_fu = fullUpdate_2site_v2( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-        //    gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()],
-        //    iso_store[(fuI-1)%gates.size()], fuArgs);
+        // diag_fu = fullUpdate_2site_PINV( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
+        //    gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
+
+        //auto temp_ptr =  (MPO_3site *) ptr_gateMPO[(fuI-1)%gates.size()];
+
+        // diag_fu = fullUpdate_2site_v2( 
+        //     ptr_model->ptr_gateMPO[(fuI-1)%ptr_model->gates.size()], 
+        //     cls, 
+        //     ctmEnv, gates[(fuI-1)%ptr_model->gates.size()], 
+        //     gate_auxInds[(fuI-1)%ptr_model->gates.size()],
+        //     iso_store[(fuI-1)%ptr_model->gates.size()], fuArgs);
+
+        diag_fu = ptr_engine->performFullUpdate(cls, ctmEnv, fuArgs);
 
         diagData_fu.push_back(diag_fu);
 
@@ -534,8 +609,31 @@ int main( int argc, char *argv[] ) {
 
         ctmEnv.updateCluster(cls);
         ev.setCluster(cls);
-        writeCluster(outClusterFile, cls);
+        // writeCluster(outClusterFile, cls);
         
+        // fix gauge by simple-update at dt=0 - identity operators
+        if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
+            std::cout << "GAUGE FIXING" << std::endl;
+            // Assuming the weights have been initialized
+            initClusterWeights(cls);
+            setWeights(cls, arg_suWeightsInit);
+
+            Args gfArgs = {"suDbg",arg_gf_dbg,"suDbgLevel",arg_gf_dbgLvl};
+            Args gf_diag_fu;
+            for (int suI = 1; suI <= arg_suIter; suI++) {
+                //std::cout <<"Simple Update - STEP "<< suI << std::endl;
+
+                // PERFORM SIMPLE UPDATE
+                //std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;
+
+                gf_diag_fu = ptr_gfe->performSimpleUpdate(cls, gfArgs);
+
+                //diagData_fu.push_back(diag_fu);
+            }
+
+            absorbWeightsToSites(cls);
+        }
+
         // SETUP ENVIRONMENT LOOP
         accT = std::vector<double>(8,0.0);
         // reset environment
@@ -705,6 +803,8 @@ int main( int argc, char *argv[] ) {
             // std::cout << "<S> computed in T: "<< std::chrono::duration_cast
             //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
             //         <<" [sec] "<< std::endl;
+        
+            writeCluster(outClusterFile, cls);
         }
     }
 

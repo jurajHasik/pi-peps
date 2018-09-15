@@ -384,6 +384,14 @@ Args simpleUpdate(MPO_2site const& u12, Cluster & cls,
 	return diag_data;
 }
 
+Args simpleUpdate(OpNS const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+	return Args::global();
+}
+
+
 void applyH_123_v1(MPO_3site const& mpo3s, 
 	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
 	bool dbg) {

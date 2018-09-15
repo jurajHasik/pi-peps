@@ -3,6 +3,25 @@
 using namespace itensor;
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
+MPO_2site getMPO2s_Id(int physDim) {
+
+    // Define physical indices
+    auto is1 = Index(TAG_MPO3S_PHYS1,physDim,PHYS);
+    auto is2 = Index(TAG_MPO3S_PHYS2,physDim,PHYS);
+
+    ITensor idpI1(is1,prime(is1,1));
+    ITensor idpI2(is2,prime(is2,1));
+
+    for (int i=1;i<=physDim;i++) {
+        idpI1.set(is1(i),prime(is1,1)(i),1.0);
+        idpI2.set(is2(i),prime(is2,1)(i),1.0);
+    }
+
+    ITensor id2s = idpI1*idpI2;
+
+    return symmMPO2Sdecomp(id2s, is1, is2);
+}
+
 MPO_2site getMPO2s_NNH_2site(double tau, double J, double h) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
     std::cout.precision(10);
@@ -396,6 +415,56 @@ MPO_3site getMPO3s_NNH_2site(double tau, double J, double h) {
     return ltorMPO2StoMPO3Sdecomp(u12, s1, s2, true);
 }
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
+
+
+// ----- Trotter gates (3site, ...) MPOs ------------------------------
+OpNS getOP4s_J1J2(double tau, double J1, double J2) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s4 = Index("S4", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+    Index s4p = prime(s4);
+
+    ITensor h4 = ITensor(s1,s2,s3,s4,s1p,s2p,s3p,s4p);
+   
+    ITensor nnS1S2 = (0.5*J1)*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    h4 += nnS1S2 * delta(s3,s3p) * delta(s4,s4p);
+    h4 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
+        delta(s1,s1p) * delta(s2,s2p);
+
+    ITensor nnnS1S3 = J2*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s3)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s3)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s3) ) );
+
+    h4 += nnnS1S3 * delta(s2,s2p) * delta(s4,s4p);
+    h4 += (nnnS1S3 * delta(s1,s2) * delta(s1p,s2p) * delta(s3,s4) * delta(s3p,s4p)) *
+        delta(s1,s1p) * delta(s3,s3p);
+
+    auto cmbI = combiner(s1,s2,s3,s4);
+    h4 = (cmbI * h4 ) * prime(cmbI);
+    ITensor u4 = expHermitian(h4, {-tau, 0.0});
+    u4 = (cmbI * u4 ) * prime(cmbI);
+
+    auto op4s = OpNS(4);
+
+    op4s.op = u4;
+    op4s.pi = {s1,s2,s3,s4};
+
+    return op4s;
+}
+// ----- END Trotter gates (3site, ...) MPOs --------------------------
+
 
 // ----- Definition of model base class and its particular instances --
 J1J2Model::J1J2Model(double arg_J1, double arg_J2)
@@ -966,768 +1035,572 @@ void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev,
 // ----- END Definition of model class --------------------------------
 
 // ----- Model Definitions --------------------------------------------
-void getModel_J1J2(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-	std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-	std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-	double arg_J1 = json_model["J1"].get<double>();
-	double arg_J2 = json_model["J2"].get<double>();
-    double arg_lambda = json_model["LAMBDA"].get<double>();
-    
-    ptr_model = std::unique_ptr<Model>(new J1J2Model(arg_J1, arg_J2));
-
-    // time step
-    double arg_tau = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-
-    if (arg_fuGateSeq == "SYM1") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
-
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-           
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
-
-        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } 
-    else if (arg_fuGateSeq == "SYM2") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (1 BC ABCD) 
-            
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (2 BC BADC)
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}, // (2 AD BADC)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (3 BC CDAB)
-
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (4 BC DCBA)        
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}  // (4 AD DCBA)
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},        
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3}
-        };
-
-        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    }
-    else if (arg_fuGateSeq == "SYM3") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
-
-        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } 
-    else if (arg_fuGateSeq == "SYM4") {
-        gates = {
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"D", "C", "A", "B"}, 
-            {"B", "A", "C", "D"}
-        };
-
-        gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}
-        };
-
-        gateMPO.push_back(getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda));
-        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
-    } 
-    else if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"}, 
-            
-            {"C", "D", "B", "A"}, 
-            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-
-            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
-
-            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3},
-
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
-            
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
-        };
-
-        gateMPO.push_back( getMPO3s_NNH_2site(arg_tau, arg_J1, 0.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) ); 
-    }
-    else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_NNHLadder(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-	std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-	std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-	double arg_J1 = json_model["J1"].get<double>();
-	double arg_alpha = json_model["alpha"].get<double>();
-    double arg_lambda = json_model["LAMBDA"].get<double>();
-    
-    ptr_model = std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
-
-    // time step
-    double arg_tau = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-    if (arg_fuGateSeq == "SYM1") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
-
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-           
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
-
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
-
-        for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) ); 
-        for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
-    } else if (arg_fuGateSeq == "SYM3") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
-
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
-        gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
-
-        ptr_gateMPO = {
-            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-            &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0])
-        };
-    } else if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"}, 
-            
-            {"C", "D", "B", "A"}, 
-            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-
-            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
-
-            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
-        };
-
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3},
-
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
-            
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
-        };
-
-        gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
-        gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
-
-        for (int i=0; i<6; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
-        for (int i=0; i<2; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
+std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model) {
 
     double arg_J1 = json_model["J1"].get<double>();
-    double arg_h = json_model["h"].get<double>();
+    double arg_J2 = json_model["J2"].get<double>();
     
-    ptr_model = std::unique_ptr<Model>(new NNHModel_2x2Cell_AB(arg_J1, arg_h));
-
-    // time step
-    double arg_tau = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-    if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B"}, {"B", "A"},
-            {"A", "B"}, {"B", "A"}
-        };
-
-        gate_auxInds = {
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-        };
-
-        gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, arg_h) );
-
-        for (int i=0; i<4; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 2-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    return std::unique_ptr<Model>(new J1J2Model(arg_J1, arg_J2));
 }
 
-void getModel_Ising(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
+// void getModel_NNHLadder(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+// 	std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+// 	std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
 
-    double arg_J1     = json_model["J1"].get<double>();
-    double arg_h      = json_model["h"].get<double>();
-    double arg_lambda = json_model["LAMBDA"].get<double>();
+// 	double arg_J1 = json_model["J1"].get<double>();
+// 	double arg_alpha = json_model["alpha"].get<double>();
+//     double arg_lambda = json_model["LAMBDA"].get<double>();
     
-    ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
+//     ptr_model = std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
 
-    // time step
-    double arg_tau    = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+//     // time step
+//     double arg_tau = json_model["tau"].get<double>();
+//     // gate sequence
+//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
 
-    if (arg_fuGateSeq == "SYM1") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
+//     if (arg_fuGateSeq == "SYM1") {
+//         gates = {
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
             
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
 
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
             
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
+//         };
 
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
 
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
 
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
            
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+//         };
 
-        gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } else if (arg_fuGateSeq == "SYM3") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
+//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
+//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
 
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
+//         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) ); 
+//         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
+//     } else if (arg_fuGateSeq == "SYM3") {
+//         gates = {
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
 
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"},
+//             {"C", "D", "B", "A"},
+//             {"A", "B", "D", "C"},
 
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
 
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
+//             {"C", "D", "B", "A"}, 
+//             {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"}
+//         };
 
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
 
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
 
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3}, 
+//             {1,0, 2,1, 3,2, 0,3},
 
-        gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } else if (arg_fuGateSeq == "SYM4") {
-        gates = {
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3}
+//         };
 
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
+//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
+//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
 
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"}
-        };
-
-        gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}
-        };
-        gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
-    } else if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"}, 
+//         ptr_gateMPO = {
+//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
+//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0])
+//         };
+//     } else if (arg_fuGateSeq == "2SITE") {
+//         gates = {
+//             {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"}, 
             
-            {"C", "D", "B", "A"}, 
-            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+//             {"C", "D", "B", "A"}, 
+//             {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
 
-            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
+//             {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
 
-            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
-        };
+//             {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
+//         };
 
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,2, 0,3, 1,0, 2,1},
 
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3},
 
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
+//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
             
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
-        };
+//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
+//         };
 
-        gateMPO.push_back( getMPO3s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
+//         gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
+//         gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
 
-void getModel_Ising3Body(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
+//         for (int i=0; i<6; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
+//         for (int i=0; i<2; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
+//     } else {
+//         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
 
-    double arg_J1     = json_model["J1"].get<double>();
-    double arg_J2     = json_model["J2"].get<double>();
-    double arg_h      = json_model["h"].get<double>();
-    double arg_lambda = json_model["LAMBDA"].get<double>();
+// void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     double arg_J1 = json_model["J1"].get<double>();
+//     double arg_h = json_model["h"].get<double>();
     
-    ptr_model = std::unique_ptr<Model>(new Ising3BodyModel(arg_J1, arg_J2, arg_h));
+//     ptr_model = std::unique_ptr<Model>(new NNHModel_2x2Cell_AB(arg_J1, arg_h));
 
-    // time step
-    double arg_tau    = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+//     // time step
+//     double arg_tau = json_model["tau"].get<double>();
+//     // gate sequence
+//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
 
-    if (arg_fuGateSeq == "SYM1") {
-        gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
+//     if (arg_fuGateSeq == "2SITE") {
+//         gates = {
+//             {"A", "B"}, {"B", "A"},
+//             {"A", "B"}, {"B", "A"}
+//         };
+
+//         gate_auxInds = {
+//             {2, 0}, {2, 0},
+//             {3, 1}, {3, 1},
+//         };
+
+//         gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, arg_h) );
+
+//         for (int i=0; i<4; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
+//     } else {
+//         std::cout<<"Unsupported 2-site gate sequence: "<< arg_fuGateSeq << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+// void getModel_Ising(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     double arg_J1     = json_model["J1"].get<double>();
+//     double arg_h      = json_model["h"].get<double>();
+//     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+//     ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
+
+//     // time step
+//     double arg_tau    = json_model["tau"].get<double>();
+//     // gate sequence
+//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+//     if (arg_fuGateSeq == "SYM1") {
+//         gates = {
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
             
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
 
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
             
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
+//         };
 
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
 
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
 
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
            
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+//         };
 
-        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } else if (arg_fuGateSeq == "SYM3") {
-        gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
+//         gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
+//     } else if (arg_fuGateSeq == "SYM3") {
+//         gates = {
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
 
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"},
+//             {"C", "D", "B", "A"},
+//             {"A", "B", "D", "C"},
 
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
 
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
+//             {"C", "D", "B", "A"}, 
+//             {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"}
+//         };
 
-        gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
 
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
 
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3}, 
+//             {1,0, 2,1, 3,2, 0,3},
 
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3}
+//         };
 
-        gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
-        ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
+//         gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
+//     } else if (arg_fuGateSeq == "SYM4") {
+//         gates = {
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"},
+
+//             {"C", "D", "B", "A"},
+//             {"A", "B", "D", "C"},
+
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
+
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"}
+//         };
+
+//         gate_auxInds = {
+//             {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3},
+
+//             {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3},
+
+//             {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3},
+
+//             {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3}
+//         };
+//         gateMPO.push_back( getMPO3s_Ising_v2(arg_tau, arg_J1, arg_h/3.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
+//     } else if (arg_fuGateSeq == "2SITE") {
+//         gates = {
+//             {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"}, 
+            
+//             {"C", "D", "B", "A"}, 
+//             {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+
+//             {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
+
+//             {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
+//         };
+
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,2, 0,3, 1,0, 2,1},
+
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3},
+
+//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
+            
+//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
+//         };
+
+//         gateMPO.push_back( getMPO3s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(8, &(gateMPO[0]) );
+//     } else {
+//         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+// void getModel_Ising3Body(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     double arg_J1     = json_model["J1"].get<double>();
+//     double arg_J2     = json_model["J2"].get<double>();
+//     double arg_h      = json_model["h"].get<double>();
+//     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+//     ptr_model = std::unique_ptr<Model>(new Ising3BodyModel(arg_J1, arg_J2, arg_h));
+
+//     // time step
+//     double arg_tau    = json_model["tau"].get<double>();
+//     // gate sequence
+//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+//     if (arg_fuGateSeq == "SYM1") {
+//         gates = {
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
+            
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
+            
+//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
+//         };
+
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+
+//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
+           
+//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+//         };
+
+//         gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
+//     } else if (arg_fuGateSeq == "SYM3") {
+//         gates = {
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
+
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"},
+//             {"C", "D", "B", "A"},
+//             {"A", "B", "D", "C"},
+
+//             {"D", "C", "A", "B"},
+//             {"B", "A", "C", "D"},
+//             {"A", "B", "D", "C"},
+//             {"C", "D", "B", "A"},
+
+//             {"C", "D", "B", "A"}, 
+//             {"A", "B", "D", "C"},
+//             {"B", "A", "C", "D"},
+//             {"D", "C", "A", "B"}
+//         };
+
+//         gate_auxInds = {
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
+
+//             {3,0, 2,3, 1,2, 0,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,2, 0,3, 1,0, 2,1},
+//             {3,0, 2,3, 1,2, 0,1},
+
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,2, 0,1, 3,0, 2,3}, 
+//             {1,0, 2,1, 3,2, 0,3},
+
+//             {1,2, 0,1, 3,0, 2,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,0, 2,1, 3,2, 0,3},
+//             {1,2, 0,1, 3,0, 2,3}
+//         };
+
+//         gateMPO.push_back( getMPO3s_Ising3Body(arg_tau, arg_J1/4.0, arg_J2, arg_h/12.0) );
+//         ptr_gateMPO = std::vector< MPO_3site * >(16, &(gateMPO[0]) );
+//     } else {
+//         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+// void getModel_3site(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_3site > & gateMPO,
+//     std::vector< MPO_3site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     std::string arg_modelType = json_model["type"].get<std::string>(); 
+
+//     if(arg_modelType == "J1J2") {
+//         getModel_J1J2(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else if (arg_modelType == "NNHLadder") {
+//         getModel_NNHLadder(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else if (arg_modelType == "Ising") {
+//         getModel_Ising(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else if (arg_modelType == "Ising3Body") {
+//         getModel_Ising3Body(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else {
+//         std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+std::unique_ptr<Model> getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model) {
+
+    double arg_J1 = json_model["J1"].get<double>();
+    double arg_h  = json_model["h"].get<double>();
+    
+    return std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h));
 }
 
-void getModel_3site(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_3site > & gateMPO,
-    std::vector< MPO_3site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
+// void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     double arg_J1     = json_model["J1"].get<double>();
+//     double arg_h      = json_model["h"].get<double>();
+//     double arg_lambda = json_model["LAMBDA"].get<double>();
+    
+//     ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
+
+//     // time step
+//     double arg_tau    = json_model["tau"].get<double>();
+//     // gate sequence
+//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+   
+//     if (arg_fuGateSeq == "2SITE") {
+//         gates = {
+//             {"A", "B"}, {"B", "A"}, 
+//             {"C", "D"}, {"D", "C"},
+//             {"A", "C"}, {"B", "D"},
+//             {"C", "A"}, {"D", "B"}
+//         };
+
+//         gate_auxInds = {
+//             {2, 0}, {2, 0},
+//             {2, 0}, {2, 0},
+//             {3, 1}, {3, 1},
+//             {3, 1}, {3, 1}
+//         };
+
+//         gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
+//         ptr_gateMPO = std::vector< MPO_2site * >(8, &(gateMPO[0]) );
+//     } else {
+//         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+// void getModel_2site(nlohmann::json & json_model,
+//     std::unique_ptr<Model> & ptr_model,
+//     std::vector< MPO_2site > & gateMPO,
+//     std::vector< MPO_2site *> & ptr_gateMPO,
+//     std::vector< std::vector<std::string> > & gates,
+//     std::vector< std::vector<int> > & gate_auxInds) {
+
+//     std::string arg_modelType = json_model["type"].get<std::string>(); 
+
+//     if (arg_modelType == "NNH_2x2Cell_AB") {
+//         getModel_NNH_2x2Cell_AB(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {
+//         getModel_NNH_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else if (arg_modelType == "Ising_2x2Cell_ABCD") {
+//         getModel_Ising_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+//     } else {
+//         std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+// }
+
+std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
 
     std::string arg_modelType = json_model["type"].get<std::string>(); 
 
     if(arg_modelType == "J1J2") {
-        getModel_J1J2(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    } else if (arg_modelType == "NNHLadder") {
-        getModel_NNHLadder(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    } else if (arg_modelType == "Ising") {
-        getModel_Ising(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    } else if (arg_modelType == "Ising3Body") {
-        getModel_Ising3Body(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    } else {
-        std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-    double arg_J1 = json_model["J1"].get<double>();
-    double arg_h = json_model["h"].get<double>();
-    
-    ptr_model = std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h));
-
-    // time step
-    double arg_tau = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-    
-    if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"C", "D"}, {"D", "C"},
-            {"A", "C"}, {"B", "D"},
-            {"C", "A"}, {"D", "B"}
-        };
-
-        gate_auxInds = {
-            {2, 0}, {2, 0},
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-            {3, 1}, {3, 1}
-        };
-
-        gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, arg_h) );
-        for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-    double arg_J1     = json_model["J1"].get<double>();
-    double arg_h      = json_model["h"].get<double>();
-    double arg_lambda = json_model["LAMBDA"].get<double>();
-    
-    ptr_model = std::unique_ptr<Model>(new IsingModel(arg_J1, arg_h));
-
-    // time step
-    double arg_tau    = json_model["tau"].get<double>();
-    // gate sequence
-    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
-
-   
-    if (arg_fuGateSeq == "2SITE") {
-        gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"C", "D"}, {"D", "C"},
-            {"A", "C"}, {"B", "D"},
-            {"C", "A"}, {"D", "B"}
-        };
-
-        gate_auxInds = {
-            {2, 0}, {2, 0},
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-            {3, 1}, {3, 1}
-        };
-
-        gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
-        ptr_gateMPO = std::vector< MPO_2site * >(8, &(gateMPO[0]) );
-    } else {
-        std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
-
-void getModel_2site(nlohmann::json & json_model,
-    std::unique_ptr<Model> & ptr_model,
-    std::vector< MPO_2site > & gateMPO,
-    std::vector< MPO_2site *> & ptr_gateMPO,
-    std::vector< std::vector<std::string> > & gates,
-    std::vector< std::vector<int> > & gate_auxInds) {
-
-    std::string arg_modelType = json_model["type"].get<std::string>(); 
-
-    if (arg_modelType == "NNH_2x2Cell_AB") {
-        getModel_NNH_2x2Cell_AB(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+        return getModel_J1J2(json_model);
+    // } else if (arg_modelType == "NNHLadder") {
+    //     return getModel_NNHLadder(json_model);
+    // } else if (arg_modelType == "Ising") {
+    //     return getModel_Ising(json_model);
+    // } else if (arg_modelType == "Ising3Body") {
+    //     return getModel_Ising3Body(json_model);
+    // } else if (arg_modelType == "NNH_2x2Cell_AB") {
+    //     return getModel_NNH_2x2Cell_AB(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {
-        getModel_NNH_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    } else if (arg_modelType == "Ising_2x2Cell_ABCD") {
-        getModel_Ising_2x2Cell_ABCD(json_model, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+        return getModel_NNH_2x2Cell_ABCD(json_model);
+    // } else if (arg_modelType == "Ising_2x2Cell_ABCD") {
+    //     return getModel_Ising_2x2Cell_ABCD(json_model);
     } else {
         std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
         exit(EXIT_FAILURE);
     }
+
+    return nullptr;
 }
 // ----- END Model Definitions ----------------------------------------

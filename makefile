@@ -22,7 +22,7 @@ APP8=opt-su-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS =models.h full-update.h simple-update.h cluster-ev-builder.h \
+HEADERS =engine.h models.h full-update.h simple-update_v2.h cluster-ev-builder.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h mpo.h \
 	su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
@@ -52,8 +52,10 @@ CCFILES4=$(APP4).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
 CCFILES5=$(APP5).cc cluster-ev-builder.cc simple-update.cc ctm-cluster-io.cc \
 	ctm-cluster.cc su2.cc
-CCFILES6=$(APP6).cc cluster-ev-builder.cc full-update-TEST.cc full-update.cc models.cc \
-	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
+
+CCFILES6=$(APP6).cc cluster-ev-builder.cc engine.cc full-update-TEST.cc full-update.cc simple-update_v2.cc \
+	models.cc ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
+
 CCFILES7=$(APP7).cc cluster-ev-builder.cc full-update.cc  models.cc \
 	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
 CCFILES8=$(APP8).cc simple-update_v2.cc models.cc \
@@ -72,8 +74,10 @@ OBJECTS4=$(patsubst %.cc,%.o, $(CCFILES4))
 GOBJECTS4=$(patsubst %,.debug_objs/%, $(OBJECTS4))
 OBJECTS5=$(patsubst %.cc,%.o, $(CCFILES5))
 GOBJECTS5=$(patsubst %,.debug_objs/%, $(OBJECTS5))
+
 OBJECTS6=$(patsubst %.cc,%.o, $(CCFILES6))
 GOBJECTS6=$(patsubst %,.debug_objs/%, $(OBJECTS6))
+
 OBJECTS7=$(patsubst %.cc,%.o, $(CCFILES7))
 OBJECTS8=$(patsubst %.cc,%.o, $(CCFILES8))
 

@@ -93,19 +93,19 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE GATE SEQUENCE
     std::unique_ptr<Model> ptr_model;
-    std::vector< MPO_2site > gateMPO;
-    std::vector< MPO_2site * > ptr_gateMPO;
+    std::vector< MPO_3site > gateMPO;
+    std::vector< MPO_3site * > ptr_gateMPO;
     std::vector< std::vector<std::string> > gates;
     std::vector< std::vector<int> > gate_auxInds;
 
      // randomisation
     std::vector<int> rndInds;
-    std::vector< MPO_2site * >              tmp_ptr_gateMPO;
+    std::vector< MPO_3site * >              tmp_ptr_gateMPO;
     std::vector< std::vector<std::string> > tmp_gates;
     std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel_2site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
     if (symmTrotter) {
@@ -301,6 +301,9 @@ int main( int argc, char *argv[] ) {
         ptr_model->setObservablesHeader(out_file_energy);
         ptr_model->computeAndWriteObservables(ev, out_file_energy,{"lineNo",0});
     
+        std::cout << "Norm: "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), std::make_pair(1,1))
+            << std::endl;
+
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
 
@@ -499,6 +502,9 @@ int main( int argc, char *argv[] ) {
             std::cout << "Observables computed in T: "<< std::chrono::duration_cast
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
                     <<" [sec] "<< std::endl;
+
+            std::cout << "Norm: "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), std::make_pair(1,1))
+            << std::endl;
 
             // t_begin_int = std::chrono::steady_clock::now();
             // t_end_int = std::chrono::steady_clock::now();

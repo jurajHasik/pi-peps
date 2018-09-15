@@ -2,7 +2,7 @@
 
 using namespace itensor;
 
-ITensor pseudoInverse(ITensor const& M, Args const& args) {
+ITensor pseudoInverse(ITensor & M, Args const& args) {
     auto dbg    = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-16);
@@ -17,6 +17,7 @@ ITensor pseudoInverse(ITensor const& M, Args const& args) {
 
 	auto i0 = M.inds()[0];
 	auto i1 = M.inds()[1];
+	//for(int i=1; i<=i0.m(); i++) M.set(i0(i),i1(i), M.real(i0(i),i1(i)) + 1.0e-8); 
 
 	ITensor U(i0), dM, Vt;
 	svd(M, U, dM, Vt, {"Truncate",false});
@@ -28,8 +29,9 @@ ITensor pseudoInverse(ITensor const& M, Args const& args) {
 			dM_elems.push_back( 1.0/dM.real(dM.inds().front()(i),
 				dM.inds().back()(i)) );
 		} else {
-			// dM_elems.push_back(0.0);
-			dM_elems.push_back(1.0);
+			dM_elems.push_back(1.25e-4);			
+			//dM_elems.push_back(1.0e-3);
+			//dM_elems.push_back(1.0);
 		}
 	}
 
@@ -3624,7 +3626,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
     auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
-	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
+	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-15);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
 
@@ -3889,6 +3891,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			//if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
 			// Drop negative EV's and count negative EVs, EVs lower than cutoff
+			double traceDM = 0.0;
 			int countCTF = 0;
 			int countNEG = 0;
 			if(dbg && (dbgLvl >= 1)) {
@@ -3898,12 +3901,14 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			for (auto & elem : dM_elems) {
 				if (elem < 0.0) {
 					if(dbg && (dbgLvl >= 2)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-					elem = 0.0;
+					// elem = 0.0;
+					elem = 1.25e-4;
 					countNEG += 1;
 				} else if (elem < svd_cutoff) {
 					countCTF += 1;
 					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
 				}
+				traceDM += elem;
 			}
 
 			condNum = mval / nval;
@@ -3924,11 +3929,12 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			// ##### END V3 ##################################################
 			
 			D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+			D_eRE = D_eRE / traceDM;
 
 			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
 				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 
-			eRE_sym *= 1.0/mval;
+			//eRE_sym *= 1.0/mval;
 		}
 
 		eRE = (eRE_sym * cmbKet) * cmbBra;
@@ -4010,9 +4016,14 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			vec_normPsi.push_back(sumels(NORMPSI));
 
 			// condition for stopping ALS procedure
+			if ( fdist.back() < iso_eps ) { converged = true; break; }
 			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < iso_eps ) { 
 			converged = true; break; }
-		
+
+			auto RES = M * eA - K;
+			std::cout<<"Norm(RES_A)= "<< norm(RES) << std::endl;
+
+			//if (norm(RES) > 1.25e-4) {
 			auto cmb0 = combiner(iQA, prime(aux[0],pl[0]));
 			auto cmb1 = combiner(prime(iQA,4), prime(aux[0],pl[0]+4));
 			M *= cmb0;
@@ -4024,6 +4035,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			M *= cmb1;
 
 			eA = M * K;
+			//}
 		}
 
 		// Optimizing eB
@@ -4050,7 +4062,10 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			// condition for stopping ALS procedure
 			//if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2]) < iso_eps ) { 
 			//converged = true; break; }
-		
+			auto RES = M * eB - K;
+			std::cout<<"Norm(RES_B)= "<< norm(RES) << std::endl;
+
+			//if(norm(RES) > 1.25e-4) {
 			auto cmb0 = combiner(iQB, prime(aux[1],pl[1]));
 			auto cmb1 = combiner(prime(iQB,4), prime(aux[1],pl[1]+4));
 			M *= cmb0;
@@ -4062,6 +4077,7 @@ Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ct
 			M *= cmb1;
 
 			eB = M * K;
+			//}
 		}
 
 		altlstsquares_iter++;
