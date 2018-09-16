@@ -2084,7 +2084,7 @@ void FuncCGV2::df(VecDoub_I &x, VecDoub_O &deriv) {
 }
 //-----------------------------------------------------------------------------
 
-
+// ***** ALS over 3 sites, Non-linear minimization with bare CG
 Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -2825,7 +2825,9 @@ void FuncALS_CG::df(VecDoub_I &x, VecDoub_O &deriv) {
 
 
 //-----------------------------------------------------------------------------
-Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+
+// ***** ALS over 3 sites, BiCG with ITensor
+Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
  
@@ -2839,7 +2841,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
 	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
 	auto cg_gradientNorm_eps = args.getReal("cgGradientNormEps",1.0e-8);
-	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
+	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-15);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
 
@@ -3381,11 +3383,11 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 
 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
 		ferr = 1.0;
-		while ( ferr > cg_gradientNorm_eps ) {
+		//while ( ferr > cg_gradientNorm_eps ) {
 			FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), svd_cutoff );
 			fulscgEB.solveIT(K, eB, itol, cg_gradientNorm_eps, combinedIndex(cmbX2).m(), fiter, ferr);
 			std::cout <<"EB f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
-		}
+		//}
 
 	    
 		// Optimizing eD
@@ -3525,6 +3527,7 @@ Args fullUpdate_ALS_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	return diag_data;
 }
 
+// ***** ALS over 3 sites, Pseudoinverse
 Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -4230,6 +4233,8 @@ Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
 	return diag_data;
 }
 
+// ***** ARE THESE METHODS SAME fullUpdate_ALS_LSCG_IT
+// ***** ALS over 3 sites, BiCG with ITensor
 Args fullUpdate_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -4957,8 +4962,13 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 		// analyse sparsity
 		double min_mag = 1.0e-8;
 		int count      = 0;
-		auto sparseCheck = [&min_mag, &count](Real r) {
-  			if(std::fabs(r) > min_mag) count += 1;
+		int countE7    = 0;
+		int countE6	   = 0;
+		auto sparseCheck = [&min_mag, &count, &countE7, &countE6](Real r) {
+  			double absr = std::fabs(r); 
+  			if( absr > min_mag) count += 1;
+  			if( absr > min_mag*10.0 ) countE7 += 1;
+  			if( absr > min_mag*100.0 ) countE6 += 1;
   		};
 
 		std::vector<Index> iket;
@@ -4980,8 +4990,12 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 		M = 0.5*(M + prime( ((M * delta(i0,prime(i1)) ) * delta(i1,prime(i0)) ), -1) ) ;
 
 		M.visit(sparseCheck);
-		std::cout<<"Sparsity: "<< count <<"/"<< i0.m() * i1.m() <<" %: "<< 
+		std::cout<<"Sparsity e-8: "<< count <<"/"<< i0.m() * i1.m() <<" %: "<< 
 			count / ((double) i0.m() * i1.m()) << std::endl; 
+		std::cout<<"Sparsity e-7: "<< countE7 <<"/"<< i0.m() * i1.m() <<" %: "<< 
+			countE7 / ((double) i0.m() * i1.m()) << std::endl; 
+		std::cout<<"Sparsity e-6: "<< countE6 <<"/"<< i0.m() * i1.m() <<" %: "<< 
+			countE6 / ((double) i0.m() * i1.m()) << std::endl; 
 
 		for(int i=1; i<= i0.m(); i++) {
 			M.set(i0(i),i1(i), M.real(i0(i),i1(i)) + 1.0e-8 );
@@ -5180,6 +5194,7 @@ Doub FULSCG_IT::snrmIT(ITensor const& sx, const Int itol)
 
 //-----------------------------------------------------------------------------
 
+// ***** ALS over 3 sites, bare BiCG
 Args fullUpdate_ALS_LSCG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -5891,6 +5906,8 @@ Args fullUpdate_ALS_LSCG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	return diag_data;
 }
 
+// ***** ARE BOTH THESE METHODS SAME ?
+// ***** ALS over 3 sites, bare BiCG
 Args fullUpdate_LSCG(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -6766,6 +6783,7 @@ Doub Linbcg::snrm(VecDoub_I &sx, const Int itol)
 
 //-----------------------------------------------------------------------------
 
+// ***** ALS over 4 sites while applying a 3 site gate
 Args fullUpdate_CG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
@@ -7492,7 +7510,8 @@ Args fullUpdate_CG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEn
 	return diag_data;
 }
 
-Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+// ***** PRODUCTION LEVEL ALS over 4 sites applying 4 site operator, BiCG with ITensor
+Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	Args const& args) {
  
