@@ -4954,8 +4954,12 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 	ITensor ccmbA, ITensor ccmbKet, double ssvd_cutoff) 
 	: M(MM), B(BB), A(AA), cmbA(ccmbA), cmbKet(ccmbKet), svd_cutoff(ssvd_cutoff) {
 
-		auto RES = M * A - B;
-		std::cout<<"RES: "<< norm(RES) << std::endl;
+		// analyse sparsity
+		double min_mag = 1.0e-8;
+		int count      = 0;
+		auto sparseCheck = [&min_mag, &count](Real r) {
+  			if(std::fabs(r) > min_mag) count += 1;
+  		};
 
 		std::vector<Index> iket;
 		for (auto const& i : M.inds()) {
@@ -4972,11 +4976,21 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 
 		M = (M * cmbKet) * cmbBra;
 	
+		// Symmetrize
+		M = 0.5*(M + prime( ((M * delta(i0,prime(i1)) ) * delta(i1,prime(i0)) ), -1) ) ;
+
+		M.visit(sparseCheck);
+		std::cout<<"Sparsity: "<< count <<"/"<< i0.m() * i1.m() <<" %: "<< 
+			count / ((double) i0.m() * i1.m()) << std::endl; 
+
 		for(int i=1; i<= i0.m(); i++) {
 			M.set(i0(i),i1(i), M.real(i0(i),i1(i)) + 1.0e-8 );
 		}
 
 		M = (M * cmbKet) * cmbBra;		
+	
+		auto RES = M * A - B;
+		std::cout<<"RES: "<< norm(RES) << " ";
 	}
 
 void FULSCG_IT::asolve(ITensor const& b, ITensor & x, const Int itrnsp) {
@@ -7713,6 +7727,7 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	double ferr;
 	int fiter;
 	int itol = 1;
+	int maxIter = 1*(cls.physDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim);
 
   	int altlstsquares_iter = 0;
 	bool converged = false;
@@ -7786,14 +7801,14 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
 			converged = true; break; 
 		} else {
-			std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
+			std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " ";
 		}
 
 		// ***** SOLVE LINEAR SYSTEM M*A = K by CG ***************************
 		ITensor dummyComb;
 		int tensorDim = cls.physDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim;
 		FULSCG_IT fulscg(M, K, cls.sites.at(tn[0]), dummyComb, dummyComb, svd_cutoff );
-		fulscg.solveIT(K, cls.sites.at(tn[0]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
+		fulscg.solveIT(K, cls.sites.at(tn[0]), itol, cg_gradientNorm_eps, maxIter, fiter, ferr);
 		std::cout <<"A f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[0] = (pc[0] * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
 
@@ -7853,7 +7868,7 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
 			converged = true; break; 
 		} else {
-			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
+			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " ";
 		}
 
 		prev_finit = finit;
@@ -7863,7 +7878,7 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 		int accfiter = 0;
 		//while ( (ferr > cg_gradientNorm_eps) && (accfiter < tensorDim * 10 ) )  {
 			FULSCG_IT fulscgEB(M,K,cls.sites.at(tn[1]),dummyComb, dummyComb, svd_cutoff );
-			fulscgEB.solveIT(K, cls.sites.at(tn[1]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
+			fulscgEB.solveIT(K, cls.sites.at(tn[1]), itol, cg_gradientNorm_eps, maxIter, fiter, ferr);
 			accfiter += fiter;
 			std::cout <<"B f_err= "<< ferr <<" f_iter= "<< accfiter << std::endl;
 		//}
@@ -7925,14 +7940,14 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
 			converged = true; break; 
 		} else {
-			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
+			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " ";
 		}
 
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
 		FULSCG_IT fulscgED(M,K,cls.sites.at(tn[2]),dummyComb, dummyComb, svd_cutoff );
-		fulscgED.solveIT(K, cls.sites.at(tn[2]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
+		fulscgED.solveIT(K, cls.sites.at(tn[2]), itol, cg_gradientNorm_eps, maxIter, fiter, ferr);
 
 		std::cout <<"D f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[2] = (pc[2] * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
@@ -7993,14 +8008,14 @@ Args fullUpdate_CG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
 			converged = true; break; 
 		} else {
-			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
+			std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " ";
 		}
 
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*C = K ******************************
 		FULSCG_IT fulscgEC(M,K,cls.sites.at(tn[3]),dummyComb, dummyComb, svd_cutoff );
-		fulscgEC.solveIT(K, cls.sites.at(tn[3]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
+		fulscgEC.solveIT(K, cls.sites.at(tn[3]), itol, cg_gradientNorm_eps, maxIter, fiter, ferr);
 
 		std::cout <<"C f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[3] = (pc[3] * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
