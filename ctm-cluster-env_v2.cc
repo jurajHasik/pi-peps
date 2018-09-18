@@ -2110,7 +2110,9 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
     double loc_psdInvCutoff = isoPseudoInvCutoff;
     double max_sv;
     auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
+        // { return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 1.0e-8; };
         { return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
+
 
     switch(ctmMove) {
         case 'L': {

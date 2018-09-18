@@ -36,21 +36,30 @@ struct FULSCG_IT {
 	itensor::ITensor & A;
 	itensor::ITensor cmbA;
 	itensor::ITensor cmbKet;
-	double svd_cutoff = 1.0e-15;
+	itensor::Args const& args;
+
+	bool dbg           = false;
+	std::string solver = "pseudoinverse";
 
 	FULSCG_IT(itensor::ITensor & MM, itensor::ITensor & BB, 
 		itensor::ITensor & AA, itensor::ITensor ccmbA, itensor::ITensor ccmbKet,
-		double ssvd_cutoff);
+		itensor::Args const& aargs = itensor::Args::global());
 
 	void asolve(itensor::ITensor const& b, itensor::ITensor & x, const Int itrnsp);
     
 	void asolve_pinv(itensor::ITensor const& b, itensor::ITensor & x);
 
+	void asolve_linsystem(itensor::ITensor & x);
+
     void atimes(itensor::ITensor const& x, itensor::ITensor & r, const Int itrnsp);
 
-    void solveIT(itensor::ITensor const& b, itensor::ITensor & x, const Int itol, const Doub tol,
+    void solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err, 
+    	itensor::Args const& args = itensor::Args::global());
+
+    void solveBiCG(itensor::ITensor const& b, itensor::ITensor & x, const Int itol, const Doub tol,
 		const Int itmax, Int &iter, Doub &err);
-	Doub snrmIT(itensor::ITensor const& sx, const Int itol);
+
+	Doub snrm(itensor::ITensor const& sx, const Int itol);
 };
 
 struct CG4S_IT {

@@ -2,14 +2,15 @@
 
 using namespace itensor;
 
-ITensor pseudoInverse(ITensor & M, Args const& args) {
-    auto dbg    = args.getBool("fuDbg",false);
-    auto dbgLvl = args.getInt("fuDbgLevel",0);
-    auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-16);
+ITensor pseudoInverse(ITensor const& M, Args const& args) {
+    auto dbg    = args.getBool("dbg",false);
+    auto dbgLvl = args.getInt("dbgLevel",0);
+    auto svd_cutoff        = args.getReal("pseudoInvCutoff",1.0e-15);
+    auto svd_cutoff_insert = args.getReal("pseudoInvCutoffInsert",0.0);
     
     double machine_eps = std::numeric_limits<double>::epsilon();
 	if(dbg && (dbgLvl >= 3)) {
-		std::cout<< "M EPS: " << machine_eps << std::endl;
+		std::cout << "M EPS: " << machine_eps << std::endl;
 		std::cout <<"pseudoInverse: svd_cutoff = " << svd_cutoff << std::endl;
 	}
 
@@ -17,7 +18,6 @@ ITensor pseudoInverse(ITensor & M, Args const& args) {
 
 	auto i0 = M.inds()[0];
 	auto i1 = M.inds()[1];
-	//for(int i=1; i<=i0.m(); i++) M.set(i0(i),i1(i), M.real(i0(i),i1(i)) + 1.0e-8); 
 
 	ITensor U(i0), dM, Vt;
 	svd(M, U, dM, Vt, {"Truncate",false});
@@ -29,9 +29,7 @@ ITensor pseudoInverse(ITensor & M, Args const& args) {
 			dM_elems.push_back( 1.0/dM.real(dM.inds().front()(i),
 				dM.inds().back()(i)) );
 		} else {
-			dM_elems.push_back(1.25e-4);			
-			//dM_elems.push_back(1.0e-3);
-			//dM_elems.push_back(1.0);
+			dM_elems.push_back(svd_cutoff_insert);		
 		}
 	}
 

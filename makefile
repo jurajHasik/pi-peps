@@ -22,7 +22,7 @@ APP8=opt-su-3site
 
 # 4. Add any headers your program depends on here. The make program
 #    will auto-detect if these headers have changed and recompile your app.
-HEADERS =engine.h models.h full-update.h simple-update_v2.h cluster-ev-builder.h \
+HEADERS =engine.h models.h full-update-TEST.h full-update.h simple-update_v2.h cluster-ev-builder.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h mpo.h \
 	su2.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp

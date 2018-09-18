@@ -1,29 +1,41 @@
 {
 	"initBy": "FILE",
 	"physDim": 2,
-	"auxBondDim": 3,
-	"inClusterFile": "ALS4S_LSCG_SYM3_NNH-d3ch27-t0.15-T4gesdd.in",
+	"auxBondDim": 4,
+	"inClusterFile": "neel-d4-t0.1-h0.0-ch36.in",
         "outClusterFile": "TEST.in",
 
 	"fuIter": 1024,
-	"obsFreq": 16,
+	"obsFreq": 8,
 	"fuIsoInit": "LINKSVD",
 	"fuIsoInitNoiseLevel": 1.0e-3,
 	"maxAltLstSqrIter": 50,
 	"symmetrizeProtoEnv": true,
 	"positiveDefiniteProtoEnv": true,
-	"pseudoInvCutoff": 1.0e-15,
-	"cgLineSearchEps": 1.0e-7,
-	"cgFDistanceEps": 1.0e-8,
-	"cgGradientNormEps": 1.0e-8,
-	"pseudoInvMaxLogGap": 0.0,
 	"isoEpsilon": 1.0e-8,
+	"epsdistf": 1.0e-6,
+	"als": {
+		"solver": "direct",
+		"dbg": false,
+		"epsregularisation": 1.0e-8,
+
+		"cg_convergence_check": 1,	
+		"cg_gradientNorm_eps": 1.0e-7,
+		"cg_max_iter": 512,
+
+		"method": "CHOLESKY",
+
+		"pseudoInvCutoff": 1.0e-8,
+		"pseudoInvCutoffInsert": 0.0,
+	
+		"dynamicEps": false
+	},
 	"otNormType": "BALANCE",
 	"fuDbg": true,
 	"fuDbgLevel": 0,
 
 	"suGaugeFix": true,
-	"suGaugeFixFreq": 16,
+	"suGaugeFixFreq": 8,
 	"gaugeFix": {
 		"type": "IDENTITY",
 		"gateSeq": "2SITE",
@@ -34,19 +46,19 @@
 	},
 
 	"model": {
-		"type": "NNH_2x2Cell_ABCD",
+		"type": "J1J2",
 		"tau": 0.1,
 		"J1": 1.0,
 		"J2": 0.0,
 		"h": 0.0,
 		"LAMBDA": 0.0,
-		"fuGateSeq": "2SITE",
+		"fuGateSeq": "SYM3",
 		"symmTrotter": true,
 		"randomizeSeq": false
 	},
 
 	"ctmrg": {
-		"auxEnvDim": 27,
+		"auxEnvDim": 32,
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
 		"envIsComplex": false,

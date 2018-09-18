@@ -51,24 +51,42 @@ int main( int argc, char *argv[] ) {
 	// full update parameters
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
-    std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
-    double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
-    int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
-    bool symmetrizeProtoEnv = jsonCls["symmetrizeProtoEnv"].get<bool>();
-    bool posDefProtoEnv = jsonCls["positiveDefiniteProtoEnv"].get<bool>();
-    double pseudoInvCutoff = jsonCls["pseudoInvCutoff"].get<double>();
-    double pseudoInvMaxLogGap = jsonCls["pseudoInvMaxLogGap"].get<double>();
-    bool dynamicEps   = jsonCls.value("dynamicEps",false);
-    double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
-    
-    double cg_linesearch_eps = jsonCls.value("cgLineSearchEps",1.0e-8);
-    double cg_fdistance_eps  = jsonCls.value("cgFDistanceEps",1.0e-8);
-    double cg_gradientNorm_eps = jsonCls.value("cgGradientNormEps",1.0e-8);
-
-    std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
+    std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
+
+
+    int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
+    double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
+    std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
+    double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
+    bool symmetrizeProtoEnv = jsonCls["symmetrizeProtoEnv"].get<bool>();
+    bool posDefProtoEnv = jsonCls["positiveDefiniteProtoEnv"].get<bool>();
+    // Iterative ALS procedure
+    double epsdistf = jsonCls.value("epsdistf",1.0e-8);
+    auto json_als_params(jsonCls["als"]);
+    std::string solver = json_als_params.value("solver","UNSUPPORTED");
+    bool solver_dbg    = json_als_params.value("dbg",false);
+    double epsregularisation = json_als_params.value("epsregularisation",1.0e-8);
+
+    // BiCG params
+    double cg_convergence_check = json_als_params.value("cg_convergence_check",1);
+    double cg_gradientNorm_eps  = json_als_params.value("cg_gradientNorm_eps",1.0e-8);
+    int cg_max_iter             = json_als_params.value("cg_max_iter",0);
+
+    // direct linear solver params
+    std::string als_ds_method   = json_als_params.value("method","LU");
+
+    // pseudoinverse solver params
+    double pseudoInvCutoff       = json_als_params.value("pseudoInvCutoff",1.0e-8);
+    double pseudoInvCutoffInsert = json_als_params.value("pseudoInvCutoffInsert",0.0);
+
+    // legacy
+    //double pseudoInvMaxLogGap = jsonCls["pseudoInvMaxLogGap"].get<double>();
+    bool dynamicEps = jsonCls.value("dynamicEps",false);
+    
 	
+    // gauge Fixing by simple update with identity operators
     bool arg_su_gauge_fix = jsonCls.value("suGaugeFix",false);
     int arg_su_gauge_fix_freq = jsonCls.value("suGaugeFixFreq",arg_obsFreq);
     auto json_gauge_fix_params(jsonCls["gaugeFix"]);
@@ -343,12 +361,7 @@ int main( int argc, char *argv[] ) {
     // DEFINE MODEL AND GATE SEQUENCE
     std::unique_ptr<Model>  ptr_model;
     std::unique_ptr<Engine> ptr_engine;     // full update engine
-    std::unique_ptr<Engine> ptr_gfe;        // gauge fixing engine 
-    // std::vector< std::unique_ptr<OpNS> >    gateMPO;
-    // std::vector< OpNS * >                   ptr_gateMPO;
-    // std::vector< std::vector<int> >         gate_auxInds;
-    // std::vector< std::vector<std::string> > gates;
-
+    std::unique_ptr<Engine> ptr_gfe;        // gauge fixing engine
 
     // // randomisation
     // std::vector<int> rndInds;
@@ -356,13 +369,10 @@ int main( int argc, char *argv[] ) {
     // std::vector< std::vector<std::string> > tmp_gates;
     // std::vector< std::vector<int> >         tmp_gate_auxInds;
 
-    // Generate gates for given model by Trotter decomposition
-    // getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-    // getModel(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-
     ptr_model =  getModel(json_model_params);
     ptr_engine = buildEngine(json_model_params);
-    if (ptr_engine) {
+    
+    if (ptr_engine) { 
         std::cout<<"Valid Engine constructed"<<std::endl;
     } else {
         std::cout<<"Engine pointer is NULL"<<std::endl;
@@ -378,17 +388,6 @@ int main( int argc, char *argv[] ) {
         }
     }
     
-
-
-    // For symmetric Trotter decomposition
-    // if (symmTrotter) {
-    //     int init_gate_size = ptr_model->gates.size();
-    //     for (int i=0; i<init_gate_size; i++) {
-    //         ptr_model->ptr_gateMPO.push_back(ptr_model->ptr_gateMPO[init_gate_size-1-i]);
-    //         ptr_model->gates.push_back(ptr_model->gates[init_gate_size-1-i]);
-    //         ptr_model->gate_auxInds.push_back(ptr_model->gate_auxInds[init_gate_size-1-i]);
-    //     }
-    // }
     // // randomisation
     // if ( randomizeSeq && (symmTrotter==false) ) {
     //     for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
@@ -407,18 +406,30 @@ int main( int argc, char *argv[] ) {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,
         "fuDbg",arg_fuDbg,
         "fuDbgLevel",arg_fuDbgLevel,
-        "fuIsoInit",arg_fuIsoInit,
-        "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
         "symmetrizeProtoEnv",symmetrizeProtoEnv,
         "positiveDefiniteProtoEnv",posDefProtoEnv,
-        "pseudoInvCutoff",pseudoInvCutoff,
-        "pseudoInvMaxLogGap",pseudoInvMaxLogGap,
-        "dynamicEps",dynamicEps,
-        "isoEpsilon",isoEpsilon,
         "otNormType",arg_otNormType,
-        "cgLineSearchEps",cg_linesearch_eps,
-        "cgFDistanceEps",cg_fdistance_eps,
-        "cgGradientNormEps",cg_gradientNorm_eps
+        "epsdistf",epsdistf,
+
+        "isoEpsilon",isoEpsilon,
+        "fuIsoInit",arg_fuIsoInit,
+        "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
+
+        "solver",solver,
+        "dbg",solver_dbg,
+        "epsregularisation",epsregularisation,
+
+        "cg_convergence_check",cg_convergence_check,
+        "cg_gradientNorm_eps",cg_gradientNorm_eps,
+        "cg_max_iter",cg_max_iter,
+
+        "method",als_ds_method,
+
+        "pseudoInvCutoff",pseudoInvCutoff,
+        "pseudoInvCutoffInsert",pseudoInvCutoffInsert,
+        
+        //"dynamicEps",dynamicEps,
+        //"pseudoInvMaxLogGap",pseudoInvMaxLogGap
     };
     // Diagnostic data
     std::vector<int> diag_ctmIter;
