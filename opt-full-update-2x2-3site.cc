@@ -329,6 +329,10 @@ int main( int argc, char *argv[] ) {
             ctmEnv.initCtmrgEnv();
             break;
         }
+        case CtmEnv::INIT_ENV_obc: {
+            ctmEnv.initOBCEnv();
+            break;
+        }
         case CtmEnv::INIT_ENV_rnd: {
            	ctmEnv.initRndEnv(envIsComplex);
             break;

@@ -4969,7 +4969,7 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 	M = (M * cmbKet) * cmbBra;
 
 	// Symmetrize
-	M = 0.5*(M + prime( ((M * delta(i0,prime(i1)) ) * delta(i1,prime(i0)) ), -1) ) ;
+	//M = 0.5*(M + prime( ((M * delta(i0,prime(i1)) ) * delta(i1,prime(i0)) ), -1) ) ;
 
 	// analyse sparsity
 	if(dbg) {
@@ -7742,6 +7742,11 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	// ***** FORM "PROTO" ENVIRONMENTS FOR K *********************************** 
 	t_begin_int = std::chrono::steady_clock::now();
 
+	for ( auto const& s : tn) { 
+		cls.sites.at(s) /= norm(cls.sites.at(s));
+		std::cout<<"norm(Site["<< s <<"]): "<< norm(cls.sites.at(s)) << std::endl;
+	};
+
 	ITensor protoK;
 	{ 
 		ITensor temp;
@@ -7816,6 +7821,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 	double normPsi, finit, finitN;
 	double prev_finit = 1.0;
+	double prev_finitN = 1.0;
 	double ferr;
 	int fiter;
 
@@ -7851,6 +7857,37 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		}
 
 		if(dbg && (dbgLvl >= 3)) Print(M);
+		{
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(i1,prime(i0,1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::vector<double> delems;
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				delems.emplace_back( D.real(D.inds().front()(i),D.inds().back()(i)) );
+				if (delems.back() < 0.0) std::cout<< delems.back() <<" ";
+			}
+
+			for (auto & e : delems) {
+				e = std::max(e,0.0);
+			}
+		
+			auto reg_D = diagTensor( delems, D.inds().front(), D.inds().back() );
+
+			M = conj(U)*reg_D*prime(U);
+			M = ((M * cmbKet) * delta(prime(i0,1),i1) ) * cmbBra;
+		}
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = A^dag * K
 		{
@@ -7869,6 +7906,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if(dbg && (dbgLvl >= 3)) Print(K);
 
+		cls.sites.at(tn[0]) /= norm(cls.sites.at(tn[0]));
 		// <psi'|psi'>
 		NORMPSI = (prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * M) * cls.sites.at(tn[0]); 
 		// <psi'|U|psi>
@@ -7876,21 +7914,63 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
 		normPsi = sumels(NORMPSI);
-		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
-		prev_finit = finit;
+		finit   = prev_finit  = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+		finitN  = prev_finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
 		fdist.push_back( finit );
 		fdistN.push_back( finitN );
 		vec_normPsi.push_back( normPsi );
 		
+		std::cout << "distfnorm: "<< finitN <<" ";
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
 
 		// ***** SOLVE LINEAR SYSTEM M*A = K by CG ***************************
+		auto oldSite = cls.sites[tn[0]];
 		FULSCG_IT fulscg(M, K, cls.sites.at(tn[0]), dummyComb, dummyComb, args );
 		fulscg.solve(K, cls.sites.at(tn[0]), fiter, ferr, args);
+
+		// CHECK AFTER
+		cls.sites.at(tn[0]) /= norm(cls.sites.at(tn[0]));
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * M) * cls.sites.at(tn[0]); 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * K;
+		normPsi = sumels(NORMPSI);
+
+		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet),1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::cout << "spec(M): ";
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				std::cout << D.real(D.inds().front()(i),D.inds().back()(i)) << " ";
+			}
+			std::cout << std::endl;
+		
+			std::cout << "TAKING OLD SITE"<<std::endl;
+			cls.sites.at(tn[0]) = oldSite;
+			fdist.pop_back();
+			fdistN.pop_back();
+			vec_normPsi.pop_back();
+		}
+		// END CHECK AFTER
 
 		std::cout <<"A f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[0] = (pc[0] * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
@@ -7918,6 +7998,37 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		}
 
 		if(dbg && (dbgLvl >= 3)) Print(M);
+		{
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(i1,prime(i0,1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::vector<double> delems;
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				delems.emplace_back( D.real(D.inds().front()(i),D.inds().back()(i)) );
+				if (delems.back() < 0.0) std::cout<< delems.back() <<" ";
+			}
+
+			for (auto & e : delems) {
+				e = std::max(e,0.0);
+			}
+		
+			auto reg_D = diagTensor( delems, D.inds().front(), D.inds().back() );
+
+			M = conj(U)*reg_D*prime(U);
+			M = ((M * cmbKet) * delta(prime(i0,1),i1) ) * cmbBra;
+		}
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = B^dag * K		
 		{
@@ -7936,6 +8047,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if(dbg && (dbgLvl >= 3)) Print(K);
 
+		cls.sites.at(tn[1]) /= norm(cls.sites.at(tn[1]));
 		// <psi'|psi'>
 		NORMPSI = (prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * M) * cls.sites.at(tn[1]); 
 		// <psi'|U|psi>
@@ -7944,16 +8056,64 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
 		normPsi = sumels(NORMPSI);
 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+		finitN  = prev_finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+
+		fdist.push_back( finit );
+		fdistN.push_back( finitN );
+		vec_normPsi.push_back( normPsi );
 
 		// stopCond
-		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " "; //std::endl;
-		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) < epsdistf ) 
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
+		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*B = K ******************************
+		oldSite = cls.sites[tn[1]];
 		FULSCG_IT fulscgEB(M,K,cls.sites.at(tn[1]),dummyComb, dummyComb, args );
 		fulscgEB.solve(K, cls.sites.at(tn[1]), fiter, ferr, args);
+
+		// CHECK AFTER
+		cls.sites.at(tn[1]) /= norm(cls.sites.at(tn[1]));
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * M) * cls.sites.at(tn[1]); 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * K;
+		normPsi = sumels(NORMPSI);
+
+		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet),1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::cout << "spec(M): ";
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				std::cout << D.real(D.inds().front()(i),D.inds().back()(i)) << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << "TAKING OLD SITE"<<std::endl;
+			cls.sites.at(tn[1]) = oldSite;
+			fdist.pop_back();
+			fdistN.pop_back();
+			vec_normPsi.pop_back();
+		}
+		// END CHECK AFTER
 
 		std::cout <<"B f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[1] = (pc[1] * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
@@ -7981,6 +8141,37 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		}
 
 		if(dbg && (dbgLvl >= 3)) Print(M);
+		{
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(i1,prime(i0,1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::vector<double> delems;
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				delems.emplace_back( D.real(D.inds().front()(i),D.inds().back()(i)) );
+				if (delems.back() < 0.0) std::cout<< delems.back() <<" ";
+			}
+
+			for (auto & e : delems) {
+				e = std::max(e,0.0);
+			}
+		
+			auto reg_D = diagTensor( delems, D.inds().front(), D.inds().back() );
+
+			M = conj(U)*reg_D*prime(U);
+			M = ((M * cmbKet) * delta(prime(i0,1),i1) ) * cmbBra;
+		}
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = D^dag * K
 		{
@@ -7999,6 +8190,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if(dbg && (dbgLvl >= 3)) Print(K);
 
+		cls.sites.at(tn[2]) /= norm(cls.sites.at(tn[2]));
 		// <psi'|psi'>
 		NORMPSI = (prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * M) * cls.sites.at(tn[2]); 
 		// <psi'|U|psi>
@@ -8007,15 +8199,63 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
 		normPsi = sumels(NORMPSI);
 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+		finitN  = prev_finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
-		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " "; //std::endl;
-		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) < epsdistf ) 
+		fdist.push_back( finit );
+		fdistN.push_back( finitN );
+		vec_normPsi.push_back( normPsi );
+
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
+		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
+		oldSite = cls.sites[tn[2]];
 		FULSCG_IT fulscgED(M,K,cls.sites.at(tn[2]),dummyComb, dummyComb, args );
 		fulscgED.solve(K, cls.sites.at(tn[2]), fiter, ferr, args);
+
+		// CHECK AFTER
+		cls.sites.at(tn[2]) /= norm(cls.sites.at(tn[2]));
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * M) * cls.sites.at(tn[2]); 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * K;
+		normPsi = sumels(NORMPSI);
+
+		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet),1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::cout << "spec(M): ";
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				std::cout << D.real(D.inds().front()(i),D.inds().back()(i)) << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << "TAKING OLD SITE"<<std::endl;
+			cls.sites.at(tn[2]) = oldSite;
+			fdist.pop_back();
+			fdistN.pop_back();
+			vec_normPsi.pop_back();
+		}
+		// END CHECK AFTER
 
 		std::cout <<"D f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[2] = (pc[2] * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
@@ -8043,6 +8283,37 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		}
 
 		if(dbg && (dbgLvl >= 3)) Print(M);
+		{
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(i1,prime(i0,1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::vector<double> delems;
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				delems.emplace_back( D.real(D.inds().front()(i),D.inds().back()(i)) );
+				if (delems.back() < 0.0) std::cout<< delems.back() <<" ";
+			}
+
+			for (auto & e : delems) {
+				e = std::max(e,0.0);
+			}
+		
+			auto reg_D = diagTensor( delems, D.inds().front(), D.inds().back() );
+
+			M = conj(U)*reg_D*prime(U);
+			M = ((M * cmbKet) * delta(prime(i0,1),i1) ) * cmbBra;
+		}
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = C^dag * K
 		{
@@ -8061,6 +8332,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if(dbg && (dbgLvl >= 3)) Print(K);
 
+		cls.sites.at(tn[3]) /= norm(cls.sites.at(tn[3]));
 		// <psi'|psi'>
 		NORMPSI = (prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * M) * cls.sites.at(tn[3]); 
 		// <psi'|U|psi>
@@ -8069,16 +8341,64 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
 		normPsi = sumels(NORMPSI);
 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+		finitN  = prev_finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
-		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << " "; //std::endl;
-		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) < epsdistf ) 
+		fdist.push_back( finit );
+		fdistN.push_back( finitN );
+		vec_normPsi.push_back( normPsi );
+
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
+		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*C = K ******************************
+		oldSite = cls.sites[tn[3]];
 		FULSCG_IT fulscgEC(M,K,cls.sites.at(tn[3]),dummyComb, dummyComb, args );
 		fulscgEC.solve(K, cls.sites.at(tn[3]), fiter, ferr, args);
 		
+		// CHECK AFTER
+		cls.sites.at(tn[3]) /= norm(cls.sites.at(tn[3]));
+		// <psi'|psi'>
+		NORMPSI = (prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * M) * cls.sites.at(tn[3]); 
+		// <psi'|U|psi>
+		OVERLAP = prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * K;
+		normPsi = sumels(NORMPSI);
+
+		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+		std::cout << "distfnorm: "<< finitN <<" ";
+		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
+			std::vector<Index> iket;
+			for (auto const& i : M.inds()) {
+				if (i.primeLevel() < 4) iket.emplace_back(i);
+			}
+
+			auto cmbKet = combiner(iket);
+			auto cmbBra = prime(cmbKet,4);
+
+			auto i0 = combinedIndex(cmbKet);
+			auto i1 = combinedIndex(cmbBra);
+
+			M = (M * cmbKet) * cmbBra;
+			M *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet),1));
+			ITensor U, D;
+			diagHermitian(M, U, D);
+			std::cout << "spec(M): ";
+			for (int i=1; i<= D.inds().front().m(); i++) {
+				std::cout << D.real(D.inds().front()(i),D.inds().back()(i)) << " ";
+			}
+			std::cout << std::endl;
+
+			std::cout << "TAKING OLD SITE"<<std::endl;
+			cls.sites.at(tn[3]) = oldSite;
+			fdist.pop_back();
+			fdistN.pop_back();
+			vec_normPsi.pop_back();
+		}
+		// END CHECK AFTER
+
 		std::cout <<"C f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 		pcS[3] = (pc[3] * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
 

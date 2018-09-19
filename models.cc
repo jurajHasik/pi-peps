@@ -1381,6 +1381,15 @@ std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model) {
 //     }
 // }
 
+std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model) {
+
+    double arg_J1     = json_model["J1"].get<double>();
+    double arg_J2     = json_model["J2"].get<double>();
+    double arg_h      = json_model["h"].get<double>();
+    
+    return std::unique_ptr<Model>(new Ising3BodyModel(arg_J1, arg_J2, arg_h));
+}
+
 // void getModel_Ising3Body(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,
 //     std::vector< MPO_3site > & gateMPO,
@@ -1588,8 +1597,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
     //     return getModel_NNHLadder(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
-    // } else if (arg_modelType == "Ising3Body") {
-    //     return getModel_Ising3Body(json_model);
+    } else if (arg_modelType == "Ising3Body") {
+        return getModel_Ising3Body(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {
     //     return getModel_NNH_2x2Cell_AB(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {

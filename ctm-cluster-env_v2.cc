@@ -378,6 +378,118 @@ void CtmEnv::initCtmrgEnv(bool dbg) {
         << std::endl; 
 }
 
+void CtmEnv::initOBCEnv(bool dbg) {
+    std::cout <<"===== INIT_ENV_obc called "<< std::string(44,'=') 
+        << std::endl;
+    
+    //Define "contractor" tensor
+    int D = round(sqrt(d));
+    auto cI = Index("C",d);
+    auto CT = ITensor(cI);
+    for ( int i=1; i<= D*D; i++ ) {
+        CT.set(cI(i),1.0);
+    }
+    // OBC (?)
+    // for ( int i=1; i<= D*D; i++ ) {
+    //     CT.set(cI(i),1.0);
+    // }
+
+    if(dbg) PrintData(CT);
+
+    for ( size_t i=0; i<sites.size(); i++ ) {
+        if(dbg) std::cout <<"----- generating init env for site "<< siteIds[i]
+            <<" -----"<< std::endl;
+        // Locate the first appearance of given site within cluster
+        int row, col;
+        for ( const auto& cToSEntry : cToS ) {
+            if ( cToSEntry.second == i) {
+                col = cToSEntry.first.first;
+                row = cToSEntry.first.second;
+                break;
+            }
+        }
+        if(dbg) std::cout <<"Found "<< siteIds[i] <<" at ["<< col <<","<< row
+            <<"]"<< std::endl;
+
+        //Construct corner matrices
+        std::pair<int,int> site = 
+            std::make_pair((col-1+sizeM)%sizeM,(row-1+sizeN)%sizeN);
+        C_LU[i] = ( ( ( sites[ cToS.at(site) ]
+            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,I_XV)) )
+            *delta( prime(I_XH,1), I_U ) )
+            *delta( prime(I_XV,1), I_L);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LU;
+        printfln(" = %s", C_LU[i]); }
+        
+        site = 
+            std::make_pair((col+1)%sizeM,(row-1+sizeN)%sizeN);
+        C_RU[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,I_XV)) )
+            *delta( I_XH, prime(I_U,1) ) )
+            *delta( prime(I_XV,1), I_R);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RU;
+        printfln(" = %s", C_RU[i]); }
+
+        site = 
+            std::make_pair((col+1)%sizeM,(row+1)%sizeN);
+        C_RD[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,prime(I_XV,1))) )
+            *delta( I_XH, prime(I_D,1) ) )
+            *delta( I_XV, prime(I_R,1));
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RD;
+        printfln(" = %s", C_RD[i]); }
+
+        site = 
+            std::make_pair((col-1+sizeM)%sizeM,(row+1)%sizeN);
+        C_LD[i] = ( ( ( sites[ cToS.at(site)]
+            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,prime(I_XV,1))) )
+            *delta( prime(I_XH,1), I_D ) )
+            *delta( I_XV, prime(I_L,1));
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LD;
+        printfln(" = %s", C_LD[i]); }
+    
+        //Construct half-row/col matrices
+        site = 
+            std::make_pair(col,(row-1+sizeN)%sizeN);
+        T_U[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XV)) )
+            *delta(I_XH, I_U) )*delta(prime(I_XH,1), prime(I_U,1));
+        T_U[i].prime(VSLINK,-1);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_U;
+        printfln(" = %s", T_U[i]); }
+
+        site = 
+            std::make_pair((col+1)%sizeM,row);
+        T_R[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XH,1))) )
+            *delta(I_XV, I_R) )*delta(prime(I_XV,1), prime(I_R,1));
+        T_R[i].prime(I_XH,1);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_R;
+        printfln(" = %s", T_R[i]); }
+
+        site = 
+            std::make_pair(col,(row+1)%sizeN);
+        T_D[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XV,1))) )
+            *delta(I_XH, I_D) )*delta(prime(I_XH,1), prime(I_D,1));
+        T_D[i].prime(I_XV,1);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_D;
+        printfln(" = %s", T_D[i]); }
+
+        site = 
+            std::make_pair((col-1+sizeM)%sizeM,row);
+        T_L[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XH)) )
+            *delta(I_XV, I_L) )*delta(prime(I_XV,1), prime(I_L,1));
+        T_L[i].prime(HSLINK,-1);
+        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_L;
+        printfln(" = %s", T_L[i]); }
+    }
+
+    //    normalizePTN();
+
+    computeSVDspec();
+
+    std::cout <<"===== INIT_ENV_obc done "<< std::string(46,'=') 
+        << std::endl; 
+}
+
 void CtmEnv::symmetrizeEnv(bool dbg) {
  
     //Define "contractor" tensor
@@ -3341,6 +3453,7 @@ CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
     if( iE=="INIT_ENV_const1") return CtmEnv::INIT_ENV_const1;
     if( iE=="INIT_ENV_rnd"   ) return CtmEnv::INIT_ENV_rnd;
     if( iE=="INIT_ENV_ctmrg" ) return CtmEnv::INIT_ENV_ctmrg;
+    if( iE=="INIT_ENV_obc" )   return CtmEnv::INIT_ENV_obc;
     if( iE=="INIT_ENV_file"  ) return CtmEnv::INIT_ENV_file;
     std::cout << "Unsupported INIT_ENV" << std::endl;
     exit(EXIT_FAILURE);
