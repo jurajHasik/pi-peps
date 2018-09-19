@@ -7829,6 +7829,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	bool converged = false;
   	std::vector<double> fdist, fdistN, vec_normPsi;
   	ITensor dummyComb;
+  	std::vector<bool> fdistN_growth(4,false);
   	std::cout << "ENTERING ALS LOOP tol: " << epsdistf << " solver: "<< solver << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
@@ -7925,6 +7926,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
+		if ( fdistN_growth[0] && fdistN_growth[1] && fdistN_growth[2] && fdistN_growth[3] ) { converged = true; break; }  
 
 		// ***** SOLVE LINEAR SYSTEM M*A = K by CG ***************************
 		auto oldSite = cls.sites[tn[0]];
@@ -7942,6 +7944,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 		std::cout << "distfnorm: "<< finitN <<" ";
 		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		fdistN_growth[0] = false;
 		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
 			std::vector<Index> iket;
 			for (auto const& i : M.inds()) {
@@ -7969,6 +7972,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 			fdist.pop_back();
 			fdistN.pop_back();
 			vec_normPsi.pop_back();
+			fdistN_growth[0] = true;
 		}
 		// END CHECK AFTER
 
@@ -8067,6 +8071,8 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
+		if ( fdistN_growth[0] && fdistN_growth[1] && fdistN_growth[2] && fdistN_growth[3] ) { converged = true; break; }  
+
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*B = K ******************************
@@ -8085,6 +8091,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 		std::cout << "distfnorm: "<< finitN <<" ";
 		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		fdistN_growth[1] = false;
 		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
 			std::vector<Index> iket;
 			for (auto const& i : M.inds()) {
@@ -8112,6 +8119,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 			fdist.pop_back();
 			fdistN.pop_back();
 			vec_normPsi.pop_back();
+			fdistN_growth[1] = true;
 		}
 		// END CHECK AFTER
 
@@ -8209,6 +8217,8 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
+		if ( fdistN_growth[0] && fdistN_growth[1] && fdistN_growth[2] && fdistN_growth[3] ) { converged = true; break; }  
+
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
@@ -8227,6 +8237,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 		std::cout << "distfnorm: "<< finitN <<" ";
 		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		fdistN_growth[2] = false;
 		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
 			std::vector<Index> iket;
 			for (auto const& i : M.inds()) {
@@ -8254,6 +8265,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 			fdist.pop_back();
 			fdistN.pop_back();
 			vec_normPsi.pop_back();
+			fdistN_growth[2] = true;
 		}
 		// END CHECK AFTER
 
@@ -8351,6 +8363,8 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << " "; //std::endl;
 		if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < epsdistf ) 
 			{ converged = true; break; }
+		if ( fdistN_growth[0] && fdistN_growth[1] && fdistN_growth[2] && fdistN_growth[3] ) { converged = true; break; }  
+		
 		prev_finit = finit;
 
 		// ***** SOLVE LINEAR SYSTEM M*C = K ******************************
@@ -8369,6 +8383,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		finitN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 		std::cout << "distfnorm: "<< finitN <<" ";
 		std::cout << "stopCondN: "<< finitN - prev_finitN << std::endl;
+		fdistN_growth[3] = false;
 		if ( ((finitN - prev_finitN) > 0.0) || (finitN < 0.0) ) {
 			std::vector<Index> iket;
 			for (auto const& i : M.inds()) {
@@ -8396,6 +8411,7 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 			fdist.pop_back();
 			fdistN.pop_back();
 			vec_normPsi.pop_back();
+			fdistN_growth[3] = true;
 		}
 		// END CHECK AFTER
 
