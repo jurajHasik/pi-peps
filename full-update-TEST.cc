@@ -7594,11 +7594,11 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	Args const& args) {
  
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
-    auto dbg =    args.getBool("fuDbg",false);
-    auto dbgLvl = args.getInt("fuDbgLevel",0);
-	auto epsdistf = args.getReal("epsdistf",1.0e-8);
-    auto solver   = args.getString("solver","UNSUPPORTED");
-    auto otNormType = args.getString("otNormType");
+    auto dbg              = args.getBool("fuDbg",false);
+    auto dbgLvl           = args.getInt("fuDbgLevel",0);
+	auto epsdistf         = args.getReal("epsdistf",1.0e-8);
+    auto solver           = args.getString("solver","UNSUPPORTED");
+    auto otNormType       = args.getString("otNormType");
 
     double machine_eps = std::numeric_limits<double>::epsilon();
 	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
