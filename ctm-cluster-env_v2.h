@@ -24,6 +24,7 @@ class CtmEnv
         INIT_ENV_rnd,
         INIT_ENV_ctmrg,
         INIT_ENV_obc,
+        INIT_ENV_pwr,
         INIT_ENV_file
     } init_env_type;
 
@@ -171,6 +172,8 @@ class CtmEnv
     void initCtmrgEnv(bool dbg = false);
 
     void initOBCEnv(bool dbg = false);
+
+    void initPWREnv(bool dbg = false);
 
     void symmetrizeEnv(bool dbg = false);
 

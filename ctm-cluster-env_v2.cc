@@ -490,6 +490,43 @@ void CtmEnv::initOBCEnv(bool dbg) {
         << std::endl; 
 }
 
+void CtmEnv::initPWREnv(bool dbg) {
+    double pwr = 1.0;
+
+    for ( auto& t : C_LU ) { for (int i=1; i<=x; i++) t.set(t.inds().front()(i), t.inds().back()(i), std::pow((double) i,-pwr)); }
+    for ( auto& t : C_RU ) { for (int i=1; i<=x; i++) t.set(t.inds().front()(i), t.inds().back()(i), std::pow((double) i,-pwr)); }
+    for ( auto& t : C_RD ) { for (int i=1; i<=x; i++) t.set(t.inds().front()(i), t.inds().back()(i), std::pow((double) i,-pwr)); }
+    for ( auto& t : C_LD ) { for (int i=1; i<=x; i++) t.set(t.inds().front()(i), t.inds().back()(i), std::pow((double) i,-pwr)); }
+    for ( auto& t : T_U ) { 
+        for (int i=1; i<=x; i++) {
+            for (int j=1; j<=d; j++) { t.set(I_U(i), prime(I_U,1)(i), I_XV(j), 1.0); } 
+        }
+    }
+    for ( auto& t : T_R ) { 
+        for (int i=1; i<=x; i++) {
+            for (int j=1; j<=d; j++) { t.set(I_R(i), prime(I_R,1)(i), prime(I_XH,1)(j), 1.0); } 
+        } 
+    }
+    for ( auto& t : T_D ) { 
+        for (int i=1; i<=x; i++) {
+            for (int j=1; j<=d; j++) { t.set(I_D(i), prime(I_D,1)(i), prime(I_XV,1)(j), 1.0); } 
+        }
+    }
+    for ( auto& t : T_L ) { 
+        for (int i=1; i<=x; i++) {
+            for (int j=1; j<=d; j++) { t.set(I_L(i), prime(I_L,1)(i), I_XH(j), 1.0); } 
+        } 
+    }
+
+    // normalizePTN();
+
+    computeSVDspec();
+
+    std::cout <<"INIT_ENV_const1 with all elements of C's and T's"<<
+        " set to constant"<< std::endl;
+    std::cout << std::string(72,'=') << std::endl;
+}
+
 void CtmEnv::symmetrizeEnv(bool dbg) {
  
     //Define "contractor" tensor
@@ -3453,7 +3490,8 @@ CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
     if( iE=="INIT_ENV_const1") return CtmEnv::INIT_ENV_const1;
     if( iE=="INIT_ENV_rnd"   ) return CtmEnv::INIT_ENV_rnd;
     if( iE=="INIT_ENV_ctmrg" ) return CtmEnv::INIT_ENV_ctmrg;
-    if( iE=="INIT_ENV_obc" )   return CtmEnv::INIT_ENV_obc;
+    if( iE=="INIT_ENV_obc"   ) return CtmEnv::INIT_ENV_obc;
+    if( iE=="INIT_ENV_pwr"   ) return CtmEnv::INIT_ENV_pwr;
     if( iE=="INIT_ENV_file"  ) return CtmEnv::INIT_ENV_file;
     std::cout << "Unsupported INIT_ENV" << std::endl;
     exit(EXIT_FAILURE);

@@ -333,10 +333,18 @@ int main( int argc, char *argv[] ) {
             ctmEnv.initOBCEnv();
             break;
         }
+        case CtmEnv::INIT_ENV_pwr: {
+            ctmEnv.initPWREnv();
+            break;
+        }
         case CtmEnv::INIT_ENV_rnd: {
            	ctmEnv.initRndEnv(envIsComplex);
             break;
         } 
+        default: {
+            std::cout<<"Unsupported INIT_ENV" << std::endl;
+            exit(EXIT_FAILURE);   
+        }
         // case CtmEnv::INIT_ENV_file: {
         //     io_env_fmt_type ioEnvFmt = toIO_ENV_FMT(std::string(argv[5]));
         //     std::string in_files_prefix = std::string(argv[6]);
@@ -594,6 +602,7 @@ int main( int argc, char *argv[] ) {
         //     gate_auxInds[(fuI-1)%ptr_model->gates.size()],
         //     iso_store[(fuI-1)%ptr_model->gates.size()], fuArgs);
 
+        // ctmEnv.symmetrizeEnv();
         diag_fu = ptr_engine->performFullUpdate(cls, ctmEnv, fuArgs);
 
         diagData_fu.push_back(diag_fu);
@@ -661,6 +670,14 @@ int main( int argc, char *argv[] ) {
                 case CtmEnv::INIT_ENV_ctmrg: {
                     ctmEnv.initCtmrgEnv();
                     //ctmEnv.symmetrizeEnv(arg_fuDbg);
+                    break;
+                }
+                case CtmEnv::INIT_ENV_obc: {
+                    ctmEnv.initOBCEnv();
+                    break;
+                }
+                case CtmEnv::INIT_ENV_pwr: {
+                    ctmEnv.initPWREnv();
                     break;
                 }
                 case CtmEnv::INIT_ENV_rnd: {
@@ -739,39 +756,48 @@ int main( int argc, char *argv[] ) {
 
                     // diagnose spectra
                     std::cout << std::endl;
+                    Args args_dbg_cornerSVD = {"Truncate",false};
                     double tmpVal;
                     double minCornerSV = 1.0e+16;
                     std::cout << "Spectra: " << std::endl;
 
                     ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    Print(sv);
+                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
+                        sv.inds().back()(i)) << std::endl;
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss << tmpVal;
 
                     tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    Print(sv);
+                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
+                        sv.inds().back()(i)) << std::endl;
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    Print(sv);
+                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
+                        sv.inds().back()(i)) << std::endl;
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    Print(sv);
+                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
+                        sv.inds().back()(i)) << std::endl;
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -795,7 +821,10 @@ int main( int argc, char *argv[] ) {
 
             t_begin_int = std::chrono::steady_clock::now();
 
+            // ctmEnv.symmetrizeEnv();
             ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",fuI});
+
+            t_end_int = std::chrono::steady_clock::now();
 
             std::cout << "Observables computed in T: "<< std::chrono::duration_cast
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
@@ -837,6 +866,14 @@ int main( int argc, char *argv[] ) {
             case CtmEnv::INIT_ENV_ctmrg: {
                 ctmEnv.initCtmrgEnv();
                 //ctmEnv.symmetrizeEnv(arg_fuDbg);
+                break;
+            }
+            case CtmEnv::INIT_ENV_obc: {
+                ctmEnv.initOBCEnv();
+                break;
+            }
+            case CtmEnv::INIT_ENV_pwr: {
+                ctmEnv.initPWREnv();
                 break;
             }
             case CtmEnv::INIT_ENV_rnd: {
@@ -890,6 +927,51 @@ int main( int argc, char *argv[] ) {
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
 	ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",arg_fuIter+1});
+
+    // COMPUTE CORRELATION FUNCTIONS
+    int dist = 20;
+    auto site0 = make_pair(0,0);
+    auto site1 = make_pair(1,0);
+
+    double sz0 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, site0);
+    double sp0 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, site0);
+    double sm0 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, site0);
+    auto S0S0 = sz0*sz0 + 0.5*(sp0*sm0 + sm0*sp0 );
+    std::cout << "S_0 = ( "<< sz0 <<", "<< sp0 <<", "<< sm0 <<")"<< std::endl;
+
+    double sz1 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, site1);
+    double sp1 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, site1);
+    double sm1 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, site1);
+    auto S0S1 = sz0*sz1 + 0.5*(sp0*sm1 + sm0*sp1 );
+    std::cout << "S_1 = ( "<< sz1 <<", "<< sp1 <<", "<< sm1 <<")"<< std::endl;
+
+    std::vector<double> SS_disconnected = {S0S0,S0S1};
+
+    auto szsz = ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z,
+        site0, dist);
+
+    auto spsm = ev.expVal_1sO1sO_H( 
+        EVBuilder::MPO_S_P, EVBuilder::MPO_S_M,
+        site0, dist);
+
+    // auto smsp = ev.expVal_1sO1sO_H( 
+    //     MPO_S_M, MPO_S_P,
+    //     make_pair(0,0), 20);
+
+    out_file_energy << std::endl << "CORRELATION FUNCTIONS" << std::endl;
+    out_file_energy << "r "<< "szsz "<< "spsm "<< "SS=szsz+0.5(spsm+smsp) "
+        <<"abs(SS) "<< "abs(SS_conn)" << std::endl;
+    out_file_energy << std::endl;
+
+    for (int i=0; i<dist; i++) {
+        out_file_energy << (i+1) <<" "<< szsz[i].real() <<" "<< spsm[i].real()<<" "
+            << (szsz[i].real() + spsm[i].real()) <<" "
+            << std::abs(szsz[i].real() + spsm[i].real())<<" "
+            << std::abs(szsz[i].real() + spsm[i].real() - SS_disconnected[(i+1) % 2]) <<" "
+            << std::endl;
+    }
+
 
     // Store final new cluster
     writeCluster(outClusterFile, cls);

@@ -974,9 +974,9 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
     return sumels(tN);
 }
 
-std::complex<double> EVBuilder::expVal_1sO1sO_H( 
+std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H( 
         MPO_1S o1, MPO_1S o2,
-        std::pair< int, int > site, int dist)
+        std::pair< int, int > site, int dist, bool dbg)
 {
     ITensor N, NId;
     MpoNS op2;
@@ -984,10 +984,10 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
     std::pair< int, int > site_op2;
 
     // Shift site to unit cell
-    std::cout << "OP1 -> ["<< site.first <<","<< site.second <<"] => [";
+    if(dbg) std::cout << "OP1 -> ["<< site.first <<","<< site.second <<"] => [";
     site.first  = site.first % cd_f.sizeM;
     site.second = site.second % cd_f.sizeN;
-    std::cout << site.first <<","<< site.second <<"] = "
+    if(dbg) std::cout << site.first <<","<< site.second <<"] = "
         << cls.cToS[site] << std::endl;
     auto op1 = getTOT(o1, cls.cToS[site], 0);
     
@@ -1034,10 +1034,10 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
         // (1) compute correlation at current distance i
         site_op2 = site;
         site_op2.first = site_op2.first + 1;
-        std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
+        if(dbg) std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
             ","<< site_op2.second <<"]";
         site_op2.first = site_op2.first % cd_f.sizeM;
-        std::cout <<"=>["<< site_op2.first <<","<< site_op2.second <<"] = "
+        if(dbg) std::cout <<"=>["<< site_op2.first <<","<< site_op2.second <<"] = "
             << cls.cToS[site_op2] <<" --T_D"<< std::endl; 
         op2 = getTOT(o2, cls.cToS[site_op2], 0);
         idOp = getTOT(MPO_Id, cls.cToS[site_op2], 0);
@@ -1074,10 +1074,10 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
 
         // (2) Contract with single "transfer" matrix
         site.first = site.first + 1;
-        std::cout <<"Inserting T_U--X["<< site.first <<
+        if(dbg) std::cout <<"Inserting T_U--X["<< site.first <<
             ","<< site.second <<"]";
         site.first = site.first % cd_f.sizeM;
-        std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
+        if(dbg) std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
             << cls.cToS[site] <<" --T_D"<< std::endl; 
 
         idOp = getTOT(MPO_Id, cls.cToS[site], 0);
@@ -1096,7 +1096,7 @@ std::complex<double> EVBuilder::expVal_1sO1sO_H(
         std::cout << ccVal[i].real() <<" "<< ccVal[i].imag() << std::endl;
     }
 
-    return 0.0;
+    return ccVal;
 }
 
 // Diagonal s1, s1+[1,1]

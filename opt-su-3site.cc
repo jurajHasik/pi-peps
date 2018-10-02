@@ -3,12 +3,14 @@
 #include <fstream>
 #include <chrono>
 #include "json.hpp"
-#include "models.h"
-#include "simple-update_v2.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
+#include "mpo.h"
+#include "models.h"
+#include "engine.h"
+//#include "simple-update_v2.h"
 #include "itensor/all.h"
 
 using namespace itensor;
@@ -92,37 +94,45 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE GATE SEQUENCE
-    std::unique_ptr<Model> ptr_model;
-    std::vector< MPO_3site > gateMPO;
-    std::vector< MPO_3site * > ptr_gateMPO;
-    std::vector< std::vector<std::string> > gates;
-    std::vector< std::vector<int> > gate_auxInds;
+    // std::unique_ptr<Model> ptr_model;
+    // std::vector< MPO_3site > gateMPO;
+    // std::vector< MPO_3site * > ptr_gateMPO;
+    // std::vector< std::vector<std::string> > gates;
+    // std::vector< std::vector<int> > gate_auxInds;
 
      // randomisation
-    std::vector<int> rndInds;
-    std::vector< MPO_3site * >              tmp_ptr_gateMPO;
-    std::vector< std::vector<std::string> > tmp_gates;
-    std::vector< std::vector<int> >         tmp_gate_auxInds;
+    // std::vector<int> rndInds;
+    // std::vector< MPO_3site * >              tmp_ptr_gateMPO;
+    // std::vector< std::vector<std::string> > tmp_gates;
+    // std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     // Generate gates for given model by Trotter decomposition
-    getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
+    // getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
 
     // For symmetric Trotter decomposition
-    if (symmTrotter) {
-        int init_gate_size = gates.size();
-        for (int i=0; i<init_gate_size; i++) {
-            ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
-            gates.push_back(gates[init_gate_size-1-i]);
-            gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
-        }
-    }
+    // if (symmTrotter) {
+    //     int init_gate_size = gates.size();
+    //     for (int i=0; i<init_gate_size; i++) {
+    //         ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
+    //         gates.push_back(gates[init_gate_size-1-i]);
+    //         gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+    //     }
+    // }
     // randomisation
-    if ( randomizeSeq && (symmTrotter==false) ) {
-        for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
-        tmp_ptr_gateMPO  = ptr_gateMPO;
-        tmp_gates        = gates;
-        tmp_gate_auxInds = gate_auxInds;
-    }
+    // if ( randomizeSeq && (symmTrotter==false) ) {
+    //     for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
+    //     tmp_ptr_gateMPO  = ptr_gateMPO;
+    //     tmp_gates        = gates;
+    //     tmp_gate_auxInds = gate_auxInds;
+    // }
+
+    // DEFINE MODEL AND GATE SEQUENCE
+    std::unique_ptr<Model>  ptr_model;
+    std::unique_ptr<Engine> ptr_engine;     // simple update engine
+
+    ptr_model =  getModel(json_model_params);
+    ptr_engine = buildEngine(json_model_params);
+
     // ***** INITIALIZE MODEL DONE ********************************************
 
     // *****
@@ -162,9 +172,21 @@ int main( int argc, char *argv[] ) {
             ctmEnv.initCtmrgEnv();
             break;
         }
+        case CtmEnv::INIT_ENV_obc: {
+            ctmEnv.initOBCEnv();
+            break;
+        }
+        case CtmEnv::INIT_ENV_pwr: {
+            ctmEnv.initPWREnv();
+            break;
+        }
         case CtmEnv::INIT_ENV_rnd: {
             ctmEnv.initRndEnv(envIsComplex);
             break;
+        } 
+        default: {
+            std::cout<<"Unsupported INIT_ENV" << std::endl;
+            exit(EXIT_FAILURE);   
         }
     }
     
@@ -174,6 +196,7 @@ int main( int argc, char *argv[] ) {
     
     ctmEnv.updateCluster(evCls);
     ev.setCluster(evCls);
+
 
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
@@ -246,10 +269,11 @@ int main( int argc, char *argv[] ) {
                     std::cout << std::endl;
                     double tmpVal;
                     double minCornerSV = 1.0e+16;
+                    Args args_dbg_cornerSVD = {"Truncate",false};
                     std::cout << "Spectra: " << std::endl;
 
                     ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
                     PrintData(sv);
@@ -257,7 +281,7 @@ int main( int argc, char *argv[] ) {
                     oss << tmpVal;
 
                     tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
                     PrintData(sv);
@@ -265,7 +289,7 @@ int main( int argc, char *argv[] ) {
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
                     PrintData(sv);
@@ -273,7 +297,7 @@ int main( int argc, char *argv[] ) {
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
                     PrintData(sv);
@@ -321,21 +345,22 @@ int main( int argc, char *argv[] ) {
         std::cout <<"Simple Update - STEP "<< suI << std::endl;
 
         // randomisation
-        if ( randomizeSeq && (symmTrotter==false) && (suI % gates.size() == 0) ) {
-            if(arg_suDbg) std::cout <<"Randomizing gate sequence"<< std::endl;
-            std::random_shuffle( rndInds.begin(), rndInds.end() );
-            for ( int i=0; i < gates.size(); i++ ) { 
-                ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
-                gates[i]        = tmp_gates[rndInds[i]];
-                gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
-            }
-        }
+        // if ( randomizeSeq && (symmTrotter==false) && (suI % gates.size() == 0) ) {
+        //     if(arg_suDbg) std::cout <<"Randomizing gate sequence"<< std::endl;
+        //     std::random_shuffle( rndInds.begin(), rndInds.end() );
+        //     for ( int i=0; i < gates.size(); i++ ) { 
+        //         ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
+        //         gates[i]        = tmp_gates[rndInds[i]];
+        //         gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
+        //     }
+        // }
 
         // PERFORM SIMPLE UPDATE
-        std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;
+        //std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;
 
-        diag_fu = simpleUpdate(*(ptr_gateMPO[(suI-1)%gates.size()]), cls,
-            gates[(suI-1)%gates.size()], gate_auxInds[(suI-1)%gates.size()], suArgs);
+        // diag_fu = simpleUpdate(*(ptr_gateMPO[(suI-1)%gates.size()]), cls,
+        //     gates[(suI-1)%gates.size()], gate_auxInds[(suI-1)%gates.size()], suArgs);
+        diag_fu = ptr_engine->performSimpleUpdate(cls, suArgs);
 
         diagData_fu.push_back(diag_fu);
 
@@ -357,11 +382,23 @@ int main( int argc, char *argv[] ) {
                         //ctmEnv.symmetrizeEnv(arg_fuDbg);
                         break;
                     }
+                    case CtmEnv::INIT_ENV_obc: {
+                        ctmEnv.initOBCEnv();
+                        break;
+                    }
+                    case CtmEnv::INIT_ENV_pwr: {
+                        ctmEnv.initPWREnv();
+                        break;
+                    }      
                     case CtmEnv::INIT_ENV_rnd: {
                         ctmEnv.initRndEnv(envIsComplex);
                         ctmEnv.symmetrizeEnv();
                         break;
-                    } 
+                    }
+                    default: {
+                        std::cout<<"Unsupported INIT_ENV" << std::endl;
+                        exit(EXIT_FAILURE);   
+                    }
                 }
 
             // ENTER ENVIRONMENT LOOP
@@ -431,12 +468,13 @@ int main( int argc, char *argv[] ) {
 
                         // diagnose spectra
                         std::cout << std::endl;
+                        Args args_dbg_cornerSVD = {"Truncate",false};
                         double tmpVal;
                         double minCornerSV = 1.0e+16;
                         std::cout << "Spectra: " << std::endl;
 
                         ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR);
+                        auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
                         tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                             sv.inds().back()(auxEnvDim));
                         PrintData(sv);
@@ -444,7 +482,7 @@ int main( int argc, char *argv[] ) {
                         oss << tmpVal;
 
                         tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR);
+                        spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
                         tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                             sv.inds().back()(auxEnvDim));
                         PrintData(sv);
@@ -452,7 +490,7 @@ int main( int argc, char *argv[] ) {
                         oss <<" "<< tmpVal;
 
                         tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR);
+                        spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
                         tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                             sv.inds().back()(auxEnvDim));
                         PrintData(sv);
@@ -460,7 +498,7 @@ int main( int argc, char *argv[] ) {
                         oss <<" "<< tmpVal;
 
                         tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR);
+                        spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
                         tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                             sv.inds().back()(auxEnvDim));
                         PrintData(sv);

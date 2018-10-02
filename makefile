@@ -58,9 +58,9 @@ CCFILES6=$(APP6).cc cluster-ev-builder.cc engine.cc full-update-TEST.cc full-upd
 
 CCFILES7=$(APP7).cc cluster-ev-builder.cc full-update.cc  models.cc \
 	ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc mpo.cc su2.cc
-CCFILES8=$(APP8).cc simple-update_v2.cc models.cc \
+CCFILES8=$(APP8).cc engine.cc simple-update_v2.cc full-update-TEST.cc full-update.cc models.cc \
 	cluster-ev-builder.cc ctm-cluster-env_v2.cc ctm-cluster-io.cc ctm-cluster.cc \
-	mpo.cc su2.cc cg_rc.cc
+	mpo.cc su2.cc
 
 CCFILESN=ctm-cluster-io.cc ctm-cluster.cc
 

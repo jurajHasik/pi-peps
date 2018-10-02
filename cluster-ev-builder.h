@@ -116,8 +116,8 @@ class EVBuilder {
      * Hence "dist" = 0, means adjacent sites 
      *
      */
-    std::complex<double> expVal_1sO1sO_H(MPO_1S o1, 
-        MPO_1S o2, std::pair< int, int > site, int dist);
+    std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1, 
+        MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 
