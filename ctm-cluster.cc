@@ -158,7 +158,7 @@ ITensor contractCluster(Cluster const& c, bool dbg) {
     // Contract all inner links of the cluster
     ITensor initPlaq, siteT;
     Index tempI;
-    std::vector<Index> aI; 
+    std::vector<Index> aI;
 
     // First on-site tensor
     initPlaq = c.sites.at( c.cToS.at(std::make_pair(0,0)) );

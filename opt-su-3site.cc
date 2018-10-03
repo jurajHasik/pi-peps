@@ -63,7 +63,9 @@ int main( int argc, char *argv[] ) {
     CtmEnv::isometry_type iso_type(toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
     double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
-    std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>()); 
+    std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
+    auto rsvd_power   = jsonCls.value("rsvd_power",2);
+    auto rsvd_reortho = jsonCls.value("rsvd_reortho",1);
     int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
@@ -160,6 +162,8 @@ int main( int argc, char *argv[] ) {
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, 
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
+         "rsvd_power",rsvd_power,
+         "rsvd_reortho",rsvd_reortho,
          "dbg",arg_envDbg,
          "dbgLevel",arg_envDbgLvl}
         );
@@ -323,7 +327,8 @@ int main( int argc, char *argv[] ) {
         ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
         // Compute initial properties
         ptr_model->setObservablesHeader(out_file_energy);
-        ptr_model->computeAndWriteObservables(ev, out_file_energy,{"lineNo",0});
+        auto metaInf = Args("lineNo",0);
+        ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
     
         std::cout << "Norm: "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), std::make_pair(1,1))
             << std::endl;
@@ -535,7 +540,10 @@ int main( int argc, char *argv[] ) {
 
             t_begin_int = std::chrono::steady_clock::now();
 
-            ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",suI});
+            auto metaInf = Args("lineNo",suI);
+            ptr_model->computeAndWriteObservables(ev,out_file_energy,metaInf);
+
+            t_end_int = std::chrono::steady_clock::now();
 
             std::cout << "Observables computed in T: "<< std::chrono::duration_cast
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 

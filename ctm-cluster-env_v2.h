@@ -57,7 +57,9 @@ class CtmEnv
     double isoPseudoInvCutoff = 1.0e-14;
     double isoMinElemWarning  = 1.0e-4;
     double isoMaxElemWarning  = 1.0e4;
-    std::string SVD_METHOD = "itensor"; 
+    std::string SVD_METHOD = "itensor";
+    int rsvd_power = 2;
+    int rsvd_reortho = 1;
     
     /*
      * Auxiliary dimension of bond-indices of on-site tensor TT given by 

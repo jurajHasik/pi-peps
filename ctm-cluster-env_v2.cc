@@ -23,6 +23,8 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
     isoMinElemWarning  = args.getReal("isoMinElemWarning",1.0e-4);
     isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e4);
     SVD_METHOD         = args.getString("SVD_METHOD","itensor");
+    rsvd_power         = args.getInt("rsvd_power",2);
+    rsvd_reortho       = args.getInt("rsvd_reortho",1);
     DBG     = args.getBool("dbg",false);
     DBG_LVL = args.getInt("dbgLevel",0);
 
@@ -522,8 +524,7 @@ void CtmEnv::initPWREnv(bool dbg) {
 
     computeSVDspec();
 
-    std::cout <<"INIT_ENV_const1 with all elements of C's and T's"<<
-        " set to constant"<< std::endl;
+    std::cout <<"INIT_ENV_pwr called"<< std::endl;
     std::cout << std::string(72,'=') << std::endl;
 }
 
@@ -1905,7 +1906,9 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
         "Cutoff",-1.0,
         "Maxm",x,
         "SVDThreshold",1E-2,
-        "SVD_METHOD",SVD_METHOD
+        "SVD_METHOD",SVD_METHOD,
+        "rsvd_power",rsvd_power,
+        "rsvd_reortho",rsvd_reortho
     );
 
     ITensor R, Rt;
@@ -2243,7 +2246,9 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
         "Maxm",x,
         "Minm",x,
         "SVDThreshold",1E-2,
-        "SVD_METHOD",SVD_METHOD
+        "SVD_METHOD",SVD_METHOD,
+        "rsvd_power",rsvd_power,
+        "rsvd_reortho",rsvd_reortho
     );
 
     ITensor R, Rt;

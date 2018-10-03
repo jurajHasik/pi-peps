@@ -482,7 +482,7 @@ void J1J2Model::setObservablesHeader(std::ofstream & output) {
 }
 
 void J1J2Model::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -575,6 +575,9 @@ void J1J2Model::computeAndWriteObservables(EVBuilder const& ev,
     double energy = 2.0 * avgSS_NN * J1 + 2.0 * avgSS_NNN * J2; 
     output <<" "<< energy;
 
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
     output << std::endl;
 }
 
@@ -592,7 +595,7 @@ void NNHLadderModel::setObservablesHeader(std::ofstream & output) {
 }
 
 void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -658,7 +661,10 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
     // write Energy
     double energy = (evNN[0]+evNN[1]+evNN[2]+evNN[3]+evNN[4]+evNN[7]) * J1
          + (evNN[5]+evNN[6]) * (alpha*J1); 
-    output <<" "<< energy; 
+    output <<" "<< energy;
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
 
     output << std::endl;
 }
@@ -677,7 +683,7 @@ void IsingModel::setObservablesHeader(std::ofstream & output) {
 }
 
 void IsingModel::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -761,7 +767,7 @@ void Ising3BodyModel::setObservablesHeader(std::ofstream & output) {
 }
 
 void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -902,7 +908,7 @@ void NNHModel_2x2Cell_AB::setObservablesHeader(std::ofstream & output) {
 }
 
 void NNHModel_2x2Cell_AB::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -947,6 +953,9 @@ void NNHModel_2x2Cell_AB::computeAndWriteObservables(EVBuilder const& ev,
          + (ev_sA[0]+ev_sB[0]) * h)/2 ; 
     output <<" "<< energy; 
 
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
     output << std::endl;
 }
 
@@ -964,7 +973,7 @@ void NNHModel_2x2Cell_ABCD::setObservablesHeader(std::ofstream & output) {
 }
 
 void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args const& metaInf) {
+    std::ofstream & output, Args & metaInf) {
 
     auto lineNo = metaInf.getInt("lineNo",0);
 
@@ -1028,6 +1037,9 @@ void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     double energy = ( (evNN[0]+evNN[1]+evNN[2]+evNN[3]+evNN[4]+evNN[5]+evNN[6]+evNN[7]) * J1
          + (ev_sA[0] + ev_sB[0] + ev_sC[0] + ev_sD[0]) * h)/4.0; 
     output <<" "<< energy; 
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
 
     output << std::endl;
 }

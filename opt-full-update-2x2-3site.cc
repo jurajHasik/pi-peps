@@ -105,7 +105,9 @@ int main( int argc, char *argv[] ) {
 	CtmEnv::isometry_type iso_type(toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
 	double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
-    std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>()); 
+    std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
+    auto rsvd_power   = jsonCls.value("rsvd_power",2);
+    auto rsvd_reortho = jsonCls.value("rsvd_reortho",1);
 	int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
     int arg_obsMaxIter = jsonCls.value("obsMaxIter",arg_maxInitEnvIter);
@@ -319,6 +321,8 @@ int main( int argc, char *argv[] ) {
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
+         "rsvd_power",rsvd_power,
+         "rsvd_reortho",rsvd_reortho,
          "dbg",arg_envDbg,"dbgLevel",arg_envDbgLvl});
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
@@ -447,8 +451,10 @@ int main( int argc, char *argv[] ) {
     std::vector<int> diag_ctmIter;
     std::vector< Args > diagData_fu;
     std::vector<double> diag_minCornerSV(1, 0.);
+    double best_energy = 1.0e+16;
     Args diag_fu;
 
+    std::string outClusterBestFile = outClusterFile+".best";
     std::ofstream out_file_energy(outClusterFile+".energy.dat", std::ios::out);
     std::ofstream out_file_diag(outClusterFile+".diag.dat", std::ios::out);
     out_file_energy.precision( std::numeric_limits< double >::max_digits10 );
@@ -562,7 +568,9 @@ int main( int argc, char *argv[] ) {
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
     // Compute initial properties
     ptr_model->setObservablesHeader(out_file_energy);
-    ptr_model->computeAndWriteObservables(ev, out_file_energy,{"lineNo",0});
+    auto obs_metaInf = Args("lineNo",0);
+    ptr_model->computeAndWriteObservables(ev, out_file_energy, obs_metaInf);
+    best_energy = obs_metaInf.getReal("energy");
 
     // ENTER OPTIMIZATION LOOP
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
@@ -638,6 +646,8 @@ int main( int argc, char *argv[] ) {
         // fix gauge by simple-update at dt=0 - identity operators
         if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
             std::cout << "GAUGE FIXING" << std::endl;
+            t_begin_int = std::chrono::steady_clock::now();
+
             // Assuming the weights have been initialized
             initClusterWeights(cls);
             setWeights(cls, arg_suWeightsInit);
@@ -656,6 +666,11 @@ int main( int argc, char *argv[] ) {
             }
 
             absorbWeightsToSites(cls);
+        
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout << "GUAGE FIX DONE" << " T: "<< std::chrono::duration_cast
+                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                    <<" [sec] "; 
         }
 
         // SETUP ENVIRONMENT LOOP
@@ -713,10 +728,10 @@ int main( int argc, char *argv[] ) {
 	            
                 ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0), true);
+                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1), true);
+                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1), true);
+                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1), true);
 
                 // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
                 // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
@@ -822,7 +837,16 @@ int main( int argc, char *argv[] ) {
             t_begin_int = std::chrono::steady_clock::now();
 
             // ctmEnv.symmetrizeEnv();
-            ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",fuI});
+            auto metaInf = Args("lineNo",fuI);
+            ptr_model->computeAndWriteObservables(ev,out_file_energy,metaInf);
+
+            // check energy, preserve the best_energy state obtained so far
+            auto current_energy = metaInf.getReal("energy");
+            if( best_energy > current_energy ) {
+                best_energy = current_energy;
+                cls.metaInfo = "BestEnergy(FUStep=" + std::to_string(fuI) + ")";
+                writeCluster(outClusterBestFile, cls);
+            }
 
             t_end_int = std::chrono::steady_clock::now();
 
@@ -926,7 +950,8 @@ int main( int argc, char *argv[] ) {
 
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-	ptr_model->computeAndWriteObservables(ev,out_file_energy,{"lineNo",arg_fuIter+1});
+    obs_metaInf = Args("lineNo",arg_fuIter+1);
+	ptr_model->computeAndWriteObservables(ev,out_file_energy,obs_metaInf);
 
     // COMPUTE CORRELATION FUNCTIONS
     int dist = 20;

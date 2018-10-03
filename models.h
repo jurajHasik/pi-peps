@@ -55,7 +55,7 @@ class Model {
         virtual void setObservablesHeader(std::ofstream & output) = 0;
 
         virtual void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf) = 0;
+            std::ofstream & output, itensor::Args & metaInf) = 0;
 };
 
 class J1J2Model : public Model {
@@ -67,7 +67,7 @@ class J1J2Model : public Model {
         void setObservablesHeader(std::ofstream & output);
         
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 
 class NNHModel_2x2Cell_AB : public Model {
@@ -79,7 +79,7 @@ class NNHModel_2x2Cell_AB : public Model {
         void setObservablesHeader(std::ofstream & output);
         
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 
 class NNHModel_2x2Cell_ABCD : public Model {
@@ -91,7 +91,7 @@ class NNHModel_2x2Cell_ABCD : public Model {
         void setObservablesHeader(std::ofstream & output);
         
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 
 class NNHLadderModel : public Model {
@@ -103,7 +103,7 @@ class NNHLadderModel : public Model {
         void setObservablesHeader(std::ofstream & output);
 
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 
 class IsingModel : public Model {
@@ -115,7 +115,7 @@ class IsingModel : public Model {
         void setObservablesHeader(std::ofstream & output);
 
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 
 class Ising3BodyModel : public Model {
@@ -127,7 +127,7 @@ class Ising3BodyModel : public Model {
         void setObservablesHeader(std::ofstream & output);
 
         void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args const& metaInf);
+            std::ofstream & output, itensor::Args & metaInf);
 };
 // ----- END Definition of model class --------------------------------
 
