@@ -468,24 +468,38 @@ int main( int argc, char *argv[] ) {
     bool expValEnvConv = false;
     for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
+        t_begin_int = std::chrono::steady_clock::now();
+
         ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
         ctmEnv.insURow_DBG(iso_type, norm_type, accT);
         ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
 
-        if ( envI % 1 == 0 ) {
-            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-        
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+        t_end_int = std::chrono::steady_clock::now();
+        std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
                 <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                << e_curr[3] << std::endl;
+                <<" [sec] ";
+
+        if ( envI % 1 == 0 ) {
+            t_begin_int = std::chrono::steady_clock::now();
+
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
             
             e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
             e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
             e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1)); 
+
+            // e_curr[0]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+            // e_curr[1]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+            // e_curr[2]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+            // e_curr[3]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1)); 
+
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout <<"|| T: "<< std::chrono::duration_cast
+                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
+                << e_curr[3] << std::endl;
 
             // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
             // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
@@ -559,8 +573,6 @@ int main( int argc, char *argv[] ) {
             
                 break;
             }
-            
-            t_begin_int = std::chrono::steady_clock::now();
         }
     }
     // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
@@ -728,10 +740,10 @@ int main( int argc, char *argv[] ) {
 	            
                 ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0), true);
-                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1), true);
-                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1), true);
-                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1), true);
+                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
 
                 // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
                 // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));

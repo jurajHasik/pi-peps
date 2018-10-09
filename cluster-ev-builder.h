@@ -101,6 +101,13 @@ class EVBuilder {
     double contract2Smpo(std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
+    double eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
+        bool DBG = false) const;
+
+    itensor::ITensor redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
+        bool DBG = false) const; 
+
+
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
     // where O1 is applied on "site" and O2 "dist" sites to the right

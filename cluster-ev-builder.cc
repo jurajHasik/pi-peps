@@ -974,6 +974,593 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
     return sumels(tN);
 }
 
+double EVBuilder::eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
+        bool DBG) const 
+{
+    auto rdm = redDenMat2x1(s1,s2,DBG);
+    if ( rdm.r() != 4 ) std::cout << "ERROR rdm rank: "<< rdm.r() << std::endl;
+
+    // find corresponding sites in elementary cluster
+    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    // find the index of site given its elem position within cluster
+    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+
+    auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
+
+    auto valT = rdm * op.first * op.second;
+    if (valT.r() > 0) std::cout << "ERROR valT rank" << std::endl;
+    double val  = sumels(rdm * op.first * op.second);
+
+    auto normT = rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2));
+    if (normT.r() > 0) std::cout << "ERROR normT rank" << std::endl;
+    double n = sumels(rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2)) );
+
+    return val/n;
+}
+
+ITensor EVBuilder::redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
+    bool DBG) const 
+{
+    if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 called ====="
+        << std::string(34,'=') << std::endl;
+    /*
+     *  Contract network defined as a rectangle by sites s1 and s2 
+     *
+     *  C T  T  C           C T  C
+     *  T s1 s2 T           T s1 T 
+     *  C T  T  C    or     T s2 T
+     *                      C T  C
+     */
+    bool singleSite = false; // Assume s1 != s2
+    bool s1bs2      = true;  // Assume s1.first <= s2.first
+    bool wBEh       = true;  // Assume width of rectangle >= height 
+
+    // Perform some coord manipulation (assumed coords are >= 0) and
+    // s1.first <= s2.second && s1.second <= s2.second
+    if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
+        || (s1.second > s2.second) ) {
+        std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
+        if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
+            << std::endl;
+        singleSite = true;
+    }
+
+    if ( s1.first > s2.first ) {
+        if(DBG) std::cout <<"s1.first > s2.first => s1 defines upper right corner"
+            << std::endl;
+        s1bs2 = false;
+    }
+
+    int sXdiff = s2.first - s1.first;
+    int sYdiff = s2.second - s1.second;
+    if ( !(abs(sXdiff) >= abs(sYdiff)) ) {
+        if(DBG) std::cout <<"TN Width < Height => contracting row by row"
+            << std::endl;
+        wBEh = false;
+    }
+
+    ITensor tN;
+
+    if (wBEh && s1bs2) 
+    { // width >= height AND s1 is on the left of s2
+        // shift s1 to supercell
+        s1.first  = s1.first % cls.sizeM;
+        s1.second = s1.second % cls.sizeN;
+        // shift s2 wrt to new position of s1
+        s2.first  = s1.first + sXdiff;
+        s2.second = s1.second + sYdiff;
+
+        std::pair< int, int > s(s1);
+
+        // Construct LEFT edge
+        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+        
+        int row = s.second; 
+        if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+        s.second = s.second % cd_f.sizeN;
+        tN.noprime(LLINK);
+        tN *= cd_f.T_L[cd_f.cToS.at(s)];
+        
+        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
+            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+        s.second = s.second % cd_f.sizeN;
+        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+        if(DBG) Print(tN);
+
+        int col=s1.first;
+            s.second = s1.second;
+            if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN.noprime(ULINK, DLINK);
+            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+            
+            if(DBG) Print(tN);
+
+            row=s1.second;
+                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+                    <<std::endl;
+
+                s.second = s.second % cd_f.sizeN; 
+                tN.noprime(VSLINK);
+
+                auto cmbL0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+                // cmbL0 *= delta(cd_f.I_XH, combinedIndex(cmbL0));
+                auto cmbL1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+                // cmbL1 *= delta(cd_f.I_XV, combinedIndex(cmbL1));
+                auto cmbL3 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+                // cmbL3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
+                tN *= delta(cd_f.I_XH, combinedIndex(cmbL0));
+                tN *= cmbL0;
+                tN *= delta(cd_f.I_XV, combinedIndex(cmbL1));
+                tN *= cmbL1;
+
+                // if ((col==s1.first) && (row == s1.second)) {
+                //     // contract Op.first with bra and ket on-site tensors of site s1
+                //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+                //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+                //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+                //     tN = tN * prime(mpo_s1.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+                // } else if ((col==s2.first) && (row == s2.second)) {
+                //     // contract Op.second with bra and ket on-site tensors of site s2
+                //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+                //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+                //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+                //         << std::endl;
+                //     tN = tN * prime(mpo_s2.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+                // } else {
+                    tN *= cls.sites.at(cls.cToS.at(s));
+                    tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+                // }
+                tN *= cmbL3;
+                tN *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
+                
+                auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+
+            // tN.prime(HSLINK,-1);
+            
+            if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        // }
+
+        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+            << std::endl;
+
+        // Construct RIGHT edge
+        s = std::make_pair(s2.first, s1.second);
+        if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
+            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+        s.first = s.first % cd_f.sizeM;
+        auto tNR = cd_f.C_RU[cd_f.cToS.at(s)];
+        if(DBG) Print(tNR);
+        
+        // for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+            tNR.noprime(RLINK);
+            // tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
+            // if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
+                // 1 << std::endl;
+
+            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+                    <<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+
+            tNR *= cd_f.T_R[cd_f.cToS.at(s)];
+        // }
+
+        if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+        
+        s.second = s.second % cd_f.sizeN;        
+        tNR *= cd_f.C_RD[cd_f.cToS.at(s)];
+
+
+        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+            << std::endl;
+        if(DBG) Print(tNR);
+
+
+        // tNR.noprime(ULINK, DLINK);
+        tNR *= cd_f.T_U[cd_f.cToS.at(s)];
+
+
+        auto cmbR1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+        // cmbR1 *= delta(cd_f.I_XV, combinedIndex(cmbR1));
+        auto cmbR2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+        // cmbR2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
+        auto cmbR3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+        // cmbR3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
+        tNR *= delta(cd_f.I_XV, combinedIndex(cmbR1));
+        tNR *= cmbR1;
+        tNR *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
+        tNR *= cmbR2;
+
+
+        tNR *= cls.sites.at(cls.cToS.at(s));
+        tNR *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+
+        tNR *= cmbR3;
+        tNR *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
+
+        tNR *= cd_f.T_D[cd_f.cToS.at(s)];
+
+
+        auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+
+        tN.noprime(ULINK,DLINK);
+        tN *= delta( prime(aIs1,2) , prime(aIs2,0) );
+        tN *= delta( prime(aIs1,6) , prime(aIs2,4) );
+
+        return tN * tNR;
+    } 
+    else if (!wBEh && s1bs2) 
+    { // width < height AND s1 is on the left of s2
+        // shift s1 to supercell
+        s1.first  = s1.first % cls.sizeM;
+        s1.second = s1.second % cls.sizeN;
+        // shift s2 wrt to new position of s1
+        s2.first  = s1.first + sXdiff;
+        s2.second = s1.second + sYdiff;
+
+        std::pair< int, int > s(s1);
+
+        // Construct UP edge
+        if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+
+        //for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+        int col = s1.first;
+            if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN.prime(VSLINK,2);
+            tN.noprime(ULINK);
+            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+        //}
+        
+        if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
+            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+        s.first = s.first % cd_f.sizeM;
+        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
+        if(DBG) Print(tN);
+
+        s = s1;
+        //for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+        int row=s1.second;
+
+            s.first = s1.first;
+            if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+
+            s.second = s.second % cd_f.sizeN;
+            //tN.noprime(LLINK, RLINK);
+            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+            
+            if(DBG) Print(tN);
+
+            //for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
+            col=s1.first;
+                if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+                    <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+                    <<std::endl;
+
+                s.first = s.first % cd_f.sizeM;
+                //tN.noprime(HSLINK);
+
+                auto cmbT0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+                // cmbT0 *= delta(cd_f.I_XH, combinedIndex(cmbT0));
+                auto cmbT1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+                // cmbT1 *= delta(cd_f.I_XV, combinedIndex(cmbT1));
+                auto cmbT2 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+                // cmbT2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
+                tN *= delta(cd_f.I_XH, combinedIndex(cmbT0));
+                tN *= cmbT0;
+                tN *= delta(cd_f.I_XV, combinedIndex(cmbT1));
+                tN *= cmbT1;
+
+                // if ((col==s1.first) && (row == s1.second)) {
+                //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+                //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+                //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+                //     tN *= prime(mpo_s1.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+                // } else if ((col==s2.first) && (row == s2.second)) {
+                //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+                //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+                //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+                //         << std::endl;
+                //     tN *= prime(mpo_s2.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+                // } else {
+                    // tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+                    //     VSLINK, 2*(sXdiff-col+s1.first) );
+                    tN *= cls.sites.at(cls.cToS.at(s));
+                    tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+                // }
+            
+                tN *= cmbT2;
+                tN *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
+
+            //}
+            auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+            //tN.prime(VSLINK,-1);
+            
+            
+            if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+
+            if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
+                " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        //}
+
+        if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
+            << std::endl;
+
+        s = std::make_pair(s1.first, s2.second); 
+        if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
+            <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
+        
+        s.second = s.second % cd_f.sizeN;
+        auto tNB = cd_f.C_LD[cd_f.cToS.at(s)];
+        if(DBG) Print(tNB);
+        
+        // for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+        col = s1.first;
+            //tNB.noprime(DLINK);
+            //tNB.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
+            if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
+                1 << std::endl;
+
+            if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+                <<std::endl;
+
+            s.first = s.first % cd_f.sizeM;
+
+            tNB *= cd_f.T_D[cd_f.cToS.at(s)];
+        // }
+
+        
+        if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
+                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+        s.first = s.first % cd_f.sizeM;        
+        tNB *= cd_f.C_RD[cd_f.cToS.at(s)];
+
+        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+            << std::endl;
+        if(DBG) Print(tNB);
+
+        //tNB.noprime(LLINK, RLINK);
+        tNB *= cd_f.T_L[cd_f.cToS.at(s)];
+
+
+        auto cmbB0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+        // cmbB0 *= delta(cd_f.I_XH, combinedIndex(cmbB0));
+        auto cmbB2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+        // cmbB0 *= delta(prime(cd_f.I_XH), combinedIndex(cmbB0));
+        auto cmbB3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+        // cmbB3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
+        tNB *= delta(cd_f.I_XH, combinedIndex(cmbB0));
+        tNB *= cmbB0;
+        tNB *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
+        tNB *= cmbB3;
+
+        tNB *= cls.sites.at(cls.cToS.at(s));
+        tNB *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+
+        tNB *= cmbB2;
+        tNB *= delta(prime(cd_f.I_XH), combinedIndex(cmbB2));
+
+        tNB *= cd_f.T_R[cd_f.cToS.at(s)];
+
+        auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+        tN.noprime(LLINK,RLINK);
+        tN *= delta( prime(aIs1,3) , prime(aIs2,1) );
+        tN *= delta( prime(aIs1,7) , prime(aIs2,5) );
+
+        return tN * tNB;
+    } 
+    // else if(wBEh && !s1bs2) {
+    //     sXdiff = s1.first - s2.first;
+    //     sYdiff = s1.second - s2.second;
+
+    //     if(DBG) { std::cout <<"Args: s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+    //         std::cout <<"Args: s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+
+    //     // shift s2 to supercell
+    //     s2.first  = s2.first % cls.sizeM;
+    //     s2.second = s2.second % cls.sizeN;
+    //     // shift s1 wrt to new position of s2
+    //     s1.first  = s2.first + sXdiff;
+    //     s1.second = s2.second + sYdiff;
+
+    //     if(DBG) { std::cout <<"After shift: "<< std::endl;
+    //         std::cout <<"s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+    //         std::cout <<"s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+
+    //     // start from
+    //     std::pair< int, int > s{s2};
+
+    //     // Construct LEFT edge
+    //     if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+    //     tN = cd_f.C_LD[cd_f.cToS.at(s)];
+
+    //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+    //         if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+    //             <<"["<< s.first <<","<< 
+    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+    //         tN.prime(HSLINK,2);
+    //         tN.mapprime(LLINK,0,1);
+    //         tN *= cd_f.T_L[cd_f.cToS.at(s)];
+    //     }
+    //     s.second += 1;
+    //     if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"] =>"
+    //         <<"["<< s.first <<","<< 
+    //     (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+    //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+    //     tN *= cd_f.C_LU[cd_f.cToS.at(s)];
+
+    //     if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+    //     if(DBG) Print(tN);
+
+    //     for ( int col=s2.first; col <= s1.first; s.first = ++col ) {
+    //         s.second = s2.second;
+    //         if(DBG) std::cout<<"T_D["<< col <<","<< s.second <<"] =>"
+    //             <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+
+    //         s.first = s.first % cd_f.sizeM;
+    //         tN.noprime(ULINK, DLINK);
+    //         tN *= cd_f.T_D[cd_f.cToS.at(s)];
+            
+    //         if(DBG) Print(tN);
+
+    //         for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+    //             if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+    //                 <<"["<< s.first <<","<< 
+    //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+    //             s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN; 
+
+    //             if ((col==s1.first) && (row == s1.second)) {
+    //                 // contract Op.first with bra and ket on-site tensors of site s1
+    //                 auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+    //                 if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+    //                     << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+    //                         << std::endl; 
+    //                 tN *= prime(mpo_s1.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+    //             } else if ((col==s2.first) && (row == s2.second)) {
+    //                 // contract Op.second with bra and ket on-site tensors of site s2
+    //                 auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+    //                 if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+    //                     <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+    //                     << std::endl;
+    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+    //                         << std::endl;
+    //                 tN *= prime(mpo_s2.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+    //             } else {
+    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+    //                         << std::endl;
+    //                 tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+    //                     HSLINK, 2*abs(abs(sYdiff)+row-s2.second) );
+    //             }
+
+    //             tN.prime(VSLINK);
+    //         }
+    //         tN.prime(VSLINK,-1);
+    //         tN.prime(HSLINK,-1);
+            
+    //         s.second -= 1;
+    //         if(DBG) std::cout <<"T_U["<< col <<","<< s.second <<"] =>"
+    //             <<"["<< s.first <<","<< 
+    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+    //         tN *= cd_f.T_U[cd_f.cToS.at(s)];
+
+    //         if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+    //             <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+    //         if(DBG) Print(tN);
+    //     }
+
+    //     if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+    //         << std::endl;
+
+    //     // Construct RIGHT edge
+    //     s = std::make_pair(s1.first, s2.second); 
+    //     if(DBG) std::cout << "C_RD["<< s1.first <<","<< s2.second <<"] =>"
+    //         <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+        
+    //     s.first = s.first % cd_f.sizeM;
+    //     tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+    //     if(DBG) Print(tN);
+        
+    //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+    //         tN.mapprime(2*abs(abs(sYdiff)+row-s2.second), 1,HSLINK);
+    //         if(DBG) std::cout <<"HSLINK "<< 2*abs(abs(sYdiff)+row-s2.second) <<" -> "<<  
+    //             1 << std::endl;
+
+    //         if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+    //                 <<"["<< s.first <<","<< 
+    //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+
+    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+
+    //         tN *= cd_f.T_R[cd_f.cToS.at(s)];
+    //         tN.prime(RLINK);
+    //     }
+    //     tN.noprime(RLINK);
+    //     s.second -= 1;
+    //     if(DBG) std::cout <<"C_RU["<< s2.first <<","<< s.second <<"] =>"
+    //             <<"["<< s.first <<","<< 
+    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+        
+    //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;        
+    //     tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+
+    //     if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+    //         << std::endl;
+    //     if(DBG) Print(tN);
+    // }
+
+    if ( tN.r() != 4 ) {
+        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 done ====="
+        << std::string(36,'=') << std::endl;
+
+    return ITensor();
+} 
+
 std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H( 
         MPO_1S o1, MPO_1S o2,
         std::pair< int, int > site, int dist, bool dbg)
@@ -2157,7 +2744,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
 
     if(dbg) std::cout <<">>>>> 3) Performing SVD OP2S -> OpA * S * OpB <<<<<"
         << std::endl;
-    svd(Op, OpA, S, OpB);
+    svd(Op, OpA, S, OpB, {"Cutoff",1.0e-16});
     
     if(dbg) { Print(OpA);
         PrintData(S);
