@@ -36,7 +36,8 @@ int main( int argc, char *argv[] ) {
 	int physDim, auxBondDim;
 	std::string inClusterFile;
 	if (initBy=="FILE") inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-	physDim = jsonCls["physDim"].get<int>();
+	double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
+    physDim = jsonCls["physDim"].get<int>();
 	auxBondDim = jsonCls["auxBondDim"].get<int>();
 
 	// read cluster outfile
@@ -163,7 +164,7 @@ int main( int argc, char *argv[] ) {
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
         // TEST - add small elements instead of 0
-        double eps = 1.0e-8;
+        double eps = initStateNoise;
         auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
         A.apply(addEpsilon);
         B.apply(addEpsilon);

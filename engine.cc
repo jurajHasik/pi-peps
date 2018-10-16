@@ -913,59 +913,59 @@ std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model) {
     //     std::cout<<"J1J2 SYM2 ENGINE constructed"<<std::endl;
     //     return std::unique_ptr<Engine>( pe );
     // }
-    // else if (arg_fuGateSeq == "SYM3") {
-    //     TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
+    if (arg_gateSeq == "SYM3") {
+        TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-    //     pe->td.gateMPO.push_back( getMPO3s_Uj1j2_v2(arg_tau, arg_J1, arg_J2, arg_lambda) );
-    //     pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
+        pe->td.gateMPO.push_back( getMPO3s_Id_v2(2) );
+        pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
 
-    //     pe->td.gates = {
-    //         {"A", "B", "D", "C"},
-    //         {"C", "D", "B", "A"},
-    //         {"D", "C", "A", "B"},
-    //         {"B", "A", "C", "D"},
+        pe->td.gates = {
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
 
-    //         {"B", "A", "C", "D"},
-    //         {"D", "C", "A", "B"},
-    //         {"C", "D", "B", "A"},
-    //         {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"},
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
 
-    //         {"D", "C", "A", "B"},
-    //         {"B", "A", "C", "D"},
-    //         {"A", "B", "D", "C"},
-    //         {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
 
-    //         {"C", "D", "B", "A"}, 
-    //         {"A", "B", "D", "C"},
-    //         {"B", "A", "C", "D"},
-    //         {"D", "C", "A", "B"}
-    //     };
+            {"C", "D", "B", "A"}, 
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"}
+        };
 
-    //     pe->td.gate_auxInds = {
-    //         {3,2, 0,3, 1,0, 2,1},
-    //         {3,0, 2,3, 1,2, 0,1},
-    //         {3,0, 2,3, 1,2, 0,1},
-    //         {3,2, 0,3, 1,0, 2,1},
+        pe->td.gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
 
-    //         {3,0, 2,3, 1,2, 0,1},
-    //         {3,2, 0,3, 1,0, 2,1},
-    //         {3,2, 0,3, 1,0, 2,1},
-    //         {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
 
-    //         {1,0, 2,1, 3,2, 0,3},
-    //         {1,2, 0,1, 3,0, 2,3},
-    //         {1,2, 0,1, 3,0, 2,3}, 
-    //         {1,0, 2,1, 3,2, 0,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3}, 
+            {1,0, 2,1, 3,2, 0,3},
 
-    //         {1,2, 0,1, 3,0, 2,3},
-    //         {1,0, 2,1, 3,2, 0,3},
-    //         {1,0, 2,1, 3,2, 0,3},
-    //         {1,2, 0,1, 3,0, 2,3}
-    //     };
+            {1,2, 0,1, 3,0, 2,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3}
+        };
 
-    //     std::cout<<"J1J2 SYM3 ENGINE constructed"<<std::endl;
-    //     return std::unique_ptr<Engine>( pe );
-    // } 
+        std::cout<<"IDENTITY 3SITE ENGINE constructed"<<std::endl;
+        return std::unique_ptr<Engine>( pe );
+    } 
     // else if (arg_fuGateSeq == "SYM4") {
     //     TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
@@ -1032,7 +1032,7 @@ std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model) {
     //     std::cout<<"J1J2 4SITE ENGINE constructed"<<std::endl;
     //     return std::unique_ptr<Engine>( pe );
     // } 
-    if (arg_gateSeq == "2SITE") {
+    else if (arg_gateSeq == "2SITE") {
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
         pe->td.gateMPO.push_back( getMPO2s_Id(2) );
