@@ -510,6 +510,29 @@ double EVBuilder::eval2Smpo(OP_2S op2s,
     return contract2Smpo(op2s, s1, s2, DBG)/contract2Smpo(OP2S_Id, s1, s2, DBG);
 }
 
+double EVBuilder::eval2Smpo(std::pair<ITensor,ITensor> const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const
+{
+    // find corresponding sites in elementary cluster
+    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    // find the index of site given its elem position within cluster
+    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+
+    // Assume Op.first and Op.second have both pair of physical indices with primes 0 and 1
+    auto tmpOp = Op;
+    auto tmpPI1 = noprime(findtype(tmpOp.first, PHYS));
+    auto tmpPI2 = noprime(findtype(tmpOp.second,PHYS));
+    
+    tmpOp.first  *= delta(tmpPI1,pI1);
+    tmpOp.first  *= delta(prime(tmpPI1),prime(pI1));
+    tmpOp.second *= delta(tmpPI2,pI2);
+    tmpOp.second *= delta(prime(tmpPI2),prime(pI2));
+
+    return contract2Smpo(tmpOp, s1, s2, DBG)/contract2Smpo(OP2S_Id, s1, s2, DBG);
+}
+
 double EVBuilder::contract2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
 {

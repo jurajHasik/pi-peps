@@ -95,6 +95,9 @@ class EVBuilder {
     double eval2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
+    double eval2Smpo(std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
+
     double contract2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 

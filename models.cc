@@ -228,6 +228,41 @@ MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda) {
     return ltorMPO3Sdecomp(u123, s1, s2, s3);
 }
 
+MPO_3site getMPO3s_ANISJ1J2(double tau, double J1, double J2, double del) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+
+    ITensor h3 = ITensor(s1,s2,s3,s1p,s2p,s3p);
+   
+    ITensor nnS1S2 = (0.5*J1)*( del*SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    // Nearest-neighbour terms S_1.S_2 and S_2.S_3
+    h3 += nnS1S2 * delta(s3,s3p);
+    h3 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p);
+
+    ITensor nnnS1S3 = J2*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s3)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s3)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s3) ) );
+
+    h3 += nnnS1S3 * delta(s2,s2p);
+
+    auto cmbI = combiner(s1,s2,s3);
+    h3 = (cmbI * h3 ) * prime(cmbI);
+    ITensor u3 = expHermitian(h3, {-tau, 0.0});
+    u3 = (cmbI * u3 ) * prime(cmbI);
+    
+    return ltorMPO3Sdecomp(u3, s1, s2, s3);
+}
+
 MPO_3site getMPO3s_Uladder(double tau, double J, double Jp) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
     std::cout.precision(10);
@@ -896,8 +931,8 @@ void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
-NNHModel_2x2Cell_AB::NNHModel_2x2Cell_AB(double arg_J, double arg_h)
-    : J1(arg_J), h(arg_h) {}
+NNHModel_2x2Cell_AB::NNHModel_2x2Cell_AB(double arg_J, double arg_h, double arg_del)
+    : J1(arg_J), h(arg_h), del(arg_del) {}
 
 void NNHModel_2x2Cell_AB::setObservablesHeader(std::ofstream & output) {
     output <<"STEP, " 
@@ -959,8 +994,8 @@ void NNHModel_2x2Cell_AB::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
-NNHModel_2x2Cell_ABCD::NNHModel_2x2Cell_ABCD(double arg_J, double arg_h)
-    : J1(arg_J), h(arg_h) {}
+NNHModel_2x2Cell_ABCD::NNHModel_2x2Cell_ABCD(double arg_J, double arg_h, double arg_del)
+    : J1(arg_J), h(arg_h), del(arg_del) {}
 
 void NNHModel_2x2Cell_ABCD::setObservablesHeader(std::ofstream & output) {
     output <<"STEP, " 
@@ -983,22 +1018,37 @@ void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sC(3,0.0);
     std::vector<double> ev_sD(3,0.0);
 
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+    // construct nn S.S operator
+    Index s1 = Index("S1", 2, PHYS);
+    Index s2 = Index("S2", 2, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    ITensor h12 = ITensor(s1,s2,s1p,s2p);
+    h12 += J1*( del*SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+    h12 += -h*(SU2_getSpinOp(SU2_S_Z, s1)*delta(s2,s2p) + delta(s1,s1p)*SU2_getSpinOp(SU2_S_Z, s2));
+
+    // Perform SVD to split in half
+    auto nnSS = symmMPO2Sdecomp(h12, s1, s2);
+
+    evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(0,0), std::make_pair(1,0)) ); //AB
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(0,0), std::make_pair(0,1)) ); //AC
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(1,0), std::make_pair(1,1)) ); //BD
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(0,1), std::make_pair(1,1)) ); //CD
 
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(1,0), std::make_pair(2,0))); //BA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(0,1), std::make_pair(0,2))); //CA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(1,1), std::make_pair(1,2))); //DB
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
         std::make_pair(1,1), std::make_pair(2,1))); //DC
 
     ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
@@ -1035,7 +1085,7 @@ void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev,
 
     // write Energy
     double energy = ( (evNN[0]+evNN[1]+evNN[2]+evNN[3]+evNN[4]+evNN[5]+evNN[6]+evNN[7]) * J1
-         + (ev_sA[0] + ev_sB[0] + ev_sC[0] + ev_sD[0]) * h)/4.0; 
+         + (ev_sA[0] + ev_sB[0] + ev_sC[0] + ev_sD[0]) * h)/4.0;
     output <<" "<< energy; 
 
     // return energy in metaInf
@@ -1530,10 +1580,11 @@ std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model) {
 
 std::unique_ptr<Model> getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model) {
 
-    double arg_J1 = json_model["J1"].get<double>();
-    double arg_h  = json_model["h"].get<double>();
+    double arg_J1  = json_model["J1"].get<double>();
+    double arg_h   = json_model["h"].get<double>();
+    double arg_del = json_model["del"].get<double>();
     
-    return std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h));
+    return std::unique_ptr<Model>(new NNHModel_2x2Cell_ABCD(arg_J1, arg_h, arg_del));
 }
 
 // void getModel_Ising_2x2Cell_ABCD(nlohmann::json & json_model,

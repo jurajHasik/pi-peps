@@ -30,6 +30,8 @@ MPO_3site getMPO3s_Uj1j2(double tau, double J1, double J2);
 
 MPO_3site getMPO3s_Uj1j2_v2(double tau, double J1, double J2, double lambda);
 
+MPO_3site getMPO3s_ANISJ1J2(double tau, double J1, double J2, double del);
+
 MPO_3site getMPO3s_Uladder(double tau, double J, double Jp);
 
 MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp);
@@ -72,9 +74,9 @@ class J1J2Model : public Model {
 
 class NNHModel_2x2Cell_AB : public Model {
     public:
-        double J1, h;
+        double J1, h, del;
 
-        NNHModel_2x2Cell_AB(double arg_J1, double arg_h);
+        NNHModel_2x2Cell_AB(double arg_J1, double arg_h, double arg_del);
 
         void setObservablesHeader(std::ofstream & output);
         
@@ -84,9 +86,9 @@ class NNHModel_2x2Cell_AB : public Model {
 
 class NNHModel_2x2Cell_ABCD : public Model {
     public:
-        double J1, h;
+        double J1, h, del;
 
-        NNHModel_2x2Cell_ABCD(double arg_J1, double arg_h);
+        NNHModel_2x2Cell_ABCD(double arg_J1, double arg_h, double arg_del);
 
         void setObservablesHeader(std::ofstream & output);
         

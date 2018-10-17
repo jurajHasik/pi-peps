@@ -479,8 +479,9 @@ std::unique_ptr<Engine> getModel_ISING3BODY(nlohmann::json & json_model) {
 
 std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_ABCD(nlohmann::json & json_model) {
 
-    double arg_J1 = json_model["J1"].get<double>();
-    double arg_h = json_model["h"].get<double>();
+    double arg_J1  = json_model["J1"].get<double>();
+    double arg_h   = json_model["h"].get<double>();
+    double arg_del = json_model["del"].get<double>();
     double arg_tau = json_model["tau"].get<double>();
     
     // gate sequence
@@ -516,7 +517,62 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_ABCD(nlohmann::json & json_model
         std::cout<<"NNH_2x2Cell_ABCD 2SITE ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
-    } else {
+    }
+    else if (arg_fuGateSeq == "SYM3") {
+        TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
+
+        pe->td.gateMPO.push_back( getMPO3s_ANISJ1J2(arg_tau, arg_J1, 0.0, arg_del) );
+        pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
+
+        pe->td.gates = {
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"},
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
+
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+
+            {"C", "D", "B", "A"}, 
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"}
+        };
+
+        pe->td.gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3}, 
+            {1,0, 2,1, 3,2, 0,3},
+
+            {1,2, 0,1, 3,0, 2,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3}
+        };
+
+        std::cout<<"ANISOTROPIC NNH SYM3 ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe ); 
+    }
+    else {
         std::cout<<"Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
     }
