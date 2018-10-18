@@ -205,134 +205,129 @@ int main( int argc, char *argv[] ) {
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
     // COMPUTE INITIAL OBSERVABLES
-    //{
-        for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
+    for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
+        t_begin_int = std::chrono::steady_clock::now();
+
+        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
+        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+
+        ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
+        ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
+        ctmEnv.insRCol_DBG(iso_type, norm_type, accT, arg_envDbg);
+        ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
+
+        t_end_int = std::chrono::steady_clock::now();
+        std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
+                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec] "; 
+
+        if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
             t_begin_int = std::chrono::steady_clock::now();
+            
+            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-            // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-            // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-            // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-            // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
 
-            ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-            ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
-            ctmEnv.insRCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-            ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
+            // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
+            // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
+            // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
+            // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
 
             t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "; 
 
-            if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
-                t_begin_int = std::chrono::steady_clock::now();
-                
-                ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+            std::cout<<" || E in T: "<< std::chrono::duration_cast
+                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
+                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
+                << e_curr[3]; 
 
-                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            // if the difference between energies along NN links is lower then arg_envEps
+            // consider the environment converged
+            if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
+                (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
+                (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
+                (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
-                // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
-                // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
-                // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
-                // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
-
-                t_end_int = std::chrono::steady_clock::now();
-
-                std::cout<<" || E in T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                    << e_curr[3]; 
-
-                // if the difference between energies along NN links is lower then arg_envEps
-                // consider the environment converged
-                if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
-                    (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
-                    (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
-                    (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
-
-                    expValEnvConv = true;
-                    std::cout<< " ENV CONVERGED ";
-                }
-
-                if ( envI==arg_maxEnvIter )  {
-                    expValEnvConv = true;
-                    std::cout<< " MAX ENV iterations REACHED ";
-                }
-                e_prev = e_curr;
-
-                if (expValEnvConv) {
-                    diag_ctmIter.push_back(envI);
-
-                    std::ostringstream oss;
-                    oss << std::scientific;
-
-                    // diagnose spectra
-                    std::cout << std::endl;
-                    double tmpVal;
-                    double minCornerSV = 1.0e+16;
-                    Args args_dbg_cornerSVD = {"Truncate",false};
-                    std::cout << "Spectra: " << std::endl;
-
-                    ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
-                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                        sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
-                    oss << tmpVal;
-
-                    tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
-                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                        sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
-                    oss <<" "<< tmpVal;
-
-                    tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
-                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                        sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
-                    oss <<" "<< tmpVal;
-
-                    tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
-                    tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                        sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
-                    oss <<" "<< tmpVal;
-
-                    diag_minCornerSV.push_back(minCornerSV);
-                    std::cout << "MinVals: "<< oss.str() << std::endl;
-
-                    break;
-                }
- 
+                expValEnvConv = true;
+                std::cout<< " ENV CONVERGED ";
             }
-            std::cout << std::endl;
+
+            if ( envI==arg_maxEnvIter )  {
+                expValEnvConv = true;
+                std::cout<< " MAX ENV iterations REACHED ";
+            }
+            e_prev = e_curr;
+
+            if (expValEnvConv) {
+                diag_ctmIter.push_back(envI);
+
+                std::ostringstream oss;
+                oss << std::scientific;
+
+                // diagnose spectra
+                std::cout << std::endl;
+                double tmpVal;
+                double minCornerSV = 1.0e+16;
+                Args args_dbg_cornerSVD = {"Truncate",false};
+                std::cout << "Spectra: " << std::endl;
+
+                ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss << tmpVal;
+
+                tL = ITensor(ctmEnv.C_RU[0].inds().front());
+                spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
+
+                tL = ITensor(ctmEnv.C_RD[0].inds().front());
+                spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
+
+                tL = ITensor(ctmEnv.C_LD[0].inds().front());
+                spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
+
+                diag_minCornerSV.push_back(minCornerSV);
+                std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                break;
+            }
+
         }
+        std::cout << std::endl;
+    }
 
-        std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-            <<" "<< accT[3] << std::endl;
-        std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-            <<" "<< accT[7] << std::endl;
+    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+        <<" "<< accT[3] << std::endl;
+    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+        <<" "<< accT[7] << std::endl;
 
-        
-        ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-        // Compute initial properties
-        ptr_model->setObservablesHeader(out_file_energy);
-        auto metaInf = Args("lineNo",0);
-        ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
     
-        std::cout << "Norm: "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), std::make_pair(1,1))
-            << std::endl;
-
+    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    // Compute initial properties
+    ptr_model->setObservablesHeader(out_file_energy);
+    auto metaInf = Args("lineNo",0,"dbg",);
+    ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
 
@@ -548,27 +543,6 @@ int main( int argc, char *argv[] ) {
             std::cout << "Observables computed in T: "<< std::chrono::duration_cast
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
                     <<" [sec] "<< std::endl;
-
-            std::cout << "Norm: "<< ev.getNorm_Rectangle(false, std::make_pair(0,0), std::make_pair(1,1))
-            << std::endl;
-
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "NN <S.S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
-
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "NNN <S.S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
-
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "<S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
 
             writeCluster(outClusterFile, evCls);
             

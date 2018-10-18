@@ -504,6 +504,31 @@ double EVBuilder::get2SOPTN(bool DBG,
     return sumels(tN);
 }
 
+double EVBuilder::evalSS(std::pair<int,int> s1, std::pair<int,int> s2, 
+    std::vector<double> coefs, bool DBG) const
+{
+    // find corresponding sites in elementary cluster
+    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    // find the index of site given its elem position within cluster
+    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+
+    auto opId = get2SiteSpinOP(OP2S_Id, pI1, pI2, DBG);
+    auto n = contract2Smpo(opId, s1, s2, DBG);
+
+    auto SpSm = std::make_pair(getSpinOp(MPO_S_P, pI1), getSpinOp(MPO_S_M, pI2));
+    auto SmSp = std::make_pair(getSpinOp(MPO_S_M, pI1), getSpinOp(MPO_S_P, pI2));
+    auto SzSz = std::make_pair(getSpinOp(MPO_S_Z, pI1), getSpinOp(MPO_S_Z, pI2));
+
+    auto spsm = contract2Smpo(SpSm, s1, s2, DBG);
+    auto smsp = contract2Smpo(SmSp, s1, s2, DBG);
+    auto szsz = contract2Smpo(SzSz, s1, s2, DBG);
+
+    double ss =  (coefs[2] * szsz + 0.5 * (spsm + smsp))/n;
+    return ss;
+}
+
 double EVBuilder::eval2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const
 {
@@ -2577,7 +2602,8 @@ double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
 //     return sumelsC(ccBare)/sumelsC(ccNorm);
 // }
 
-MPO_3site EVBuilder::get3Smpo(std::string mpo3s, bool DBG) const {
+MPO_3site EVBuilder::get3Smpo(std::string mpo3s, bool DBG) const 
+{
     int physDim = 2;
     Index s1 = Index("S1", physDim, PHYS);
     Index s2 = Index("S2", physDim, PHYS);

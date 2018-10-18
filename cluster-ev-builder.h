@@ -92,6 +92,10 @@ class EVBuilder {
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         std::pair<int,int> s1, std::pair<int,int> s2) const;
 
+    // coefs[0] * SxSx + coefs[1] * SySy + coefs[2] * SzSz
+    double evalSS(std::pair<int,int> s1, std::pair<int,int> s2, 
+        std::vector<double> coefs = {1.0, 1.0, 1.0}, bool DBG = false) const;
+
     double eval2Smpo(OP_2S op2s,
         std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
 
