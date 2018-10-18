@@ -326,7 +326,7 @@ int main( int argc, char *argv[] ) {
     ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
     // Compute initial properties
     ptr_model->setObservablesHeader(out_file_energy);
-    auto metaInf = Args("lineNo",0,"dbg",);
+    auto metaInf = Args("lineNo",0);
     ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
