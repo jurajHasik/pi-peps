@@ -1684,6 +1684,11 @@ std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H(
             * idOp.mpo[0]) 
             * cd_f.T_D[cd_f.cToS[site_op2]];
 
+        // normalize
+        auto sqrtN = std::sqrt(norm(N));
+        N   = N / sqrtN;
+        NId = NId / sqrtN;
+
         // construct the right part
         /*    
          * Construct the "right" part tensor R
