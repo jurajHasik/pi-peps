@@ -2,6 +2,52 @@
 
 using namespace itensor;
 
+EVBuilder::TransferOpVecProd::TransferOpVecProd(
+    EVBuilder const& eev, CtmData_Full const& ccd) : ev(eev), cd(ccd) {}
+
+void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* const y) {
+    int N = cd.auxDimSite * cd.auxDimEnv * cd.auxDimEnv;
+    
+    auto i  = Index("i",N);
+    auto ip = prime(i);
+
+    // copy x
+    std::vector<double> cpx(N); 
+    std::copy(x, x+N, cpx.data());
+
+    //auto vecRefX = makeVecRef(cpx.data(),cpx.size()); 
+
+    auto isX = IndexSet(i);
+    auto X = ITensor(isX,Dense<double>(std::move(cpx)));
+    
+    auto cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
+    X *= delta(combinedIndex(cmbX),i);
+    X *= cmbX;
+
+    X *= cd.T_U[cd.cToS.at(std::make_pair(1,0))];
+    X *= cd.sites[cd.cToS.at(std::make_pair(1,0))];
+    X *= cd.T_D[cd.cToS.at(std::make_pair(1,0))];
+
+    X.prime();
+
+    X *= cd.T_U[cd.cToS.at(std::make_pair(0,0))];
+    X *= cd.sites[cd.cToS.at(std::make_pair(0,0))];
+    X *= cd.T_D[cd.cToS.at(std::make_pair(0,0))];
+
+    cmbX.noprime();
+    X *= cmbX;
+    X *= delta(combinedIndex(cmbX),i);
+
+    X.scaleTo(1.0);
+
+    auto extractReal = [](Dense<Real> const& d) {
+        return d.store;
+    };
+
+    auto xData = applyFunc(extractReal,X.store());
+    std::copy(xData.data(), xData.data()+N, y);
+}
+
 //Default constructor
 EVBuilder::EVBuilder () {}
 
@@ -25,6 +71,21 @@ MpoNS EVBuilder::getTOT(MPO_1S mpo, std::string siteId,
     return getTOT(op, siteId, primeLvl, DBG);
 }
 
+MpoNS EVBuilder::getTOT(MPO_1S mpo, std::pair<int ,int> site, int primeLvl,
+        bool DBG) const
+{
+    // shift site to elementary supercell
+    auto shift_site = site;
+    shift_site.first  = shift_site.first % cls.sizeM;
+    shift_site.second = shift_site.second % cls.sizeN;
+    auto siteId = cls.cToS.at(shift_site);
+
+    // Construct MPO
+    auto op = getSpinOp(mpo, 
+        noprime(findtype(cls.sites.at(siteId).inds(), PHYS)), DBG);
+
+    return getTOT(op, siteId, primeLvl, DBG);
+}
 
 MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
         int primeLvl, bool DBG) const 
@@ -1737,6 +1798,88 @@ std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H(
     }
 
     return ccVal;
+}
+
+void EVBuilder::analyseTransferMatrix(std::string alg_type) {
+    if(alg_type=="ARPACK") {
+        TransferOpVecProd tvp( (*this), this->cd_f);
+
+        int N = cd_f.auxDimSite * cd_f.auxDimEnv * cd_f.auxDimEnv;
+        ARDNS<TransferOpVecProd> ardns(tvp);
+        ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
+    } 
+    else if (alg_type=="rsvd") {
+        std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
+        auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+        auto cmbI = combinedIndex(cmbX);
+        //cmbX.prime(cmbI);
+
+        auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+        X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+        X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+
+        X *= cmbX;
+        X.prime();
+        Print(X);
+        {
+            auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+            X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+            X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+            X *= X2;
+        }
+        Print(X);
+        X *= noprime(cmbX);
+
+        auto argsSVDRRt = Args(
+            "Cutoff",-1.0,
+            "Maxm",3,
+            "SVDThreshold",1E-2,
+            "SVD_METHOD","rsvd",
+            "rsvd_power",2,
+            "rsvd_reortho",1
+        );
+        ITensor U(cmbI), S, V;
+        svd_dd(X, U, S, V, argsSVDRRt);
+    
+        PrintData(S);
+    }
+    else if (alg_type=="gesdd") {
+        std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
+        auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+        auto cmbI = combinedIndex(cmbX);
+        //cmbX.prime(cmbI);
+
+        auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+        X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+        X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+
+        X *= cmbX;
+        X.prime();
+        Print(X);
+        {
+            auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+            X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+            X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+            X *= X2;
+        }
+        Print(X);
+        X *= noprime(cmbX);
+
+        auto argsSVDRRt = Args(
+            "Cutoff",-1.0,
+            "Maxm",3,
+            "SVDThreshold",1E-2,
+            "SVD_METHOD","gesdd"
+        );
+        ITensor U(cmbI), S, V;
+        svd_dd(X, U, S, V, argsSVDRRt);
+    
+        PrintData(S);
+    }
+    else {
+        std::cout<<"[EVBuilder::analyseTransferMatrix] Unsupported option: "
+            << alg_type <<std::endl;
+    }
 }
 
 // Diagonal s1, s1+[1,1]

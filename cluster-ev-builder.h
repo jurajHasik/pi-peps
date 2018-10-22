@@ -9,6 +9,8 @@
 #include "mpo.h"
 #include "su2.h"
 #include "itensor/all.h"
+#include "arpack-rcdn.h"
+
 
 class EVBuilder {
 
@@ -43,6 +45,9 @@ class EVBuilder {
     MpoNS getTOT(MPO_1S mpo, std::string siteId, int primeLvl,
         bool DBG = false) const;
     
+    MpoNS getTOT(MPO_1S mpo, std::pair<int ,int> site, int primeLvl,
+        bool DBG = false) const;
+
     // Assume op to be tensor of at least rank 2 with exactly two copies
     // of single PHYS index with primeLevel 0 and 1
     MpoNS getTOT(itensor::ITensor const& op, std::string siteId,
@@ -132,6 +137,17 @@ class EVBuilder {
      */
     std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1, 
         MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
+
+    struct TransferOpVecProd {
+        EVBuilder const& ev;
+        CtmData_Full const& cd;
+
+        TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd);
+
+        void operator() (double const* const x, double* const y); 
+    };
+
+    void analyseTransferMatrix(std::string alg_type);
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 

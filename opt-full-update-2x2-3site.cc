@@ -2,8 +2,8 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-#include "omp.h"
-#include "mkl.h"
+// #include "omp.h"
+// #include "mkl.h"
 #include "json.hpp"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
@@ -972,7 +972,7 @@ int main( int argc, char *argv[] ) {
 	ptr_model->computeAndWriteObservables(ev,out_file_energy,obs_metaInf);
 
     // COMPUTE CORRELATION FUNCTIONS
-    int dist = 20;
+    int dist = 40;
     auto site0 = make_pair(0,0);
     auto site1 = make_pair(1,0);
 
@@ -1015,6 +1015,9 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
+    ev.analyseTransferMatrix("ARPACK");
+    //ev.analyseTransferMatrix("rsvd");
+    //ev.analyseTransferMatrix("gesdd");
 
     // Store final new cluster
     writeCluster(outClusterFile, cls);

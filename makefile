@@ -1,11 +1,15 @@
 # Link to Itensor lib
-
 ITENSOR_DIR=/home/urza/Projects/ITensor-v2.1.1-gcc
 #ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc-withMKL
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
 
 TENSOR_HEADERS=$(ITENSOR_DIR)/itensor/core.h
+
+# Dependencies
+ARPACK_INC=-I/home/urza/Software/arpack-ng
+ARPACK_LIB=-L/home/urza/Software/arpack-ng/build/lib -Wl,-rpath=/home/urza/Software/arpack-ng/build/lib \
+	-larpack
 
 # 3. 'main' function is in a file called 'get-env.cc', then
 #    set APP to 'get-env'. Running 'make' will compile the app.
@@ -24,7 +28,7 @@ APP8=opt-su-3site
 #    will auto-detect if these headers have changed and recompile your app.
 HEADERS =engine.h models.h full-update-TEST.h full-update.h simple-update_v2.h cluster-ev-builder.h \
 	ctm-cluster-env_v2.h ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h mpo.h \
-	su2.h json.hpp
+	su2.h arpack-rcdn.h json.hpp
 HEADERS2=simple-update.h ctm-cluster-global.h ctm-cluster.h su2.h json.hpp
 #HEADERS3=cluster-ev-builder.h ctm-cluster-env_v2.h ctm-cluster-io.h \
 	ctm-cluster.h ctm-cluster-global.h su2.h json.hpp
@@ -39,6 +43,8 @@ HEADERS6=cluster-ev-builder.h models.h full-update-TEST.h full-update.h \
 	mpo.h su2.h json.hpp nr3.h mins.h mins_ndim.h linbcg.h
 
 HEADERSN=ctm-cluster-io.h ctm-cluster.h ctm-cluster-global.h
+
+HEADERS-AR-IT=arpack-rcdn.h
 
 # 5. For any additional .cc files making up your project,
 #    add their full filenames here.
@@ -64,6 +70,8 @@ CCFILES8=$(APP8).cc engine.cc simple-update_v2.cc full-update-TEST.cc full-updat
 
 CCFILESN=ctm-cluster-io.cc ctm-cluster.cc
 
+CCFILES-AR-IT=arpack-rcdn.cc
+
 #Mappings --------------
 # see https://www.gnu.org/software/make/manual/html_node/Text-Functions.html
 OBJECTS=$(patsubst %.cc,%.o, $(CCFILES))
@@ -83,11 +91,13 @@ OBJECTS8=$(patsubst %.cc,%.o, $(CCFILES8))
 
 OBJECTSN=$(patsubst %.cc,%.o, $(CCFILESN))
 
+OBJECTS-AR-IT=$(patsubst %.cc,%.o, $(CCFILESN))
+
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
 # see https://www.gnu.org/software/make/manual/make.html#Automatic-Variables
 %.o: %.cc $(HEADERS) $(TENSOR_HEADERS)
-	$(CCCOM) -c $(CCFLAGS) -Wno-unused-function -o $@ $<
+	$(CCCOM) -c $(CCFLAGS) $(ARPACK_INC) -Wno-unused-function -o $@ $<
 
 .debug_objs/%.o: %.cc $(HEADERS) $(TENSOR_HEADERS)
 	$(CCCOM) -c $(CCGFLAGS) -o $@ $<
@@ -122,7 +132,7 @@ $(APP5)-g: mkdebugdir $(GOBJECTS5) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS5) -o $(APP5)-g.x $(LIBGFLAGS)
 
 $(APP6): $(OBJECTS6) $(ITENSOR_LIBS)
-	$(CCCOM) $(CCFLAGS) $(OBJECTS6) -o $(APP6).x $(LIBFLAGS)
+	$(CCCOM) $(CCFLAGS) $(ARPACK_INC) $(OBJECTS6) -o $(APP6).x $(ARPACK_LIB) $(LIBFLAGS)
 
 $(APP6)-g: mkdebugdir $(GOBJECTS6) $(ITENSOR_GLIBS)
 	$(CCCOM) $(CCGFLAGS) $(GOBJECTS6) -o $(APP6)-g.x $(LIBGFLAGS)
@@ -153,6 +163,20 @@ test-mklsvd-g: mkdebugdir $(ITENSOR_GLIBS)
 
 test-cg_rc:
 	$(CCCOM) $(CCGFLAGS) cg_rc_prb.cc cg_rc.cc -o cg_rc_prb.x $(LIBFLAGS)
+
+test-arpack:
+	$(CCCOM) $(CCGFLAGS) -fext-numeric-literals test-arpack.cc -o test-arpack.x \
+	-L/home/urza/Software/arpack-ng/build/lib -Wl,-rpath=/home/urza/Software/arpack-ng/build/lib \
+	-larpack -I/home/urza/Software/arpack-ng
+
+# arpack-rcdn:
+# 	$(CCCOM) $(CCGFLAGS) -fext-numeric-literals arpack-rcdn.cc -c arpack-rcdn.o \
+# 	-L/home/urza/Software/arpack-ng/build/lib -Wl,-rpath=/home/urza/Software/arpack-ng/build/lib \
+# 	-larpack -I/home/urza/Software/arpack-ng
+
+test-arpack-itensor:
+	$(CCCOM) $(CCFLAGS) $(ARPACK_INC) test-arpack-itensor.cc -o test-arpack-itensor.x \
+	$(ARPACK_LIB) $(LIBFLAGS)
 
 clean:
 	rm -fr .debug_objs *.o $(APP).x $(APP)-g.x
