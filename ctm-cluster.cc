@@ -49,6 +49,18 @@ void setWeights(Cluster & c, std::string option, bool dbg) {
     }
 }
 
+void saveWeights(Cluster & c, bool dbg)  {
+    c.old_weights = c.weights;
+}
+
+double weightDist(Cluster const& c) {
+    double res = 0.0;
+    for (auto const& e : c.weights) {
+        res += norm(c.weights.at(e.first) - c.old_weights.at(e.first));
+    }
+    return res;
+}
+
 void setSites(Cluster & c, std::string option, bool dbg) {
 
     // reset all sites to zero tensors

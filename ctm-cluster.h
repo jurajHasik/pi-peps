@@ -64,6 +64,9 @@ struct Cluster {
     std::map< std::string, std::vector< LinkWeight > > siteToWeights;
 
     std::map< std::string, itensor::ITensor > weights;
+    // storing previous weights to compute spectral distance of current
+    // weights wrt to old_weights
+    std::map< std::string, itensor::ITensor > old_weights;
 };
 
 void initClusterSites(Cluster & c, bool dbg = false);
@@ -71,6 +74,10 @@ void initClusterSites(Cluster & c, bool dbg = false);
 void initClusterWeights(Cluster & c, bool dbg = false);
 
 void setWeights(Cluster & c, std::string option, bool dbg = false);
+
+void saveWeights(Cluster & c, bool dbg = false);
+
+double weightDist(Cluster const& c);
 
 void setSites(Cluster & c, std::string option, bool dbg = false);
 

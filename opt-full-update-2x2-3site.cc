@@ -664,6 +664,7 @@ int main( int argc, char *argv[] ) {
         // fix gauge by simple-update at dt=0 - identity operators
         if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
             std::cout << "GAUGE FIXING" << std::endl;
+            auto num_eps = std::numeric_limits<double>::epsilon();
             t_begin_int = std::chrono::steady_clock::now();
 
             // Assuming the weights have been initialized
@@ -672,6 +673,7 @@ int main( int argc, char *argv[] ) {
 
             Args gfArgs = {"suDbg",arg_gf_dbg,"suDbgLevel",arg_gf_dbgLvl};
             Args gf_diag_fu;
+            saveWeights(cls);
             for (int suI = 1; suI <= arg_suIter; suI++) {
                 //std::cout <<"Simple Update - STEP "<< suI << std::endl;
 
@@ -681,6 +683,19 @@ int main( int argc, char *argv[] ) {
                 gf_diag_fu = ptr_gfe->performSimpleUpdate(cls, gfArgs);
 
                 //diagData_fu.push_back(diag_fu);
+                
+                //check convergence
+                if (suI % 8 == 0) {
+                    auto weight_distance = weightDist(cls);
+                    if ( weight_distance < num_eps*cls.auxBondDim*cls.weights.size() ) {
+                        std::cout<<"GF iter: "<< suI <<" dist: "<< weight_distance 
+                            <<" CONVERGED"<< std::endl;
+                        break;
+                    } else {
+                        std::cout<<"GF iter: "<< suI <<" dist: "<< weight_distance << std::endl;
+                    }
+                    saveWeights(cls);
+                }
             }
 
             absorbWeightsToSites(cls);
