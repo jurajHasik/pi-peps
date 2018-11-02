@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include "json.hpp"
 #include "itensor/all.h"
 
 // ############################################################################
@@ -36,6 +37,7 @@ struct LinkWeight {
 struct Cluster {
     // meta information about the origin of cluster
     std::string metaInfo;
+    nlohmann::json simParam;
 
     // size of n=Y(=rows) x m=X(=cols) cluster
     int sizeN, sizeM;

@@ -25,147 +25,160 @@ int TrotterDecomposition<T>::nextCyclicIndex() {
     return currentPosition;
 }
 
-// void getModel_NNHLadder(nlohmann::json & json_model,
-//     std::unique_ptr<Model> & ptr_model,
-// 	std::vector< MPO_3site > & gateMPO,
-//     std::vector< MPO_3site *> & ptr_gateMPO,
-// 	std::vector< std::vector<std::string> > & gates,
-//     std::vector< std::vector<int> > & gate_auxInds) {
+std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_model) {
 
-// 	double arg_J1 = json_model["J1"].get<double>();
-// 	double arg_alpha = json_model["alpha"].get<double>();
-//     double arg_lambda = json_model["LAMBDA"].get<double>();
+	double arg_J1 = json_model["J1"].get<double>();
+	double arg_alpha = json_model["alpha"].get<double>();
+    double arg_tau = json_model["tau"].get<double>();
     
-//     ptr_model = std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
+    // gate sequence
+    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
 
-//     // time step
-//     double arg_tau = json_model["tau"].get<double>();
-//     // gate sequence
-//     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+    // symmetrize Trotter Sequence
+    bool arg_symmTrotter = json_model.value("symmTrotter",false);
 
-//     if (arg_fuGateSeq == "SYM1") {
-//         gates = {
-//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
+    // if (arg_fuGateSeq == "SYM1") {
+    //     gates = {
+    //         {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
+    //         {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
             
-//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
+    //         {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+    //         {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
 
-//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
+    //         {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
+    //         {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
             
-//             {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-//             {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-//         };
+    //         {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
+    //         {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
+    //     };
 
-//         gate_auxInds = {
-//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+    //     gate_auxInds = {
+    //         {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+    //         {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
 
-//             {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-//             {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
+    //         {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
+    //         {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
 
-//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
+    //         {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
+    //         {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
            
-//             {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-//             {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-//         };
+    //         {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
+    //         {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
+    //     };
 
-//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
-//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
+    //     gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
+    //     gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
 
-//         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) ); 
-//         for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
-//     } else if (arg_fuGateSeq == "SYM3") {
-//         gates = {
-//             {"A", "B", "D", "C"},
-//             {"C", "D", "B", "A"},
-//             {"D", "C", "A", "B"},
-//             {"B", "A", "C", "D"},
+    //     for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[0]) ); 
+    //     for (int i=0; i<8; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
+    // } 
+    if (arg_fuGateSeq == "SYM3") {
+        TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-//             {"B", "A", "C", "D"},
-//             {"D", "C", "A", "B"},
-//             {"C", "D", "B", "A"},
-//             {"A", "B", "D", "C"},
+        pe->td.gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
+        pe->td.gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
+        
 
-//             {"D", "C", "A", "B"},
-//             {"B", "A", "C", "D"},
-//             {"A", "B", "D", "C"},
-//             {"C", "D", "B", "A"},
+        pe->td.gates = {
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
 
-//             {"C", "D", "B", "A"}, 
-//             {"A", "B", "D", "C"},
-//             {"B", "A", "C", "D"},
-//             {"D", "C", "A", "B"}
-//         };
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"},
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
 
-//         gate_auxInds = {
-//             {3,2, 0,3, 1,0, 2,1},
-//             {3,0, 2,3, 1,2, 0,1},
-//             {3,0, 2,3, 1,2, 0,1},
-//             {3,2, 0,3, 1,0, 2,1},
+            {"D", "C", "A", "B"},
+            {"B", "A", "C", "D"},
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
 
-//             {3,0, 2,3, 1,2, 0,1},
-//             {3,2, 0,3, 1,0, 2,1},
-//             {3,2, 0,3, 1,0, 2,1},
-//             {3,0, 2,3, 1,2, 0,1},
+            {"C", "D", "B", "A"}, 
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"},
+            {"D", "C", "A", "B"}
+        };
 
-//             {1,0, 2,1, 3,2, 0,3},
-//             {1,2, 0,1, 3,0, 2,3},
-//             {1,2, 0,1, 3,0, 2,3}, 
-//             {1,0, 2,1, 3,2, 0,3},
+        pe->td.gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
 
-//             {1,2, 0,1, 3,0, 2,3},
-//             {1,0, 2,1, 3,2, 0,3},
-//             {1,0, 2,1, 3,2, 0,3},
-//             {1,2, 0,1, 3,0, 2,3}
-//         };
+            {3,0, 2,3, 1,2, 0,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
+            {3,0, 2,3, 1,2, 0,1},
 
-//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_J1) );
-//         gateMPO.push_back( getMPO3s_Uladder_v2(arg_tau, arg_J1, arg_alpha*arg_J1) );
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3}, 
+            {1,0, 2,1, 3,2, 0,3},
 
-//         ptr_gateMPO = {
-//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0]),
-//             &(gateMPO[0]), &(gateMPO[1]), &(gateMPO[1]), &(gateMPO[0])
-//         };
-//     } else if (arg_fuGateSeq == "2SITE") {
-//         gates = {
-//             {"A", "B", "D", "C"},
-//             {"B", "A", "C", "D"}, 
+            {1,2, 0,1, 3,0, 2,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,0, 2,1, 3,2, 0,3},
+            {1,2, 0,1, 3,0, 2,3}
+        };
+
+
+        pe->td.ptr_gateMPO = {
+            &(pe->td.gateMPO[0]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[0]),
+            &(pe->td.gateMPO[0]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[0]),
+            &(pe->td.gateMPO[0]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[0]),
+            &(pe->td.gateMPO[0]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[1]), &(pe->td.gateMPO[0])
+        };
+
+        std::cout<<"NNH_2x2Cell_Ladder SYM3 ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    } 
+    else if (arg_fuGateSeq == "2SITE") {
+         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
+
+        pe->td.gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
+        pe->td.gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
+        
+        pe->td.gates = {
+            {"A", "B", "D", "C"},
+            {"B", "A", "C", "D"}, 
             
-//             {"C", "D", "B", "A"}, 
-//             {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
+            {"C", "D", "B", "A"}, 
+            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
 
-//             {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
+            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
 
-//             {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
-//         };
+            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
+        };
 
-//         gate_auxInds = {
-//             {3,2, 0,3, 1,0, 2,1},
-//             {3,2, 0,3, 1,0, 2,1},
+        pe->td.gate_auxInds = {
+            {3,2, 0,3, 1,0, 2,1},
+            {3,2, 0,3, 1,0, 2,1},
 
-//             {1,2, 0,1, 3,0, 2,3},
-//             {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3},
+            {1,2, 0,1, 3,0, 2,3},
 
-//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
+            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
             
-//             {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
-//         };
+            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
+        };
 
-//         gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
-//         gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
+        for (int i=0; i<6; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
+        for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[1]) );
 
-//         for (int i=0; i<6; i++) ptr_gateMPO.push_back( &(gateMPO[0]) );
-//         for (int i=0; i<2; i++) ptr_gateMPO.push_back( &(gateMPO[1]) );
-//     } else {
-//         std::cout<<"Unsupported 3-site gate sequence: "<< arg_fuGateSeq << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
-// }
+        std::cout<<"NNH_2x2Cell_Ladder 2SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
+    else {
+        std::cout<<"Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return nullptr;
+}
 
 // void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,
@@ -363,7 +376,7 @@ int TrotterDecomposition<T>::nextCyclicIndex() {
 //     }
 // }
 
-std::unique_ptr<Engine> getModel_ISING3BODY(nlohmann::json & json_model) {
+std::unique_ptr<Engine> buildEngine_ISING3BODY(nlohmann::json & json_model) {
 
     double arg_J1     = json_model["J1"].get<double>();
     double arg_J2     = json_model["J2"].get<double>();
@@ -1125,12 +1138,12 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model) {
 
     if(arg_modelType == "J1J2") {
         return buildEngine_J1J2(json_model);
-    // } else if (arg_modelType == "NNHLadder") {
-    //     return getModel_NNHLadder(json_model);
+    } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
+        return buildEngine_NNH_2x2Cell_Ladder(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {
-        return getModel_ISING3BODY(json_model);
+        return buildEngine_ISING3BODY(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {
     //     return getModel_NNH_2x2Cell_AB(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {
@@ -1210,6 +1223,8 @@ template<> Args TrotterEngine<OpNS>::performFullUpdate(
         exit(EXIT_FAILURE);
     }
 
-    return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    //     td.gates[gi], td.gate_auxInds[gi], args);
+    return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
         td.gates[gi], td.gate_auxInds[gi], args);
 }

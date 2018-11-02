@@ -88,6 +88,7 @@ void writeCluster(string const& filename, Cluster const& cls) {
 
     nlohmann::json jCls;
     jCls["meta"]       = cls.metaInfo;
+    jCls["simParam"]   = cls.simParam;
     jCls["physDim"]    = cls.physDim;
     jCls["auxBondDim"] = cls.auxBondDim;
     jCls["sizeN"]      = cls.sizeN;

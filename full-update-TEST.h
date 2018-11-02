@@ -141,7 +141,7 @@ itensor::Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv 
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
 
-itensor::Args fullUpdate_CG_full4S(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+itensor::Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
 

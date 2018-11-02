@@ -146,12 +146,7 @@ std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model);
 
 std::unique_ptr<Model> getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model);
 
-// void getModel_NNHLadder(nlohmann::json & json_model,
-//     std::unique_ptr<Model> & ptr_model,
-// 	std::vector< MPO_3site > & gateMPO,
-//     std::vector< MPO_3site *> & ptr_gateMPO,
-// 	std::vector< std::vector<std::string> > & gates,
-//     std::vector< std::vector<int> > & gate_auxInds);
+std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model);
 
 // void getModel_Ising(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,

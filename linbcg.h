@@ -38,6 +38,8 @@ struct FULSCG_IT {
 	itensor::ITensor cmbKet;
 	itensor::Args const& args;
 
+	double res  = 0.0;
+	double nres = 0.0; // residue normalized by right hand side
 	bool dbg           = false;
 	std::string solver = "pseudoinverse";
 
@@ -74,7 +76,10 @@ struct CG4S_IT {
 	itensor::ITensor protoK;
 	std::vector< itensor::ITensor > g, xi, h;
 
+	double epsdistf;
 	double normUPsi; // <psi|U^dag U|psi>
+	double inst_normPsi;
+	double inst_overlap;
 
 	CG4S_IT(
 		std::vector< itensor::ITensor > const& ppc, // protocorners 

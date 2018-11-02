@@ -317,7 +317,8 @@ int main( int argc, char *argv[] ) {
         };
         // ----- END DEFINE CLUSTER ------------------------------------
     }
-
+    cls.simParam = jsonCls;
+    
     // INITIALIZE ENVIRONMENT
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,

@@ -472,11 +472,11 @@ OpNS getOP4s_J1J2(double tau, double J1, double J2) {
         + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
         + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
 
-    h4 += nnS1S2 * delta(s3,s3p) * delta(s4,s4p);
-    h4 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);
-    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);
+    h4 += nnS1S2 * delta(s3,s3p) * delta(s4,s4p);                                       // S1S2id3id4
+    h4 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);     // id1S2S3id4
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);     // S1id2id3S4
     h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
-        delta(s1,s1p) * delta(s2,s2p);
+        delta(s1,s1p) * delta(s2,s2p);                                                  // id1id2S3S4
 
     ITensor nnnS1S3 = J2*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s3)
         + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s3)
@@ -1105,7 +1105,13 @@ std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model) {
     return std::unique_ptr<Model>(new J1J2Model(arg_J1, arg_J2));
 }
 
-// void getModel_NNHLadder(nlohmann::json & json_model,
+std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model) {
+
+    double arg_J1    = json_model["J1"].get<double>();
+    double arg_alpha = json_model["alpha"].get<double>();
+
+    return std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
+}
 //     std::unique_ptr<Model> & ptr_model,
 // 	std::vector< MPO_3site > & gateMPO,
 //     std::vector< MPO_3site *> & ptr_gateMPO,
@@ -1656,8 +1662,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
 
     if(arg_modelType == "J1J2") {
         return getModel_J1J2(json_model);
-    // } else if (arg_modelType == "NNHLadder") {
-    //     return getModel_NNHLadder(json_model);
+    } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
+        return getModel_NNH_2x2Cell_Ladder(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {
