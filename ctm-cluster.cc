@@ -325,6 +325,43 @@ void absorbWeightsToSites(Cluster & c, bool dbg) {
     for ( auto & w : c.weights) w.second.apply(quadT);
 }
 
+void mvSite(Cluster const& c, std::pair<int,int> &s, int dir) {
+    dir = dir % 4;
+    switch(dir){
+        case 0: {
+            mvSite(c, s, std::make_pair(-1,0));
+            break;
+        }
+        case 1: {
+            mvSite(c, s, std::make_pair(0,-1));
+            break;
+        }
+        case 2: {
+            mvSite(c, s, std::make_pair(1,0));
+            break;
+        }
+        case 3: {
+            mvSite(c, s, std::make_pair(0,1));
+            break;
+        }
+    }
+}
+
+void mvSite(Cluster const& c, std::pair<int,int> &s, std::pair<int,int> const& disp) {
+    s.first  += disp.first;
+    s.second += disp.second;
+
+    // apply BC
+    s.first = ((s.first % c.sizeM) + c.sizeM) % c.sizeM;
+    s.second = ((s.second % c.sizeN) + c.sizeN) % c.sizeN;
+}
+
+std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, int dir) {
+    std::pair<int,int> res(s);
+    mvSite(c, res, dir);
+    return res;
+}
+
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
     s <<"Cluster( metaInfo: "<< c.metaInfo 
         << "sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 

@@ -16,14 +16,14 @@ class EVBuilder {
 
     std::string name;
 
+    public:
+
     // Cluster
     Cluster cls;
 
     // With Environment Data one can compute expectation values
     CtmData cd;
     CtmData_Full cd_f;
-
-    public:
 
     // Default Constructor
     EVBuilder();
@@ -139,15 +139,19 @@ class EVBuilder {
         MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
 
     struct TransferOpVecProd {
+        std::string dir;
+        std::pair<int,int> s0;
         EVBuilder const& ev;
         CtmData_Full const& cd;
 
-        TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd);
+        TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd, 
+            std::pair<int,int> ss0, std::string ddir="HORIZONTAL");
 
         void operator() (double const* const x, double* const y); 
     };
 
-    void analyseTransferMatrix(std::string alg_type);
+    void analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
+        std::string alg_type = "ARPACK");
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 

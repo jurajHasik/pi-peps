@@ -281,6 +281,25 @@ int main( int argc, char *argv[] ) {
                 pIC(1), 1.0);
             D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
                 pID(1), 1.0);
+        } else if (initBy == "VBS") {
+            std::cout <<"Initializing by VERTICAL VBS STATE along Z"<< std::endl;
+            // Spin UP on all sites
+            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
+                pIA(1), 1.0);
+            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(2),
+                pIA(2), -1.0);
+            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
+                pIB(1), 1.0);
+            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(2),
+                pIB(2), -1.0);
+            C.set(aIC(1), prime(aIC,1)(2), prime(aIC,2)(1), prime(aIC,3)(1),
+                pIC(1), 1.0);
+            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
+                pIC(2), 1.0);
+            D.set(aID(1), prime(aID,1)(2), prime(aID,2)(1), prime(aID,3)(1),
+                pID(1), 1.0);
+            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
+                pID(2), 1.0);
         } else {
             std::cout <<"Unsupported cluster initialization: "<< initBy << std::endl;
         }
@@ -1031,7 +1050,10 @@ int main( int argc, char *argv[] ) {
             << std::endl;
     }
 
-    ev.analyseTransferMatrix("ARPACK");
+    ev.analyseTransferMatrix(std::make_pair(0,0), "HORIZONTAL");
+    ev.analyseTransferMatrix(std::make_pair(0,0), "VERTICAL");
+    ev.analyseTransferMatrix(std::make_pair(1,0), "HORIZONTAL");
+    ev.analyseTransferMatrix(std::make_pair(1,0), "VERTICAL");
     //ev.analyseTransferMatrix("rsvd");
     //ev.analyseTransferMatrix("gesdd");
 

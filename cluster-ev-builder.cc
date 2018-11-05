@@ -2,8 +2,9 @@
 
 using namespace itensor;
 
-EVBuilder::TransferOpVecProd::TransferOpVecProd(
-    EVBuilder const& eev, CtmData_Full const& ccd) : ev(eev), cd(ccd) {}
+EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& eev, 
+    CtmData_Full const& ccd, std::pair<int,int> ss0, std::string ddir) 
+    : ev(eev), cd(ccd), s0(ss0), dir(ddir) {}
 
 void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* const y) {
     int N = cd.auxDimSite * cd.auxDimEnv * cd.auxDimEnv;
@@ -20,19 +21,49 @@ void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* co
     auto isX = IndexSet(i);
     auto X = ITensor(isX,Dense<double>(std::move(cpx)));
     
-    auto cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
+    ITensor cmbX;
+    std::pair<int,int> s1,s2;
+    if (dir=="HORIZONTAL") {
+        cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
+        s1 = getNextSite(ev.cls, s0, 2);
+        s2 = getNextSite(ev.cls, s1, 2);
+    } 
+    else if (dir=="VERTICAL") {
+        cmbX = combiner(prime(cd.I_L),prime(cd.I_XV),prime(cd.I_R));
+        s1 = getNextSite(ev.cls, s0, 1);
+        s2 = getNextSite(ev.cls, s1, 1);
+    }
+    else {
+        std::cout<<"[TransferOpVecProd] Unsupported option: "<< dir << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
     X *= delta(combinedIndex(cmbX),i);
     X *= cmbX;
 
-    X *= cd.T_U[cd.cToS.at(std::make_pair(1,0))];
-    X *= cd.sites[cd.cToS.at(std::make_pair(1,0))];
-    X *= cd.T_D[cd.cToS.at(std::make_pair(1,0))];
+    if (dir=="HORIZONTAL") {
+        X *= cd.T_U[cd.cToS.at(s1)];
+        X *= cd.sites[cd.cToS.at(s1)];
+        X *= cd.T_D[cd.cToS.at(s1)];
+    } 
+    else if (dir=="VERTICAL") {
+        X *= cd.T_L[cd.cToS.at(s1)];
+        X *= cd.sites[cd.cToS.at(s1)];
+        X *= cd.T_R[cd.cToS.at(s1)];
+    }
 
     X.prime();
 
-    X *= cd.T_U[cd.cToS.at(std::make_pair(0,0))];
-    X *= cd.sites[cd.cToS.at(std::make_pair(0,0))];
-    X *= cd.T_D[cd.cToS.at(std::make_pair(0,0))];
+    if (dir=="HORIZONTAL") {
+        X *= cd.T_U[cd.cToS.at(s2)];
+        X *= cd.sites[cd.cToS.at(s2)];
+        X *= cd.T_D[cd.cToS.at(s2)];
+    } 
+    else if (dir=="VERTICAL") {
+        X *= cd.T_L[cd.cToS.at(s2)];
+        X *= cd.sites[cd.cToS.at(s2)];
+        X *= cd.T_R[cd.cToS.at(s2)];
+    }
 
     cmbX.noprime();
     X *= cmbX;
@@ -1800,9 +1831,11 @@ std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H(
     return ccVal;
 }
 
-void EVBuilder::analyseTransferMatrix(std::string alg_type) {
+void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
+    std::string alg_type) 
+{
     if(alg_type=="ARPACK") {
-        TransferOpVecProd tvp( (*this), this->cd_f);
+        TransferOpVecProd tvp( (*this), this->cd_f, s0, dir);
 
         int N = cd_f.auxDimSite * cd_f.auxDimEnv * cd_f.auxDimEnv;
         ARDNS<TransferOpVecProd> ardns(tvp);

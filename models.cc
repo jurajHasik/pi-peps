@@ -676,7 +676,7 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
 
     // write energy
     double avgE_CAplusDB = 0.;
-    output << lineNo <<" "; 
+    output << lineNo; 
     for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
         output<<" "<< evNN[j];
     }

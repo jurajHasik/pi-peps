@@ -89,6 +89,12 @@ itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
 
 void absorbWeightsToSites(Cluster & cls, bool dbg = false);
 
+void mvSite(Cluster const& c, std::pair<int,int> &s, int dir);
+
+void mvSite(Cluster const& c, std::pair<int,int> &s, std::pair<int,int> const& disp);
+
+std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, int dir);
+
 std::ostream& 
 operator<<(std::ostream& s, Cluster const& c);
 
