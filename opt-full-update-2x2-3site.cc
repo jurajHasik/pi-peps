@@ -1052,8 +1052,8 @@ int main( int argc, char *argv[] ) {
 
     ev.analyseTransferMatrix(std::make_pair(0,0), "HORIZONTAL");
     ev.analyseTransferMatrix(std::make_pair(0,0), "VERTICAL");
-    ev.analyseTransferMatrix(std::make_pair(1,0), "HORIZONTAL");
-    ev.analyseTransferMatrix(std::make_pair(1,0), "VERTICAL");
+    ev.analyseTransferMatrix(std::make_pair(1,1), "HORIZONTAL");
+    ev.analyseTransferMatrix(std::make_pair(1,1), "VERTICAL");
     //ev.analyseTransferMatrix("rsvd");
     //ev.analyseTransferMatrix("gesdd");
 
