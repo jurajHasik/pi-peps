@@ -4,4 +4,5 @@ _exe_name = _source.split('.cc')[0]
 
 executable(_exe_name,
            _source,
-           dependencies: our_lib_dep)
+           dependencies: our_lib_dep,
+           build_by_default: get_option('build-examples'))
