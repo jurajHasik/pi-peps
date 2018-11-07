@@ -1,7 +1,8 @@
 # TODO: use build options like -D itensor_dir
+_dir = get_option('itensor-dir')
 itensor = declare_dependency(
     include_directories:
-      include_directories('/scratch/src/itensor-custom'),
-    link_args:['-L/scratch/src/itensor-custom/lib', '-litensor'])
+      include_directories(_dir),
+    link_args:['-L' + _dir + '/lib', '-litensor'])
 
 deps += itensor
