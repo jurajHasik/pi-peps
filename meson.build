@@ -3,36 +3,48 @@ project('peps-cluster-ctm','cpp',
 			   'buildtype=debug',
 			   'warning_level=3',
                            'cpp_args=-w'],
-        version: '0.1.0')
+        version: '1.0')
 
+# useful variables
+project_name = meson.project_name()
+project_version = meson.project_version()
+
+include_dirs = []
+source_files = []
+deps         = []
+
+# everything related to header files:
+# - where to look for them (populating variable include_dirs)
+# - list which headers should be installed
+subdir('include')
+
+# populate the variable source_files
+subdir('src')
+
+# dependencies and configurations
+# populate the variable deps with all the dependencies
 subdir('meson')
 
-common = static_library('common_part',
-                        sources: files(['cluster-ev-builder.cc', 
-                                        'engine.cc',           
-                                        'full-update-TEST.cc', 
-                                        'full-update.cc', 
-                                        'simple-update_v2.cc', 
-                                        'models.cc',
-                                        'ctm-cluster-env_v2.cc', 
-                                        'ctm-cluster-io.cc',
-                                        'ctm-cluster.cc',
-                                        'mpo.cc',
-                                        'su2.cc']),
-                        dependencies: [itensor,arpack,mkl],
-                        install:false)
+our_lib = shared_library(project_name,
+                         source_files,
+                         dependencies: deps,
+                         include_directories: include_dirs,
+                         version: project_version,
+                         install: true)
+
+our_lib_dep = declare_dependency(dependencies: deps,
+                                 link_with: our_lib,
+                                 include_directories: include_dirs)
+
+subdir('examples')
 
 
-mains = ['opt-full-update-2x2-3site.cc',
-         'opt-su-3site.cc']
-
-foreach _source : mains
-    _exe_name = _source.split('.cc')[0]
-    executable(_exe_name,
-               _source,
-               dependencies: [itensor,mkl,arpack],
-               link_with: common,
-               install: true)
-endforeach
-
-
+### generate a .pc file 
+pkg = import('pkgconfig')
+pkg.generate(libraries: our_lib,
+             libraries_private: deps,
+             subdirs : 'include',
+             version : project_version,
+             name : project_name+' library',
+             filebase : project_name,
+             description : 'A library that...')

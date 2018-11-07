@@ -6,3 +6,5 @@ arpack = dependency('arpack', required: true)
 # TODO: verify that the version of arpack is correct and has been compiled with the proper flags
 
 
+deps += arpack
+

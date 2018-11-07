@@ -1,0 +1,23 @@
+include_dirs += include_directories('.')
+
+install_headers(['arpack-rcdn.h',
+                 'cluster-ev-builder.h',
+                 'ctm-cluster-env.h',
+                 'ctm-cluster-env_v2.h',
+                 'ctm-cluster-global.h',
+                 'ctm-cluster.h',
+                 'ctm-cluster-io.h',
+                 'engine.h',
+                 'full-update.h',
+                 'full-update-TEST.h',
+                 'json.hpp',
+                 'linbcg.h',
+                 'mins.h',
+                 'mins_ndim.h',
+                 'models.h',
+                 'mpo.h',
+                 'nr3.h',
+                 'simple-update.h',
+                 'simple-update_v2.h',
+                 'su2.h'])
+
