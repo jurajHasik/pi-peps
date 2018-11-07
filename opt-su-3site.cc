@@ -26,20 +26,20 @@ int main( int argc, char *argv[] ) {
 
     // write simulation parameters to log file
     std::cout << jsonCls.dump(4) << std::endl;
-
+    
 	//read cluster infile OR initialize by one of the predefined
 	//options FILE, RND, RND_AB, AFM, RVB, ...
 	std::string initBy(jsonCls["initBy"].get<std::string>());
-
+    
 	int physDim, auxBondDim;
 	std::string inClusterFile;
 	inClusterFile = jsonCls["inClusterFile"].get<std::string>();
 	physDim       = jsonCls["physDim"].get<int>();
 	auxBondDim    = jsonCls["auxBondDim"].get<int>();
-
+    
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
-
+    
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
@@ -53,7 +53,7 @@ int main( int argc, char *argv[] ) {
     bool arg_stopEnergyInc = jsonCls.value("stopEnergyInc",false);
     bool arg_suDbg  = jsonCls["suDbg"].get<bool>();
     int arg_suDbgLevel = jsonCls["suDbgLevel"].get<int>();
-
+    
     // read CTMRG parameters
     auto json_ctmrg_params(jsonCls["ctmrg"]);
     int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
@@ -77,20 +77,90 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE SIMPLE UPDATE ALGORITHM DONE **************************
 
 	// ***** INITIALIZE CLUSTER ***********************************************
-    Cluster cls( readCluster(inClusterFile) );
+    Cluster cls;
     
     // set auxiliary dimension to the desired one
     cls.auxBondDim = auxBondDim;
-    initClusterSites(cls);
-    initClusterWeights(cls);
+    
 
     // choose initial wavefunction
     if (sitesInit == "FILE") {
+        cls = readCluster(inClusterFile);
+        initClusterSites(cls);
+        initClusterWeights(cls);
+        setWeights(cls, suWeightsInit);
         setOnSiteTensorsFromFile(cls, inClusterFile);
     } else {
+        Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
+        ITensor A, B, C, D;
+
+        // ----- DEFINE BLANK CLUSTER ----------------------------------
+        cls = Cluster();
+        cls.sizeN = 2;
+        cls.sizeM = 2;
+        cls.auxBondDim = auxBondDim;
+        cls.physDim    = physDim;
+
+        cls.siteIds = std::vector< std::string >(4);
+        cls.siteIds = { "A", "B", "C", "D" };
+        cls.SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
+
+        cls.cToS  = {
+            {std::make_pair(0,0),"A"},
+            {std::make_pair(1,0),"B"},
+            {std::make_pair(0,1),"C"},
+            {std::make_pair(1,1),"D"}
+        };
+
+        aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
+        pIA = Index(TAG_I_PHYS, cls.physDim, PHYS);
+        pIB = Index(TAG_I_PHYS, cls.physDim, PHYS);
+        pIC = Index(TAG_I_PHYS, cls.physDim, PHYS);
+        pID = Index(TAG_I_PHYS, cls.physDim, PHYS);
+
+        A = ITensor(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
+        B = ITensor(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
+        C = ITensor(aIC, prime(aIC,1), prime(aIC,2), prime(aIC,3), pIC);
+        D = ITensor(aID, prime(aID,1), prime(aID,2), prime(aID,3), pID);
+
+        cls.aux  = {aIA, aIB, aIC, aID};
+        cls.phys = {pIA, pIB, pIC, pID};
+
+        cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
+
+        // Define siteToWeights
+        cls.siteToWeights["A"] = {
+            {{"A","B"},{2,0},"L1"},
+            {{"A","B"},{0,2},"L2"},
+            {{"A","C"},{1,3},"L3"},
+            {{"A","C"},{3,1},"L4"}
+        };
+        cls.siteToWeights["B"] = {
+            {{"B","A"},{2,0},"L2"},
+            {{"B","A"},{0,2},"L1"},
+            {{"B","D"},{1,3},"L5"},
+            {{"B","D"},{3,1},"L6"}
+        };
+        cls.siteToWeights["C"] = {
+            {{"C","D"},{2,0},"L7"},
+            {{"C","D"},{0,2},"L8"},
+            {{"C","A"},{1,3},"L4"},
+            {{"C","A"},{3,1},"L3"}
+        };
+        cls.siteToWeights["D"] = {
+            {{"D","B"},{3,1},"L5"},
+            {{"D","B"},{1,3},"L6"},
+            {{"D","C"},{2,0},"L8"},
+            {{"D","C"},{0,2},"L7"}
+        };
+
         setSites(cls, sitesInit);
+        initClusterWeights(cls);
+        setWeights(cls, suWeightsInit);
     }
-    setWeights(cls, suWeightsInit);
     std::cout << cls;
     // ***** INITIALIZE CLUSTER DONE ******************************************
 
