@@ -1,5 +1,5 @@
 # Link to Itensor lib
-ITENSOR_DIR=/home/urza/Projects/ITensor-v2.1.1-gcc
+ITENSOR_DIR=/scratch/src/itensor-custom
 #ITENSOR_DIR=/home/urza/Software/ITensor-v2.1.1-gcc-withMKL
 include $(ITENSOR_DIR)/this_dir.mk
 include $(ITENSOR_DIR)/options.mk
@@ -7,8 +7,9 @@ include $(ITENSOR_DIR)/options.mk
 TENSOR_HEADERS=$(ITENSOR_DIR)/itensor/core.h
 
 # Dependencies
-ARPACK_INC=-I/home/urza/Software/arpack-ng
-ARPACK_LIB=-L/home/urza/Software/arpack-ng/build/lib -Wl,-rpath=/home/urza/Software/arpack-ng/build/lib \
+ARPACK_ROOT=/scratch/src/arpack-ng-custom
+ARPACK_INC=-I$(ARPACK_ROOT)
+ARPACK_LIB=-L$(ARPACK_ROOT)/build/lib -Wl,-rpath,$(ARPACK_ROOT)/build/lib \
 	-larpack
 
 # 3. 'main' function is in a file called 'get-env.cc', then
@@ -50,6 +51,8 @@ GOBJECTS2=$(patsubst %.cc,%.debug_objs/%, $(OBJECTS2))
 # OBJECTS3=$(patsubst %.cc,%.o, $(CCFILES3))
 # GOBJECTS3=$(patsubst %,.debug_objs/%, $(OBJECTS3))
 
+
+default: opt-full-update-2x2-3site
 
 #Rules ------------------
 # see https://www.gnu.org/software/make/manual/make.html#Pattern-Intro
