@@ -139,20 +139,20 @@ int main( int argc, char *argv[] ) {
         C = cls.sites[cls.cToS.at(std::make_pair(0,1))];
         D = cls.sites[cls.cToS.at(std::make_pair(1,1))];
 
-        pIA = noprime(findtype(A.inds(), PHYS));
-        pIB = noprime(findtype(B.inds(), PHYS));
-        pIC = noprime(findtype(C.inds(), PHYS));
-        pID = noprime(findtype(D.inds(), PHYS));
+        pIA = noprime(findtype(A, PHYS));
+        pIB = noprime(findtype(B, PHYS));
+        pIC = noprime(findtype(C, PHYS));
+        pID = noprime(findtype(D, PHYS));
         aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
         aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
         aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
         aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
         
         // relabel original indices to take up desired bond dimensions
-        auto taIA = noprime(findtype(A.inds(), AUXLINK));
-        auto taIB = noprime(findtype(B.inds(), AUXLINK));
-        auto taIC = noprime(findtype(C.inds(), AUXLINK));
-        auto taID = noprime(findtype(D.inds(), AUXLINK));
+        auto taIA = noprime(findtype(A, AUXLINK));
+        auto taIB = noprime(findtype(B, AUXLINK));
+        auto taIC = noprime(findtype(C, AUXLINK));
+        auto taID = noprime(findtype(D, AUXLINK));
         
         auto D_I = delta(taIA,aIA);
         A = A*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
