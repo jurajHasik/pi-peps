@@ -186,7 +186,7 @@ ITensor CtmEnv::contractOST(ITensor const& T, bool expose) const {
      */ 
 
     // Get auxBond index of T
-    auto auxI = noprime(findtype(T.inds(), AUXLINK));
+    auto auxI = noprime(findtype(T, AUXLINK));
 
     if(auxI.m()*auxI.m() != d) {
         std::cout <<"ctmEnv.d does not agree with onSiteT.dimD^2"<< std::endl;
@@ -1954,7 +1954,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 U = ITensor(I_U, I_XH);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -2033,7 +2033,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
@@ -2101,7 +2101,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(I_U, I_XH);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r
@@ -2179,7 +2179,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
 
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 U = ITensor(prime(I_L,1), prime(I_XV,1));
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< c <<":"<< row
@@ -2325,7 +2325,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
 
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 //if(dbg) S.apply(printSVs); //PrintData(S);
                 if(dbg || DBG) {
                     Print(S);
@@ -2424,7 +2424,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 //if(dbg) S.apply(printSVs); //PrintData(S);
                 if(dbg || DBG) {
                     Print(S);
@@ -2512,7 +2512,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 //if(dbg) S.apply(printSVs); // PrintData(S);
                 if(dbg || DBG) {
                     Print(S);
@@ -2608,7 +2608,7 @@ std::vector<ITensor> CtmEnv::isoT4(char ctmMove, int col, int row,
                 if(dbg) std::cout <<"SVD of R*R~: "<< std::endl;
                 //U = ITensor(auxIR);
                 U = ITensor(cmbIR);
-                spec = svd_dd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, argsSVDRRt);
                 //if(dbg) S.apply(printSVs); // PrintData(S);
                 if(dbg || DBG) {
                     Print(S);

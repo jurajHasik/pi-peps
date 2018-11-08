@@ -48,9 +48,9 @@ void initRT_basic(ITensor& rt, std::string INIT_METHOD, Args const& args) {
 		randomize(rt);
 	} else if (INIT_METHOD == "DELTA") {
 		// expect 2 AUXLINK indices and single MPOLINK
-		Index a1 = findtype(rt.inds(),AUXLINK);
+		Index a1 = findtype(rt,AUXLINK);
 		Index a2 = ( a1.primeLevel() < IOFFSET ) ? prime(a1,IOFFSET) : prime(a1,-IOFFSET);
-		Index impo = findtype(rt.inds(),MPOLINK);
+		Index impo = findtype(rt,MPOLINK);
 
 		for (int i=1; i<=a1.m(); i++) {
 			rt.set(a1(i),a2(i),impo(1),1.0);
@@ -59,9 +59,9 @@ void initRT_basic(ITensor& rt, std::string INIT_METHOD, Args const& args) {
 		auto fuIsoInitNoiseLevel = args.getReal("fuIsoInitNoiseLevel",1.0e-3);
 
 		// expect 2 AUXLINK indices and single MPOLINK
-		Index a1 = findtype(rt.inds(),AUXLINK);
+		Index a1 = findtype(rt,AUXLINK);
 		Index a2 = ( a1.primeLevel() < IOFFSET ) ? prime(a1,IOFFSET) : prime(a1,-IOFFSET);
-		Index impo = findtype(rt.inds(),MPOLINK);
+		Index impo = findtype(rt,MPOLINK);
 
 		randomize(rt);
 		rt = rt * fuIsoInitNoiseLevel;

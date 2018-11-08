@@ -248,8 +248,8 @@ void setOnSiteTensorsFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
 void writeOnSiteTElems(vector< string > & tEs,
     itensor::ITensor const& T, int offset, double threshold) {
 
-    auto const& pI = itensor::findtype(T.inds(), PHYS);
-    auto const& aI = itensor::findtype(T.inds(), AUXLINK);
+    auto pI = itensor::findtype(T, PHYS);
+    auto aI = itensor::findtype(T, AUXLINK);
 
     auto aI0 = itensor::noprime(aI);
     auto aI1 = itensor::prime(aI0,1);
@@ -390,26 +390,26 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
 
             // Read of the indices from environment and
             // expose them in CtmData
-            ctmD.I_L = itensor::findtype(ctmD.C_LU.inds(), LLINK);
-            ctmD.I_U = itensor::findtype(ctmD.C_LU.inds(), ULINK);
+            ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
+            ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
             
-            ctmD.I_R = itensor::findtype(ctmD.C_RU.inds(), RLINK);
-            ctmD.I_D = itensor::findtype(ctmD.C_LD.inds(), DLINK);
+            ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
+            ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
 
-            ctmD.I_XH = itensor::findtype(ctmD.T_L[0].inds(), HSLINK);
-            ctmD.I_XV = itensor::findtype(ctmD.T_U[0].inds(), VSLINK);
+            ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
+            ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
 
             // Sync indices across env tensors
             ctmD.C_RU *= itensor::delta( itensor::findtype(
-                ctmD.C_RU.inds(),ULINK), itensor::prime(ctmD.I_U,cls.sizeM) );
+                ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,cls.sizeM) );
 
             ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD.inds(),RLINK), itensor::prime(ctmD.I_R,cls.sizeN) );
+                ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,cls.sizeN) );
             ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD.inds(),DLINK), prime(ctmD.I_D,cls.sizeM) );
+                ctmD.C_RD,DLINK), prime(ctmD.I_D,cls.sizeM) );
 
             ctmD.C_LD *= itensor::delta( itensor::findtype(
-                ctmD.C_LD.inds(),LLINK), itensor::prime(ctmD.I_L,cls.sizeN) );
+                ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,cls.sizeN) );
 
             itensor::IndexSet iSet;
             for( auto& t : ctmD.T_U ) {
@@ -489,14 +489,14 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
 
             // Read of the indices from environment and
             // expose them in CtmData
-            ctmD.I_L = itensor::findtype(ctmD.C_LU.inds(), LLINK);
-            ctmD.I_U = itensor::findtype(ctmD.C_LU.inds(), ULINK);
+            ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
+            ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
             
-            ctmD.I_R = itensor::findtype(ctmD.C_RU.inds(), RLINK);
-            ctmD.I_D = itensor::findtype(ctmD.C_LD.inds(), DLINK);
+            ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
+            ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
 
-            ctmD.I_XH = itensor::findtype(ctmD.T_L[0].inds(), HSLINK);
-            ctmD.I_XV = itensor::findtype(ctmD.T_U[0].inds(), VSLINK);
+            ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
+            ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
 
             break;
         }

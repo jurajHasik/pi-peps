@@ -97,7 +97,7 @@ MpoNS EVBuilder::getTOT(MPO_1S mpo, std::string siteId,
 {
     // Construct MPO
     auto op = getSpinOp(mpo, 
-        noprime(findtype(cls.sites.at(siteId).inds(), PHYS)), DBG);
+        noprime(findtype(cls.sites.at(siteId), PHYS)), DBG);
 
     return getTOT(op, siteId, primeLvl, DBG);
 }
@@ -113,7 +113,7 @@ MpoNS EVBuilder::getTOT(MPO_1S mpo, std::pair<int ,int> site, int primeLvl,
 
     // Construct MPO
     auto op = getSpinOp(mpo, 
-        noprime(findtype(cls.sites.at(siteId).inds(), PHYS)), DBG);
+        noprime(findtype(cls.sites.at(siteId), PHYS)), DBG);
 
     return getTOT(op, siteId, primeLvl, DBG);
 }
@@ -172,7 +172,7 @@ MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
      
     ITensor const& T = cls.sites.at(siteId);
     // Get auxBond index of T
-    auto auxI = noprime(findtype(T.inds(), AUXLINK));
+    auto auxI = noprime(findtype(T, AUXLINK));
 
     if(auxI.m()*auxI.m() != cd.auxDimSite) {
         std::cout <<"ctmData.auxDimSite does not agree with onSiteT.dimD^2"
@@ -214,8 +214,8 @@ MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
     // }
 
     // Get physical index of T and op
-    auto s   = noprime(findtype(T.inds(), PHYS));
-    auto opI = noprime(findtype(op.inds(), PHYS));
+    auto s   = noprime(findtype(T, PHYS));
+    auto opI = noprime(findtype(op, PHYS));
 
     if(DBG) { Print(s);
         Print(opI); }
@@ -1872,7 +1872,7 @@ void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string 
             "rsvd_reortho",1
         );
         ITensor U(cmbI), S, V;
-        svd_dd(X, U, S, V, argsSVDRRt);
+        svd(X, U, S, V, argsSVDRRt);
     
         PrintData(S);
     }
@@ -1905,7 +1905,7 @@ void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string 
             "SVD_METHOD","gesdd"
         );
         ITensor U(cmbI), S, V;
-        svd_dd(X, U, S, V, argsSVDRRt);
+        svd(X, U, S, V, argsSVDRRt);
     
         PrintData(S);
     }

@@ -34,8 +34,8 @@ void applyH_T1_L_T2(MPO_2site const& mpo2s,
 		Print(T1);
 		Print(L);
 		Print(T2);}
-	auto ipT1 = findtype(T1.inds(), PHYS);
-	auto ipT2 = findtype(T2.inds(), PHYS);  
+	auto ipT1 = findtype(T1, PHYS);
+	auto ipT2 = findtype(T2, PHYS);  
 	auto iT1_L = commonIndex(T1, L);
 	auto iL_T2 = commonIndex(L, T2);
 
@@ -149,8 +149,8 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 		Print(L);
 		Print(T2);
 	}
-	auto ipT1 = findtype(T1.inds(), PHYS);
-	auto ipT2 = findtype(T2.inds(), PHYS);  
+	auto ipT1 = findtype(T1, PHYS);
+	auto ipT2 = findtype(T2, PHYS);  
 	auto iT1_L = commonIndex(T1, L);
 	auto iL_T2 = commonIndex(L, T2);
 	L.apply(sqrtT);
@@ -407,9 +407,9 @@ void applyH_123_v1(MPO_3site const& mpo3s,
 	    Print(T2);
 	    Print(T3); } 
 
-    Index s1 = noprime(findtype(T1.inds(), PHYS));
-    Index s2 = noprime(findtype(T2.inds(), PHYS));
-    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index s1 = noprime(findtype(T1, PHYS));
+    Index s2 = noprime(findtype(T2, PHYS));
+    Index s3 = noprime(findtype(T3, PHYS));
     Index a1 = commonIndex(T1,l12);
     Index a2 = commonIndex(l12,T2);
     Index a3 = commonIndex(T2,l23);
@@ -576,9 +576,9 @@ void applyH_123_v2(MPO_3site const& mpo3s, ITensor & T1, ITensor & T2, ITensor &
      *     |                  |                  |   
      *
      */
-    Index s1 = noprime(findtype(T1.inds(), PHYS));
-    Index s2 = noprime(findtype(T2.inds(), PHYS));
-    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index s1 = noprime(findtype(T1, PHYS));
+    Index s2 = noprime(findtype(T2, PHYS));
+    Index s3 = noprime(findtype(T3, PHYS));
     Index a1 = commonIndex(T1,l12);
     Index a2 = commonIndex(l12,T2);
     Index a3 = commonIndex(T2,l23);
@@ -765,9 +765,9 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 	    Print(T2);
 	    Print(T3); } 
 
-    Index s1 = noprime(findtype(T1.inds(), PHYS));
-    Index s2 = noprime(findtype(T2.inds(), PHYS));
-    Index s3 = noprime(findtype(T3.inds(), PHYS));
+    Index s1 = noprime(findtype(T1, PHYS));
+    Index s2 = noprime(findtype(T2, PHYS));
+    Index s3 = noprime(findtype(T3, PHYS));
     Index a1 = commonIndex(T1,l12);
     Index a2 = commonIndex(l12,T2);
     Index a3 = commonIndex(T2,l23);

@@ -3670,7 +3670,7 @@ FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA,
 
 void FULSCG_IT::asolve(ITensor const& b, ITensor & x, const Int itrnsp) {
 	// Identity "preconditioner"
-	if ( findtype(b.inds(), AUXLINK).primeLevel() >= 4 )
+	if ( findtype(b, AUXLINK).primeLevel() >= 4 )
 		x = prime(b, AUXLINK, -4);
 	else 
 		x = b;
@@ -3712,48 +3712,48 @@ void FULSCG_IT::asolve_pinv(ITensor const& b, ITensor & x) {
 	M = (cmbKet * M) * prime(cmbKet,4);
 }
 
-void FULSCG_IT::asolve_linsystem(ITensor & x) {
+// void FULSCG_IT::asolve_linsystem(ITensor & x) {
 	
 
-	std::vector<Index> iket;
-	for (auto const& i : M.inds()) {
-		if (i.primeLevel() < 4) iket.emplace_back(i);
-	}
-	auto pI = findtype(B.inds(),PHYS);
-	iket.emplace_back(pI);
+// 	std::vector<Index> iket;
+// 	for (auto const& i : M.inds()) {
+// 		if (i.primeLevel() < 4) iket.emplace_back(i);
+// 	}
+// 	auto pI = findtype(B.inds(),PHYS);
+// 	iket.emplace_back(pI);
 		
-	cmbKet = combiner(iket);
+// 	cmbKet = combiner(iket);
 
-	M *= delta(pI,prime(pI,4));
-	M = (cmbKet * M) * prime(cmbKet,4);
+// 	M *= delta(pI,prime(pI,4));
+// 	M = (cmbKet * M) * prime(cmbKet,4);
 
-	B.prime(PHYS,4);
-	B *= prime(cmbKet,4);
-	B.prime(-4);
-	x *= cmbKet;
-	x.prime(4);
+// 	B.prime(PHYS,4);
+// 	B *= prime(cmbKet,4);
+// 	B.prime(-4);
+// 	x *= cmbKet;
+// 	x.prime(4);
 	
 
-	// args:
-	//	method (default= "LU"): direct solution of linear system by 
-	//		"LU" decomposition for general M
-	//		"CHOLESKY" for symmetric/hermitian positive definite M  
-	linsystem(M, B, x, args);
+// 	// args:
+// 	//	method (default= "LU"): direct solution of linear system by 
+// 	//		"LU" decomposition for general M
+// 	//		"CHOLESKY" for symmetric/hermitian positive definite M  
+// 	linsystem(M, B, x, args);
 
 	
-	//x.prime(-4);
-	x *= cmbKet;
-	B.prime(combinedIndex(cmbKet),4);
-	B *= prime(cmbKet,4);
-	B.prime(PHYS,-4);	
+// 	//x.prime(-4);
+// 	x *= cmbKet;
+// 	B.prime(combinedIndex(cmbKet),4);
+// 	B *= prime(cmbKet,4);
+// 	B.prime(PHYS,-4);	
 
-	M = (cmbKet * M) * prime(cmbKet,4);
+// 	M = (cmbKet * M) * prime(cmbKet,4);
 	
-	ITensor temp(pI,prime(pI,4));
-	temp.fill(0.0);
-	temp.set(pI(1),prime(pI,4)(1),1.0);
-	M *= temp;
-}
+// 	ITensor temp(pI,prime(pI,4));
+// 	temp.fill(0.0);
+// 	temp.set(pI(1),prime(pI,4)(1),1.0);
+// 	M *= temp;
+// }
 
 void FULSCG_IT::atimes(ITensor const& x, ITensor & r, const Int itrnsp) {
 	
@@ -3903,8 +3903,8 @@ void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter
 
 	if (solver == "pseudoinverse") {
 		asolve_pinv(b, x);
-	} else if (solver == "direct") {
-		asolve_linsystem(x);
+	// } else if (solver == "direct") {
+	// 	asolve_linsystem(x);
 	} else if (solver == "bicg") {
 		int itol   = args.getInt("cg_convergence_check",1);
 		double tol = args.getReal("cg_gradientNorm_eps",1.0e-8);
