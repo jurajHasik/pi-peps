@@ -19,5 +19,6 @@ install_headers(['arpack-rcdn.h',
                  'nr3.h',
                  'simple-update.h',
                  'simple-update_v2.h',
-                 'su2.h'])
+                 'su2.h',
+		 'itensor-svd-solvers.h'])
 

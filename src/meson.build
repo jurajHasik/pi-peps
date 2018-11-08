@@ -8,5 +8,6 @@ source_files += files(['cluster-ev-builder.cc',
                        'ctm-cluster-io.cc',
                        'ctm-cluster.cc',
                        'mpo.cc',
-                       'su2.cc'])
+                       'su2.cc',
+		       'itensor-svd-solvers.cc'])
 
