@@ -18,7 +18,7 @@ using std::sqrt;
 using std::move;
 using std::tie;
 
-template<typename T>
+template <typename T>
 Spectrum
 svdImpl(ITensor const& A,
         Index const& ui, 
@@ -26,7 +26,7 @@ svdImpl(ITensor const& A,
         ITensor & U, 
         ITensor & D, 
         ITensor & V,
-        SvdSolver<T> & solver,
+        SvdSolver & solver,
         Args const& args
         )
     {
@@ -125,7 +125,7 @@ svdImpl(ITensor const& A,
     }
 
 
-template<typename IndexT, typename T>
+template<typename IndexT>
 Spectrum 
 svdRank2(ITensorT<IndexT> const& A, 
          IndexT const& ui, 
@@ -133,7 +133,7 @@ svdRank2(ITensorT<IndexT> const& A,
          ITensorT<IndexT> & U, 
          ITensorT<IndexT> & D, 
          ITensorT<IndexT> & V,
-         SvdSolver<T> & solver,
+         SvdSolver & solver,
          Args args)
     {
     auto do_truncate = args.defined("Cutoff") 
@@ -154,10 +154,10 @@ svdRank2(ITensorT<IndexT> const& A,
         }
     return svdImpl<Real>(A,ui,vi,U,D,V,solver,args);
     }
-template<typename T>
+template
 Spectrum 
 svdRank2(ITensor const&,Index const&,Index const&,
-         ITensor &,ITensor &,ITensor &,SvdSolver<T> &,Args );
+         ITensor &,ITensor &,ITensor &,SvdSolver &,Args );
 // template Spectrum 
 // svdRank2(IQTensor const&,IQIndex const&,IQIndex const&,
 //          IQTensor &,IQTensor &,IQTensor &,Args , SvdSolver);
@@ -169,16 +169,16 @@ SVDRef(MatRefc<T> const& M,
        MatRef<T>  const& U,
        VectorRef  const& D,
        MatRef<T>  const& V,
-       SvdSolver<T> & solver,
+       SvdSolver & solver,
        Args const& args)
     {
         std::cout<<"CALL CUSTOM SOLVER"<<std::endl;
         solver.solve(M,U,D,V,args);
     }
 template void SVDRef(MatRefc<Real> const&,MatRef<Real> const&, VectorRef const&, 
-    MatRef<Real> const&, SvdSolver<Real> & solver, Args const& args);
+    MatRef<Real> const&, SvdSolver & solver, Args const& args);
 template void SVDRef(MatRefc<Cplx> const&,MatRef<Cplx> const&, VectorRef const&, 
-	MatRef<Cplx> const&, SvdSolver<Cplx> & solver, Args const& args);
+	MatRef<Cplx> const&, SvdSolver & solver, Args const& args);
 
 
 } // namespace itensor

@@ -1911,6 +1911,9 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
         "rsvd_reortho",rsvd_reortho
     );
 
+    auto rsvdSolver = RsvdSolver();
+    SvdSolver & solver = rsvdSolver;
+
     ITensor R, Rt;
     Index sIU, sIV;
 
@@ -1954,7 +1957,7 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
                 t_iso_begin = std::chrono::steady_clock::now();
 
                 U = ITensor(I_U, I_XH);
-                spec = svd(R*Rt, U, S, V, argsSVDRRt);
+                spec = svd(R*Rt, U, S, V, solver, argsSVDRRt);
                 if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
                     S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
                     std::cout << "WARNING: CTM-Iso3 " << ctmMove << " [col:row]= ["<< col <<":"<< r

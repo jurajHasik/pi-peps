@@ -1,47 +1,40 @@
 #ifndef _ITENSOR_CUSTOM_SOLVERS_H
 #define _ITENSOR_CUSTOM_SOLVERS_H
 
-#include "itensor/tensor/slicemat.h"
-#include "itensor/util/args.h"
-#include "itensor/iqtensor.h"
-#include "itensor/spectrum.h"
-#include "itensor/mps/localop.h"
+#include "itensor/all.h"
 
 namespace itensor {
 
-template <typename T>
 struct SvdSolver {
-  	void solve(
+  	
+	template <typename T>
+  	virtual void 
+  	solve(
       MatRefc<T> const& M,
       MatRef<T>  const& U, 
       VectorRef  const& D, 
       MatRef<T>  const& V,
-      Args const& args);  
+      Args const& args) 
+  	{  
+  		// To be overloaded by derived classes
+  	     std::cout<<"[SvdSolver::solve] called"<<std::endl;
+    }
 };
 
-template<class Tensor, typename T>
+
+template<class Tensor>
 Spectrum 
 svd(Tensor AA, Tensor& U, Tensor& D, Tensor& V, 
-	SvdSolver<T> solver, Args args = Global::args());
+	SvdSolver & solver, Args args = Global::args());
 
-template<typename IndexT, typename T>
-Spectrum 
-svdRank2(ITensorT<IndexT> const& A, 
-         IndexT const& ui, 
-         IndexT const& vi,
-         ITensorT<IndexT> & U, 
-         ITensorT<IndexT> & D, 
-         ITensorT<IndexT> & V,
-         SvdSolver<T> solver,
-         Args args = Args::global());
 
-template<class Tensor, typename T>
+template<class Tensor>
 Spectrum 
 svd(Tensor AA, 
 	Tensor & U, 
 	Tensor & D, 
 	Tensor & V,
-	SvdSolver<T> solver,
+	SvdSolver & solver,
 	Args args)
 {
 using IndexT = typename Tensor::index_type;
@@ -122,7 +115,20 @@ V = V * dag(Vcomb);
 return spec;
 } //svd
 
-template<typename T, class MatM, class MatU,class VecD,class MatV,
+
+template<typename IndexT>
+Spectrum 
+svdRank2(ITensorT<IndexT> const& A, 
+         IndexT const& ui, 
+         IndexT const& vi,
+         ITensorT<IndexT> & U, 
+         ITensorT<IndexT> & D, 
+         ITensorT<IndexT> & V,
+         SvdSolver & solver,
+         Args args = Args::global());
+
+
+template<class MatM, class MatU,class VecD,class MatV,
          class = stdx::require<
          hasMatRange<MatM>,
          hasMatRange<MatU>,
@@ -134,8 +140,9 @@ SVD(MatM && M,
     MatU && U, 
     VecD && D, 
     MatV && V,
-    SvdSolver<T>,
+    SvdSolver & solver,
     Args const& args);
+
 
 template<typename T>
 void
@@ -143,8 +150,9 @@ SVDRef(MatRefc<T> const& M,
        MatRef<T>  const& U, 
        VectorRef  const& D, 
        MatRef<T>  const& V,
-       SvdSolver<T> solver,
+       SvdSolver & solver,
        Args const& args);
+
 
 template<class MatM, 
          class MatU,
@@ -156,7 +164,7 @@ SVD(MatM && M,
     MatU && U, 
     VecD && D, 
     MatV && V,
-    SvdSolver<T> solver,
+    SvdSolver & solver,
     Args const& args)
     {
     auto Mr = nrows(M),

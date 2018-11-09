@@ -11,6 +11,8 @@
 #include <chrono>
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-global.h"
+#include "itensor-svd-solvers.h"
+#include "rsvd-solver.h"
 #include "itensor/all.h"
 
 class CtmEnv

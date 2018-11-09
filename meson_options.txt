@@ -4,5 +4,5 @@ option('build-examples', type: 'boolean', value: true)
 option('mkl-dir', type: 'string', value: '') 
 option('itensor-dir', type: 'string', value: '')
 option('arpack-dir', type: 'string', value: '')
-
+option('rsvd-dir', type: 'string', value: '')
 
