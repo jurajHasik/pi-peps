@@ -2,7 +2,7 @@
 
 namespace itensor {
 
-template<>
+//template<>
 void
 RsvdSolver::solve(
       MatRefc<Real> const& M,
@@ -35,9 +35,7 @@ RsvdSolver::solve(
         throw std::runtime_error("SVD (ref version), wrong size of D");
 #endif
 
-    auto SVD_METHOD = args.getString("SVD_METHOD","itensor");
     auto maxm       = args.getInt("Maxm",Mr);
-
 	auto rsvd_power   = args.getInt("rsvd_power",2);
 	auto rsvd_reortho = args.getInt("rsvd_reortho",1);
 
@@ -70,10 +68,10 @@ RsvdSolver::solve(
 	auto ncD = const_cast<double*>(D.data()); 
 	auto pD  = reinterpret_cast<double*>(ncD);
 
-	// for(int ii=0; ii<k; ii++) {
-	//     *pD = matrix_get_element(tS, ii, ii);
-	//     pD++;
-	// }
+	for(int ii=0; ii<k; ii++) {
+	    *pD = matrix_get_element(tS, ii, ii);
+	    pD++;
+	}
 
 #ifdef CHKSVD
     checksvd(M,U,D,V);
@@ -81,7 +79,7 @@ RsvdSolver::solve(
 }
 
 // No complex implementation fall back to ITensor
-template<>
+//template<>
 void
 RsvdSolver::solve(
       MatRefc<Cplx> const& M,

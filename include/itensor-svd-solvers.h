@@ -7,17 +7,41 @@ namespace itensor {
 
 struct SvdSolver {
   	
-	template <typename T>
-  	virtual void 
-  	solve(
-      MatRefc<T> const& M,
-      MatRef<T>  const& U, 
+	// template <typename T>
+ //  	virtual void 
+ //  	solve(
+ //      MatRefc<T> const& M,
+ //      MatRef<T>  const& U, 
+ //      VectorRef  const& D, 
+ //      MatRef<T>  const& V,
+ //      Args const& args) 
+ //  	{  
+ //  		// To be overloaded by derived classes
+ //  	     std::cout<<"[SvdSolver::solve] called"<<std::endl;
+ //    }
+
+    virtual void 
+    solve(
+      MatRefc<Real> const& M,
+      MatRef<Real>  const& U, 
       VectorRef  const& D, 
-      MatRef<T>  const& V,
+      MatRef<Real>  const& V,
       Args const& args) 
-  	{  
-  		// To be overloaded by derived classes
-  	     std::cout<<"[SvdSolver::solve] called"<<std::endl;
+    {  
+        // To be overloaded by derived classes
+         std::cout<<"[SvdSolver::solve<Real>] called"<<std::endl;
+    }
+
+    virtual void 
+    solve(
+      MatRefc<Cplx> const& M,
+      MatRef<Cplx>  const& U, 
+      VectorRef  const& D, 
+      MatRef<Cplx>  const& V,
+      Args const& args) 
+    {  
+        // To be overloaded by derived classes
+         std::cout<<"[SvdSolver::solve<Cplx>] called"<<std::endl;
     }
 };
 
