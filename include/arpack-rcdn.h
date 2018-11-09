@@ -8,9 +8,6 @@
 #include <iostream>
 #include <vector>
 
-#include "debug_c.hpp"  // debug arpack.
-#include "stat_c.hpp"   // arpack statistics.
-
 #ifndef BLASINT
 #  define BLASINT int
 #endif
