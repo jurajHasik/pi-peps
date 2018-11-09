@@ -29,7 +29,8 @@ struct SvdSolver {
       Args const& args) 
     {  
         // To be overloaded by derived classes
-         std::cout<<"[SvdSolver::solve<Real>] called"<<std::endl;
+        // std::cout<<"[SvdSolver::solve<Real>] called"<<std::endl;
+        SVDRef(M,U,D,V,args);
     }
 
     virtual void 
@@ -41,7 +42,8 @@ struct SvdSolver {
       Args const& args) 
     {  
         // To be overloaded by derived classes
-         std::cout<<"[SvdSolver::solve<Cplx>] called"<<std::endl;
+        // std::cout<<"[SvdSolver::solve<Cplx>] called"<<std::endl;
+        SVDRef(M,U,D,V,args);
     }
 };
 
