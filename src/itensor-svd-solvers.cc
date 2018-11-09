@@ -172,7 +172,6 @@ SVDRef(MatRefc<T> const& M,
        SvdSolver & solver,
        Args const& args)
     {
-        std::cout<<"CALL CUSTOM SOLVER"<<std::endl;
         solver.solve(M,U,D,V,args);
     }
 template void SVDRef(MatRefc<Real> const&,MatRef<Real> const&, VectorRef const&, 

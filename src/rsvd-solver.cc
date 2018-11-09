@@ -12,7 +12,7 @@ RsvdSolver::solve(
       Args const& args
 	)
 {
-	std::cout<<"[RsvdSolver::solve<Real>] called"<<std::endl;
+	//std::cout<<"[RsvdSolver::solve<Real>] called"<<std::endl;
 
 	auto Mr = nrows(M), 
          Mc = ncols(M);
