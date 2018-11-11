@@ -1,5 +1,5 @@
 project('peps-cluster-ctm','cpp',
-        default_options : ['cpp_std=gnu++14',
+        default_options : ['cpp_std=c++11',
 			   'buildtype=debug',
 			   'warning_level=3',
                            # 'cpp_args=-w -fext-numeric-literals'],
