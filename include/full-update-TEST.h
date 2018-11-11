@@ -9,6 +9,7 @@
 #include "linbcg.h"
 #include "mins.h"
 #include "mins_ndim.h"
+#include "itensor-linsys-solvers.h"
 
 itensor::Args fullUpdate_COMB_INV(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,

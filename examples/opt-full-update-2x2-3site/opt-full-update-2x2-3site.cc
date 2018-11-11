@@ -2,20 +2,16 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-// #include "omp.h"
-// #include "mkl.h"
+
 #include "json.hpp"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
-//#include "simple-update_v2.h"
-//#include "full-update.h"
-//#include "full-update-TEST.h"
 #include "mpo.h"
 #include "models.h"
 #include "engine.h"
-#include "rsvd-solver.h"
-//#include "linsyssolvers-lapack.h"
+// #include "rsvd-solver.h"
+// #include "linsyssolvers-lapack.h"
 
 using namespace itensor;
 
@@ -341,11 +337,11 @@ int main( int argc, char *argv[] ) {
     cls.simParam = jsonCls;
     
     std::unique_ptr<SvdSolver> pBaseSolver;
-    if (env_SVD_METHOD == "rsvd") {
-        pBaseSolver = std::make_unique<RsvdSolver>();
-    } else {
+    // if (env_SVD_METHOD == "rsvd") {
+    //     pBaseSolver = std::make_unique<RsvdSolver>();
+    // } else {
         pBaseSolver = std::make_unique<SvdSolver>();
-    }
+    // }
 
     // INITIALIZE ENVIRONMENT
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pBaseSolver,

@@ -12,6 +12,7 @@
 #include "full-update.h"
 #include "full-update-TEST.h"
 #include "itensor/all.h"
+#include "itensor-linsys-solvers.h"
 
 template<class T>
 class TrotterDecomposition {
@@ -31,6 +32,8 @@ class TrotterDecomposition {
 
 class Engine {
 	 public:
+	 	//LinSysSolver * solver;
+
         virtual itensor::Args performSimpleUpdate(
         	Cluster & cls, itensor::Args const& args) = 0;
 
