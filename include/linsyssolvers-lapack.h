@@ -155,12 +155,11 @@ void F77NAME(dgesv)(LAPACK_INT *n, LAPACK_INT *nrhs, double *a, LAPACK_INT *lda,
                     LAPACK_INT *info);
 
 // SOLVE LINEAR SYSTEM Ax = b for x (Direct Solver by Cholesky Decomposition for Symmetric-Positive-Definite A)
-void F77NAME(dposv)(char *uplo, LAPACK_INT *n, LAPACK_INT *nrhs, double * a, LAPACK_INT *lda, 
-                    double * b, LAPACK_INT *ldb, LAPACK_INT *info);
-
 void F77NAME(zposv)(char *uplo, LAPACK_INT *n, LAPACK_INT *nrhs, LAPACK_COMPLEX *a, LAPACK_INT *lda, 
                     LAPACK_COMPLEX *b, LAPACK_INT *ldb, LAPACK_INT *info);
 
+void F77NAME(dposv)(char *uplo, LAPACK_INT *n, LAPACK_INT *nrhs, double * a, LAPACK_INT *lda, 
+                    double * b, LAPACK_INT *ldb, LAPACK_INT *info);
 } //extern "C"
 #endif
 
@@ -402,7 +401,7 @@ struct CholeskySolver : LinSysSolver {
         LAPACK_INT Mr   = nrows(A);
         LAPACK_INT nrhs = 1;
         char uplo = 'U';
-        LAPACK_INT info = 0;
+        LAPACK_INT info;
         F77NAME(dposv)(&uplo,&Mr,&nrhs,pA,&Mr,B.data(),&Mr,&info);
 
         if (info == 0) std::copy(B.data(),B.data()+Mr,X.data());
@@ -419,14 +418,20 @@ struct CholeskySolver : LinSysSolver {
         auto dbg    = args.getBool("dbg",false);
         if(dbg) std::cout<<"[CholeskySolver::solve<Cplx>] called"<<std::endl;
 
-        auto ncA = const_cast<Cplx*>(A.data());
-        auto pA = reinterpret_cast<LAPACK_COMPLEX*>(ncA);
-        auto pB = reinterpret_cast<LAPACK_COMPLEX*>(B.data());
-
         LAPACK_INT Mr   = nrows(A);
         LAPACK_INT nrhs = 1;
         char uplo = 'U';
-        LAPACK_INT info = 0;
+        LAPACK_INT info;
+
+        auto ncA = const_cast<Cplx*>(A.data());
+        // A is in row major order, hence if read in column-major order it
+        // represents A**T. Performing conjugate we recover A**T**C = A
+        auto t_ncA = ncA;
+        for (int i=0; i<Mr*Mr; i++, t_ncA++) *t_ncA = std::conj(*t_ncA);
+
+        auto pA = reinterpret_cast<LAPACK_COMPLEX*>(ncA);
+        auto pB = reinterpret_cast<LAPACK_COMPLEX*>(B.data());
+        
         F77NAME(zposv)(&uplo,&Mr,&nrhs,pA,&Mr,pB,&Mr,&info);
 
         if(info == 0) std::copy(B.data(),B.data()+Mr,X.data());

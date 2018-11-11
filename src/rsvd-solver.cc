@@ -38,6 +38,7 @@ RsvdSolver::solve(
     auto maxm       = args.getInt("Maxm",Mr);
 	auto rsvd_power   = args.getInt("rsvd_power",2);
 	auto rsvd_reortho = args.getInt("rsvd_reortho",1);
+	auto rsvd_oversampling= args.getInt("rsvd_oversampling",10);
 
 	// int64_t frank;
 	// int64_t k    = maxm; //70; // rank we want
@@ -47,7 +48,7 @@ RsvdSolver::solve(
 	// int64_t vnum = 1; // scheme to use
 	int frank;
 	int k    = maxm; //70; // rank we want
-	int p    = 0; //20; // oversampling
+	int p    = rsvd_oversampling; //20; // oversampling
 	int q    = rsvd_power; //3; // power scheme
 	int s    = rsvd_reortho; // re-rotho for power scheme
 	int vnum = 1; // scheme to use

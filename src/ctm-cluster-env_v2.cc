@@ -13,11 +13,14 @@ using namespace itensor;
 // ############################################################################
 // member methods of CtmEnv 
 
-CtmEnv::CtmEnv () {}
+//CtmEnv::CtmEnv () { solver = SvdSolver() }
 
-CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args) 
-    : m_name(t_name), d(c.auxBondDim*c.auxBondDim), x(t_x), sizeN(c.sizeN), 
-    sizeM(c.sizeM) {
+CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, 
+    SvdSolver & ssolver, Args const& args) 
+    : m_name(t_name), solver(ssolver), 
+    d(c.auxBondDim*c.auxBondDim), x(t_x), 
+    sizeN(c.sizeN), sizeM(c.sizeM) 
+    {
 
     isoPseudoInvCutoff = args.getReal("isoPseudoInvCutoff",1.0e-14);
     isoMinElemWarning  = args.getReal("isoMinElemWarning",1.0e-4);
@@ -25,6 +28,7 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
     SVD_METHOD         = args.getString("SVD_METHOD","itensor");
     rsvd_power         = args.getInt("rsvd_power",2);
     rsvd_reortho       = args.getInt("rsvd_reortho",1);
+    rsvd_oversampling  = args.getInt("rsvd_oversampling",10);
     DBG     = args.getBool("dbg",false);
     DBG_LVL = args.getInt("dbgLevel",0);
 
@@ -103,9 +107,9 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, Args const& args)
  *
  */
 CtmEnv::CtmEnv (std::string t_name,  std::vector<CtmData> const& ctmD, 
-    Cluster const& c)
-    : m_name(t_name), d(ctmD[0].auxDimSite), x(ctmD[0].auxDimEnv),
-    sizeN(c.sizeN), sizeM(c.sizeM),
+    Cluster const& c, SvdSolver & ssolver, Args const& args)
+    : m_name(t_name), solver(ssolver), d(ctmD[0].auxDimSite), 
+    x(ctmD[0].auxDimEnv), sizeN(c.sizeN), sizeM(c.sizeM),
     // environment indices
     I_U(ctmD[0].I_U), I_R(ctmD[0].I_R), I_D(ctmD[0].I_D), I_L(ctmD[0].I_L),
     // on-site indices
@@ -1908,16 +1912,9 @@ std::vector<ITensor> CtmEnv::isoT3(char ctmMove, int col, int row,
         "SVDThreshold",1E-2,
         "SVD_METHOD",SVD_METHOD,
         "rsvd_power",rsvd_power,
-        "rsvd_reortho",rsvd_reortho
+        "rsvd_reortho",rsvd_reortho,
+        "rsvd_oversampling",rsvd_oversampling
     );
-
-    std::unique_ptr<SvdSolver> pBaseSolver;
-    if(SVD_METHOD=="rsvd") {
-        pBaseSolver = std::make_unique<RsvdSolver>(); 
-    } else {
-        pBaseSolver = std::make_unique<SvdSolver>();
-    }
-    SvdSolver & solver = *pBaseSolver;
 
     ITensor R, Rt;
     Index sIU, sIV;

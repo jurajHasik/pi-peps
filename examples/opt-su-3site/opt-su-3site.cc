@@ -12,6 +12,7 @@
 #include "engine.h"
 //#include "simple-update_v2.h"
 #include "itensor/all.h"
+#include "rsvd-solver.h"
 
 using namespace itensor;
 
@@ -66,6 +67,7 @@ int main( int argc, char *argv[] ) {
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
     auto rsvd_power   = jsonCls.value("rsvd_power",2);
     auto rsvd_reortho = jsonCls.value("rsvd_reortho",1);
+    auto rsvd_oversampling = jsonCls.value("rsvd_reortho",10);
     int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
@@ -229,11 +231,19 @@ int main( int argc, char *argv[] ) {
     Cluster evCls = cls;
     absorbWeightsToSites(evCls);
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, 
+    std::unique_ptr<SvdSolver> pBaseSolver;
+    if (env_SVD_METHOD == "rsvd") {
+        pBaseSolver = std::make_unique<RsvdSolver>();
+    } else {
+        pBaseSolver = std::make_unique<SvdSolver>();
+    }
+
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, *pBaseSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
          "rsvd_reortho",rsvd_reortho,
+         "rsvd_oversampling",rsvd_oversampling,
          "dbg",arg_envDbg,
          "dbgLevel",arg_envDbgLvl}
         );

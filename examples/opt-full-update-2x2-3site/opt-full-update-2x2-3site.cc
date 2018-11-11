@@ -14,6 +14,8 @@
 #include "mpo.h"
 #include "models.h"
 #include "engine.h"
+#include "rsvd-solver.h"
+//#include "linsyssolvers-lapack.h"
 
 using namespace itensor;
 
@@ -338,8 +340,15 @@ int main( int argc, char *argv[] ) {
     }
     cls.simParam = jsonCls;
     
+    std::unique_ptr<SvdSolver> pBaseSolver;
+    if (env_SVD_METHOD == "rsvd") {
+        pBaseSolver = std::make_unique<RsvdSolver>();
+    } else {
+        pBaseSolver = std::make_unique<SvdSolver>();
+    }
+
     // INITIALIZE ENVIRONMENT
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, 
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pBaseSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,

@@ -12,14 +12,16 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-global.h"
 #include "itensor-svd-solvers.h"
-#include "rsvd-solver.h"
 #include "itensor/all.h"
+
 
 class CtmEnv
 {
     // ########################################################################
     // Additional structures
     public:
+
+    itensor::SvdSolver & solver;
 
     typedef enum INIT_ENV {
         INIT_ENV_const1,
@@ -62,6 +64,7 @@ class CtmEnv
     std::string SVD_METHOD = "itensor";
     int rsvd_power = 2;
     int rsvd_reortho = 1;
+    int rsvd_oversampling = 10;
     
     /*
      * Auxiliary dimension of bond-indices of on-site tensor TT given by 
@@ -138,17 +141,19 @@ class CtmEnv
     // member methods of CtmEnv
     
     // Default constructor
-    CtmEnv();
+    //CtmEnv();
 
     // Basic constructor 
-    CtmEnv(std::string t_name, int t_x, Cluster const& c, 
+    CtmEnv(std::string t_name, int t_x, Cluster const& c,
+        itensor::SvdSolver & solver, 
         itensor::Args const& args = itensor::Args::global());
 
     // Reconstructs CtmEnv from given CtmData - a CtmEnv for each
     // of non-equivalent sites within cluster (compatibility with
     // LEGACY ctm-cluster-io.h )
     CtmEnv(std::string t_name, std::vector<CtmData> const& ctmD, 
-        Cluster const& c); 
+        Cluster const& c, itensor::SvdSolver & solver,
+        itensor::Args const& args = itensor::Args::global()); 
 
     /*
      * Return tensor resulting from contraction of on-site tensor T (ket)
