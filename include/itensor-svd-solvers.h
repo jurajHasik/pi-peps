@@ -1,5 +1,5 @@
-#ifndef _ITENSOR_CUSTOM_SOLVERS_H
-#define _ITENSOR_CUSTOM_SOLVERS_H
+#ifndef _ITENSOR_SVD_SOLVERS_H
+#define _ITENSOR_SVD_SOLVERS_H
 
 #include "itensor/all.h"
 
@@ -170,16 +170,6 @@ SVD(MatM && M,
     Args const& args);
 
 
-template<typename T>
-void
-SVDRef(MatRefc<T> const& M,
-       MatRef<T>  const& U, 
-       VectorRef  const& D, 
-       MatRef<T>  const& V,
-       SvdSolver & solver,
-       Args const& args);
-
-
 template<class MatM, 
          class MatU,
          class VecD,
@@ -201,6 +191,17 @@ SVD(MatM && M,
     resize(D,nsv);
     SVDRef(makeRef(M),makeRef(U),makeRef(D),makeRef(V),solver,args);
     }
+
+
+
+template<typename T>
+void
+SVDRef(MatRefc<T> const& M,
+       MatRef<T>  const& U, 
+       VectorRef  const& D, 
+       MatRef<T>  const& V,
+       SvdSolver & solver,
+       Args const& args);
 
 } // itensor
 

@@ -21,5 +21,6 @@ install_headers(['arpack-rcdn.h',
                  'simple-update_v2.h',
                  'su2.h',
 		 'rsvd-solver.h',
-		 'itensor-svd-solvers.h'])
-
+		 'itensor-svd-solvers.h',
+		 'linsyssolvers-lapack.h',
+		 'itensor-linsys-solvers.h'])
