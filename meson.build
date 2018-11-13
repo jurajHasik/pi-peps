@@ -1,9 +1,7 @@
 project('peps-cluster-ctm','cpp',
         default_options : ['cpp_std=c++11',
 			   'buildtype=debug',
-			   'warning_level=3',
-                           # 'cpp_args=-w -fext-numeric-literals'],
-                           'cpp_args=-w'],
+			   'warning_level=3'],
         version: '1.0')
 
 # useful variables
