@@ -1,8 +1,24 @@
 option('build-examples', type: 'boolean', value: true)
 
 # TODO these should become type feature
-option('mkl-dir', type: 'string', value: '') 
+
+# external dependendencies:
+# one option with `library_name`, type boolean
+# one option with `library_name-dir`, type string
+
+# mkl
+option('mkl', type: 'boolean', value: true)
+option('mkl-dir', type: 'string', value: '')
+
+# itensor
+option('itensor', type: 'boolean', value: true)
 option('itensor-dir', type: 'string', value: '')
+
+# arpack
+option('arpack', type: 'boolean', value: false)
 option('arpack-dir', type: 'string', value: '')
+
+# rsvd
+option('rsvd', type: 'boolean', value: false)
 option('rsvd-dir', type: 'string', value: '')
 
