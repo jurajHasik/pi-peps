@@ -385,12 +385,12 @@ dposv_wrapper(LAPACK_INT n,     // rank of square matrix A
 
 struct CholeskySolver : LinSysSolver {
     
-    virtual void 
+    void 
     solve(
       MatRefc<Real> const& A,
       VecRef<Real>  const& B, 
       VecRef<Real>  const& X,
-      Args const& args) 
+      Args const& args) override
     {  
         auto dbg    = args.getBool("dbg",false);
         if(dbg) std::cout<<"[CholeskySolver::solve<Real>] called"<<std::endl;
@@ -408,12 +408,12 @@ struct CholeskySolver : LinSysSolver {
         else throw std::runtime_error("CholeskySolver: error info: "+std::to_string(info));
     }
 
-    virtual void 
+    void 
     solve(
       MatRefc<Cplx>  const& A,
       VecRef<Cplx>  const& B, 
       VecRef<Cplx>  const& X, 
-      Args const& args) 
+      Args const& args) override
     {  
         auto dbg    = args.getBool("dbg",false);
         if(dbg) std::cout<<"[CholeskySolver::solve<Cplx>] called"<<std::endl;
@@ -424,10 +424,6 @@ struct CholeskySolver : LinSysSolver {
         LAPACK_INT info;
 
         auto ncA = const_cast<Cplx*>(A.data());
-        // A is in row major order, hence if read in column-major order it
-        // represents A**T. Performing conjugate we recover A**T**C = A
-        auto t_ncA = ncA;
-        for (int i=0; i<Mr*Mr; i++, t_ncA++) *t_ncA = std::conj(*t_ncA);
 
         auto pA = reinterpret_cast<LAPACK_COMPLEX*>(ncA);
         auto pB = reinterpret_cast<LAPACK_COMPLEX*>(B.data());

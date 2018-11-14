@@ -81,7 +81,7 @@ int main( int argc, char *argv[] ) {
     A.set(K(3),Kp(2), 0.83);
     A.set(K(3),Kp(3), 4.53);
     A.set(K(3),Kp(4),-3.70);
-    A.set(K(3),Kp(5), 1.60 ); 
+    A.set(K(3),Kp(5), 1.60); 
 
     A.set(K(4),Kp(1), 1.65);
     A.set(K(4),Kp(2),-0.65);
@@ -120,33 +120,35 @@ int main( int argc, char *argv[] ) {
 
     A = ITensor(K,Kp);
     A.set(K(1),Kp(1), 5.96+0.00_i);
-    A.set(K(1),Kp(2), 0.40+1.19_i);
+    A.set(K(1),Kp(2), 0.40-1.19_i);
     A.set(K(1),Kp(3),-0.83-0.48_i);
     A.set(K(1),Kp(4),-0.57+0.40_i);
 
-    A.set(K(2),Kp(1), 0.40-1.19_i);
+    A.set(K(2),Kp(1), 0.40+1.19_i);
     A.set(K(2),Kp(2), 7.95+0.00_i);
     A.set(K(2),Kp(3), 0.33+0.09_i);
     A.set(K(2),Kp(4), 0.22+0.74_i);
 
-    A.set(K(3),Kp(1),-0.83-0.48_i);
-    A.set(K(3),Kp(2), 0.33+0.09_i);
+    A.set(K(3),Kp(1),-0.83+0.48_i);
+    A.set(K(3),Kp(2), 0.33-0.09_i);
     A.set(K(3),Kp(3), 4.43+0.00_i);
     A.set(K(3),Kp(4),-1.09+0.32_i);
 
-    A.set(K(4),Kp(1),-0.57+0.40_i);
-    A.set(K(4),Kp(2), 0.22+0.74_i);
-    A.set(K(4),Kp(3),-1.09+0.32_i);
+    A.set(K(4),Kp(1),-0.57-0.40_i);
+    A.set(K(4),Kp(2), 0.22-0.74_i);
+    A.set(K(4),Kp(3),-1.09-0.32_i);
     A.set(K(4),Kp(4), 3.46+0.00_i);
 
-    B = ITensor(Kp);
-    B.set(Kp(1),-2.94+5.79_i);
-    B.set(Kp(2), 8.12-9.12_i);
-    B.set(Kp(3), 9.09-5.03_i);
-    B.set(Kp(4), 7.36+6.77_i);
+    B = ITensor(K);
+    B.set(K(1),-2.94+5.79_i);
+    B.set(K(2), 8.12-9.12_i);
+    B.set(K(3), 9.09-5.03_i);
+    B.set(K(4), 7.36+6.77_i);
 
-    ITensor W;
-    linsystem(A,B,W,linsysSolver,{"plDiff",1,"dbg",true});
+    ITensor W(Kp);
+    linsystem(A,B,W,clinsysSolver,{"plDiff",1,"dbg",true});
+
+    PrintData(W);
 
 //   Solution
 // * (  0.80,  1.62)
