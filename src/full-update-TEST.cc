@@ -3939,10 +3939,6 @@ void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter
 	x *= cmbKet;
 	x.prime(4);
 
-	PrintData(M);
-	PrintData(B);
-	Print(x);
-
 	auto bi = B.inds()[0];
 	auto xi = x.inds()[0];
 	B *= delta(bi,xi);
@@ -3953,9 +3949,6 @@ void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter
 	B *= delta(bi,xi);
 	x *= delta(xi,bi);
 
-	PrintData(B);
-	PrintData(M*x-B);
-
 	x.prime(-4);
 	x *= cmbKet;
 	
@@ -3963,8 +3956,6 @@ void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter
 	B *= prime(cmbKet,4);
 	B.prime(PHYS,-4);	
 	
-	PrintData(x);
-
 	M = (cmbKet * M) * prime(cmbKet,4);
 
 	ITensor temp(pI,prime(pI,4));
