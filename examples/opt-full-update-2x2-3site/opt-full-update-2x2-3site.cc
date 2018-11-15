@@ -161,17 +161,23 @@ int main( int argc, char *argv[] ) {
         D_I = delta(taID,aID);
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
-        // TEST - add small elements instead of 0
-        //double eps = initStateNoise;
-        //auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
-        //A.apply(addEpsilon);
-        //B.apply(addEpsilon);
-        //C.apply(addEpsilon);
-        //D.apply(addEpsilon);
-
+        
         cls.aux  = {aIA, aIB, aIC, aID};
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
-	} else {
+	
+        {
+            ITensor temp; 
+            double eps = initStateNoise;
+            auto setMeanTo0 = [](Real r) { return (r-0.5); };
+
+            for(auto& st : cls.sites) {
+                temp = st.second;
+                randomize(temp);
+                temp.apply(setMeanTo0);
+                st.second += eps*temp;
+            }
+        }
+    } else {
         Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
 		ITensor A, B, C, D;
 
@@ -340,7 +346,12 @@ int main( int argc, char *argv[] ) {
     std::unique_ptr<SvdSolver> pSvdSolver;
     if (env_SVD_METHOD == "rsvd") {
         pSvdSolver = std::make_unique<RsvdSolver>();
+    } else if (env_SVD_METHOD == "rsvd" || env_SVD_METHOD == "gesdd") {
+        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     } else {
+        std::cout<<"WARNING: Unsupported or no SvdSolver specified."
+            <<" Using itensor"<<std::endl;
+        // TODO set jsonCls["ctmrg"]["env_SVD_METHOD"] = "itensor";
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     }
 
@@ -417,12 +428,6 @@ int main( int argc, char *argv[] ) {
     std::unique_ptr<Engine> ptr_engine;     // full update engine
     std::unique_ptr<Engine> ptr_gfe;        // gauge fixing engine
 
-    // // randomisation
-    // std::vector<int> rndInds;
-    // std::vector< OpNS * >              tmp_ptr_gateMPO;
-    // std::vector< std::vector<std::string> > tmp_gates;
-    // std::vector< std::vector<int> >         tmp_gate_auxInds;
-
     ptr_model =  getModel(json_model_params);
     ptr_engine = buildEngine(json_model_params, pLinSysSolver.get() );//, *pLinSysSolver);
     
@@ -442,14 +447,6 @@ int main( int argc, char *argv[] ) {
         }
     }
     
-    // // randomisation
-    // if ( randomizeSeq && (symmTrotter==false) ) {
-    //     for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
-    //     tmp_ptr_gateMPO  = ptr_gateMPO;
-    //     tmp_gates        = gates;
-    //     tmp_gate_auxInds = gate_auxInds;
-    // }
-
     // STORE ISOMETRIES
     // std::vector< std::vector< ITensor > > iso_store(
         // ptr_model->gates.size(), {ITensor(), ITensor(), ITensor(), ITensor()} );
@@ -631,40 +628,6 @@ int main( int argc, char *argv[] ) {
     for (int fuI = 1; fuI <= arg_fuIter; fuI++) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
 
-        // // randomisation
-        // if ( randomizeSeq && (symmTrotter==false) && (fuI % gates.size() == 0) ) {
-        //     std::cout <<"Randomizing gate sequence"<< std::endl;
-        //     std::random_shuffle( rndInds.begin(), rndInds.end() );
-        //     for ( int i=0; i < gates.size(); i++ ) { 
-        //         ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
-        //         gates[i]        = tmp_gates[rndInds[i]];
-        //         gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
-        //     }
-        // }
-
-
-        // PERFORM FULL UPDATE
-        //std::cout << "GATE: " << (fuI-1)%ptr_model->gates.size() << std::endl;
-        
-        // diag_fu = fullUpdate_ALS_LSCG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-        //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], 
-        //     iso_store[(fuI-1)%gates.size()], fuArgs);
-
-        // diag_fu = fullUpdate_CG_IT(*(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-        //     gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
-
-        // diag_fu = fullUpdate_2site_PINV( *(ptr_gateMPO[(fuI-1)%gates.size()]), cls, ctmEnv, 
-        //    gates[(fuI-1)%gates.size()], gate_auxInds[(fuI-1)%gates.size()], fuArgs);
-
-        //auto temp_ptr =  (MPO_3site *) ptr_gateMPO[(fuI-1)%gates.size()];
-
-        // diag_fu = fullUpdate_2site_v2( 
-        //     ptr_model->ptr_gateMPO[(fuI-1)%ptr_model->gates.size()], 
-        //     cls, 
-        //     ctmEnv, gates[(fuI-1)%ptr_model->gates.size()], 
-        //     gate_auxInds[(fuI-1)%ptr_model->gates.size()],
-        //     iso_store[(fuI-1)%ptr_model->gates.size()], fuArgs);
-
         // ctmEnv.symmetrizeEnv();
         diag_fu = ptr_engine->performFullUpdate(cls, ctmEnv, fuArgs);
 
@@ -715,11 +678,7 @@ int main( int argc, char *argv[] ) {
                 //std::cout <<"Simple Update - STEP "<< suI << std::endl;
 
                 // PERFORM SIMPLE UPDATE
-                //std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;
-
                 gf_diag_fu = ptr_gfe->performSimpleUpdate(cls, gfArgs);
-
-                //diagData_fu.push_back(diag_fu);
                 
                 //check convergence
                 if (suI % 8 == 0) {

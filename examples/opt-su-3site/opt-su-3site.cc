@@ -168,39 +168,6 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE CLUSTER DONE ******************************************
 
     // ***** INITIALIZE MODEL *************************************************
-    // DEFINE GATE SEQUENCE
-    // std::unique_ptr<Model> ptr_model;
-    // std::vector< MPO_3site > gateMPO;
-    // std::vector< MPO_3site * > ptr_gateMPO;
-    // std::vector< std::vector<std::string> > gates;
-    // std::vector< std::vector<int> > gate_auxInds;
-
-     // randomisation
-    // std::vector<int> rndInds;
-    // std::vector< MPO_3site * >              tmp_ptr_gateMPO;
-    // std::vector< std::vector<std::string> > tmp_gates;
-    // std::vector< std::vector<int> >         tmp_gate_auxInds;
-
-    // Generate gates for given model by Trotter decomposition
-    // getModel_3site(json_model_params, ptr_model, gateMPO, ptr_gateMPO, gates, gate_auxInds);
-
-    // For symmetric Trotter decomposition
-    // if (symmTrotter) {
-    //     int init_gate_size = gates.size();
-    //     for (int i=0; i<init_gate_size; i++) {
-    //         ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
-    //         gates.push_back(gates[init_gate_size-1-i]);
-    //         gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
-    //     }
-    // }
-    // randomisation
-    // if ( randomizeSeq && (symmTrotter==false) ) {
-    //     for ( int i=0; i < gates.size(); i++ ) rndInds.push_back(i);
-    //     tmp_ptr_gateMPO  = ptr_gateMPO;
-    //     tmp_gates        = gates;
-    //     tmp_gate_auxInds = gate_auxInds;
-    // }
-
     // DEFINE MODEL AND GATE SEQUENCE
     std::unique_ptr<Model>  ptr_model;
     std::unique_ptr<Engine> ptr_engine;     // simple update engine
@@ -232,10 +199,16 @@ int main( int argc, char *argv[] ) {
     Cluster evCls = cls;
     absorbWeightsToSites(evCls);
 
+    // ***** Select SVD solver to use *****************************************
     std::unique_ptr<SvdSolver> pSvdSolver;
     if (env_SVD_METHOD == "rsvd") {
         pSvdSolver = std::make_unique<RsvdSolver>();
+    } else if (env_SVD_METHOD == "rsvd" || env_SVD_METHOD == "gesdd") {
+        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     } else {
+        std::cout<<"WARNING: Unsupported or no SvdSolver specified."
+            <<" Using itensor"<<std::endl;
+        // TODO set jsonCls["ctmrg"]["env_SVD_METHOD"] = "itensor";
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     }
 
@@ -425,22 +398,7 @@ int main( int argc, char *argv[] ) {
     for (int suI = 1; suI <= arg_suIter; suI++) {
         std::cout <<"Simple Update - STEP "<< suI << std::endl;
 
-        // randomisation
-        // if ( randomizeSeq && (symmTrotter==false) && (suI % gates.size() == 0) ) {
-        //     if(arg_suDbg) std::cout <<"Randomizing gate sequence"<< std::endl;
-        //     std::random_shuffle( rndInds.begin(), rndInds.end() );
-        //     for ( int i=0; i < gates.size(); i++ ) { 
-        //         ptr_gateMPO[i]  = tmp_ptr_gateMPO[rndInds[i]];
-        //         gates[i]        = tmp_gates[rndInds[i]];
-        //         gate_auxInds[i] = tmp_gate_auxInds[rndInds[i]];
-        //     }
-        // }
-
         // PERFORM SIMPLE UPDATE
-        //std::cout << "GATE: " << (suI-1)%gates.size() << std::endl;
-
-        // diag_fu = simpleUpdate(*(ptr_gateMPO[(suI-1)%gates.size()]), cls,
-        //     gates[(suI-1)%gates.size()], gate_auxInds[(suI-1)%gates.size()], suArgs);
         diag_fu = ptr_engine->performSimpleUpdate(cls, suArgs);
 
         diagData_fu.push_back(diag_fu);

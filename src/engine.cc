@@ -136,35 +136,25 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
         return std::unique_ptr<Engine>( pe );
     } 
     else if (arg_fuGateSeq == "2SITE") {
-         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
+         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
-        pe->td.gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, 1.0) );
-        pe->td.gateMPO.push_back( getMPO3s_NNHLadder_2site(arg_tau, arg_J1, arg_alpha) );
+        pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, 0.0) );
+        pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_alpha*arg_J1, 0.0) );
         
         pe->td.gates = {
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"}, 
-            
-            {"C", "D", "B", "A"}, 
-            {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-
-            {"A", "C", "D", "B"}, {"B", "D", "C", "A"},
-
-            {"C", "A", "B", "D"}, {"D", "B", "A", "C"}
+            {"A", "B"}, {"B", "A"}, 
+            {"C", "D"}, {"D", "C"},
+            {"A", "C"}, {"B", "D"},
+            {"C", "A"}, {"D", "B"}
         };
 
         pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3},
-
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0},
-            
-            {2,3, 1,2, 0,1, 3,0}, {2,3, 1,2, 0,1, 3,0}
+            {2, 0}, {2, 0},
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1},
+            {3, 1}, {3, 1}
         };
-
+        
         for (int i=0; i<6; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
         for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[1]) );
 
