@@ -58,6 +58,10 @@ struct FULSCG_IT {
     void solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err, 
     	itensor::Args const& args = itensor::Args::global());
 
+    void solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err,
+    	itensor::LinSysSolver const& ls,
+    	itensor::Args const& args = itensor::Args::global());
+
     void solveBiCG(itensor::ITensor const& b, itensor::ITensor & x, const Int itol, const Doub tol,
 		const Int itmax, Int &iter, Doub &err);
 

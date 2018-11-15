@@ -24,14 +24,14 @@ struct LinSysSolver {
       	ITensor & A,
       	ITensor & B, 
       	ITensor & X,
-      	Args const& args);
+      	Args const& args) const;
 
     virtual void 
     solve(
       	MatRefc<Real>	const& A,
-      	VecRef<Real>  const& B, 
-      	VecRef<Real>  const& X,
-      	Args const& args) 
+      	VecRef<Real>  	const& B, 
+      	VecRef<Real>	const& X,
+      	Args const& args) const
     {  
         // To be overloaded by derived classes
         std::cout<<"[LinSysSolver::solve<Real>] called"<<std::endl;
@@ -39,11 +39,11 @@ struct LinSysSolver {
 
     virtual void 
     solve(
-      	MatRefc<Cplx>  const& A,
+      	MatRefc<Cplx>   const& A,
       	VecRef<Cplx>	const& B, 
      	VecRef<Cplx>	const& X, 
-     	Args const& args) 
-    {
+     	Args const& args) const 
+    {  
         // To be overloaded by derived classes
         std::cout<<"[LinSysSolver::solve<Cplx>] called"<<std::endl;
     }
@@ -56,7 +56,7 @@ struct PseudoInvSolver : LinSysSolver {
       ITensor & A,
       ITensor & B, 
       ITensor & X,
-      Args const& args) override;
+      Args const& args) const override;
 };
 
 template<class I>
@@ -102,7 +102,6 @@ linsystem(ITensorT<I> A,
     	throw std::runtime_error("[linsystem] A cannot be a square matrix");
     A = (cmbB*A)*cmbX;
     B *= cmbB;
-    //X *= cmbX;
 
     if (dbg) {
       std::cout<<"[linsystem] ";
@@ -126,7 +125,7 @@ linsystemRank2(
 		   ITensorT<I>  & A, 
            ITensorT<I>  & B,
            ITensorT<I>  & X,
-           LinSysSolver & solver,
+           LinSysSolver const& solver,
            Args const& args);
 
 
@@ -141,7 +140,7 @@ linsystemRef(
 	    MatA && A,
         VecB && B,
         VecX && X,
-        LinSysSolver & solver,
+        LinSysSolver const& solver,
         Args const& args);
 
 
@@ -154,7 +153,7 @@ linsystemRef(
 		MatA && A,
         VecB && B,
         VecX && X,
-        LinSysSolver & solver,
+        LinSysSolver const& solver,
         Args const& args)
 {
 	resize(X,nrows(A));
@@ -167,7 +166,7 @@ linsystemMatVec(
 	   MatRefc<T> const& A, 
        VecRef<T> const& D, 
        VecRef<T> const& V,
-       LinSysSolver & solver,
+       LinSysSolver const& solver,
        Args const& args);
 
 } // namespace itensor

@@ -7,7 +7,7 @@ void
 linsystemImpl(ITensor & A, 
           	  ITensor & B,
           	  ITensor & X,
-          	  LinSysSolver & solver,
+          	  LinSysSolver const& solver,
           	  Args const& args)
 {
     auto dbg = args.getBool("dbg",false);
@@ -54,7 +54,7 @@ linsystemRank2(
            ITensorT<I>  & A, 
            ITensorT<I>  & B,
            ITensorT<I>  & X,
-           LinSysSolver & solver,
+           LinSysSolver const& solver,
            Args const& args)
 {
     if(isComplex(A))
@@ -70,7 +70,7 @@ linsystemRank2(
             ITensor &,
             ITensor &,
             ITensor &,
-            LinSysSolver &,
+            LinSysSolver const&,
             Args const&);
 
 
@@ -78,10 +78,9 @@ void LinSysSolver::solve(
       ITensor& A,
       ITensor& B,
       ITensor& X,
-      Args const& args) 
+      Args const& args) const
  	{  
         // To be overloaded by derived classes
-        std::cout<<"[LinSysSolver::solve] called"<<std::endl;
     	linsystemRank2(A,B,X,*this,args);
     }
 
@@ -92,22 +91,22 @@ linsystemMatVec(
 	   MatRefc<T>  const& A,
        VecRef<T>  const& B,
        VecRef<T>  const& X,
-       LinSysSolver & solver,
+       LinSysSolver const& solver,
        Args const& args)
 {
         solver.solve(A,B,X,args);
 }
 template void linsystemMatVec(MatRefc<Real> const&,VecRef<Real> const&, VecRef<Real> const&, 
-    LinSysSolver & solver, Args const& args);
+    LinSysSolver const& solver, Args const& args);
 template void linsystemMatVec(MatRefc<Cplx> const&,VecRef<Cplx> const&, VecRef<Cplx> const&, 
-	LinSysSolver & solver, Args const& args);
+	LinSysSolver const& solver, Args const& args);
 
 
 void PseudoInvSolver::solve(
       	ITensor & A,
       	ITensor & B,
       	ITensor & X,
-      	Args const& args) 
+      	Args const& args) const
  	{
     	double machine_eps = std::numeric_limits<double>::epsilon();
 		auto dbg = args.getBool("dbg",false);
@@ -128,8 +127,6 @@ void PseudoInvSolver::solve(
 		// suppose Ax = b, with indices i0--A--i1--x = b0--B . Thus b0==i0
 		ITensor U(b0), S, VT;
 		svd(A, U, S, VT);
-
-
 
 		// Invert and apply cutoff
 		std::vector<double> elems_regInvS; elems_regInvS.reserve(i0.m());

@@ -32,7 +32,7 @@ class TrotterDecomposition {
 
 class Engine {
 	 public:
-	 	//LinSysSolver * solver;
+	 	itensor::LinSysSolver * pSolver;
 
         virtual itensor::Args performSimpleUpdate(
         	Cluster & cls, itensor::Args const& args) = 0;
@@ -62,8 +62,10 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
 
 std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model);
 
-std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
+std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model, 
+	itensor::LinSysSolver * solver);
 
+std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
 
 // template<> itensor::Args TrotterEngine<MPO_2site>::performSimpleUpdate(
 // 	Cluster & cls, itensor::Args const& args);

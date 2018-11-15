@@ -162,12 +162,12 @@ int main( int argc, char *argv[] ) {
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
         // TEST - add small elements instead of 0
-        double eps = initStateNoise;
-        auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
-        A.apply(addEpsilon);
-        B.apply(addEpsilon);
-        C.apply(addEpsilon);
-        D.apply(addEpsilon);
+        //double eps = initStateNoise;
+        //auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
+        //A.apply(addEpsilon);
+        //B.apply(addEpsilon);
+        //C.apply(addEpsilon);
+        //D.apply(addEpsilon);
 
         cls.aux  = {aIA, aIB, aIC, aID};
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
@@ -344,10 +344,13 @@ int main( int argc, char *argv[] ) {
     // }
 
     std::unique_ptr<LinSysSolver> pLinSysSolver;
-    if (linsolver == "pseudoinverse") {
-        pLinSysSolver = std::unique_ptr<PseudoInvSolver>(new PseudoInvSolver());
-    } else if (linsolver == "cholesky") {
+    if (linsolver == "cholesky") {
         pLinSysSolver = std::unique_ptr<CholeskySolver>(new CholeskySolver());
+    } else if (linsolver == "pseudoinverse") {
+        pLinSysSolver = std::unique_ptr<PseudoInvSolver>(new PseudoInvSolver());
+    } else {
+        std::cout<<"WARNING: Unsupported LinSysSolver specified. Using default"<<std::endl;
+        pLinSysSolver = std::unique_ptr<PseudoInvSolver>(new PseudoInvSolver());
     }
     
     // INITIALIZE ENVIRONMENT
@@ -419,7 +422,7 @@ int main( int argc, char *argv[] ) {
     // std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     ptr_model =  getModel(json_model_params);
-    ptr_engine = buildEngine(json_model_params);//, *pLinSysSolver);
+    ptr_engine = buildEngine(json_model_params, pLinSysSolver.get() );//, *pLinSysSolver);
     
     if (ptr_engine) { 
         std::cout<<"Valid Engine constructed"<<std::endl;
