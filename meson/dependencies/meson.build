@@ -7,10 +7,8 @@ subdir('itensor')
 optional_deps = ['arpack','mkl']
 
 foreach _opt : optional_deps
-
     _wanted = get_option(_opt)
     _dir = get_option(_opt+'-dir')
-
     # the willingness to use a library can be specified
     # from command line either with the option -Dopt
     # or -Dopt-dir
@@ -29,16 +27,21 @@ foreach _opt : optional_deps
     endif
 endforeach
 
-# here we set the variables for bundled dependendencies
-# used for generating the config file
-# the source files and headers are managed in the proper
-# subdir of bundled
+# bundled dependendencies are dealt with in a different way
+# since the directory, for example, is well known
 _bundled = ['rsvd']
 
 foreach _opt : _bundled
     _wanted = get_option(_opt)
-    message(_opt.to_upper() + 'feature: '+ '@0@'.format(_wanted))
-    set_variable('with_'+_opt, _wanted)
+    if not _wanted
+        message('Compiling without ' + _opt.to_upper())
+    else
+        message('Using bundled ' + _opt.to_upper())
+        # inside the folder we add the source files, include dirs
+        # and we need to set the variable 'with_name' to true or false
+        # depending also on the other required libraries
+        subdir(_opt)
+    endif
 endforeach
 
 optional_deps += _bundled
