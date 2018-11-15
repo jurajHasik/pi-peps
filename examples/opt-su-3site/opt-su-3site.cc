@@ -13,7 +13,7 @@
 //#include "simple-update_v2.h"
 #include "itensor/all.h"
 #include "itensor-svd-solvers.h"
-//#include "rsvd-solver.h"
+#include "rsvd-solver.h"
 
 using namespace itensor;
 
@@ -232,14 +232,14 @@ int main( int argc, char *argv[] ) {
     Cluster evCls = cls;
     absorbWeightsToSites(evCls);
 
-    std::unique_ptr<SvdSolver> pBaseSolver;
-    //if (env_SVD_METHOD == "rsvd") {
-    //    pBaseSolver = std::make_unique<RsvdSolver>();
-    //} else {
-        pBaseSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
-    //}
+    std::unique_ptr<SvdSolver> pSvdSolver;
+    if (env_SVD_METHOD == "rsvd") {
+        pSvdSolver = std::make_unique<RsvdSolver>();
+    } else {
+        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
+    }
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, *pBaseSolver,
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, *pSvdSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,

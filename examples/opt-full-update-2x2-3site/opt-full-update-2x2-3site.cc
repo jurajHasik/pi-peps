@@ -10,7 +10,7 @@
 #include "mpo.h"
 #include "models.h"
 #include "engine.h"
-// #include "rsvd-solver.h"
+#include "rsvd-solver.h"
 #include "linsyssolvers-lapack.h"
 
 using namespace itensor;
@@ -336,13 +336,15 @@ int main( int argc, char *argv[] ) {
     }
     cls.simParam = jsonCls;
 
+    // ***** Select SVD solver to use *****************************************
     std::unique_ptr<SvdSolver> pSvdSolver;
-    // if (env_SVD_METHOD == "rsvd") {
-    //     pBaseSolver = std::make_unique<RsvdSolver>();
-    // } else {
+    if (env_SVD_METHOD == "rsvd") {
+        pSvdSolver = std::make_unique<RsvdSolver>();
+    } else {
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
-    // }
+    }
 
+    // ***** Select LinSys solver to use **************************************
     std::unique_ptr<LinSysSolver> pLinSysSolver;
     if (linsolver == "cholesky") {
         pLinSysSolver = std::unique_ptr<CholeskySolver>(new CholeskySolver());
