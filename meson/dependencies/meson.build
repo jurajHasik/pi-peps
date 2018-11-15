@@ -4,7 +4,7 @@ subdir('itensor')
 # must have the same name of the option in meson_options.txt
 # and the folder must have the same name
 # 
-optional_deps = ['arpack','mkl', 'rsvd']
+optional_deps = ['arpack','mkl']
 
 foreach _opt : optional_deps
 
@@ -29,3 +29,16 @@ foreach _opt : optional_deps
     endif
 endforeach
 
+# here we set the variables for bundled dependendencies
+# used for generating the config file
+# the source files and headers are managed in the proper
+# subdir of bundled
+_bundled = ['rsvd']
+
+foreach _opt : _bundled
+    _wanted = get_option(_opt)
+    message(_opt.to_upper() + 'feature: '+ '@0@'.format(_wanted))
+    set_variable('with_'+_opt, _wanted)
+endforeach
+
+optional_deps += _bundled

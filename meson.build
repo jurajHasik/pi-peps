@@ -23,6 +23,9 @@ subdir('include')
 # populate the variable source_files
 subdir('src')
 
+# deal with bundled dependencies
+subdir('bundled')
+
 # dependencies and configurations
 # populate the variable deps with all the dependencies
 subdir('meson')

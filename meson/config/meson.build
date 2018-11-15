@@ -10,3 +10,5 @@ configure_file(output: short_name+'_config.h',
                input: 'config.h.in',
                configuration: _cdata,
                install: true)
+
+include_dirs += include_directories('.')

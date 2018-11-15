@@ -1,3 +1,7 @@
+#include "peps_config.h"
+
+#ifdef PEPS_WITH_RSVD
+
 #include "rsvd-solver.h"
 
 namespace itensor {
@@ -94,3 +98,4 @@ RsvdSolver::solve(
 }
 
 } // namespace itensor
+#endif

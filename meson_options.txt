@@ -2,7 +2,7 @@ option('build-examples', type: 'boolean', value: true)
 
 # TODO these should become type feature
 
-# external dependendencies:
+########### external dependendencies:
 # one option with `library_name`, type boolean
 # one option with `library_name-dir`, type string
 
@@ -18,7 +18,9 @@ option('itensor-dir', type: 'string', value: '')
 option('arpack', type: 'boolean', value: false)
 option('arpack-dir', type: 'string', value: '')
 
-# rsvd
+####### end of external dependencies
+
+
+# rsvd (bundled)
 option('rsvd', type: 'boolean', value: false)
-option('rsvd-dir', type: 'string', value: '')
 
