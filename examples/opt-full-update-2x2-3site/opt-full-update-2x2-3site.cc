@@ -107,6 +107,7 @@ int main( int argc, char *argv[] ) {
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
     auto rsvd_power   = jsonCls.value("rsvd_power",2);
     auto rsvd_reortho = jsonCls.value("rsvd_reortho",1);
+    auto rsvd_oversampling = jsonCls.value("rsvd_oversampling",10);
 	int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
     int arg_obsMaxIter = jsonCls.value("obsMaxIter",arg_maxInitEnvIter);
@@ -346,7 +347,7 @@ int main( int argc, char *argv[] ) {
     std::unique_ptr<SvdSolver> pSvdSolver;
     if (env_SVD_METHOD == "rsvd") {
         pSvdSolver = std::make_unique<RsvdSolver>();
-    } else if (env_SVD_METHOD == "rsvd" || env_SVD_METHOD == "gesdd") {
+    } else if (env_SVD_METHOD == "gesdd" || env_SVD_METHOD == "itensor") {
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     } else {
         std::cout<<"WARNING: Unsupported or no SvdSolver specified."
@@ -372,6 +373,7 @@ int main( int argc, char *argv[] ) {
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
          "rsvd_reortho",rsvd_reortho,
+         "rsvd_oversampling",rsvd_oversampling,
          "dbg",arg_envDbg,"dbgLevel",arg_envDbgLvl});
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
