@@ -5,11 +5,12 @@
 #define __FULL_UPDT_TEST_H_
 
 #include "full-update.h"
+#include "itensor-linsys-solvers.h"
 #include "nr3.h"
 #include "linbcg.h"
 #include "mins.h"
 #include "mins_ndim.h"
-#include "itensor-linsys-solvers.h"
+
 
 itensor::Args fullUpdate_COMB_INV(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
@@ -121,8 +122,10 @@ struct FuncALS_CG {
 // 	itensor::Args const& args = itensor::Args::global());
 
 // using CG implemented by ITensor
-itensor::Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+itensor::Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, 
+	CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
+	itensor::LinSysSolver const& solver,
 	itensor::Args const& args = itensor::Args::global());
 
 // itensor::Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,

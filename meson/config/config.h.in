@@ -1,0 +1,10 @@
+#ifndef _peps_config_h_meson
+#define _peps_config_h_meson
+
+#mesondefine PEPS_WITH_RSVD
+
+#mesondefine PEPS_WITH_MKL
+
+#mesondefine PEPS_WITH_ARPACK
+
+#endif

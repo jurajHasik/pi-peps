@@ -1,6 +1,10 @@
 #ifndef _ITENSOR_CUSTOM_SOLVERS_RSVD_H
 #define _ITENSOR_CUSTOM_SOLVERS_RSVD_H
 
+#include "peps_config.h"
+
+#ifdef PEPS_WITH_RSVD
+
 #include "itensor-svd-solvers.h"
 #include "rank_revealing_algorithms_intel_mkl.h"
 
@@ -39,5 +43,7 @@ struct RsvdSolver : SvdSolver {
 };
 
 } // namespace itensor
+
+#endif // PEPS_WITH_RSVD
 
 #endif

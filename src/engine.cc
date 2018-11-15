@@ -1160,6 +1160,37 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model) {
     return nullptr;
 }
 
+std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model, 
+    LinSysSolver * solver) {
+
+    std::string arg_modelType = json_model["type"].get<std::string>();
+
+    std::unique_ptr<Engine> pE;
+    if(arg_modelType == "J1J2") {
+        pE = buildEngine_J1J2(json_model);
+    } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
+        pE = buildEngine_NNH_2x2Cell_Ladder(json_model);
+    // } else if (arg_modelType == "Ising") {
+    //     return getModel_Ising(json_model);
+    } else if (arg_modelType == "Ising3Body") {
+        pE = buildEngine_ISING3BODY(json_model);
+    // } else if (arg_modelType == "NNH_2x2Cell_AB") {
+    //     return getModel_NNH_2x2Cell_AB(json_model);
+    } else if (arg_modelType == "NNH_2x2Cell_ABCD") {
+        pE = buildEngine_NNH_2x2Cell_ABCD(json_model);
+    // } else if (arg_modelType == "Ising_2x2Cell_ABCD") {
+    //     return getModel_Ising_2x2Cell_ABCD(json_model);
+    } else if (arg_modelType == "IDENTITY") {
+        pE = buildEngine_IDENTITY(json_model);
+    } else {
+        std::cout<<"Unsupported model: "<< arg_modelType << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    pE->pSolver = solver;
+    return pE;
+}
+
 template<class T>
 Args TrotterEngine<T>::performSimpleUpdate(Cluster & cls, Args const& args) 
 {
@@ -1209,7 +1240,7 @@ template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
     std::cout<<"Current index: "<< gi << std::endl;
 
     return fullUpdate_ALS3S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], args);
+        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
 }
 
 template<> Args TrotterEngine<OpNS>::performFullUpdate(

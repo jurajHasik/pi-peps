@@ -236,7 +236,7 @@ int main( int argc, char *argv[] ) {
     //if (env_SVD_METHOD == "rsvd") {
     //    pBaseSolver = std::make_unique<RsvdSolver>();
     //} else {
-        pBaseSolver = std::make_unique<SvdSolver>();
+        pBaseSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     //}
 
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, *pBaseSolver,

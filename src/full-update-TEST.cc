@@ -2826,9 +2826,10 @@ void FuncALS_CG::df(VecDoub_I &x, VecDoub_O &deriv) {
 
 //-----------------------------------------------------------------------------
 
-// ***** PRUDCTION ALS over 3 sites, BiCG with ITensor
+// ***** PRODCTION ALS over 3 sites, BiCG with ITensor
 Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
+	LinSysSolver const& ls,
 	Args const& args) {
  
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
@@ -3351,7 +3352,7 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
 		auto temp = eA;
 		FULSCG_IT fulscg(M,K,eA,cmbX1, combiner(iQA, prime(aux[0],pl[1])), args );
-		fulscg.solve(K, eA, fiter, ferr, args);
+		fulscg.solve(K, eA, fiter, ferr, ls, args);
 		
 		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
 		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
@@ -3414,7 +3415,7 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
 		temp = eB;
 		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), args );
-		fulscgEB.solve(K, eB, fiter, ferr, args);
+		fulscgEB.solve(K, eB, fiter, ferr, ls, args);
 		
 		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
 		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
@@ -3478,7 +3479,7 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 		temp = eD;
 
 		FULSCG_IT fulscgED(M,K,eD,cmbX3, combiner(iQD, prime(aux[2],pl[4])), args );
-		fulscgED.solve(K, eD, fiter, ferr, args);
+		fulscgED.solve(K, eD, fiter, ferr, ls, args);
 
 		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
 		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
@@ -3915,6 +3916,61 @@ void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter
 		std::cout<<"[FULSCG_IT::solve] Unsupported solver: "<< solver <<std::endl;
 		exit(EXIT_FAILURE);
 	}
+}
+
+void FULSCG_IT::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err, 
+	LinSysSolver const& ls, Args const& args) {
+
+	std::vector<Index> iket;
+	for (auto const& i : M.inds()) {
+		if (i.primeLevel() < 4) iket.emplace_back(i);
+	}
+	auto pI = findtype(B,PHYS);
+	iket.emplace_back(pI);
+	cmbKet = combiner(iket);
+
+	M *= delta(pI,prime(pI,4));
+	M = (cmbKet * M) * prime(cmbKet,4);
+	
+	B.prime(PHYS,4);
+	B *= prime(cmbKet,4);
+	B.prime(-4);
+	
+	x *= cmbKet;
+	x.prime(4);
+
+	PrintData(M);
+	PrintData(B);
+	Print(x);
+
+	auto bi = B.inds()[0];
+	auto xi = x.inds()[0];
+	B *= delta(bi,xi);
+	x *= delta(xi,bi);
+	
+	ls.solve(M,B,x,args);
+
+	B *= delta(bi,xi);
+	x *= delta(xi,bi);
+
+	PrintData(B);
+	PrintData(M*x-B);
+
+	x.prime(-4);
+	x *= cmbKet;
+	
+	B.prime(combinedIndex(cmbKet),4);
+	B *= prime(cmbKet,4);
+	B.prime(PHYS,-4);	
+	
+	PrintData(x);
+
+	M = (cmbKet * M) * prime(cmbKet,4);
+
+	ITensor temp(pI,prime(pI,4));
+	temp.fill(0.0);
+	temp.set(pI(1),prime(pI,4)(1),1.0);
+	M *= temp;
 }
 
 //-----------------------------------------------------------------------------

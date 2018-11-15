@@ -11,7 +11,7 @@
 #include "models.h"
 #include "engine.h"
 // #include "rsvd-solver.h"
-// #include "linsyssolvers-lapack.h"
+#include "linsyssolvers-lapack.h"
 
 using namespace itensor;
 
@@ -64,7 +64,7 @@ int main( int argc, char *argv[] ) {
     // Iterative ALS procedure
     double epsdistf = jsonCls.value("epsdistf",1.0e-8);
     auto json_als_params(jsonCls["als"]);
-    std::string solver = json_als_params.value("solver","UNSUPPORTED");
+    std::string linsolver = json_als_params.value("solver","UNSUPPORTED");
     bool solver_dbg    = json_als_params.value("dbg",false);
     double epsregularisation = json_als_params.value("epsregularisation",1.0e-8);
 
@@ -162,12 +162,12 @@ int main( int argc, char *argv[] ) {
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
         // TEST - add small elements instead of 0
-        double eps = initStateNoise;
-        auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
-        A.apply(addEpsilon);
-        B.apply(addEpsilon);
-        C.apply(addEpsilon);
-        D.apply(addEpsilon);
+        //double eps = initStateNoise;
+        //auto addEpsilon = [&eps](Real r) { return (std::abs(r) > eps) ? r : r + eps; };
+        //A.apply(addEpsilon);
+        //B.apply(addEpsilon);
+        //C.apply(addEpsilon);
+        //D.apply(addEpsilon);
 
         cls.aux  = {aIA, aIB, aIC, aID};
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
@@ -335,16 +335,26 @@ int main( int argc, char *argv[] ) {
         // ----- END DEFINE CLUSTER ------------------------------------
     }
     cls.simParam = jsonCls;
-    
-    std::unique_ptr<SvdSolver> pBaseSolver;
+
+    std::unique_ptr<SvdSolver> pSvdSolver;
     // if (env_SVD_METHOD == "rsvd") {
     //     pBaseSolver = std::make_unique<RsvdSolver>();
     // } else {
-        pBaseSolver = std::make_unique<SvdSolver>();
+        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     // }
 
+    std::unique_ptr<LinSysSolver> pLinSysSolver;
+    if (linsolver == "cholesky") {
+        pLinSysSolver = std::unique_ptr<CholeskySolver>(new CholeskySolver());
+    } else if (linsolver == "pseudoinverse") {
+        pLinSysSolver = std::unique_ptr<PseudoInvSolver>(new PseudoInvSolver());
+    } else {
+        std::cout<<"WARNING: Unsupported LinSysSolver specified. Using default"<<std::endl;
+        pLinSysSolver = std::unique_ptr<PseudoInvSolver>(new PseudoInvSolver());
+    }
+    
     // INITIALIZE ENVIRONMENT
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pBaseSolver,
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
@@ -412,7 +422,7 @@ int main( int argc, char *argv[] ) {
     // std::vector< std::vector<int> >         tmp_gate_auxInds;
 
     ptr_model =  getModel(json_model_params);
-    ptr_engine = buildEngine(json_model_params);
+    ptr_engine = buildEngine(json_model_params, pLinSysSolver.get() );//, *pLinSysSolver);
     
     if (ptr_engine) { 
         std::cout<<"Valid Engine constructed"<<std::endl;
@@ -457,7 +467,7 @@ int main( int argc, char *argv[] ) {
         "fuIsoInit",arg_fuIsoInit,
         "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
 
-        "solver",solver,
+        "solver",linsolver,
         "dbg",solver_dbg,
         "epsregularisation",epsregularisation,
 
