@@ -66,10 +66,10 @@ int main( int argc, char *argv[] ) {
     double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
-    auto rsvd_power   = jsonCls.value("rsvd_power",2);
-    auto rsvd_reortho = jsonCls.value("rsvd_reortho",1);
-    auto rsvd_oversampling = jsonCls.value("rsvd_reortho",10);
-    int arg_maxEnvIter = json_ctmrg_params["maxEnvIter"].get<int>();
+    auto rsvd_power   = json_ctmrg_params.value("rsvd_power",2);
+    auto rsvd_reortho = json_ctmrg_params.value("rsvd_reortho",1);
+    auto rsvd_oversampling = json_ctmrg_params.value("rsvd_oversampling",10);
+    int arg_maxEnvIter     = json_ctmrg_params["maxEnvIter"].get<int>();
     int arg_maxInitEnvIter = json_ctmrg_params["initMaxEnvIter"].get<int>();
     double arg_envEps  = json_ctmrg_params["envEpsilon"].get<double>();
     bool arg_reinitEnv = json_ctmrg_params["reinitEnv"].get<bool>();

@@ -39,7 +39,7 @@ RsvdSolver::solve(
         throw std::runtime_error("SVD (ref version), wrong size of D");
 #endif
 
-    auto maxm       = args.getInt("Maxm",Mr);
+    auto maxm         = args.getInt("Maxm",Mr);
 	auto rsvd_power   = args.getInt("rsvd_power",2);
 	auto rsvd_reortho = args.getInt("rsvd_reortho",1);
 	auto rsvd_oversampling= args.getInt("rsvd_oversampling",10);
