@@ -2833,22 +2833,12 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 	Args const& args) {
  
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
-    auto dbg = args.getBool("fuDbg",false);
+    auto dbg    = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
-    auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
+    auto symmProtoEnv   = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
-    auto solver   = args.getString("solver","UNSUPPORTED");
-    auto epsdistf = args.getReal("epsdistf",1.0e-8);
-
- 
- //    auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
-	// auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
-	// auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
-	// auto cg_gradientNorm_eps = args.getReal("cgGradientNormEps",1.0e-8);
-	// auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-15);
-	// auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
-
-    auto dynamicEps = args.getBool("dynamicEps",false);   
+    auto epsdistf   = args.getReal("epsdistf",1.0e-8);
+    auto linsolver  = args.getString("linsolver","default");
     auto otNormType = args.getString("otNormType");
 
     double machine_eps = std::numeric_limits<double>::epsilon();
@@ -3018,7 +3008,7 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 
 		// Prepare corner of A
 		// ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
-		ITensor tempC = (pc[0] * QA); 
+		ITensor tempC = (pc[0] * QA);
 		tempC *= prime(conj(QA), AUXLINK, 4);
 
 		if(dbg && (dbgLvl >=3)) Print(tempC);
@@ -3147,7 +3137,7 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 				} 
 			}
 			
-			// estimate codition number
+			// TODO? estimate codition number
 			// condNum = ( std::abs(nval/mval) > svd_cutoff ) ? std::abs(mval/nval) : 1.0/svd_cutoff ;
 			condNum = mval / nval;
 
