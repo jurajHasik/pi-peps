@@ -3292,7 +3292,6 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
   	int altlstsquares_iter = 0;
 	bool converged = false;
 	std::vector<bool> als_tensor_stop(3, false);
-	if (dynamicEps) epsdistf = std::max(epsdistf, condNum * machine_eps);
   	std::vector<double> fdist, fdistN, vec_normPsi;
   	std::cout<<"ENTERING ALS LOOP tol: "<< epsdistf <<" solver: "<< linsolver <<std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
