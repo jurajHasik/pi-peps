@@ -108,7 +108,7 @@ void PseudoInvSolver::solve(
       	ITensor & X,
       	Args const& args) const
  	{
-    	double machine_eps = std::numeric_limits<double>::epsilon();
+    double machine_eps = std::numeric_limits<double>::epsilon();
 		auto dbg = args.getBool("dbg",false);
 		auto dbgLvl = args.getInt("dbgLevel",0);
 		auto svd_cutoff = args.getReal("pseudoInvCutoff",machine_eps);
@@ -118,7 +118,6 @@ void PseudoInvSolver::solve(
 			std::cout<<"[PseudoInvSolver::solve] called"<<std::endl;
 			std::cout << "svd_cutoff = " << svd_cutoff << std::endl;
 		}
-		PrintData(A);
 
 		auto const i0 = A.inds()[0];
 		auto const i1 = A.inds()[1];
