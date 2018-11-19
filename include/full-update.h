@@ -12,6 +12,7 @@
 #include "ctm-cluster-global.h"
 #include "ctm-cluster.h"
 #include "su2.h"
+#include "itensor-linsys-solvers.h"
 #include "itensor/all.h"
 
 const int IOFFSET = 100;
@@ -125,18 +126,10 @@ itensor::Args fullUpdate(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	std::vector< itensor::ITensor > & iso_store, 
 	itensor::Args const& args = itensor::Args::global());
 
-itensor::Args fullUpdate_2site(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl,
-	std::vector< itensor::ITensor > & iso_store, 
-	itensor::Args const& args = itensor::Args::global());
-
-itensor::Args fullUpdate_2site_v2(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl,
-	std::vector< itensor::ITensor > & iso_store, 
-	itensor::Args const& args = itensor::Args::global());
-
-itensor::Args fullUpdate_2site_PINV(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
+itensor::Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls,
+	CtmEnv const& ctmEnv,
 	std::vector<std::string> const& tn, std::vector<int> pl,
+	itensor::LinSysSolver const& ls,
 	itensor::Args const& args = itensor::Args::global());
 
 #endif

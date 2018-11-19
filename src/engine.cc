@@ -1219,8 +1219,8 @@ template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
 
     auto gi = td.nextCyclicIndex();
 
-    return fullUpdate_2site_PINV(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], args);
+    return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
 }
 
 template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
@@ -1229,7 +1229,7 @@ template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
     auto gi = td.nextCyclicIndex();
     std::cout<<"Current index: "<< gi << std::endl;
 
-    return fullUpdate_ALS3S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    return fullUpdate_ALS3S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
 }
 

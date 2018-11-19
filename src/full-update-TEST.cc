@@ -2827,7 +2827,7 @@ void FuncALS_CG::df(VecDoub_I &x, VecDoub_O &deriv) {
 //-----------------------------------------------------------------------------
 
 // ***** PRODCTION ALS over 3 sites, BiCG with ITensor
-Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	LinSysSolver const& ls,
 	Args const& args) {
@@ -2848,6 +2848,8 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 
     // prepare to hold diagnostic data
     Args diag_data = Args::global();
+    std::vector<ITensor> orig_tensors = { cls.sites.at(tn[0]), cls.sites.at(tn[1]),
+    	cls.sites.at(tn[2]) };
 
 	if(dbg) {
 		std::cout<<"GATE: ";
@@ -3502,12 +3504,14 @@ Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv cons
 	cls.sites.at(tn[2]) = QD * eD;
 
 	// max element of on-site tensors
+	// or norm-distance of new versus original tensors
 	std::string diag_maxElem;
 	for (int i=0; i<4; i++) {
 		m = 0.;
-		cls.sites.at(tn[i]).visit(max_m);
+		// cls.sites.at(tn[i]).visit(max_m);
+		if (i<3) m = norm(cls.sites.at(tn[i]) - orig_tensors[i]);
 		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
-		if (i < 3) diag_maxElem +=  " ";
+		if (i<3) diag_maxElem +=  " ";
 	}
 	std::cout << diag_maxElem << std::endl;
 

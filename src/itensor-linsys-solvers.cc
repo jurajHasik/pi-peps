@@ -4,7 +4,7 @@ namespace itensor {
 
 template<typename T>
 void
-linsystemImpl(ITensor & A, 
+linsystemImpl(ITensor & A,
           	  ITensor & B,
           	  ITensor & X,
           	  LinSysSolver const& solver,
@@ -25,11 +25,11 @@ linsystemImpl(ITensor & A,
     	std::cout<<"[linsystemImpl] indices of B: "<< ib << std::endl;
     }
 
-	Vec<T> XX;
+    Vec<T> XX;
     auto RA = toMatRefc<T>(A,active,dummy);
 
     auto extractT = [](Dense<T> const& d) { return d.store; };
-	auto storageB = applyFunc(extractT,B.store());
+	  auto storageB = applyFunc(extractT,B.store());
     auto RB = makeVecRef<T>(storageB.data(), storageB.size());
     
     // o--A--a--X = o--B
@@ -43,8 +43,8 @@ linsystemImpl(ITensor & A,
     X *= combX;
     X *= delta(combinedIndex(combX),active);
     if (dbg) {
-    	std::cout<<"[linsystemImpl] combX: "<< combX;
-    	PrintData(X);
+    	 std::cout<<"[linsystemImpl] combX: "<< combX;
+    	 PrintData(X);
     }
 }
 

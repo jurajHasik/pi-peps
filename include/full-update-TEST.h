@@ -122,10 +122,10 @@ struct FuncALS_CG {
 // 	itensor::Args const& args = itensor::Args::global());
 
 // using CG implemented by ITensor
-itensor::Args fullUpdate_ALS3S_LSCG_IT(MPO_3site const& uJ1J2, Cluster & cls, 
+itensor::Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, 
 	CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
-	itensor::LinSysSolver const& solver,
+	itensor::LinSysSolver const& ls,
 	itensor::Args const& args = itensor::Args::global());
 
 // itensor::Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,

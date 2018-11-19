@@ -64,7 +64,7 @@ void
 linsystem(ITensorT<I> A,
           ITensorT<I> B,
           ITensorT<I> & X,
-          LinSysSolver & solver,
+          LinSysSolver const& solver,
           Args const& args = Args::global());
 
 template<class I>
@@ -72,11 +72,11 @@ void
 linsystem(ITensorT<I> A,
           ITensorT<I> B,
           ITensorT<I> & X,
-          LinSysSolver & solver,
+          LinSysSolver const& solver,
           Args const& args)
 {
     //if(!args.defined("IndexName")) args.add("IndexName","ind_x");
-    auto dbg = args.getBool("dbg",false);
+    auto dbg   = args.getBool("dbg",false);
 
     // Ax = b: we expect indices of A to be in in two groups, i0,i1 where
     // indices i0--A--i1--x = i0--B.
@@ -104,10 +104,12 @@ linsystem(ITensorT<I> A,
     B *= cmbB;
 
     if (dbg) {
+	  std::cout<<"[linsystem] "<< cmbB;
+	  std::cout<<"[linsystem] "<< cmbX;
+	  std::cout<<"[linsystem] ";
+      Print(A);
       std::cout<<"[linsystem] ";
-      PrintData(A);
-      std::cout<<"[linsystem] ";
-      PrintData(B);
+      Print(B);
       std::cout<<"[linsystem] ";
       Print(X);
     }
