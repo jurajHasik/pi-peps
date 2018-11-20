@@ -1847,8 +1847,9 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	}
 	t_end_int = std::chrono::steady_clock::now();
 
-	for (int i=0; i < fdist.size(); i++) std::cout <<"STEP "<< i <<"||psi'>-|psi>|^2: "
-		<< fdist[i] << std::endl;
+	std::cout<<"STEP f=||psi'>-|psi>|^2 normalized(f) norm(psi') norm(psi)"<< std::endl;
+	for (int i=0; i < fdist.size(); i++) std::cout<< i <<" "<< fdist[i] <<" "
+		<< fdistN[i]<<" "<< vec_normPsi[i]<<" "<< normUPsi << std::endl;
 
 	// BALANCE tensors
 	double iso_tot_mag = 1.0;

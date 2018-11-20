@@ -79,7 +79,10 @@ linsystem(ITensorT<I> A,
     auto dbg   = args.getBool("dbg",false);
 
     // Ax = b: we expect indices of A to be in in two groups, i0,i1 where
-    // indices i0--A--i1--x = i0--B.
+    // indices i0--A--i1--x = i0--B. 
+    // TODO For every index in i0, there is an
+    // a corresponding index in i1, with primelevel difference pdiff passed
+    // as an argument in args
 
     // Find matching indices of A and B
     std::vector<I> mi; mi.reserve(rank(B));
