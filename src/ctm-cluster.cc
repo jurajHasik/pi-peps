@@ -1,6 +1,6 @@
 #include "ctm-cluster.h"
 
-using namespace itensor; 
+using namespace itensor;
 
 void initClusterSites(Cluster & c, bool dbg) {
     // reset
@@ -360,6 +360,14 @@ std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, in
     std::pair<int,int> res(s);
     mvSite(c, res, dir);
     return res;
+}
+
+std::ostream& operator<<(std::ostream& os, Shift const& s) {
+    return os <<"Shift("<<s.d[0]<<" "<<s.d[1]<<")";
+}
+
+std::ostream& operator<<(std::ostream& os, Vertex const& v) {
+    return os <<"Vertex("<<v.r[0]<<" "<<v.r[1]<<")";
 }
 
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
