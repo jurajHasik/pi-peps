@@ -37,7 +37,9 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
     {
         cluster.cToS[ make_pair( mapEntry["x"].get<int>(),
             mapEntry["y"].get<int>() ) ] = mapEntry["siteId"].get<string>();
-    }
+        cluster.vToId[ Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]
+            = mapEntry["siteId"].get<string>();
+    }   
 
     for( const auto& siteIdEntry : jsonCls["siteIds"].get < vector<string> >() )
     {
