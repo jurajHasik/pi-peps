@@ -31,6 +31,8 @@ const auto PHYS    = itensor::IndexType(TAG_IT_PHYSSITE);
 struct Shift {
     std::array<int, 2> d;
 
+    Shift() : d({0,0}) {}
+
     Shift(int dx, int dy) : d({dx,dy}) {}
 
     bool operator== (const Shift &s) const {
@@ -150,8 +152,10 @@ struct Cluster {
     std::map< std::string, itensor::ITensor > old_weights;
 
     // Implements Boundary condition of cluster by derived class
+    // default assumes simple PBC
     std::string virtual vertexToId(Vertex const& v) const { 
-        return vToId.at(v); 
+        auto elemV = Vertex(v.r[0] % lX, v.r[1] % lY);
+        return vToId.at(elemV); 
     }
 
     itensor::ITensor const& getSiteRefc(Vertex const& v) const {
