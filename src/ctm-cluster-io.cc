@@ -32,7 +32,9 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
 
     cluster.sizeN = jsonCls["sizeN"].get<int>();
     cluster.sizeM = jsonCls["sizeM"].get<int>();
-    
+    cluster.lX = cluster.sizeM;
+    cluster.lY = cluster.sizeN;
+
     for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
     {
         cluster.cToS[ make_pair( mapEntry["x"].get<int>(),
