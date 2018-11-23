@@ -2,3 +2,5 @@ _snippets/
 *.swp
 *.o
 *.x
+subprojects/*
+!*.wrap
