@@ -9,6 +9,7 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
+#include "ctm-cluster.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-global.h"
 #include "itensor-svd-solvers.h"
@@ -130,6 +131,9 @@ class CtmEnv
    
     // aux indices of environment tensors (of auxEnvDim == x)
     itensor::Index I_U, I_R, I_D, I_L;
+    // vector indexes combiners 0 1 2 3 in respect to four directions on
+    // lattice L, U, R, D
+    std::map< std::string, std::vector<itensor::ITensor> > CMB;
 
     // aux bond indices of sites ( of auxBondDim == d)
     itensor::Index I_XH, I_XV;
@@ -216,6 +220,11 @@ class CtmEnv
     // ########################################################################
     // isometries
     
+    void computeIsometries(unsigned int direction, Cluster const& c,
+        itensor::Index & ip, itensor::Index & ipt, 
+        std::vector<itensor::ITensor> & P, 
+        std::vector<itensor::ITensor> & Pt);
+
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
     std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,
         std::vector<double> & accT, bool dbg = false);
@@ -239,6 +248,9 @@ class CtmEnv
     //                                                 4|3
     itensor::ITensor build_corner(char corner, int col, int row,
         bool dbg = false) const;
+
+    itensor::ITensor build_corner_V2(unsigned int direction, 
+        Cluster const& c, Vertex const& v) const;
 
     // ########################################################################
     // environment normalization methods
