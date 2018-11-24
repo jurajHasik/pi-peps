@@ -9,3 +9,7 @@ test('example',
      executable('example','example.cc',
                 dependencies:[gtest,our_lib_dep])
      )
+test('lin-system',
+     executable('lin-sys','test-lin-sys.cc',
+                dependencies:[gtest,our_lib_dep])
+)

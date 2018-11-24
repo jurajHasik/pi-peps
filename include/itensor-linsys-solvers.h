@@ -77,11 +77,12 @@ linsystem(ITensorT<I> A,
 {
     //if(!args.defined("IndexName")) args.add("IndexName","ind_x");
     auto dbg   = args.getBool("dbg",false);
+    auto dpl   = args.getInt("dpl",1);
 
     // Ax = b: we expect indices of A to be in in two groups, i0,i1 where
     // indices i0--A--i1--x = i0--B. 
     // TODO For every index in i0, there is an
-    // a corresponding index in i1, with primelevel difference pdiff passed
+    // a corresponding index in i1, with primelevel difference dpl passed
     // as an argument in args
 
     // Find matching indices of A and B
@@ -94,9 +95,22 @@ linsystem(ITensorT<I> A,
     // Find matching indices of A and X
     if (not X) throw std::runtime_error("[linsystem] X has no indices");
     std::vector<I> oi; oi.reserve(rank(X));
-    for(const auto& i : X.inds()) {
-    	if (hasindex(A,i)) { oi.emplace_back(i); }
-    	else { throw std::runtime_error("[linsystem] A and X indices do not match"); }
+    // TODO
+    if (args.defined("dpl")) {
+      // order indices of X identicaly to indices on B 
+      if (dbg) std::cout<<"[linsystem] provided dpl: "<< dpl 
+        <<" Ordering indices according to B"<< std::endl;
+      for(const auto& i : B.inds()) {
+        auto tmpi = prime(i,dpl);
+        if (hasindex(A,prime(i,dpl))) { oi.emplace_back(tmpi); }
+        else { throw std::runtime_error("[linsystem] A and X indices do not match"); }
+      }
+    }
+    else {
+      for(const auto& i : X.inds()) {
+    	  if (hasindex(A,i)) { oi.emplace_back(i); }
+    	  else { throw std::runtime_error("[linsystem] A and X indices do not match"); }
+      }
     }
     
     auto cmbX = combiner(std::move(oi), args);
