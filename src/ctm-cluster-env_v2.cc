@@ -56,11 +56,23 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c,
     I_R = Index(TAG_I_R, x, RLINK);
     I_D = Index(TAG_I_D, x, DLINK);
     I_L = Index(TAG_I_L, x, LLINK);
-    
+
     // Define indices between row/column tensors "T_*" and on-site 
     // tensors "X**"
     I_XH = Index(TAG_I_XH, d, HSLINK);
     I_XV = Index(TAG_I_XV, d, VSLINK);
+
+    // Combiners from site AUX indices to I_XH, I_XV
+    int const BRAKET_OFFSET = 4;
+    for ( auto const& id : siteIds ) {
+        CMB[id] = std::vector<ITensor>(4);
+        auto ai = c.aux[c.SI.at(id)];
+            
+        CMB[id][0] = combiner( ai,          prime(ai,  BRAKET_OFFSET), I_XH          );
+        CMB[id][1] = combiner( prime(ai,1), prime(ai,1+BRAKET_OFFSET), I_XV          );
+        CMB[id][2] = combiner( prime(ai,2), prime(ai,2+BRAKET_OFFSET), prime(I_XH,1) );
+        CMB[id][3] = combiner( prime(ai,3), prime(ai,3+BRAKET_OFFSET), prime(I_XV,1) );
+    }
 
     for (std::size_t i=0; i<c.siteIds.size(); i++) {
         // Construct tensors "C_*" for every non-eq cluster site
