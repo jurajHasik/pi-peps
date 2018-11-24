@@ -10,6 +10,10 @@ test('example',
                 dependencies:[gtest,our_lib_dep])
      )
 test('lin-system',
-     executable('lin-sys','test-lin-sys.cc',
+     executable('test-lin-sys','test-lin-sys.cc',
+                dependencies:[gtest,our_lib_dep])
+)
+test('cluster',
+     executable('test-cluster','test-cluster.cc',
                 dependencies:[gtest,our_lib_dep])
 )
