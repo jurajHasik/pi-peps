@@ -43,6 +43,7 @@ our_lib_dep = declare_dependency(dependencies: deps,
 
 subdir('examples')
 
+subdir('tests')
 
 ### generate a .pc file 
 pkg = import('pkgconfig')
