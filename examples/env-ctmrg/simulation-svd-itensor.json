@@ -1,0 +1,45 @@
+{
+	"initBy": "FILE",
+	"physDim": 2,
+	"auxBondDim": 3,
+	"inClusterFile": "RVB_2x2_ABCD.in",
+        "initStateNoise": 1.0e-16,
+	"outClusterFile": "output.in",
+
+	"suGaugeFix": true,
+	"suGaugeFixFreq": 32,
+	"gaugeFix": {
+		"type": "IDENTITY",
+		"gateSeq": "2SITE",
+		"suWeightsInit": "DELTA",
+		"suIter": 640,
+		"suDbg": false,
+		"suDbgLevel": 0
+	},
+
+	"model": {
+		"type": "NNH_2x2Cell_ABCD",
+		"tau": 0.1,
+		"J1": 1.0,
+		"alpha": 0.0,
+		"del": 1.0,
+		"J2": 0.0,
+		"h": 0.0,
+		"LAMBDA": 0.0
+	},
+
+	"ctmrg": {
+		"auxEnvDim": 50,
+		"ioEnvTag": "test-env-2x2",
+		"initEnvType": "INIT_ENV_ctmrg",
+		"envIsComplex": false,
+		"isoType": "ISOMETRY_T3",
+		"env_SVD_METHOD": "itensor",
+		"isoPseudoInvCutoff": 1.0e-8,
+		"normType": "NORM_BLE",
+		"maxEnvIter": 50,
+		"envEpsilon": 1.0e-7,
+		"dbg": false,
+		"dbgLvl": 0
+	}
+}
