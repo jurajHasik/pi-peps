@@ -96,6 +96,11 @@ int main( int argc, char *argv[] ) {
     out_file_energy.precision( std::numeric_limits< double >::max_digits10 );
     out_file_diag.precision( std::numeric_limits< double >::max_digits10 );
 
+    using time_point = std::chrono::steady_clock::time_point;
+    time_point t_iso_begin, t_iso_end;
+    auto get_s = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1.0e+06; };
+
     // Diagnostic data
     std::vector<int> diag_ctmIter;
     std::vector< Args > diagData_ctmrg;
@@ -104,7 +109,7 @@ int main( int argc, char *argv[] ) {
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
 
     std::vector<double> accT(8,0.0); // holds timings for CTM moves
-    std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+    time_point t_begin_int, t_end_int;
     // *****
 
     // ***** INITIALIZE ENVIRONMENT *******************************************
@@ -172,14 +177,14 @@ int main( int argc, char *argv[] ) {
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_singleDirection(0, cls);
-        ctmEnv.move_singleDirection(0, cls);
-        ctmEnv.move_singleDirection(1, cls);
-        ctmEnv.move_singleDirection(1, cls);
-        ctmEnv.move_singleDirection(2, cls);
-        ctmEnv.move_singleDirection(2, cls);
-        ctmEnv.move_singleDirection(3, cls);
-        ctmEnv.move_singleDirection(3, cls);
+        ctmEnv.move_singleDirection(0, cls, accT);
+        ctmEnv.move_singleDirection(0, cls, accT);
+        ctmEnv.move_singleDirection(1, cls, accT);
+        ctmEnv.move_singleDirection(1, cls, accT);
+        ctmEnv.move_singleDirection(2, cls, accT);
+        ctmEnv.move_singleDirection(2, cls, accT);
+        ctmEnv.move_singleDirection(3, cls, accT);
+        ctmEnv.move_singleDirection(3, cls, accT);
 
         // ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
         // ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
@@ -187,9 +192,7 @@ int main( int argc, char *argv[] ) {
         // ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
 
         t_end_int = std::chrono::steady_clock::now();
-        std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
-                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] "; 
+        std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
 
         // CHECK CONVERGENCE
         if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
@@ -204,10 +207,8 @@ int main( int argc, char *argv[] ) {
 
             t_end_int = std::chrono::steady_clock::now();
 
-            std::cout<<" || E in T: "<< std::chrono::duration_cast
-                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                << e_curr[3]; 
+            std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
+                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
 
             // if the difference between energies along NN links is lower then arg_envEps
             // consider the environment converged
@@ -282,8 +283,10 @@ int main( int argc, char *argv[] ) {
         std::cout << std::endl;
     }
     // ***** CTMRG DONE **************************************
+    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
     std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
         <<" "<< accT[3] << std::endl;
+    std::cout <<"Timings(Projectors) :"<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
 
@@ -295,11 +298,9 @@ int main( int argc, char *argv[] ) {
     t_begin_int = std::chrono::steady_clock::now();
     ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
     t_end_int = std::chrono::steady_clock::now();
-    std::cout << "Observables computed in T: "<< std::chrono::duration_cast
-            <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            <<" [sec] "<< std::endl;
+    std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
+        <<" [sec] "<< std::endl;
     
-
     // FINISHED
     std::cout <<"FINISHED"<< std::endl;
 }
