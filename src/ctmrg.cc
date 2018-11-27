@@ -27,8 +27,14 @@ using namespace itensor;
 
 // Define map for direction to tensors needed for the move
 
-void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
+void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c,
+	std::vector<double> & accT) 
+{
 	int const BRAKET_OFFSET = 4;
+	using time_point = std::chrono::high_resolution_clock::time_point;
+	time_point t_iso_begin, t_iso_end;
+	auto get_mS = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1000.0; };
 
 	Shift shift, p_shift;
  	switch (direction) {
@@ -42,11 +48,15 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
  	// map C T C according to selected direction	
  	// to Cu T Cv where u,v 1,2 or 2,3 or 3,4 or 4,1
 
+ 	t_iso_begin = std::chrono::high_resolution_clock::now();
  	Index ip, ipt, ia;
  	std::vector<ITensor> P, Pt;
-	computeIsometries(direction, c, ip, ipt, ia, P, Pt);
+	computeIsometries(direction, c, ip, ipt, ia, P, Pt, accT);
+	t_iso_end = std::chrono::high_resolution_clock::now();
+    accT[0] += get_mS(t_iso_begin, t_iso_end);
 
-	// copy current C,T,C for each X O(x^2) + O(x^2 D^2)
+
+	// copy current C,T,C for each X O(x^2) + O(x^2 auxBondDim^2)
 	// depending on the direction
 
 	// clockwise
@@ -97,6 +107,7 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
 
 	// iterate over pairs (Vertex, Id) within elementary cell of cluster
 	// Id identifies tensor belonging to Vertex
+	t_iso_begin = std::chrono::high_resolution_clock::now();
 	for (auto const& v_id : c.vToId) {
 		Vertex const& v = v_id.first;
 		std::string id  = v_id.second;
@@ -153,8 +164,12 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
 
 		// (dbg) Print(nC[shifted_pos]); Print(nT[shifted_pos]); Print(nCt[shifted_pos]);
 	}
+	t_iso_end = std::chrono::high_resolution_clock::now();
+	accT[1] += get_mS(t_iso_begin, t_iso_end);
 
 	// Post-process the indices of new environment tensors
+	t_iso_begin = std::chrono::high_resolution_clock::now();
+	
 	for (auto & t : nC ) { t *= delta(I[4], I[5]); t *= delta(ipt, I[8]); }
 	for (auto & t : nCt) { t *= delta(I[6], I[7]); t *= delta(ip,  I[9]); }
 	for (auto & t : nT ) { t *= delta(ip, I[8]); t *= delta(ipt, I[9]); }
@@ -214,6 +229,9 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
 	C = nC;
 	T = nT;
 	Ct= nCt;
+
+	t_iso_end = std::chrono::high_resolution_clock::now();
+	accT[3] += get_mS(t_iso_begin, t_iso_end);
 }
 
 
@@ -245,9 +263,14 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c) {
 //
 void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
         Index & ip, Index & ipt, Index & ia,
-        std::vector<ITensor> & P, std::vector<ITensor> & Pt) const
+        std::vector<ITensor> & P, std::vector<ITensor> & Pt,
+        std::vector<double> & accT) const
 {
 	int const BRAKET_OFFSET  = 4;
+	using time_point = std::chrono::steady_clock::time_point;
+	time_point t_iso_begin, t_iso_end;
+	auto get_mS = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1000.0; };
 
 	auto argsSVDRRt = Args(
         "Cutoff",-1.0,
@@ -309,14 +332,19 @@ void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
     	std::string idt = vToId(v+shift);
     	auto da = delta(prime(ap,pl_pi), prime(apt,pl_pti));
 
-
+    	// Compute enlarged corners
+    	t_iso_begin = std::chrono::steady_clock::now();
     	ITensor U, S, V;
     	auto R  = build_corner_V2(corner_i,  c, v);
     	auto Rt = build_corner_V2(corner_it, c, v+shift);
   		R *= da;
   		R *= prime(da,BRAKET_OFFSET);
     	R *= delta(I[0],prime(I[0]));
+    	t_iso_end = std::chrono::steady_clock::now();
+    	accT[4] += get_mS(t_iso_begin,t_iso_end);
 
+    	// truncated SVD
+    	t_iso_begin = std::chrono::steady_clock::now();
     	U = ITensor(I[2], prime(ap,pl_oi), prime(ap,pl_oi+BRAKET_OFFSET));
 	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
 	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
@@ -325,9 +353,13 @@ void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
 	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
 	            << std::endl;
 	    }
+	    t_iso_end = std::chrono::steady_clock::now();
+    	accT[6] += get_mS(t_iso_begin,t_iso_end);
 	    // (dbg) Print(U); Print(V);
 
-	    // Create pseudo-inverse matrix
+
+	    // Create pseudo-inverse matrix and compute projectors
+    	t_iso_begin = std::chrono::steady_clock::now();
     	auto sIU = commonIndex(U,S);
     	auto sIV = commonIndex(S,V);
     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
@@ -349,6 +381,8 @@ void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
 	   	P[ vToPos(v)] *= dR;  P [vToPos(v)] *= prime(dR,BRAKET_OFFSET);
 	   	Pt[vToPos(v)] *= dRt; Pt[vToPos(v)] *= prime(dRt,BRAKET_OFFSET);
 
+	   	t_iso_end = std::chrono::steady_clock::now();
+    	accT[7] += get_mS(t_iso_begin,t_iso_end);
 	   	// (dbg) Print(P[vToPos(v)]); Print(Pt[vToPos(v)]);
 	}
 }

@@ -226,7 +226,8 @@ class CtmEnv
         std::vector<double> & accT, bool dbg = false);
     // void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
-    void move_singleDirection(unsigned int direction, Cluster const& c);
+    void move_singleDirection(unsigned int direction, Cluster const& c,
+        std::vector<double> & accT);
 
     // ########################################################################
     // isometries
@@ -234,7 +235,8 @@ class CtmEnv
     void computeIsometries(unsigned int direction, Cluster const& c,
         itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
         std::vector<itensor::ITensor> & P, 
-        std::vector<itensor::ITensor> & Pt) const;
+        std::vector<itensor::ITensor> & Pt,
+        std::vector<double> & accT) const;
 
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
     std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,
