@@ -24,6 +24,10 @@ class CtmEnv
 
     itensor::SvdSolver & solver;
 
+    enum class DIRECTION {
+        LEFT = 0, UP = 1, RIGHT = 2, DOWN = 3
+    };
+
     typedef enum INIT_ENV {
         INIT_ENV_const1,
         INIT_ENV_rnd,
@@ -131,12 +135,19 @@ class CtmEnv
    
     // aux indices of environment tensors (of auxEnvDim == x)
     itensor::Index I_U, I_R, I_D, I_L;
+    
+    // aux bond indices of sites ( of auxBondDim == d)
+    itensor::Index I_XH, I_XV;
+
+    
     // vector indexes combiners 0 1 2 3 in respect to four directions on
     // lattice L, U, R, D
     std::map< std::string, std::vector<itensor::ITensor> > CMB;
-
-    // aux bond indices of sites ( of auxBondDim == d)
-    itensor::Index I_XH, I_XV;
+    // TODO
+    // since combiner cant be contracted with delta we have to
+    // keep the map from directions to fused site indices I_XH and I_XV
+    // L->0->I_XH, U->1->I_XV, R->2->prime(I_XH), D->3->prime(I_XV)
+    std::vector<itensor::Index> fusedSiteI;
 
     // simple wrapper around spectra of corner matrices 
     CtmSpec spec;
@@ -221,9 +232,9 @@ class CtmEnv
     // isometries
     
     void computeIsometries(unsigned int direction, Cluster const& c,
-        itensor::Index & ip, itensor::Index & ipt, 
+        itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
         std::vector<itensor::ITensor> & P, 
-        std::vector<itensor::ITensor> & Pt);
+        std::vector<itensor::ITensor> & Pt) const;
 
     std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
     std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,

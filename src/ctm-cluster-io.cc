@@ -25,15 +25,13 @@ Cluster readCluster(string const& filename) {
 
 Cluster readCluster(nlohmann::json const& jsonCls) {
     // Create corresponding cluster struct
-    Cluster cluster = Cluster();
+    auto lX = jsonCls["sizeM"].get<int>();
+    auto lY = jsonCls["sizeN"].get<int>();
+    
+    Cluster cluster = Cluster(lX, lY);
 
     cluster.physDim    = jsonCls["physDim"].get<int>();
     cluster.auxBondDim = jsonCls["auxBondDim"].get<int>();
-
-    cluster.sizeN = jsonCls["sizeN"].get<int>();
-    cluster.sizeM = jsonCls["sizeM"].get<int>();
-    cluster.lX = cluster.sizeM;
-    cluster.lY = cluster.sizeN;
 
     for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
     {

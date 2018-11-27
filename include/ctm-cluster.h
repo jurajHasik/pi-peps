@@ -151,11 +151,17 @@ struct Cluster {
     // weights wrt to old_weights
     std::map< std::string, itensor::ITensor > old_weights;
 
+    Cluster() {}
+
+    Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC
     std::string virtual vertexToId(Vertex const& v) const { 
-        auto elemV = Vertex(v.r[0] % lX, v.r[1] % lY);
-        return vToId.at(elemV); 
+        auto elemV = Vertex(
+            (v.r[0] + std::abs(v.r[0])*lX ) % lX, 
+            (v.r[1] + std::abs(v.r[1])*lY ) % lY );
+        return vToId.at(elemV);
     }
 
     itensor::ITensor const& getSiteRefc(Vertex const& v) const {

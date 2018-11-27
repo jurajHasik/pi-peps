@@ -372,7 +372,8 @@ std::ostream& operator<<(std::ostream& os, Vertex const& v) {
 
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
     s <<"Cluster( metaInfo: "<< c.metaInfo 
-        << "sizeN: "<< c.sizeN <<", sizeM: "<< c.sizeM 
+        << "sizeM: "<< c.sizeM <<", sizeN: "<< c.sizeN
+        << " | lX: "<< c.lX <<" , lY: "<< c.lY 
         <<", auxBondDim: "<< c.auxBondDim << std::endl;
 
     s <<"siteIds: [ ";
@@ -380,6 +381,14 @@ std::ostream& operator<<(std::ostream& s, Cluster const& c) {
         s << siteId <<" ";
     }
     s <<"]"<< std::endl;
+
+    s <<"SI: ["<<std::endl;
+    for( const auto& idToPos : c.SI ) {
+        s << idToPos.first <<" --> " << idToPos.second <<" --> "
+            << c.sites.at(idToPos.first) << std::endl;
+    }
+    s <<"]"<< std::endl;
+
 
     s <<"Indices phys AND aux: ["<< std::endl;
     for( unsigned int i=0; i<c.aux.size(); i++ ) {
@@ -394,10 +403,11 @@ std::ostream& operator<<(std::ostream& s, Cluster const& c) {
     }
     s << "]" << std::endl;
     
-    for( const auto& sitesEntry : c.sites ) {
-        s << sitesEntry.first <<" = ";
-        printfln("%f", sitesEntry.second);
+    s <<"VertexToSite: ["<< std::endl; 
+    for( const auto& vId : c.vToId ) {
+        s << vId.first <<" --> "<< vId.second <<" --> "<< c.getSite(vId.first) << std::endl;
     }
+    s << "]" << std::endl;
 
     s << "siteToWeights: [" << std::endl;
     for( const auto& lwEntrySet : c.siteToWeights ) {
