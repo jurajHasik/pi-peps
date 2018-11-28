@@ -184,9 +184,8 @@ int main( int argc, char *argv[] ) {
 		ITensor A, B, C, D;
 
         // ----- DEFINE BLANK CLUSTER ----------------------------------
-        cls = Cluster();
-        cls.sizeN = 2;
-        cls.sizeM = 2;
+        cls = Cluster(2,2);
+
         cls.auxBondDim = auxBondDim;
         cls.physDim    = physDim;
 
@@ -199,6 +198,12 @@ int main( int argc, char *argv[] ) {
             {std::make_pair(1,0),"B"},
             {std::make_pair(0,1),"C"},
             {std::make_pair(1,1),"D"}
+        };
+        cls.vToId = {
+            {Vertex(0,0),"A"},
+            {Vertex(1,0),"B"},
+            {Vertex(0,1),"C"},
+            {Vertex(1,1),"D"}
         };
 
         aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
@@ -669,9 +674,6 @@ int main( int argc, char *argv[] ) {
             <<" "<< diag_fu.getReal("minEvKept",0.0);
         out_file_diag  <<std::endl;
 
-        ctmEnv.updateCluster(cls);
-        ev.setCluster(cls);
-        // writeCluster(outClusterFile, cls);
         
         // fix gauge by simple-update at dt=0 - identity operators
         if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
@@ -713,6 +715,9 @@ int main( int argc, char *argv[] ) {
                     <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
                     <<" [sec] "; 
         }
+
+        ctmEnv.updateCluster(cls);
+        ev.setCluster(cls);
 
         // SETUP ENVIRONMENT LOOP
         accT = std::vector<double>(8,0.0);
