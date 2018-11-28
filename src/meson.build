@@ -9,6 +9,6 @@ source_files += files(['cluster-ev-builder.cc',
                        'ctm-cluster.cc',
                        'mpo.cc',
                        'su2.cc',
-		       'itensor-svd-solvers.cc',
-		       'itensor-linsys-solvers.cc',
+		                   'itensor-svd-solvers.cc',
+		                   'itensor-linsys-solvers.cc',
                        'rsvd-solver.cc'])

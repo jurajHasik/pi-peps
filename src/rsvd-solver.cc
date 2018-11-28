@@ -94,7 +94,8 @@ RsvdSolver::solve(
       Args const& args
 	)
 {
-	SVDRef(M,U,D,V,args);
+	// SVDRef(M,U,D,V,args);
+	SvdSolver::solve(M,U,D,V,args);
 }
 
 } // namespace itensor

@@ -179,5 +179,4 @@ template void SVDRef(MatRefc<Real> const&,MatRef<Real> const&, VectorRef const&,
 template void SVDRef(MatRefc<Cplx> const&,MatRef<Cplx> const&, VectorRef const&, 
 	MatRef<Cplx> const&, SvdSolver & solver, Args const& args);
 
-
 } // namespace itensor

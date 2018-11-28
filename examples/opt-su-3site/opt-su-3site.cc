@@ -14,6 +14,7 @@
 #include "itensor/all.h"
 #include "itensor-svd-solvers.h"
 #include "rsvd-solver.h"
+#include "lapacksvd-solver.h"
 
 using namespace itensor;
 
@@ -202,13 +203,18 @@ int main( int argc, char *argv[] ) {
     // ***** Select SVD solver to use *****************************************
     std::unique_ptr<SvdSolver> pSvdSolver;
     if (env_SVD_METHOD == "rsvd") {
-        pSvdSolver = std::make_unique<RsvdSolver>();
-    } else if (env_SVD_METHOD == "rsvd" || env_SVD_METHOD == "gesdd") {
+        pSvdSolver = std::unique_ptr<RsvdSolver>(new RsvdSolver());
+    } 
+    else if (env_SVD_METHOD == "gesdd") {
+        pSvdSolver = std::unique_ptr<GESDDSolver>(new GESDDSolver());
+    }  
+    else if (env_SVD_METHOD == "itensor") {
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
-    } else {
+    } 
+    else {
         std::cout<<"WARNING: Unsupported or no SvdSolver specified."
             <<" Using itensor"<<std::endl;
-        // TODO set jsonCls["ctmrg"]["env_SVD_METHOD"] = "itensor";
+        // TODO? set jsonCls["ctmrg"]["env_SVD_METHOD"] = "itensor";
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     }
 

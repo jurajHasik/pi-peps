@@ -5,6 +5,7 @@
 
 namespace itensor {
 
+
 struct SvdSolver {
 
     virtual void 
@@ -17,7 +18,8 @@ struct SvdSolver {
     {  
         // To be overloaded by derived classes
         // std::cout<<"[SvdSolver::solve<Real>] called"<<std::endl;
-        SVDRef(M,U,D,V,args);
+        auto thresh = args.getReal("SVDThreshold",1E-3);
+        SVDRef(M,U,D,V,thresh);
     }
 
     virtual void 
@@ -30,7 +32,8 @@ struct SvdSolver {
     {  
         // To be overloaded by derived classes
         // std::cout<<"[SvdSolver::solve<Cplx>] called"<<std::endl;
-        SVDRef(M,U,D,V,args);
+        auto thresh = args.getReal("SVDThreshold",1E-3);
+        SVDRef(M,U,D,V,thresh);
     }
 };
 
@@ -178,7 +181,6 @@ SVD(MatM && M,
     resize(D,nsv);
     SVDRef(makeRef(M),makeRef(U),makeRef(D),makeRef(V),solver,args);
     }
-
 
 
 template<typename T>
