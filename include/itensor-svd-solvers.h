@@ -6,19 +6,6 @@
 namespace itensor {
 
 struct SvdSolver {
-  	
-	// template <typename T>
- //  	virtual void 
- //  	solve(
- //      MatRefc<T> const& M,
- //      MatRef<T>  const& U, 
- //      VectorRef  const& D, 
- //      MatRef<T>  const& V,
- //      Args const& args) 
- //  	{  
- //  		// To be overloaded by derived classes
- //  	     std::cout<<"[SvdSolver::solve] called"<<std::endl;
- //    }
 
     virtual void 
     solve(
@@ -145,10 +132,10 @@ return spec;
 template<typename IndexT>
 Spectrum 
 svdRank2(ITensorT<IndexT> const& A, 
-         IndexT const& ui, 
+         IndexT const& ui,
          IndexT const& vi,
-         ITensorT<IndexT> & U, 
-         ITensorT<IndexT> & D, 
+         ITensorT<IndexT> & U,
+         ITensorT<IndexT> & D,
          ITensorT<IndexT> & V,
          SvdSolver & solver,
          Args args = Args::global());

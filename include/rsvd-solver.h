@@ -11,16 +11,6 @@
 namespace itensor {
 
 struct RsvdSolver : SvdSolver {
-
-	// template<typename T>
- //  	void 
- //  	solve(
- //      MatRefc<T> const& M,
- //      MatRef<T>  const& U, 
- //      VectorRef  const& D, 
- //      MatRef<T>  const& V,
- //      Args const& args);
-
 	
   	void 
   	solve(
@@ -38,7 +28,6 @@ struct RsvdSolver : SvdSolver {
       VectorRef  const& D, 
       MatRef<Cplx>  const& V,
       Args const& args);
-
 
 };
 
