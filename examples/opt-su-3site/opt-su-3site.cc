@@ -268,15 +268,14 @@ int main( int argc, char *argv[] ) {
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
-        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insURow_DBG(iso_type, norm_type, accT);
-        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT);
-
-        ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-        ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
-        ctmEnv.insRCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-        ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
+        ctmEnv.move_singleDirection(0, cls, accT);
+        ctmEnv.move_singleDirection(0, cls, accT);
+        ctmEnv.move_singleDirection(1, cls, accT);
+        ctmEnv.move_singleDirection(1, cls, accT);
+        ctmEnv.move_singleDirection(2, cls, accT);
+        ctmEnv.move_singleDirection(2, cls, accT);
+        ctmEnv.move_singleDirection(3, cls, accT);
+        ctmEnv.move_singleDirection(3, cls, accT);
 
         t_end_int = std::chrono::steady_clock::now();
         std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
