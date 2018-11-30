@@ -226,13 +226,19 @@ class CtmEnv
         std::vector<double> & accT, bool dbg = false);
     // void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
 
-    void move_singleDirection(unsigned int direction, Cluster const& c,
-        std::vector<double> & accT);
+    void move_singleDirection(unsigned int direction, ISOMETRY iso_type,
+        Cluster const& c, std::vector<double> & accT);
 
     // ########################################################################
     // isometries
     
-    void computeIsometries(unsigned int direction, Cluster const& c,
+    void compute_IsometriesT3(unsigned int direction, Cluster const& c,
+        itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
+        std::vector<itensor::ITensor> & P, 
+        std::vector<itensor::ITensor> & Pt,
+        std::vector<double> & accT) const;
+
+    void compute_IsometriesT4(unsigned int direction, Cluster const& c,
         itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
         std::vector<itensor::ITensor> & P, 
         std::vector<itensor::ITensor> & Pt,
@@ -255,6 +261,10 @@ class CtmEnv
 
     std::pair<itensor::ITensor, itensor::ITensor> build_halves(
         char ctmMove, int col, int row, bool dbg = false) const;
+
+    void build_halves_V2(
+        unsigned int direction, Cluster const& c, Vertex const& v,
+        itensor::ITensor & H, itensor::ITensor & Ht) const;
 
     // builds the corner of environment of site (col,row) + site where 
     // corner is 1,2,3 or 4 according to following key 1|2

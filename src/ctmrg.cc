@@ -27,8 +27,8 @@ using namespace itensor;
 
 // Define map for direction to tensors needed for the move
 
-void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c,
-	std::vector<double> & accT) 
+void CtmEnv::move_singleDirection(unsigned int direction, CtmEnv::ISOMETRY iso_type, 
+	Cluster const& c, std::vector<double> & accT) 
 {
 	int const BRAKET_OFFSET = 4;
 	using time_point = std::chrono::high_resolution_clock::time_point;
@@ -51,7 +51,16 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c,
  	t_iso_begin = std::chrono::high_resolution_clock::now();
  	Index ip, ipt, ia;
  	std::vector<ITensor> P, Pt;
-	computeIsometries(direction, c, ip, ipt, ia, P, Pt, accT);
+ 	switch(iso_type) {
+        case ISOMETRY_T3: {
+            compute_IsometriesT3(direction, c, ip, ipt, ia, P, Pt, accT);
+            break;
+        }
+        case ISOMETRY_T4: {
+            compute_IsometriesT4(direction, c, ip, ipt, ia, P, Pt, accT);
+            break;
+        }
+    }
 	t_iso_end = std::chrono::high_resolution_clock::now();
     accT[0] += get_mS(t_iso_begin, t_iso_end);
 
@@ -261,7 +270,7 @@ void CtmEnv::move_singleDirection(unsigned int direction, Cluster const& c,
 // Pt
 // I_L1,a3,a7<==I_L1,a1,a5--Pt--Ipt
 //
-void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
+void CtmEnv::compute_IsometriesT3(unsigned int direction, Cluster const& c,
         Index & ip, Index & ipt, Index & ia,
         std::vector<ITensor> & P, std::vector<ITensor> & Pt,
         std::vector<double> & accT) const
@@ -387,6 +396,131 @@ void CtmEnv::computeIsometries(unsigned int direction, Cluster const& c,
 	}
 }
 
+void CtmEnv::compute_IsometriesT4(unsigned int direction, Cluster const& c,
+        Index & ip, Index & ipt, Index & ia,
+        std::vector<ITensor> & P, std::vector<ITensor> & Pt,
+        std::vector<double> & accT) const
+{
+	int const BRAKET_OFFSET  = 4;
+	using time_point = std::chrono::steady_clock::time_point;
+	time_point t_iso_begin, t_iso_end;
+	auto get_mS = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1000.0; };
+
+	auto argsSVDRRt = Args(
+        "Cutoff",-1.0,
+        "Maxm",x,
+        "SVDThreshold",1E-2,
+        "SVD_METHOD",SVD_METHOD,
+        "rsvd_power",rsvd_power,
+        "rsvd_reortho",rsvd_reortho,
+        "rsvd_oversampling",rsvd_oversampling
+    );
+
+    // Take the square-root of SV's
+    double loc_psdInvCutoff = isoPseudoInvCutoff;
+    
+
+	// TODO santize this
+	// glue that maps from Vertex to position within C,T,Ct,Taux,Tauxt
+	auto vToPos = [&c] (Vertex const& v)->int { return c.SI.at(c.vertexToId(v)); };
+	auto vToId  = [&c] (Vertex const& v)->std::string { return c.vertexToId(v); };
+
+	// Corners to be used in construction of projectors
+	Shift shift, shift_oi;
+    switch (direction) {								// pl_oi--T--pl_pi--C--pl_pl_pti--T--
+		case 0: { shift = Shift( 0, 1); shift_oi = Shift( 1, 0); break; } // 2--U--3--L--1--D
+		case 1: { shift = Shift(-1, 0); shift_oi = Shift( 0, 1); break; } // R--U--L  
+		case 2: { shift = Shift( 0,-1); shift_oi = Shift(-1, 0); break; } // D--R--U 
+		case 3: { shift = Shift( 1, 0); shift_oi = Shift( 0,-1); break; } // L--D--R
+	}
+
+	int pl_pi, pl_pti, pl_oi;
+	std::vector<Index> I(4);
+	switch (direction) {
+		// I_U,2,6--R---I_L,3,7
+		// I_L,1,5--Rt--I_D,2,6
+		// I_U,2,6--R--I_L,3,7--dai(pl_pi,pl_pti)&&(I[0],prime(I[0]))--I_L,1,5--Rt--I_D,2,6
+		case 0:	{ I[0] = I_L; I[1] = I_XH; I[2] = I_R; I[3] = I_D; 
+			pl_oi = 3; pl_pi = 3; pl_pti = 1; break; }
+		case 1: { I[0] = I_U; I[1] = I_XV; I[2] = prime(I_D); I[3] = I_L;
+			pl_oi = 0; pl_pi = 0; pl_pti = 2; break; }
+		case 2: { I[0] = I_R; I[1] = prime(I_XH); I[2] = prime(I_L); I[3] = prime(I_U); 
+			pl_oi = 1; pl_pi = 1; pl_pti = 3; break; }
+		case 3: { I[0] = I_D; I[1] = prime(I_XV); I[2] = I_U; I[3] = prime(I_R);
+			pl_oi = 2; pl_pi = 2; pl_pti = 0; break; } 
+	}
+
+	// Prepare vectors P, Pt to hold projectors
+	P  = std::vector<ITensor>( c.sites.size() );
+	Pt = std::vector<ITensor>( c.sites.size() );
+	ia  = Index("AUX",c.auxBondDim,AUXLINK);
+	ip  = Index("AUXP", x);
+	ipt = Index("AUXPt",x);
+
+    for(auto const& v_id : c.vToId) {
+    	Vertex const& v = v_id.first;
+    	auto ap  = c.aux[vToPos(v)];
+    	auto apt = c.aux[vToPos(v+shift)];
+    	auto aoi = c.aux[vToPos(v+shift_oi)];
+    	std::string id  = v_id.second; // == vToId(v)
+    	std::string idt = vToId(v+shift);
+    	auto da = delta(prime(ap,pl_pi), prime(apt,pl_pti));
+
+    	// Compute enlarged corners
+    	t_iso_begin = std::chrono::steady_clock::now();
+    	ITensor U, S, V, R, Rt;
+    	build_halves_V2(direction, c, v, R, Rt);
+    	R *= da;
+  		R *= prime(da,BRAKET_OFFSET);
+    	R *= delta(I[0],prime(I[0]));
+    	t_iso_end = std::chrono::steady_clock::now();
+    	accT[4] += get_mS(t_iso_begin,t_iso_end);
+
+    	// truncated SVD
+    	t_iso_begin = std::chrono::steady_clock::now();
+    	U = ITensor(I[2], prime(aoi,pl_oi), prime(aoi,pl_oi+BRAKET_OFFSET));
+	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
+	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
+	        S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
+	        std::cout << "WARNING: CTM-Iso3 " << direction << " [col:row]= "<< v 
+	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
+	            << std::endl;
+	    }
+	    t_iso_end = std::chrono::steady_clock::now();
+    	accT[6] += get_mS(t_iso_begin,t_iso_end);
+	    // (dbg) Print(U); Print(V);
+
+
+	    // Create pseudo-inverse matrix and compute projectors
+    	t_iso_begin = std::chrono::steady_clock::now();
+    	auto sIU = commonIndex(U,S);
+    	auto sIV = commonIndex(S,V);
+    	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
+    	auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
+        	{ return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
+    	S.apply(oneOverSqrtT);
+
+    	// Inner indices are back to original state
+    	R *= da;
+  		R *= prime(da,BRAKET_OFFSET);
+  		R *= delta(I[0],prime(I[0]));
+
+	    P[ vToPos(v)] = (R* U.dag())*S*delta(sIV, ip );
+	   	Pt[vToPos(v)] = (Rt*V.dag())*S*delta(sIU, ipt);
+	
+	 	// Post-process indices of projectors
+	 	auto dR  = delta(prime(ap,pl_pi  ),prime(ia,pl_pi ));
+	 	auto dRt = delta(prime(apt,pl_pti),prime(ia,pl_pti));
+	   	P[ vToPos(v)] *= dR;  P [vToPos(v)] *= prime(dR,BRAKET_OFFSET);
+	   	Pt[vToPos(v)] *= dRt; Pt[vToPos(v)] *= prime(dRt,BRAKET_OFFSET);
+
+	   	t_iso_end = std::chrono::steady_clock::now();
+    	accT[7] += get_mS(t_iso_begin,t_iso_end);
+	   	// (dbg) Print(P[vToPos(v)]); Print(Pt[vToPos(v)]);
+	}
+}
+
 ITensor CtmEnv::build_corner_V2(unsigned int direction, Cluster const& c, 
 	Vertex const& v) const 
 {
@@ -451,4 +585,94 @@ ITensor CtmEnv::build_corner_V2(unsigned int direction, Cluster const& c,
         }
     }
     return ct;
+}
+
+void CtmEnv::build_halves_V2(unsigned int direction, 
+	Cluster const& c, Vertex const& v, ITensor & H, ITensor & Ht) const 
+{
+	int const BRAKET_OFFSET = 4;
+
+	// TODO santize this
+	// glue that maps from Vertex to position within C,T,Ct,Taux,Tauxt
+	auto vToPos = [&c](Vertex const& v)->int { return c.SI.at(c.vertexToId(v)); };
+    auto vToAux = [&c,&vToPos](Vertex const& v)->Index { return c.aux[vToPos(v)]; };
+
+    switch (direction) {
+        case 0: { // left
+        	std::vector<Vertex> vs({v, v+Shift(1,0), v+Shift(0,1), v+Shift(1,1) });
+            auto du = delta(prime(vToAux(vs[0]),2),prime(vToAux(vs[1]),0));
+            auto dd = delta(prime(vToAux(vs[2]),2),prime(vToAux(vs[3]),0));
+            
+            // build upper half
+            H =  build_corner_V2(1, c, vs[0]); // LU
+            H.prime(ULINK,1);
+            H *= du;
+            H *= prime(du,BRAKET_OFFSET);
+            H *= build_corner_V2(2, c, vs[1]); // RU
+            // build lower half
+            Ht  = build_corner_V2(4, c, vs[2]); // LD
+            Ht.prime(DLINK,1);
+            Ht *= dd;
+            Ht *= prime(dd,BRAKET_OFFSET);
+            Ht *= build_corner_V2(3, c, vs[3]); // RD
+            break;
+        }
+        case 1: { // up
+        	std::vector<Vertex> vs({v, v+Shift(0,1), v+Shift(-1,0), v+Shift(-1,1) });
+            auto dr = delta(prime(vToAux(vs[0]),3),prime(vToAux(vs[1]),1));
+            auto dl = delta(prime(vToAux(vs[2]),3),prime(vToAux(vs[3]),1));
+
+            // build right half
+            H  = build_corner_V2(2, c, vs[0]);
+            H.prime(RLINK);
+            H *= dr;
+            H *= prime(dr, BRAKET_OFFSET);
+            H *= build_corner_V2(3, c, vs[1]);
+            // build left half (upper_h)
+            Ht  = build_corner_V2(1, c, vs[2]);
+            Ht.prime(LLINK);
+            Ht *= dl;
+            Ht *= prime(dl, BRAKET_OFFSET);
+            Ht *= build_corner_V2(4, c, vs[3]);
+            break;
+        }
+        case 2: { // right
+        	std::vector<Vertex> vs({v, v+Shift(-1,0), v+Shift(0,-1), v+Shift(-1,-1) });
+            auto dd = delta(prime(vToAux(vs[0]),0),prime(vToAux(vs[1]),2));
+            auto du = delta(prime(vToAux(vs[2]),0),prime(vToAux(vs[3]),2));
+
+            // build lower half
+            H  = build_corner_V2(3, c, vs[0]);
+            H.prime(DLINK,-1);
+            H *= dd;
+            H *= prime(dd,BRAKET_OFFSET);
+            H *= build_corner_V2(4, c, vs[1]);
+            // build upper half
+            Ht  = build_corner_V2(2, c, vs[2]);
+            Ht.prime(ULINK,-1);
+            Ht *= du;
+            Ht *= prime(du,BRAKET_OFFSET);
+            Ht *= build_corner_V2(1, c, vs[3]);
+            break;
+        }
+        case 3: { // down
+        	std::vector<Vertex> vs({v, v+Shift(0,-1), v+Shift(1,0), v+Shift(1,-1) });
+            auto dl = delta(prime(vToAux(vs[0]),1),prime(vToAux(vs[1]),3));
+            auto dr = delta(prime(vToAux(vs[2]),1),prime(vToAux(vs[3]),3));
+
+            // build left half
+            H  = build_corner_V2(4, c, vs[0]);
+            H.prime(LLINK,-1);
+            H *= dl;
+            H *= prime(dl,BRAKET_OFFSET);
+            H *= build_corner_V2(1, c, vs[1]);
+            // build right half
+            Ht  = build_corner_V2(3, c, vs[2]);
+            Ht.prime(RLINK,-1);
+            Ht *= dr;
+            Ht *= prime(dr,BRAKET_OFFSET);
+            Ht *= build_corner_V2(2, c, vs[3]);
+            break;
+        }
+    }
 }

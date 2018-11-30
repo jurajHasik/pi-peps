@@ -518,14 +518,14 @@ int main( int argc, char *argv[] ) {
 
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
 
         t_end_int = std::chrono::steady_clock::now();
         std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -754,14 +754,14 @@ int main( int argc, char *argv[] ) {
         for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
             t_begin_int = std::chrono::steady_clock::now();
 
-	        ctmEnv.move_singleDirection(0, cls, accT);
-            ctmEnv.move_singleDirection(0, cls, accT);
-            ctmEnv.move_singleDirection(1, cls, accT);
-            ctmEnv.move_singleDirection(1, cls, accT);
-            ctmEnv.move_singleDirection(2, cls, accT);
-            ctmEnv.move_singleDirection(2, cls, accT);
-            ctmEnv.move_singleDirection(3, cls, accT);
-            ctmEnv.move_singleDirection(3, cls, accT);
+	        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+            ctmEnv.move_singleDirection(3, iso_type, cls, accT);
 
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -955,14 +955,14 @@ int main( int argc, char *argv[] ) {
     // ENTER ENVIRONMENT LOOP
     for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
 
         if ( envI % 1 == 0 ) {
             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());

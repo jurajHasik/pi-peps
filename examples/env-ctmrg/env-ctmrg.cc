@@ -183,14 +183,14 @@ int main( int argc, char *argv[] ) {
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(0, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(1, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(2, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
-        ctmEnv.move_singleDirection(3, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
 
         // ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
         // ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
