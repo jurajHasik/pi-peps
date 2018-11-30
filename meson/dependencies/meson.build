@@ -4,7 +4,7 @@ subdir('itensor')
 # must have the same name of the option in meson_options.txt
 # and the folder must have the same name
 # 
-optional_deps = ['arpack','mkl']
+optional_deps = ['mkl','arpack']
 
 foreach _opt : optional_deps
     _wanted = get_option(_opt)
