@@ -200,6 +200,9 @@ class CtmEnv
 
     void initPWREnv(bool dbg = false);
 
+    void init(INIT_ENV initEnvType, bool isComplex = false, 
+        bool dbg = false);
+
     void symmetrizeEnv(bool dbg = false);
 
     void testCtmrgEnv();
@@ -207,25 +210,8 @@ class CtmEnv
     // ########################################################################
     // CTM iterative methods
 
-    // Insert, Absorb & Renormalize U(p) row 
-    void insURow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type, 
-        std::vector<double> & accT, bool dbg = false);
-    // void insURow(ISOMETRY iso_type, NORMALIZATION norm_type);
-    
-    // -||- R(ight) column
-    void insRCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT, bool dbg = false);
-    // void insRCol(ISOMETRY iso_type, NORMALIZATION norm_type);
-
-    // -||- D(own) row
-    void insDRow_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT, bool dbg = false);
-    // void insDRow(ISOMETRY iso_type, NORMALIZATION norm_type);
-    
-    // Insert, Absorb & Renormalize L(eft) column
-    void insLCol_DBG(ISOMETRY iso_type, NORMALIZATION norm_type,
-        std::vector<double> & accT, bool dbg = false);
-    // void insLCol(ISOMETRY iso_type, NORMALIZATION norm_type);
+    void move_unidirectional(unsigned int direction, ISOMETRY iso_type,
+        Cluster const& c, std::vector<double> & accT);
 
     void move_singleDirection(unsigned int direction, ISOMETRY iso_type,
         Cluster const& c, std::vector<double> & accT);
@@ -245,23 +231,12 @@ class CtmEnv
         std::vector<itensor::ITensor> & Pt,
         std::vector<double> & accT) const;
 
-    std::vector<itensor::ITensor> isoT1(char ctmMove, int col, int row);
-    std::vector<itensor::ITensor> isoT2(char ctmMove, int col, int row,
-        std::vector<double> & accT, bool dbg = false);
-    std::vector<itensor::ITensor> isoT3(char ctmMove, int col, int row,
-        std::vector<double> & accT, bool dbg = false);
-    std::vector<itensor::ITensor> isoT4(char ctmMove, int col, int row,
-        std::vector<double> & accT, bool dbg = false);
-
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from
     // position (col,row), where starting site is always nearest site in
     // clock-wise direction wrt. to cut
     // CONVENTION indices clockwise wrt. to cut have primeLevel 0
     itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
-
-    std::pair<itensor::ITensor, itensor::ITensor> build_halves(
-        char ctmMove, int col, int row, bool dbg = false) const;
 
     void build_halves_V2(
         unsigned int direction, Cluster const& c, Vertex const& v,
@@ -270,9 +245,6 @@ class CtmEnv
     // builds the corner of environment of site (col,row) + site where 
     // corner is 1,2,3 or 4 according to following key 1|2
     //                                                 4|3
-    itensor::ITensor build_corner(char corner, int col, int row,
-        bool dbg = false) const;
-
     itensor::ITensor build_corner_V2(unsigned int direction, 
         Cluster const& c, Vertex const& v) const;
 

@@ -2,6 +2,23 @@
 
 using namespace itensor;
 
+void CtmEnv::move_unidirectional(unsigned int direction, ISOMETRY iso_type,
+        Cluster const& c, std::vector<double> & accT) {
+	
+	int length;
+	switch (direction) {
+ 		case 0: { length = c.lX; break; } // left
+ 		case 1: { length = c.lY; break; } // up
+ 		case 2:	{ length = c.lX; break; } // right
+ 		case 3: { length = c.lY; break; } // down
+ 		default: throw std::runtime_error("[move_singleDirection] Invalid direction");
+ 	}
+
+	for (unsigned int i=0; i<length; i++) {
+		move_singleDirection(direction, iso_type, c, accT);
+	}
+}
+
 // C1 T1 C2
 // T4 X  T2
 // C4 T3 C3

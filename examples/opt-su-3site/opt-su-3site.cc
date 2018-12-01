@@ -227,32 +227,7 @@ int main( int argc, char *argv[] ) {
          "dbg",arg_envDbg,
          "dbgLevel",arg_envDbgLvl}
         );
-    switch (arg_initEnvType) {
-        case CtmEnv::INIT_ENV_const1: {
-            ctmEnv.initMockEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_ctmrg: {
-            ctmEnv.initCtmrgEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_obc: {
-            ctmEnv.initOBCEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_pwr: {
-            ctmEnv.initPWREnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_rnd: {
-            ctmEnv.initRndEnv(envIsComplex);
-            break;
-        } 
-        default: {
-            std::cout<<"Unsupported INIT_ENV" << std::endl;
-            exit(EXIT_FAILURE);   
-        }
-    }
+    ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
     EVBuilder ev(arg_ioEnvTag, evCls, ctmEnv.getCtmData_DBG());
@@ -415,49 +390,18 @@ int main( int argc, char *argv[] ) {
             ev.setCluster(evCls);
             
             // reset environment
-            if (arg_reinitEnv) 
-                switch (arg_initEnvType) {
-                    case CtmEnv::INIT_ENV_const1: {
-                        ctmEnv.initMockEnv();
-                        break;
-                    }
-                    case CtmEnv::INIT_ENV_ctmrg: {
-                        ctmEnv.initCtmrgEnv();
-                        //ctmEnv.symmetrizeEnv(arg_fuDbg);
-                        break;
-                    }
-                    case CtmEnv::INIT_ENV_obc: {
-                        ctmEnv.initOBCEnv();
-                        break;
-                    }
-                    case CtmEnv::INIT_ENV_pwr: {
-                        ctmEnv.initPWREnv();
-                        break;
-                    }      
-                    case CtmEnv::INIT_ENV_rnd: {
-                        ctmEnv.initRndEnv(envIsComplex);
-                        ctmEnv.symmetrizeEnv();
-                        break;
-                    }
-                    default: {
-                        std::cout<<"Unsupported INIT_ENV" << std::endl;
-                        exit(EXIT_FAILURE);   
-                    }
-                }
+            if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
+                
 
             // ENTER ENVIRONMENT LOOP
             bool expValEnvConv = false;
             for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
                 t_begin_int = std::chrono::steady_clock::now();
 
-                ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(3, iso_type, cls, accT);
-                ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+                ctmEnv.move_unidirectional(0, iso_type, cls, accT);
+                ctmEnv.move_unidirectional(1, iso_type, cls, accT);
+                ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+                ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
                 t_end_int = std::chrono::steady_clock::now();
                 std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast

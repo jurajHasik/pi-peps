@@ -142,32 +142,7 @@ int main( int argc, char *argv[] ) {
          "dbg",arg_envDbg,
          "dbgLevel",arg_envDbgLvl}
         );
-    switch (arg_initEnvType) {
-        case CtmEnv::INIT_ENV_const1: {
-            ctmEnv.initMockEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_ctmrg: {
-            ctmEnv.initCtmrgEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_obc: {
-            ctmEnv.initOBCEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_pwr: {
-            ctmEnv.initPWREnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_rnd: {
-            ctmEnv.initRndEnv(envIsComplex);
-            break;
-        } 
-        default: {
-            std::cout<<"Unsupported INIT_ENV" << std::endl;
-            exit(EXIT_FAILURE);   
-        }
-    }
+    ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
     EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
@@ -183,14 +158,10 @@ int main( int argc, char *argv[] ) {
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
         // ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
         // ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);

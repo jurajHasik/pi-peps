@@ -391,41 +391,7 @@ int main( int argc, char *argv[] ) {
     }
 
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver, env_args);
-    switch (arg_initEnvType) {
-        case CtmEnv::INIT_ENV_const1: {
-            ctmEnv.initMockEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_ctmrg: {
-            ctmEnv.initCtmrgEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_obc: {
-            ctmEnv.initOBCEnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_pwr: {
-            ctmEnv.initPWREnv();
-            break;
-        }
-        case CtmEnv::INIT_ENV_rnd: {
-           	ctmEnv.initRndEnv(envIsComplex);
-            break;
-        } 
-        default: {
-            std::cout<<"Unsupported INIT_ENV" << std::endl;
-            exit(EXIT_FAILURE);   
-        }
-        // case CtmEnv::INIT_ENV_file: {
-        //     io_env_fmt_type ioEnvFmt = toIO_ENV_FMT(std::string(argv[5]));
-        //     std::string in_files_prefix = std::string(argv[6]);
-            
-        //     ctmEnv = CtmEnv("TEST_ENV_2x2", 
-        //         readEnv_V2(ioEnvFmt, in_files_prefix, cluster),
-        //         cluster);
-        //     break;
-        // }
-    }
+    ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
     EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
@@ -523,14 +489,10 @@ int main( int argc, char *argv[] ) {
 
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
         t_end_int = std::chrono::steady_clock::now();
         std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -730,30 +692,7 @@ int main( int argc, char *argv[] ) {
         accT = std::vector<double>(8,0.0);
         // reset environment
         if (arg_reinitEnv || ((fuI % arg_obsFreq == 0) && arg_reinitObsEnv) ) 
-            switch (arg_initEnvType) {
-                case CtmEnv::INIT_ENV_const1: {
-                    ctmEnv.initMockEnv();
-                    break;
-                }
-                case CtmEnv::INIT_ENV_ctmrg: {
-                    ctmEnv.initCtmrgEnv();
-                    //ctmEnv.symmetrizeEnv(arg_fuDbg);
-                    break;
-                }
-                case CtmEnv::INIT_ENV_obc: {
-                    ctmEnv.initOBCEnv();
-                    break;
-                }
-                case CtmEnv::INIT_ENV_pwr: {
-                    ctmEnv.initPWREnv();
-                    break;
-                }
-                case CtmEnv::INIT_ENV_rnd: {
-                    ctmEnv.initRndEnv(envIsComplex);
-                    ctmEnv.symmetrizeEnv();
-                    break;
-                } 
-            }
+            ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
 		
     	// ENTER ENVIRONMENT LOOP
         int currentMaxEnvIter = (fuI % arg_obsFreq == 0) ? arg_obsMaxIter : arg_maxEnvIter; 
@@ -761,14 +700,10 @@ int main( int argc, char *argv[] ) {
         for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
             t_begin_int = std::chrono::steady_clock::now();
 
-	        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(3, iso_type, cls, accT);
-            ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+	        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
+            ctmEnv.move_unidirectional(1, iso_type, cls, accT);
+            ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+            ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
@@ -933,43 +868,15 @@ int main( int argc, char *argv[] ) {
     // t_begin_int = std::chrono::steady_clock::now();
     
     // reset environment
-    if (arg_reinitEnv) 
-        switch (arg_initEnvType) {
-            case CtmEnv::INIT_ENV_const1: {
-                ctmEnv.initMockEnv();
-                break;
-            }
-            case CtmEnv::INIT_ENV_ctmrg: {
-                ctmEnv.initCtmrgEnv();
-                //ctmEnv.symmetrizeEnv(arg_fuDbg);
-                break;
-            }
-            case CtmEnv::INIT_ENV_obc: {
-                ctmEnv.initOBCEnv();
-                break;
-            }
-            case CtmEnv::INIT_ENV_pwr: {
-                ctmEnv.initPWREnv();
-                break;
-            }
-            case CtmEnv::INIT_ENV_rnd: {
-                ctmEnv.initRndEnv(envIsComplex);
-                ctmEnv.symmetrizeEnv();
-                break;
-            } 
-        }
+    if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
 
     // ENTER ENVIRONMENT LOOP
     for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(0, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(1, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(2, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
-        ctmEnv.move_singleDirection(3, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
         if ( envI % 1 == 0 ) {
             ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
