@@ -22,7 +22,10 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c,
     sizeN(c.sizeN), sizeM(c.sizeM) 
     {
 
-    isoPseudoInvCutoff = args.getReal("isoPseudoInvCutoff",1.0e-14);
+    if (args.defined("isoPseudoInvCutoff")) { 
+        default_pinv_cutoff = false;
+        isoPseudoInvCutoff = args.getReal("isoPseudoInvCutoff");
+    }
     isoMinElemWarning  = args.getReal("isoMinElemWarning",1.0e-4);
     isoMaxElemWarning  = args.getReal("isoMaxElemWarning",1.0e4);
     SVD_METHOD         = args.getString("SVD_METHOD","itensor");

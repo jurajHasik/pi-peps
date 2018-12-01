@@ -955,11 +955,13 @@ ITensor getInvDiagT(ITensor const& t) {
 	double machine_eps = std::numeric_limits<double>::epsilon();
 
 	std::vector<double> tmpD;
+	double const tol = t.real(t.inds()[0](1),t.inds()[1](1)) 
+		* std::max(t.inds()[0].m(),t.inds()[1].m()) * machine_eps;
 
 	double elem;
 	for(int i=1; i<=t.inds()[0].m(); i++) {
 		elem = t.real(t.inds()[0](i),t.inds()[1](i));
-		if ( std::abs(elem) > machine_eps) 
+		if ( std::abs(elem) > tol ) 
 			tmpD.push_back( 1.0 / elem );
 		else
 			tmpD.push_back(0.0);

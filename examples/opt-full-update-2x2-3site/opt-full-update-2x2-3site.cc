@@ -92,6 +92,7 @@ int main( int argc, char *argv[] ) {
     auto json_gauge_fix_params(jsonCls["gaugeFix"]);
     std::string arg_suWeightsInit = json_gauge_fix_params.value("suWeightsInit","DELTA");
     int arg_suIter = json_gauge_fix_params.value("suIter",128);
+    double arg_suTol = json_gauge_fix_params.value("suTol",1.0e-08);
     bool arg_gf_dbg = json_gauge_fix_params.value("suDbg",false);
     int arg_gf_dbgLvl = json_gauge_fix_params.value("suDbgLevel",0);
     
@@ -103,7 +104,6 @@ int main( int argc, char *argv[] ) {
 	CtmEnv::init_env_type arg_initEnvType(toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
 	bool envIsComplex = json_ctmrg_params["envIsComplex"].get<bool>();
 	CtmEnv::isometry_type iso_type(toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
-	double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
     std::string env_SVD_METHOD(json_ctmrg_params["env_SVD_METHOD"].get<std::string>());
     auto rsvd_power   = json_ctmrg_params.value("rsvd_power",2);
@@ -166,19 +166,6 @@ int main( int argc, char *argv[] ) {
         
         cls.aux  = {aIA, aIB, aIC, aID};
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
-	
-        {
-            ITensor temp; 
-            double eps = initStateNoise;
-            auto setMeanTo0 = [](Real r) { return (r-0.5); };
-
-            for(auto& st : cls.sites) {
-                temp = st.second;
-                randomize(temp);
-                temp.apply(setMeanTo0);
-                st.second += eps*temp;
-            }
-        }
     } else {
         Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
 		ITensor A, B, C, D;
@@ -347,6 +334,19 @@ int main( int argc, char *argv[] ) {
         };
         // ----- END DEFINE CLUSTER ------------------------------------
     }
+
+    {
+        ITensor temp; 
+        double eps = initStateNoise;
+        auto setMeanTo0 = [](Real r) { return (r-0.5); };
+
+        for(auto& st : cls.sites) {
+            temp = st.second;
+            randomize(temp);
+            temp.apply(setMeanTo0);
+            st.second += eps*temp;
+        }
+    }
     cls.simParam = jsonCls;
 
     // ***** Select SVD solver to use *****************************************
@@ -379,13 +379,18 @@ int main( int argc, char *argv[] ) {
     }
     
     // INITIALIZE ENVIRONMENT
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
-        {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
-         "SVD_METHOD",env_SVD_METHOD,
-         "rsvd_power",rsvd_power,
-         "rsvd_reortho",rsvd_reortho,
-         "rsvd_oversampling",rsvd_oversampling,
-         "dbg",arg_envDbg,"dbgLevel",arg_envDbgLvl});
+    auto env_args = Args("Name","CTMRG_parameters");
+    for (nlohmann::json::iterator it = json_ctmrg_params.begin(); 
+        it != json_ctmrg_params.end(); ++it) { 
+        std::string key = it.key();
+        auto val        = it.value();
+        if (val.is_string()) env_args.add(key,val.get<std::string>());
+        else if (val.is_boolean()) env_args.add(key,(bool) val); 
+        else if (val.is_number_integer()) env_args.add(key,(int) val); 
+        else if (val.is_number_float()) env_args.add(key,(double) val); 
+    }
+
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver, env_args);
     switch (arg_initEnvType) {
         case CtmEnv::INIT_ENV_const1: {
             ctmEnv.initMockEnv();
@@ -681,6 +686,8 @@ int main( int argc, char *argv[] ) {
             auto num_eps = std::numeric_limits<double>::epsilon();
             t_begin_int = std::chrono::steady_clock::now();
 
+            auto const tol = (true) ? arg_suTol : num_eps*cls.auxBondDim*cls.weights.size();
+
             // Assuming the weights have been initialized
             initClusterWeights(cls);
             setWeights(cls, arg_suWeightsInit);
@@ -697,7 +704,7 @@ int main( int argc, char *argv[] ) {
                 //check convergence
                 if (suI % 8 == 0) {
                     auto weight_distance = weightDist(cls);
-                    if ( weight_distance < num_eps*cls.auxBondDim*cls.weights.size() ) {
+                    if ( weight_distance < tol ) {
                         std::cout<<"GF iter: "<< suI <<" dist: "<< weight_distance 
                             <<" CONVERGED"<< std::endl;
                         break;

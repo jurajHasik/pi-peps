@@ -63,6 +63,7 @@ class CtmEnv
     int  DBG_LVL = 0;
 
     std::string m_name;
+    bool default_pinv_cutoff  = true;
     double isoPseudoInvCutoff = 1.0e-14;
     double isoMinElemWarning  = 1.0e-4;
     double isoMaxElemWarning  = 1.0e4;

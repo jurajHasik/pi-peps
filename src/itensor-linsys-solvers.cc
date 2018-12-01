@@ -88,11 +88,11 @@ void LinSysSolver::solve(
 template<typename T>
 void
 linsystemMatVec(
-	   MatRefc<T>  const& A,
-       VecRef<T>  const& B,
-       VecRef<T>  const& X,
-       LinSysSolver const& solver,
-       Args const& args)
+	  MatRefc<T>  const& A,
+    VecRef<T>  const& B,
+    VecRef<T>  const& X,
+    LinSysSolver const& solver,
+    Args const& args)
 {
         solver.solve(A,B,X,args);
 }
@@ -109,14 +109,11 @@ void PseudoInvSolver::solve(
       	Args const& args) const
  	{
     double machine_eps = std::numeric_limits<double>::epsilon();
-		auto dbg = args.getBool("dbg",false);
+		auto dbg    = args.getBool("dbg",false);
 		auto dbgLvl = args.getInt("dbgLevel",0);
-		auto svd_cutoff = args.getReal("pseudoInvCutoff",machine_eps);
-		auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
 
 		if(dbg && (dbgLvl >= 1)) { 
 			std::cout<<"[PseudoInvSolver::solve] called"<<std::endl;
-			std::cout << "svd_cutoff = " << svd_cutoff << std::endl;
 		}
 
 		auto const i0 = A.inds()[0];
@@ -127,13 +124,22 @@ void PseudoInvSolver::solve(
 		ITensor U(b0), S, VT;
 		svd(A, U, S, VT);
 
-		// Invert and apply cutoff
-		std::vector<double> elems_regInvS; elems_regInvS.reserve(i0.m());
-		int countCTF = 0;
-		auto const s1 = commonIndex(U,S);
-		auto const s2 = commonIndex(S,VT);
-		for (int idm=1; idm<=s1.m(); idm++) {
-			if (S.real(s1(idm),s2(idm))/S.real(s1(1),s2(1)) > svd_cutoff) {
+    // Invert and apply cutoff
+    int countCTF = 0;
+    auto const s1 = commonIndex(U,S);
+    auto const s2 = commonIndex(S,VT);
+    int rank = std::max(s1.m(),s2.m());
+		std::vector<double> elems_regInvS; elems_regInvS.reserve(rank);
+    double const tol = (args.defined("pseudoInvCutoff")) ? 
+      args.getReal("pseudoInvCutoff") :
+      machine_eps * rank * S.real(s1(s1.m()),s2(s2.m()));
+    
+    if(dbg && (dbgLvl >= 1)) {
+      std::cout<<"[PseudoInvSolver::solve] pinv_cutoff = " << tol << std::endl;
+    }
+
+    for (int idm=1; idm<=s1.m(); idm++) {
+			if (S.real(s1(idm),s2(idm)) > tol) {
 				elems_regInvS.emplace_back( 1.0/S.real(s1(idm),s2(idm)) );
 			} else {
 				countCTF += 1;
@@ -148,6 +154,6 @@ void PseudoInvSolver::solve(
 		}
 
 		X = conj(VT)*(regInvS*(conj(U)*B));
-    }
+  }
 
 } //namespace itensor

@@ -275,6 +275,7 @@ void CtmEnv::compute_IsometriesT3(unsigned int direction, Cluster const& c,
         std::vector<ITensor> & P, std::vector<ITensor> & Pt,
         std::vector<double> & accT) const
 {
+	double const machine_eps = std::numeric_limits<double>::epsilon();
 	int const BRAKET_OFFSET  = 4;
 	using time_point = std::chrono::steady_clock::time_point;
 	time_point t_iso_begin, t_iso_end;
@@ -371,9 +372,15 @@ void CtmEnv::compute_IsometriesT3(unsigned int direction, Cluster const& c,
     	t_iso_begin = std::chrono::steady_clock::now();
     	auto sIU = commonIndex(U,S);
     	auto sIV = commonIndex(S,V);
+    	int rank = std::max(sIU.m(),sIV.m());
     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
-    	auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
-        	{ return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
+    	double est_tol = std::sqrt(max_sv * rank * machine_eps);
+    	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
+    	if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
+    		"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
+    	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
+    	auto oneOverSqrtT = [&tol](Real r) 
+        	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
     	S.apply(oneOverSqrtT);
 
     	// Inner indices are back to original state
@@ -401,6 +408,7 @@ void CtmEnv::compute_IsometriesT4(unsigned int direction, Cluster const& c,
         std::vector<ITensor> & P, std::vector<ITensor> & Pt,
         std::vector<double> & accT) const
 {
+	double const machine_eps = std::numeric_limits<double>::epsilon();
 	int const BRAKET_OFFSET  = 4;
 	using time_point = std::chrono::steady_clock::time_point;
 	time_point t_iso_begin, t_iso_end;
@@ -496,9 +504,15 @@ void CtmEnv::compute_IsometriesT4(unsigned int direction, Cluster const& c,
     	t_iso_begin = std::chrono::steady_clock::now();
     	auto sIU = commonIndex(U,S);
     	auto sIV = commonIndex(S,V);
+    	int rank = std::max(sIU.m(),sIV.m());
     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
-    	auto oneOverSqrtT = [&max_sv, &loc_psdInvCutoff](Real r) 
-        	{ return (r/max_sv > loc_psdInvCutoff) ? 1.0/sqrt(r) : 0.0; };
+    	double est_tol = std::sqrt(max_sv * rank * machine_eps);
+    	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
+    	if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
+    		"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
+    	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
+    	auto oneOverSqrtT = [&tol](Real r) 
+        	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
     	S.apply(oneOverSqrtT);
 
     	// Inner indices are back to original state

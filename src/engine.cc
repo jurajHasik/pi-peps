@@ -1244,8 +1244,8 @@ template<> Args TrotterEngine<OpNS>::performFullUpdate(
         exit(EXIT_FAILURE);
     }
 
-    // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-    //     td.gates[gi], td.gate_auxInds[gi], args);
-    return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
         td.gates[gi], td.gate_auxInds[gi], args);
+    // return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    //     td.gates[gi], td.gate_auxInds[gi], args);
 }
