@@ -490,8 +490,8 @@ int main( int argc, char *argv[] ) {
         t_begin_int = std::chrono::steady_clock::now();
 
         ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
         ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
         ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
         t_end_int = std::chrono::steady_clock::now();
@@ -701,8 +701,8 @@ int main( int argc, char *argv[] ) {
             t_begin_int = std::chrono::steady_clock::now();
 
 	        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-            ctmEnv.move_unidirectional(1, iso_type, cls, accT);
             ctmEnv.move_unidirectional(2, iso_type, cls, accT);
+            ctmEnv.move_unidirectional(1, iso_type, cls, accT);
             ctmEnv.move_unidirectional(3, iso_type, cls, accT);
 
             t_end_int = std::chrono::steady_clock::now();

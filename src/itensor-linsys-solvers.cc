@@ -133,6 +133,8 @@ void PseudoInvSolver::solve(
     double const tol = (args.defined("pseudoInvCutoff")) ? 
       args.getReal("pseudoInvCutoff") :
       machine_eps * rank * S.real(s1(s1.m()),s2(s2.m()));
+    double const ins = (args.defined("pseudoInvCutoffInsert")) ? 
+      args.getReal("pseudoInvCutoffInsert") : 0.0;
     
     if(dbg && (dbgLvl >= 1)) {
       std::cout<<"[PseudoInvSolver::solve] pinv_cutoff = " << tol << std::endl;
@@ -143,7 +145,7 @@ void PseudoInvSolver::solve(
 				elems_regInvS.emplace_back( 1.0/S.real(s1(idm),s2(idm)) );
 			} else {
 				countCTF += 1;
-				elems_regInvS.emplace_back(0.0);
+				elems_regInvS.emplace_back(ins);
 			}
 		}
 		auto regInvS = diagTensor(elems_regInvS, s1,s2);
