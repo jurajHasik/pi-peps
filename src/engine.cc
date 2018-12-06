@@ -136,10 +136,12 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
         return std::unique_ptr<Engine>( pe );
     } 
     else if (arg_fuGateSeq == "2SITE") {
-         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
+        TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
         pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, 0.0) );
         pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_alpha*arg_J1, 0.0) );
+        pe->td.gateMPO[0].uuid = "STRONG";
+        pe->td.gateMPO[1].uuid = "WEAK";
         
         pe->td.gates = {
             {"A", "B"}, {"B", "A"}, 
@@ -159,6 +161,33 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
         for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[1]) );
 
         std::cout<<"NNH_2x2Cell_Ladder 2SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
+    else if (arg_fuGateSeq == "4SITE") {
+         TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
+
+        pe->td.gateMPO.push_back( getOP4s_Uladder(arg_tau, arg_J1, arg_J1) );
+        pe->td.gateMPO.push_back( getOP4s_Uladder(arg_tau, arg_J1, arg_alpha*arg_J1) );
+        
+        pe->td.gates = {
+            {"B", "A", "C", "D"},
+            {"A", "B", "D", "C"},
+            {"C", "D", "B", "A"},
+            {"D", "C", "A", "B"}
+        };
+
+        pe->td.gate_auxInds = {
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1}
+        };
+        
+        for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
+        for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[1]) );
+
+        std::cout<<"NNH_2x2Cell_Ladder 4SITE ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
     }
@@ -1244,8 +1273,8 @@ template<> Args TrotterEngine<OpNS>::performFullUpdate(
         exit(EXIT_FAILURE);
     }
 
-    return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], args);
-    // return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
     //     td.gates[gi], td.gate_auxInds[gi], args);
+    return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+        td.gates[gi], td.gate_auxInds[gi], args);
 }

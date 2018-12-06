@@ -122,7 +122,7 @@ void PseudoInvSolver::solve(
 
 		// suppose Ax = b, with indices i0--A--i1--x = b0--B . Thus b0==i0
 		ITensor U(b0), S, VT;
-		svd(A, U, S, VT);
+		svd(A, U, S, VT, {"Truncate",false});
 
     // Invert and apply cutoff
     int countCTF = 0;

@@ -498,6 +498,47 @@ OpNS getOP4s_J1J2(double tau, double J1, double J2) {
 
     return op4s;
 }
+
+// s1--s2
+// |   |
+// s4--s3
+OpNS getOP4s_Uladder(double tau, double J1, double Jp) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s4 = Index("S4", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+    Index s4p = prime(s4);
+
+    ITensor h4 = ITensor(s1,s2,s3,s4,s1p,s2p,s3p,s4p);
+   
+    ITensor nnS1S2 = 0.5*( SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    h4 += J1 * nnS1S2 * delta(s3,s3p) * delta(s4,s4p);                                  // S1S2id3id4
+    h4 += Jp * (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);     // id1S2S3id4
+    h4 += Jp * (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);     // S1id2id3S4
+    h4 += J1 * (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
+        delta(s1,s1p) * delta(s2,s2p);                                                  // id1id2S3S4
+
+    auto cmbI = combiner(s1,s2,s3,s4);
+    h4 = (cmbI * h4 ) * prime(cmbI);
+    ITensor u4 = expHermitian(h4, {-tau, 0.0});
+    u4 = (cmbI * u4 ) * prime(cmbI);
+
+    auto op4s = OpNS(4);
+
+    op4s.op = u4;
+    op4s.pi = {s1,s2,s3,s4};
+
+    return op4s;
+}
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 

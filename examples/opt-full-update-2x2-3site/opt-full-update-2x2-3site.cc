@@ -4,6 +4,7 @@
 #include <chrono>
 
 #include "json.hpp"
+#include "ctm-cluster-basic.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
@@ -120,7 +121,7 @@ int main( int argc, char *argv[] ) {
     // end reading CTMRG parameters
     // ***** INITIALIZE FULL UPDATE ALGORITHM DONE ****************************
 
-	// INITIALIZE CLUSTER
+	// ----- INITIALIZE CLUSTER -----------------------------------------------
 	Cluster cls;
 	if (initBy=="FILE") {
 		Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
@@ -164,175 +165,14 @@ int main( int argc, char *argv[] ) {
         D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
 
         
-        cls.aux  = {aIA, aIB, aIC, aID};
+        cls.aux   = {aIA, aIB, aIC, aID};
+        cls.phys  = {pIA, pIB, pIC, pID};
+        cls.maux  = {{"A",aIA},{"B",aIB},{"C",aIC},{"D",aID}};
+        cls.mphys = {{"A",pIA},{"B",pIB},{"C",pIC},{"D",pID}};
+
         cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
     } else {
-        Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
-		ITensor A, B, C, D;
-
-        // ----- DEFINE BLANK CLUSTER ----------------------------------
-        cls = Cluster(2,2);
-
-        cls.auxBondDim = auxBondDim;
-        cls.physDim    = physDim;
-
-        cls.siteIds = std::vector< std::string >(4);
-        cls.siteIds = { "A", "B", "C", "D" };
-        cls.SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
-
-        cls.cToS  = {
-            {std::make_pair(0,0),"A"},
-            {std::make_pair(1,0),"B"},
-            {std::make_pair(0,1),"C"},
-            {std::make_pair(1,1),"D"}
-        };
-        cls.vToId = {
-            {Vertex(0,0),"A"},
-            {Vertex(1,0),"B"},
-            {Vertex(0,1),"C"},
-            {Vertex(1,1),"D"}
-        };
-
-        aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        pIA = Index(TAG_I_PHYS, cls.physDim, PHYS);
-        pIB = Index(TAG_I_PHYS, cls.physDim, PHYS);
-        pIC = Index(TAG_I_PHYS, cls.physDim, PHYS);
-        pID = Index(TAG_I_PHYS, cls.physDim, PHYS);
-
-        A = ITensor(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
-        B = ITensor(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
-        C = ITensor(aIC, prime(aIC,1), prime(aIC,2), prime(aIC,3), pIC);
-        D = ITensor(aID, prime(aID,1), prime(aID,2), prime(aID,3), pID);
-
-        if (initBy == "RND_AB") {
-            std::cout <<"Initializing by RANDOM TENSORS A,B,C=B,D=A"<< std::endl;
-            randomize(A);
-            randomize(B);
-
-            auto shift05 = [](double r){ return r-0.5; };
-            A.apply(shift05);
-            B.apply(shift05);
-
-            C = B * delta(pIB, pIC);
-            D = A * delta(pIA, pID);
-            for (int i=0; i<=3; ++i) {
-                C = C * delta(prime(aIB,i), prime(aIC,i));
-                D = D * delta(prime(aIA,i), prime(aID,i));
-            }
-        } else if(initBy == "RANDOM") {
-            std::cout <<"Initializing by RANDOM TENSORS"<< std::endl;
-            // Randomize
-
-            randomize(A);
-            randomize(B);
-            randomize(C);
-            randomize(D);
-
-            // auto shift05 = [](Real r){ return r-0.5; };
-            // A.apply(shift05);
-            // B.apply(shift05);
-            // C.apply(shift05);
-            // D.apply(shift05);
-        } else if (initBy == "AFM") {
-            std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;
-            // Spin DOWN on site A, spin   UP on site B
-            // Spin UP   on site C, spin DOWN on site D
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-                pIA(2), 1.0);
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-                pIB(1), 1.0);
-            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(1), 1.0);
-            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-                pID(2), 1.0);
-        } else if (initBy == "XPRST") {
-            std::cout <<"Initializing by PRODUCT STATE along X"<< std::endl;
-            // Spin DOWN on site A, spin   UP on site B
-            // Spin UP   on site C, spin DOWN on site D
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-                pIA(1), 1.0/std::sqrt(2.0));
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-                pIA(2), 1.0/std::sqrt(2.0));
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-                pIB(1), 1.0/std::sqrt(2.0));
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-                pIB(2), 1.0/std::sqrt(2.0));
-            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(1), 1.0/std::sqrt(2.0));
-            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(2), 1.0/std::sqrt(2.0));
-            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-                pID(1), 1.0/std::sqrt(2.0));
-            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-                pID(2), 1.0/std::sqrt(2.0));
-        } else if (initBy == "ZPRST") {
-            std::cout <<"Initializing by PRODUCT STATE along Z +1/2"<< std::endl;
-            // Spin UP on all sites
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-                pIA(1), 1.0);
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-                pIB(1), 1.0);
-            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(1), 1.0);
-            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-                pID(1), 1.0);
-        } else if (initBy == "VBS") {
-            std::cout <<"Initializing by VERTICAL VBS STATE along Z"<< std::endl;
-            // Spin UP on all sites
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-                pIA(1), 1.0);
-            A.set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(2),
-                pIA(2), -1.0);
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-                pIB(1), 1.0);
-            B.set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(2),
-                pIB(2), -1.0);
-            C.set(aIC(1), prime(aIC,1)(2), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(1), 1.0);
-            C.set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-                pIC(2), 1.0);
-            D.set(aID(1), prime(aID,1)(2), prime(aID,2)(1), prime(aID,3)(1),
-                pID(1), 1.0);
-            D.set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-                pID(2), 1.0);
-        } else {
-            std::cout <<"Unsupported cluster initialization: "<< initBy << std::endl;
-        }
-
-        cls.aux  = {aIA, aIB, aIC, aID};
-        cls.phys = {pIA, pIB, pIC, pID};
-
-        cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
-
-        // Define siteToWeights
-        cls.siteToWeights["A"] = {
-            {{"A","B"},{2,0},"L1"},
-            {{"A","B"},{0,2},"L2"},
-            {{"A","C"},{1,3},"L3"},
-            {{"A","C"},{3,1},"L4"}
-        };
-        cls.siteToWeights["B"] = {
-            {{"B","A"},{2,0},"L2"},
-            {{"B","A"},{0,2},"L1"},
-            {{"B","D"},{1,3},"L5"},
-            {{"B","D"},{3,1},"L6"}
-        };
-        cls.siteToWeights["C"] = {
-            {{"C","D"},{2,0},"L7"},
-            {{"C","D"},{0,2},"L8"},
-            {{"C","A"},{1,3},"L4"},
-            {{"C","A"},{3,1},"L3"}
-        };
-        cls.siteToWeights["D"] = {
-            {{"D","B"},{3,1},"L5"},
-            {{"D","B"},{1,3},"L6"},
-            {{"D","C"},{2,0},"L8"},
-            {{"D","C"},{0,2},"L7"}
-        };
-        // ----- END DEFINE CLUSTER ------------------------------------
+        cls = Cluster_2x2_ABCD(initBy, auxBondDim, physDim);
     }
 
     {
@@ -348,6 +188,7 @@ int main( int argc, char *argv[] ) {
         }
     }
     cls.simParam = jsonCls;
+    // ----- END DEFINE CLUSTER -----------------------------------------------
 
     // ***** Select SVD solver to use *****************************************
     std::unique_ptr<SvdSolver> pSvdSolver;

@@ -133,6 +133,7 @@ struct Cluster {
 
     // aux indices and phys indicies of sites siteIds[0] <-> aux[0],phys[0] 
     std::vector< itensor::Index > aux, phys;
+    std::map< std::string, itensor::Index > maux, mphys;
 
     // inequivalent sites
     std::map< std::string, itensor::ITensor > sites;
@@ -154,6 +155,9 @@ struct Cluster {
     Cluster() {}
 
     Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+
+    Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
+        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC

@@ -1399,7 +1399,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
     std::vector<ITensor> orig_tensors = {cls.sites.at(tn[0]), cls.sites.at(tn[1])};
 
     if(dbg) {
-		std::cout<<"GATE: ";
+		std::cout<<"GATE: "<< mpo.uuid <<" | ";
 		std::cout<< tn[0] <<" -> "<< pl[0]<<" -> "<< pl[1] <<" -> "<< tn[1] << std::endl;
 
 		if(dbg && (dbgLvl >= 2)) {
@@ -1567,11 +1567,25 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 		// A--B
 		// Decompose A tensor on which the gate is applied
 		{
+			// Internally ITensor takes sqrt of singular values
+			auto maskS   = [&machine_eps](Real r) { return (r > 10.0*machine_eps ) ? 1.0 : 0.0; };
+			auto cutoffS = [&machine_eps](Real r) { return (r > 10.0*machine_eps ) ? r : 0; };
+
 			ITensor tempSA;
-			svd(cls.sites.at(tn[0]), eA, tempSA, QA);
+			svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
+			
+			// has to be non-zero
+			tempSA *= 1.0/tempSA.real(tempSA.inds()[0](1),tempSA.inds()[1](1));
+			tempSA.apply(cutoffS);
+			auto maskSA = tempSA;
+			maskSA.apply(maskS);
+			auto tmpI_SA = commonIndex(tempSA,eA); 
+
 			iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
 			eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
-			QA *= delta(commonIndex(QA,tempSA), iQA);
+			QA *= maskSA;
+			QA *= delta(tmpI_SA, iQA);
+			// QA *= delta(commonIndex(QA,tempSA), iQA);
 
 			// Prepare corner of A
 			ITensor tempC = (pc[0] * QA) * prime(conj(QA), AUXLINK, 4);
@@ -1582,16 +1596,37 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 
 			// Decompose B tensor on which the gate is applied
 			ITensor tempSB;
-			svd(cls.sites.at(tn[1]), eB, tempSB, QB);
+			svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
+
+			tempSB *= 1.0/tempSB.real(tempSB.inds()[0](1),tempSB.inds()[1](1));
+			tempSB.apply(cutoffS);
+			auto maskSB = tempSB;
+			maskSB.apply(maskS);
+			auto tmpI_SB = commonIndex(tempSB,eB); 
+
 			iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
 			eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
-			QB *= delta(commonIndex(QB,tempSB), iQB);
+			QB *= maskSB;
+			QB *= delta(tmpI_SB, iQB);
+			// QB *= delta(commonIndex(QB,tempSB), iQB);
 
 			tempC = (pc[2] * QB) * prime(conj(QB), AUXLINK, 4);
 			if(dbg && (dbgLvl >=3)) Print(tempC);
 
 			eRE *= tempC;
 			eRE *= pc[3];
+
+			// if (tn[0]=="A" && tn[1]=="C" && pl[0]==3 && pl[1]==1) {
+			// 	auto tmpT = QA * delta( prime(aux[0],1), prime(aux[1],3) ) * QB;
+
+			// 	ITensor C3( iQB, prime(aux[1],2), prime(aux[1],0) ), SC3A1, A1; 
+			// 	svd(tmpT,C3,SC3A1,A1,{"Truncate",false});
+			// 	Print(C3);
+			// 	Print(A1);
+				
+			// 	auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
+			// 	SC3A1.visit(printS);
+			// }
 		}
 
 		t_end_int = std::chrono::steady_clock::now();
@@ -1751,6 +1786,29 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	bool converged = false;
 	std::vector<double> fdist, fdistN, vec_normPsi;
 
+	// trial initialization
+	{
+		auto SqrtT = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
+		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
+
+		auto tmpOp = mpo.H1 * mpo.H2;
+		tmpOp = (tmpOp * delta(mpo.Is1, phys[0])) * delta(mpo.Is2, phys[1]);
+		tmpOp = (tmpOp * prime(delta(mpo.Is1, phys[0]))) * prime(delta(mpo.Is2, phys[1]));
+
+		auto tmpT = eA * delta(prime(aux[0],pl[0]),prime(aux[1],pl[1])) * eB * tmpOp;
+		tmpT.noprime(PHYS);
+
+		ITensor tmpEA(iQA,phys[0]), S, tmpEB;
+		svd(tmpT,tmpEA,S,tmpEB,{"Truncate",false});
+
+		S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+		S.apply(SqrtT);
+		S.visit(printS);
+
+		eA = tmpEA * S * delta(commonIndex(tmpEB,S), prime(aux[0],pl[0]));
+		eB = tmpEB * S * delta(commonIndex(tmpEA,S), prime(aux[1],pl[1]));
+	}
+
 	std::cout << "ENTERING ALS LOOP" << std::endl;
   	t_begin_int = std::chrono::steady_clock::now();
 	while (not converged) {
@@ -1777,7 +1835,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 			vec_normPsi.push_back(sumels(NORMPSI));
 
 			// condition for stopping ALS procedure
-			// if ( fdist.back() < iso_eps ) { converged = true; break; }
+			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
 			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < iso_eps ) { 
 			converged = true; break; }
 
@@ -1823,6 +1881,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 			vec_normPsi.push_back(sumels(NORMPSI));
 
 			// condition for stopping ALS procedure
+			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
 			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < iso_eps ) { 
 			converged = true; break; }
 			auto RES = M * eB - K;

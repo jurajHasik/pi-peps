@@ -19,6 +19,8 @@ const auto MPOLINK = itensor::IndexType(TAG_IT_MPOLINK);
 
 // operator acting on n-sites
 struct OpNS {
+    std::string uuid;
+
     // number of sites over which this operator acts
     int nSite;
 
@@ -33,6 +35,8 @@ struct OpNS {
     OpNS();
 
     OpNS(int n);
+
+    OpNS(int n, std::string uuid);
 };
 
 struct MpoNS : OpNS {
@@ -45,6 +49,8 @@ struct MpoNS : OpNS {
     MpoNS();
 
     MpoNS(int n);
+
+    MpoNS(int n, std::string uuid);
 
     // MpoNS(MpoNS const& op);
 };

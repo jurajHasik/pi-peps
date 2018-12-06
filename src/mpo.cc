@@ -5,11 +5,15 @@ using namespace itensor;
 // ----- MPOs definition ----------------------------------------------
 OpNS::OpNS() {}
 
-OpNS::OpNS(int n) : nSite(n), siteIds(n), pi(n) {}
+OpNS::OpNS(int n) : OpNS(n, "OpNS") {}
+
+OpNS::OpNS(int n, std::string uuid_) : uuid(uuid_), nSite(n), siteIds(n), pi(n) {}
 
 MpoNS::MpoNS() {}
 
-MpoNS::MpoNS(int n) : OpNS(n), mpo(n), ai(n-1) {}
+MpoNS::MpoNS(int n) : MpoNS(n, "MpoNS") {}
+
+MpoNS::MpoNS(int n, std::string uuid_) : OpNS(n, uuid_), mpo(n), ai(n-1) {}
 
 // MpoNS::MpoNS(MpoNS const& op) : nSite() mpo(op.mpo),  {
 

@@ -48,6 +48,8 @@ MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
 
 // ----- Trotter gates (4site, ...) MPOs ------------------------------
 OpNS getOP4s_J1J2(double tau, double J1, double J2);
+
+OpNS getOP4s_Uladder(double tau, double J1, double Jp);
 // ----- END Trotter gates (4site, ...) MPOs --------------------------
 
 

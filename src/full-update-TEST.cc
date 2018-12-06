@@ -2999,14 +2999,26 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		// ITensor eRE;
 		// ITensor deltaBra, deltaKet;
 
+		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
+			
 		// Decompose A tensor on which the gate is applied
 		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
 		ITensor tempSA;
 		svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
+		
+		tempSA *= 1.0/tempSA.real(tempSA.inds()[0](1),tempSA.inds()[1](1));
+		tempSA.apply(cutoffS);
+		auto maskSA = tempSA;
+		maskSA.apply(maskS);
+		auto tmpI_SA = commonIndex(tempSA,eA); 
+
 		//Index iQA("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
 		iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
 		eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
-		QA *= delta(commonIndex(QA,tempSA), iQA);
+		QA *= maskSA;
+		QA *= delta(tmpI_SA, iQA);
+		// QA *= delta(commonIndex(QA,tempSA), iQA);
 
 		// Prepare corner of A
 		// ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
@@ -3039,10 +3051,19 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		//ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
 		ITensor tempSD;
 		svd(cls.sites.at(tn[2]), eD, tempSD, QD, {"Truncate",false});
+		
+		tempSD *= 1.0/tempSD.real(tempSD.inds()[0](1),tempSD.inds()[1](1));
+		tempSD.apply(cutoffS);
+		auto maskSD = tempSD;
+		maskSD.apply(maskS);
+		auto tmpI_SD = commonIndex(tempSD,eD); 
+
 		//Index iQD("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
 		iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
 		eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
-		QD *= delta(commonIndex(QD,tempSD), iQD);
+		QD *= maskSD;
+		QD *= delta(tmpI_SD, iQD);
+		// QD *= delta(commonIndex(QD,tempSD), iQD);
 
 		// Prepare corner of D
 		// tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
@@ -3056,10 +3077,19 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		//ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
 		ITensor tempSB;
 		svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
+		
+		tempSB *= 1.0/tempSB.real(tempSB.inds()[0](1),tempSB.inds()[1](1));
+		tempSB.apply(cutoffS);
+		auto maskSB = tempSB;
+		maskSB.apply(maskS);
+		auto tmpI_SB = commonIndex(tempSB,eB); 
+
 		//Index iQB("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
 		iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
 		eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
-		QB *= delta(commonIndex(QB,tempSB), iQB);
+		QB *= maskSB;
+		QB *= delta(tmpI_SB, iQB);
+		// QB *= delta(commonIndex(QB,tempSB), iQB);
 
 		// tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
 		tempC = pc[1] * QB;
@@ -3280,6 +3310,45 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 	if (NORMUPSI.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
 	double normUPsi = sumels(NORMUPSI);
+
+	// trial initialization
+	{
+		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
+		auto SqrtT   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
+		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
+
+		auto tmpT = eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) * eB
+			* delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) * eD;
+
+		// apply operator
+		tmpT = (( tmpT * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
+		tmpT = (( tmpT * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
+		tmpT = (( tmpT * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
+		tmpT.noprime(PHYS);
+
+		ITensor teA(iQA,phys[0]),S1,tmpR;
+		svd(tmpT,teA,S1,tmpR,{"Truncate",false});
+		
+		S1 *= 1.0/S1.real(S1.inds()[0](1),S1.inds()[1](1));
+		S1.visit(printS);
+		S1.apply(SqrtT);
+
+		eA = teA*S1*delta(commonIndex(S1,tmpR),prime(aux[0],pl[1]));
+
+		tmpR *= S1;
+		tmpR *= delta(commonIndex(S1,teA),prime(aux[1],pl[2]));
+
+		ITensor teB(iQB,phys[1],prime(aux[1],pl[2])), S2, teD;
+		svd(tmpR,teB,S2,teD,{"Truncate",false});
+
+		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
+		S2.visit(printS);
+		S2.apply(SqrtT);
+
+		eB = teB*S2*delta(commonIndex(S2,teD),prime(aux[1],pl[3]));
+		eD = teD*S2*delta(commonIndex(S2,teB),prime(aux[2],pl[4]));
+	}
 
 	auto cmbX1 = combiner(eA.inds()[0], eA.inds()[1], eA.inds()[2]); 
 	auto cmbX2 = combiner(eB.inds()[0], eB.inds()[1], eB.inds()[2], eB.inds()[3]);
@@ -6724,7 +6793,7 @@ double CG4S_IT::func() {
 }
 
 double CG4S_IT::linmin(double fxi, std::vector< ITensor > const& g) {
-	const int MAXIT = 5;
+	const int MAXIT = 100;
 	
 	auto ngrad = 0.0;
 	for (int j=0; j<4; j++) { ngrad += std::pow(norm(g[j]),2); }
