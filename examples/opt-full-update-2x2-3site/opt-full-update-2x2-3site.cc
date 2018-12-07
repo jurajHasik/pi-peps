@@ -52,13 +52,13 @@ int main( int argc, char *argv[] ) {
 	// full update parameters
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
+    bool arg_fuTrialInit = jsonCls.value("fuTrialInit",true);
     bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
     int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
     std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
 
 
     int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
-    double isoEpsilon = jsonCls["isoEpsilon"].get<double>();
     std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
     double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
     bool symmetrizeProtoEnv = jsonCls["symmetrizeProtoEnv"].get<bool>();
@@ -68,7 +68,7 @@ int main( int argc, char *argv[] ) {
     auto json_als_params(jsonCls["als"]);
     std::string linsolver = json_als_params.value("solver","UNSUPPORTED");
     bool solver_dbg    = json_als_params.value("dbg",false);
-    double epsregularisation = json_als_params.value("epsregularisation",1.0e-8);
+    double epsregularisation = json_als_params.value("epsregularisation",0.0);
 
     // BiCG params
     double cg_convergence_check = json_als_params.value("cg_convergence_check",1);
@@ -280,6 +280,7 @@ int main( int argc, char *argv[] ) {
 
     Args fuArgs = {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,
+        "fuTrialInit",arg_fuTrialInit,
         "fuDbg",arg_fuDbg,
         "fuDbgLevel",arg_fuDbgLevel,
         "symmetrizeProtoEnv",symmetrizeProtoEnv,
@@ -287,7 +288,6 @@ int main( int argc, char *argv[] ) {
         "otNormType",arg_otNormType,
         "epsdistf",epsdistf,
 
-        "isoEpsilon",isoEpsilon,
         "fuIsoInit",arg_fuIsoInit,
         "fuIsoInitNoiseLevel",arg_fuIsoInitNoiseLevel,
 

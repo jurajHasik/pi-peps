@@ -1384,7 +1384,8 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
     auto dbgLvl = args.getInt("fuDbgLevel",0);
     auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
-    auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
+    auto fuTrialInit    = args.getBool("fuTrialInit",false);
+    auto epsdistf    = args.getReal("epsdistf",1.0e-8);
 	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-15);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
@@ -1787,7 +1788,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	std::vector<double> fdist, fdistN, vec_normPsi;
 
 	// trial initialization
-	{
+	if (fuTrialInit) {
 		auto SqrtT = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
 		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
 
@@ -1836,7 +1837,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 
 			// condition for stopping ALS procedure
 			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
-			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < iso_eps ) { 
+			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < epsdistf ) { 
 			converged = true; break; }
 
 			auto RES = M * eA - K;
@@ -1882,7 +1883,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 
 			// condition for stopping ALS procedure
 			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
-			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < iso_eps ) { 
+			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < epsdistf ) { 
 			converged = true; break; }
 			auto RES = M * eB - K;
 			std::cout<<"Norm(RES_B)= "<< norm(RES) << std::endl;

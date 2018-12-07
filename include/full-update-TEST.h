@@ -128,6 +128,27 @@ itensor::Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls,
 	itensor::LinSysSolver const& ls,
 	itensor::Args const& args = itensor::Args::global());
 
+struct FUlinSys {
+	itensor::ITensor & M;
+	itensor::ITensor & B;
+	itensor::ITensor & A;
+	itensor::ITensor cmbA;
+	itensor::ITensor cmbKet;
+	itensor::Args const& args;
+
+	double res  = 0.0;
+	double nres = 0.0; // residue normalized by right hand side
+	bool dbg    = false;
+
+	FUlinSys(itensor::ITensor & MM, itensor::ITensor & BB, 
+		itensor::ITensor & AA, itensor::ITensor ccmbA, itensor::ITensor ccmbKet,
+		itensor::Args const& aargs = itensor::Args::global());
+
+    void solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err,
+    	itensor::LinSysSolver const& ls,
+    	itensor::Args const& args = itensor::Args::global());
+};
+
 // itensor::Args fullUpdate_ALS_PINV_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 // 	std::vector<std::string> tn, std::vector<int> pl,
 // 	itensor::Args const& args = itensor::Args::global());
@@ -148,5 +169,42 @@ itensor::Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv 
 itensor::Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
 	std::vector<std::string> tn, std::vector<int> pl,
 	itensor::Args const& args = itensor::Args::global());
+
+struct FU4SiteGradMin {
+	std::vector< itensor::ITensor > const& pc; // protocorners 
+	std::array< itensor::Index, 4 > const& aux;  // aux indices
+	std::vector< std::string > const& tn;      // site IDs
+	std::vector< int > const& pl;              // primelevels of aux indices          
+	itensor::ITensor const& op4s;              // four-site operator
+	std::vector< itensor::ITensor > & rX;
+	std::vector< itensor::Index > const& iQX;
+	itensor::Args const& args;
+
+	itensor::ITensor protoK;
+	std::vector< itensor::ITensor > g, xi, h;
+
+	double epsdistf;
+	double normUPsi; // <psi|U^dag U|psi>
+	double inst_normPsi;
+	double inst_overlap;
+
+	FU4SiteGradMin(
+		std::vector< itensor::ITensor > const& ppc, // protocorners 
+		std::array< itensor::Index, 4 > const& aaux,  // aux indices
+		std::vector< std::string > const& ttn,      // site IDs
+		std::vector< int > const& ppl,              // primelevels of aux indices          
+		itensor::ITensor const& oop4s,              // four-site operator
+		std::vector< itensor::ITensor > & rrX,
+		std::vector< itensor::Index > const& iiQX,
+		itensor::Args const& aargs);
+
+	void minimize();
+	
+	double func();
+
+	double linmin(double fxi, std::vector< itensor::ITensor > const& g);
+
+	void grad(std::vector< itensor::ITensor > &grad);
+};
 
 #endif

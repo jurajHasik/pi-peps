@@ -2827,835 +2827,906 @@ void FuncALS_CG::df(VecDoub_I &x, VecDoub_O &deriv) {
 //-----------------------------------------------------------------------------
 
 // ***** PRODCTION ALS over 3 sites, BiCG with ITensor
-Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl,
-	LinSysSolver const& ls,
-	Args const& args) {
+// Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
+// 	std::vector<std::string> tn, std::vector<int> pl,
+// 	LinSysSolver const& ls,
+// 	Args const& args) {
  
-	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
-    auto dbg    = args.getBool("fuDbg",false);
-    auto dbgLvl = args.getInt("fuDbgLevel",0);
-    auto symmProtoEnv   = args.getBool("symmetrizeProtoEnv",true);
-    auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
-    auto epsdistf   = args.getReal("epsdistf",1.0e-8);
-    auto linsolver  = args.getString("linsolver","default");
-    auto otNormType = args.getString("otNormType");
+// 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
+//     auto dbg    = args.getBool("fuDbg",false);
+//     auto dbgLvl = args.getInt("fuDbgLevel",0);
+//     auto symmProtoEnv   = args.getBool("symmetrizeProtoEnv",true);
+//     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
+//     auto fuTrialInit    = args.getBool("fuTrialInit",false);
+//     auto epsdistf   = args.getReal("epsdistf",1.0e-8);
+//     auto linsolver  = args.getString("linsolver","default");
+//     auto otNormType = args.getString("otNormType");
 
-    double machine_eps = std::numeric_limits<double>::epsilon();
-	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
+//     double machine_eps = std::numeric_limits<double>::epsilon();
+// 	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
 
-	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+// 	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
-    // prepare to hold diagnostic data
-    Args diag_data = Args::global();
-    std::vector<ITensor> orig_tensors = { cls.sites.at(tn[0]), cls.sites.at(tn[1]),
-    	cls.sites.at(tn[2]) };
+//     // prepare to hold diagnostic data
+//     Args diag_data = Args::global();
+//     std::vector<ITensor> orig_tensors = { cls.sites.at(tn[0]), cls.sites.at(tn[1]),
+//     	cls.sites.at(tn[2]) };
 
-	if(dbg) {
-		std::cout<<"GATE: ";
-		for(int i=0; i<=3; i++) {
-			std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
-		}
-		std::cout<< std::endl;
+// 	if(dbg) {
+// 		std::cout<<"GATE: ";
+// 		for(int i=0; i<=3; i++) {
+// 			std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+// 		}
+// 		std::cout<< std::endl;
 
-		if (dbgLvl >= 2) {
-			std::cout<< uJ1J2;
-			PrintData(uJ1J2.H1);
-			PrintData(uJ1J2.H2);
-			PrintData(uJ1J2.H3);
-		}
-	}
+// 		if (dbgLvl >= 2) {
+// 			std::cout<< uJ1J2;
+// 			PrintData(uJ1J2.H1);
+// 			PrintData(uJ1J2.H2);
+// 			PrintData(uJ1J2.H3);
+// 		}
+// 	}
 
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
-	double m = 0.;
-	auto max_m = [&m](double d) {
-		if(std::abs(d) > m) m = std::abs(d);
-	};
+// 	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+// 	double m = 0.;
+// 	auto max_m = [&m](double d) {
+// 		if(std::abs(d) > m) m = std::abs(d);
+// 	};
 
-	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux;
-	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
+// 	// read off auxiliary and physical indices of the cluster sites
+// 	std::array<Index, 4> aux;
+// 	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
 
-	std::array<Index, 4> phys;
-	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
+// 	std::array<Index, 4> phys;
+// 	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
 	
-	std::array<Index, 3> opPI({
-		noprime(findtype(uJ1J2.H1, PHYS)),
-		noprime(findtype(uJ1J2.H2, PHYS)),
-		noprime(findtype(uJ1J2.H3, PHYS)) });
+// 	std::array<Index, 3> opPI({
+// 		noprime(findtype(uJ1J2.H1, PHYS)),
+// 		noprime(findtype(uJ1J2.H2, PHYS)),
+// 		noprime(findtype(uJ1J2.H3, PHYS)) });
 	
-	if (dbg) {
-		std::cout << "On-site indices:" << std::endl;
-		for (int i=0; i<4; i++) {
-			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
-		}
-	}
+// 	if (dbg) {
+// 		std::cout << "On-site indices:" << std::endl;
+// 		for (int i=0; i<4; i++) {
+// 			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+// 		}
+// 	}
 
-	Index iQA, iQD, iQB;
-	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
-	ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
-	ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+// 	Index iQA, iQD, iQB;
+// 	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
+// 	ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
+// 	ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
 	
-	ITensor eRE;
-	ITensor deltaBra, deltaKet;
+// 	ITensor eRE;
+// 	ITensor deltaBra, deltaKet;
 
-	{
-		t_begin_int = std::chrono::steady_clock::now();
+// 	{
+// 		t_begin_int = std::chrono::steady_clock::now();
 
-		// find integer identifier of on-site tensors within CtmEnv
-		std::vector<int> si;
-		for (int i=0; i<=3; i++) {
-			si.push_back(std::distance(ctmEnv.siteIds.begin(),
-					std::find(std::begin(ctmEnv.siteIds), 
-						std::end(ctmEnv.siteIds), tn[i])));
-		}
-		if(dbg) {
-			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-		}
+// 		// find integer identifier of on-site tensors within CtmEnv
+// 		std::vector<int> si;
+// 		for (int i=0; i<=3; i++) {
+// 			si.push_back(std::distance(ctmEnv.siteIds.begin(),
+// 					std::find(std::begin(ctmEnv.siteIds), 
+// 						std::end(ctmEnv.siteIds), tn[i])));
+// 		}
+// 		if(dbg) {
+// 			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+// 			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+// 		}
 
-		// prepare map from on-site tensor aux-indices to half row/column T
-		// environment tensors
-		std::array<const std::vector<ITensor> * const, 4> iToT(
-			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
+// 		// prepare map from on-site tensor aux-indices to half row/column T
+// 		// environment tensors
+// 		std::array<const std::vector<ITensor> * const, 4> iToT(
+// 			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
 
-		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
-		// environment tensors
-		const std::map<int, const std::vector<ITensor> * const > iToC(
-			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
-			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
-			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
-			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
+// 		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
+// 		// environment tensors
+// 		const std::map<int, const std::vector<ITensor> * const > iToC(
+// 			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
+// 			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
+// 			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
+// 			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
 
-		// for every on-site tensor point from primeLevel(index) to ENV index
-		// eg. I_XH or I_XV (with appropriate prime level). 
-		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+// 		// for every on-site tensor point from primeLevel(index) to ENV index
+// 		// eg. I_XH or I_XV (with appropriate prime level). 
+// 		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
 
-		// Find for site 0 through 3 which are connected to ENV
-		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+// 		// Find for site 0 through 3 which are connected to ENV
+// 		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
 
-		// precompute 4 (proto)corners of 2x2 environment
-		std::vector<ITensor> pc(4);
-		for (int s=0; s<=3; s++) {
-			// aux-indices connected to sites
-			std::vector<int> connected({pl[s*2], pl[s*2+1]});
-			// set_difference gives aux-indices connected to ENV
-			std::sort(connected.begin(), connected.end());
-			std::vector<int> tmp_iToE;
-			std::set_difference(plOfSite.begin(), plOfSite.end(), 
-				connected.begin(), connected.end(), 
-	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
-			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
-			if(dbg) { 
-				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
-					<< tn[s] << std::endl;
-				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
-			}
+// 		// precompute 4 (proto)corners of 2x2 environment
+// 		std::vector<ITensor> pc(4);
+// 		for (int s=0; s<=3; s++) {
+// 			// aux-indices connected to sites
+// 			std::vector<int> connected({pl[s*2], pl[s*2+1]});
+// 			// set_difference gives aux-indices connected to ENV
+// 			std::sort(connected.begin(), connected.end());
+// 			std::vector<int> tmp_iToE;
+// 			std::set_difference(plOfSite.begin(), plOfSite.end(), 
+// 				connected.begin(), connected.end(), 
+// 	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
+// 			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
+// 			if(dbg) { 
+// 				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
+// 					<< tn[s] << std::endl;
+// 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
+// 			}
 
-			// Assign indices by which site is connected to ENV
-			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-			} else {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
-			}
+// 			// Assign indices by which site is connected to ENV
+// 			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
+// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
+// 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
+// 			} else {
+// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
+// 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+// 			}
 
-			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
-				(*iToT.at(tmp_iToE[1]))[si[s]];
-			if(dbg) Print(pc[s]);
-			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
-			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
+// 			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
+// 				(*iToT.at(tmp_iToE[1]))[si[s]];
+// 			if(dbg) Print(pc[s]);
+// 			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
+// 			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
 		
-			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
-			// define combiner
-			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
-			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
-			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
+// 			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
+// 			// define combiner
+// 			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
+// 			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
+// 			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
 
-			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
-				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
-		}
-		if(dbg) {
-			for(int i=0; i<=3; i++) {
-				std::cout <<"Site: "<< tn[i] <<" ";
-				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
-				std::cout << std::endl;
-			}
-		}
+// 			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
+// 				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
+// 		}
+// 		if(dbg) {
+// 			for(int i=0; i<=3; i++) {
+// 				std::cout <<"Site: "<< tn[i] <<" ";
+// 				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
+// 				std::cout << std::endl;
+// 			}
+// 		}
 
 		
-		t_end_int = std::chrono::steady_clock::now();
-		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
-			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+// 		t_end_int = std::chrono::steady_clock::now();
+// 		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
+// 			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+// 		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
 
-		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
-		t_begin_int = std::chrono::steady_clock::now();
+// 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+// 		t_begin_int = std::chrono::steady_clock::now();
 
-		// C  D
-		//    |
-		// A--B
-		// ITensor eRE;
-		// ITensor deltaBra, deltaKet;
+// 		// C  D
+// 		//    |
+// 		// A--B
+// 		// ITensor eRE;
+// 		// ITensor deltaBra, deltaKet;
 
-		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
-		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
+// 		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+// 		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
 			
-		// Decompose A tensor on which the gate is applied
-		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
-		ITensor tempSA;
-		svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
+// 		// Decompose A tensor on which the gate is applied
+// 		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+// 		ITensor tempSA;
+// 		svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
 		
-		tempSA *= 1.0/tempSA.real(tempSA.inds()[0](1),tempSA.inds()[1](1));
-		tempSA.apply(cutoffS);
-		auto maskSA = tempSA;
-		maskSA.apply(maskS);
-		auto tmpI_SA = commonIndex(tempSA,eA); 
+// 		tempSA *= 1.0/tempSA.real(tempSA.inds()[0](1),tempSA.inds()[1](1));
+// 		tempSA.apply(cutoffS);
+// 		auto maskSA = tempSA;
+// 		maskSA.apply(maskS);
+// 		auto tmpI_SA = commonIndex(tempSA,eA); 
 
-		//Index iQA("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
-		iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
-		eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
-		QA *= maskSA;
-		QA *= delta(tmpI_SA, iQA);
-		// QA *= delta(commonIndex(QA,tempSA), iQA);
+// 		//Index iQA("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+// 		iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+// 		eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
+// 		QA *= maskSA;
+// 		QA *= delta(tmpI_SA, iQA);
+// 		// QA *= delta(commonIndex(QA,tempSA), iQA);
 
-		// Prepare corner of A
-		// ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
-		ITensor tempC = (pc[0] * QA);
-		tempC *= prime(conj(QA), AUXLINK, 4);
+// 		// Prepare corner of A
+// 		// ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
+// 		ITensor tempC = (pc[0] * QA);
+// 		tempC *= prime(conj(QA), AUXLINK, 4);
 
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
-		deltaBra = prime(deltaKet,4);
-		tempC = (tempC * deltaBra) * deltaKet;
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
+// 		deltaBra = prime(deltaKet,4);
+// 		tempC = (tempC * deltaBra) * deltaKet;
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE = tempC;
+// 		eRE = tempC;
 
-		// Prepare corner of C
-		// tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
-		tempC = pc[3] * cls.sites.at(tn[3]);
-		tempC *= prime(conj(cls.sites.at(tn[3])), AUXLINK, 4);
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		// Prepare corner of C
+// 		// tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
+// 		tempC = pc[3] * cls.sites.at(tn[3]);
+// 		tempC *= prime(conj(cls.sites.at(tn[3])), AUXLINK, 4);
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 		
-		deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
-		deltaBra = prime(deltaKet,4);
-		tempC = (tempC * deltaBra) * deltaKet;
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
+// 		deltaBra = prime(deltaKet,4);
+// 		tempC = (tempC * deltaBra) * deltaKet;
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+// 		eRE *= tempC;
 
-		// Decompose D tensor on which the gate is applied
-		//ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
-		ITensor tempSD;
-		svd(cls.sites.at(tn[2]), eD, tempSD, QD, {"Truncate",false});
+// 		// Decompose D tensor on which the gate is applied
+// 		//ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+// 		ITensor tempSD;
+// 		svd(cls.sites.at(tn[2]), eD, tempSD, QD, {"Truncate",false});
 		
-		tempSD *= 1.0/tempSD.real(tempSD.inds()[0](1),tempSD.inds()[1](1));
-		tempSD.apply(cutoffS);
-		auto maskSD = tempSD;
-		maskSD.apply(maskS);
-		auto tmpI_SD = commonIndex(tempSD,eD); 
+// 		tempSD *= 1.0/tempSD.real(tempSD.inds()[0](1),tempSD.inds()[1](1));
+// 		tempSD.apply(cutoffS);
+// 		auto maskSD = tempSD;
+// 		maskSD.apply(maskS);
+// 		auto tmpI_SD = commonIndex(tempSD,eD); 
 
-		//Index iQD("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
-		iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
-		eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
-		QD *= maskSD;
-		QD *= delta(tmpI_SD, iQD);
-		// QD *= delta(commonIndex(QD,tempSD), iQD);
+// 		//Index iQD("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+// 		iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+// 		eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
+// 		QD *= maskSD;
+// 		QD *= delta(tmpI_SD, iQD);
+// 		// QD *= delta(commonIndex(QD,tempSD), iQD);
 
-		// Prepare corner of D
-		// tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
-		tempC = pc[2] * QD;
-		tempC *= prime(conj(QD), AUXLINK, 4);
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		// Prepare corner of D
+// 		// tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
+// 		tempC = pc[2] * QD;
+// 		tempC *= prime(conj(QD), AUXLINK, 4);
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+// 		eRE *= tempC;
 
-		// Decompose B tensor on which the gate is applied
-		//ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
-		ITensor tempSB;
-		svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
+// 		// Decompose B tensor on which the gate is applied
+// 		//ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+// 		ITensor tempSB;
+// 		svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
 		
-		tempSB *= 1.0/tempSB.real(tempSB.inds()[0](1),tempSB.inds()[1](1));
-		tempSB.apply(cutoffS);
-		auto maskSB = tempSB;
-		maskSB.apply(maskS);
-		auto tmpI_SB = commonIndex(tempSB,eB); 
+// 		tempSB *= 1.0/tempSB.real(tempSB.inds()[0](1),tempSB.inds()[1](1));
+// 		tempSB.apply(cutoffS);
+// 		auto maskSB = tempSB;
+// 		maskSB.apply(maskS);
+// 		auto tmpI_SB = commonIndex(tempSB,eB); 
 
-		//Index iQB("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
-		iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
-		eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
-		QB *= maskSB;
-		QB *= delta(tmpI_SB, iQB);
-		// QB *= delta(commonIndex(QB,tempSB), iQB);
+// 		//Index iQB("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+// 		iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+// 		eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
+// 		QB *= maskSB;
+// 		QB *= delta(tmpI_SB, iQB);
+// 		// QB *= delta(commonIndex(QB,tempSB), iQB);
 
-		// tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
-		tempC = pc[1] * QB;
-		tempC *= prime(conj(QB), AUXLINK, 4);
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+// 		// tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
+// 		tempC = pc[1] * QB;
+// 		tempC *= prime(conj(QB), AUXLINK, 4);
+// 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+// 		eRE *= tempC;
 
-		t_end_int = std::chrono::steady_clock::now();
-		std::cout<<"Constructed reduced Env - T: "<< 
-			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-		if(dbg && (dbgLvl >=3)) Print(eRE);
-		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
-	}
+// 		t_end_int = std::chrono::steady_clock::now();
+// 		std::cout<<"Constructed reduced Env - T: "<< 
+// 			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+// 		if(dbg && (dbgLvl >=3)) Print(eRE);
+// 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
+// 	}
 
-	double diag_maxMsymLE, diag_maxMasymLE;
-	double diag_maxMsymFN, diag_maxMasymFN;
-	std::string diag_protoEnv, diag_protoEnv_descriptor;
-	double condNum = 1.0;
-	if (symmProtoEnv) {
-		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
-		t_begin_int = std::chrono::steady_clock::now();
-		auto cmbKet = combiner(iQA, iQB, iQD);
-		auto cmbBra = prime(cmbKet,4);
+// 	double diag_maxMsymLE, diag_maxMasymLE;
+// 	double diag_maxMsymFN, diag_maxMasymFN;
+// 	std::string diag_protoEnv, diag_protoEnv_descriptor;
+// 	double condNum = 1.0;
+// 	if (symmProtoEnv) {
+// 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT ************************
+// 		t_begin_int = std::chrono::steady_clock::now();
+// 		auto cmbKet = combiner(iQA, iQB, iQD);
+// 		auto cmbBra = prime(cmbKet,4);
 
-		eRE = (eRE * cmbKet) * cmbBra;
+// 		eRE = (eRE * cmbKet) * cmbBra;
 
-		ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
-		ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
+// 		ITensor eRE_sym  = 0.5 * (eRE + swapPrime(eRE,0,4));
+// 		ITensor eRE_asym = 0.5 * (eRE - swapPrime(eRE,0,4));
 
-		m = 0.;
-	    eRE_sym.visit(max_m);
-	    diag_maxMsymLE = m;
-	    std::cout<<"eRE_sym max element: "<< m <<std::endl;
-		m = 0.;
-	    eRE_asym.visit(max_m);
-	    diag_maxMasymLE = m;
-	    std::cout<<"eRE_asym max element: "<< m <<std::endl;
+// 		m = 0.;
+// 	    eRE_sym.visit(max_m);
+// 	    diag_maxMsymLE = m;
+// 	    std::cout<<"eRE_sym max element: "<< m <<std::endl;
+// 		m = 0.;
+// 	    eRE_asym.visit(max_m);
+// 	    diag_maxMasymLE = m;
+// 	    std::cout<<"eRE_asym max element: "<< m <<std::endl;
 
-		diag_maxMsymFN  = norm(eRE_sym);
-		diag_maxMasymFN = norm(eRE_asym);
+// 		diag_maxMsymFN  = norm(eRE_sym);
+// 		diag_maxMasymFN = norm(eRE_asym);
 	
-		if (posDefProtoEnv) {
-			eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+// 		if (posDefProtoEnv) {
+// 			eRE_sym *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
 			
-			// ##### V3 ######################################################
-			ITensor U_eRE, D_eRE;
-			diagHermitian(eRE_sym, U_eRE, D_eRE);
+// 			// ##### V3 ######################################################
+// 			ITensor U_eRE, D_eRE;
+// 			diagHermitian(eRE_sym, U_eRE, D_eRE);
 
-			// find largest and smallest eigenvalues
-			double msign = 1.0;
-			double mval = 0.;
-			double nval = 1.0e+16;
-			std::vector<double> dM_elems;
-			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-				if (std::abs(dM_elems.back()) > mval) {
-					mval = std::abs(dM_elems.back());
-					msign = dM_elems.back()/mval;
-				}
-				if (std::abs(dM_elems.back()) < nval) nval = std::abs(dM_elems.back());
-			}
-			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+// 			// find largest and smallest eigenvalues
+// 			double msign = 1.0;
+// 			double mval = 0.;
+// 			double nval = 1.0e+16;
+// 			std::vector<double> dM_elems;
+// 			for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+// 				dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+// 				if (std::abs(dM_elems.back()) > mval) {
+// 					mval = std::abs(dM_elems.back());
+// 					msign = dM_elems.back()/mval;
+// 				}
+// 				if (std::abs(dM_elems.back()) < nval) nval = std::abs(dM_elems.back());
+// 			}
+// 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// Drop negative EV'std
-			int countCTF = 0;
-			int countNEG = 0;
-			for (auto & elem : dM_elems) {
-				if (elem < 0.0) {
-					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-					elem = 0.0;
-					countNEG += 1;
-				//} else if (elem/mval < svd_cutoff) {
-				//	countCTF += 1;
-					//elem = 0.0;
-				//	if(dbg && (dbgLvl >= 2)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-				} 
-			}
+// 			// Drop negative EV'std
+// 			int countCTF = 0;
+// 			int countNEG = 0;
+// 			for (auto & elem : dM_elems) {
+// 				if (elem < 0.0) {
+// 					if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+// 					elem = 0.0;
+// 					countNEG += 1;
+// 				//} else if (elem/mval < svd_cutoff) {
+// 				//	countCTF += 1;
+// 					//elem = 0.0;
+// 				//	if(dbg && (dbgLvl >= 2)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+// 				} 
+// 			}
 			
-			// TODO? estimate codition number
-			// condNum = ( std::abs(nval/mval) > svd_cutoff ) ? std::abs(mval/nval) : 1.0/svd_cutoff ;
-			condNum = mval / nval;
+// 			// TODO? estimate codition number
+// 			// condNum = ( std::abs(nval/mval) > svd_cutoff ) ? std::abs(mval/nval) : 1.0/svd_cutoff ;
+// 			condNum = mval / nval;
 
-			std::ostringstream oss;
-			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
-				<< countNEG << " " << dM_elems.size();
+// 			std::ostringstream oss;
+// 			oss << std::scientific << mval << " " << condNum << " " << countCTF << " " 
+// 				<< countNEG << " " << dM_elems.size();
 
-			diag_protoEnv_descriptor = "MaxEV condNum EV<CTF EV<0 TotalEV";
-			diag_protoEnv = oss.str();
-			if(dbg && (dbgLvl >= 1)) {
-				std::cout<<"REFINED SPECTRUM"<< std::endl;
-				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
-				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
-					<< dM_elems.size() << std::endl;
-			}
-			// ##### END V3 ##################################################
+// 			diag_protoEnv_descriptor = "MaxEV condNum EV<CTF EV<0 TotalEV";
+// 			diag_protoEnv = oss.str();
+// 			if(dbg && (dbgLvl >= 1)) {
+// 				std::cout<<"REFINED SPECTRUM"<< std::endl;
+// 				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval <<std::endl;
+// 				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<< countNEG << "/"
+// 					<< dM_elems.size() << std::endl;
+// 			}
+// 			// ##### END V3 ##################################################
 
-			// ##### V4 ######################################################
-			// ITensor U_eRE, D_eRE;
-			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+// 			// ##### V4 ######################################################
+// 			// ITensor U_eRE, D_eRE;
+// 			// diagHermitian(eRE_sym, U_eRE, D_eRE);
 
-			// double msign = 1.0;
-			// double mval = 0.;
-			// std::vector<double> dM_elems;
-			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-			// 	if (std::abs(dM_elems.back()) > mval) {
-			// 		mval = std::abs(dM_elems.back());
-			// 		msign = dM_elems.back()/mval;
-			// 	}
-			// }
-			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+// 			// double msign = 1.0;
+// 			// double mval = 0.;
+// 			// std::vector<double> dM_elems;
+// 			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+// 			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+// 			// 	if (std::abs(dM_elems.back()) > mval) {
+// 			// 		mval = std::abs(dM_elems.back());
+// 			// 		msign = dM_elems.back()/mval;
+// 			// 	}
+// 			// }
+// 			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// // Set EV's to ABS Values
-			// if(dbg && (dbgLvl >= 1)) {
-			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
-			// 	std::cout<<"MAX EV: "<< mval << std::endl;
-			// }
-			// for (auto & elem : dM_elems) elem = std::fabs(elem);
-			// ##### END V4 ##################################################
+// 			// // Set EV's to ABS Values
+// 			// if(dbg && (dbgLvl >= 1)) {
+// 			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+// 			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+// 			// }
+// 			// for (auto & elem : dM_elems) elem = std::fabs(elem);
+// 			// ##### END V4 ##################################################
 
-			// ##### V5 ######################################################
-			// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
+// 			// ##### V5 ######################################################
+// 			// eRE *= delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet))); // 0--eRE--1
 			
-			// eRE_sym = conj(eRE); // 0--eRE*--1
-			// eRE.mapprime(1,2);   // 0--eRE---2
-			// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
-			// eRE_sym.prime(-1);
+// 			// eRE_sym = conj(eRE); // 0--eRE*--1
+// 			// eRE.mapprime(1,2);   // 0--eRE---2
+// 			// eRE_sym = eRE_sym * eRE; // (0--eRE*--1) * (0--eRE--2) = (1--eRE^dag--0) * (0--eRE--2) 
+// 			// eRE_sym.prime(-1);
 
-			// ITensor U_eRE, D_eRE;
-			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+// 			// ITensor U_eRE, D_eRE;
+// 			// diagHermitian(eRE_sym, U_eRE, D_eRE);
 
-			// std::vector<double> dM_elems;
-			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
-			// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
-			// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
-			// ##### END V5 ##################################################
+// 			// std::vector<double> dM_elems;
+// 			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) dM_elems.push_back(
+// 			// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm))) );
+// 			// D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+// 			// ##### END V5 ##################################################
 
-			// ##### V6 ######################################################
-			// ITensor U_eRE, D_eRE;
-			// diagHermitian(eRE_sym, U_eRE, D_eRE);
+// 			// ##### V6 ######################################################
+// 			// ITensor U_eRE, D_eRE;
+// 			// diagHermitian(eRE_sym, U_eRE, D_eRE);
 
-			// double msign = 1.0;
-			// double mval = 0.;
-			// std::vector<double> dM_elems;
-			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
-			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
-			// 	if (std::abs(dM_elems.back()) > mval) {
-			// 		mval = std::abs(dM_elems.back());
-			// 		msign = dM_elems.back()/mval;
-			// 	}
-			// }
-			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
+// 			// double msign = 1.0;
+// 			// double mval = 0.;
+// 			// std::vector<double> dM_elems;
+// 			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++) {  
+// 			// 	dM_elems.push_back(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)));
+// 			// 	if (std::abs(dM_elems.back()) > mval) {
+// 			// 		mval = std::abs(dM_elems.back());
+// 			// 		msign = dM_elems.back()/mval;
+// 			// 	}
+// 			// }
+// 			// if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
-			// // Drop negative EV's
-			// if(dbg && (dbgLvl >= 1)) {
-			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
-			// 	std::cout<<"MAX EV: "<< mval << std::endl;
-			// }
-			// for (auto & elem : dM_elems) {
-			// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
-			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
-			// 		elem = 0.0;
-			// 	} else if (elem < 0.0) {
-			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
-			// 		elem = std::fabs(elem);
-			// 	}
-			// }
-			// ##### END V6 ##################################################
+// 			// // Drop negative EV's
+// 			// if(dbg && (dbgLvl >= 1)) {
+// 			// 	std::cout<<"REFINED SPECTRUM"<< std::endl;
+// 			// 	std::cout<<"MAX EV: "<< mval << std::endl;
+// 			// }
+// 			// for (auto & elem : dM_elems) {
+// 			// 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
+// 			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 << std::endl;
+// 			// 		elem = 0.0;
+// 			// 	} else if (elem < 0.0) {
+// 			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl;
+// 			// 		elem = std::fabs(elem);
+// 			// 	}
+// 			// }
+// 			// ##### END V6 ##################################################
 
 			
-			D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
+// 			D_eRE = diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
 
-			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
-				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
-		}
+// 			eRE_sym = ((conj(U_eRE)*D_eRE)*prime(U_eRE))
+// 				* delta(combinedIndex(cmbBra),prime(combinedIndex(cmbKet)));
+// 		}
 
-		eRE = (eRE_sym * cmbKet) * cmbBra;
+// 		eRE = (eRE_sym * cmbKet) * cmbBra;
 
-		t_end_int = std::chrono::steady_clock::now();
-		std::cout<<"Symmetrized reduced env - T: "<< 
-			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
-	}
+// 		t_end_int = std::chrono::steady_clock::now();
+// 		std::cout<<"Symmetrized reduced env - T: "<< 
+// 			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+// 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT DONE *******************
+// 	}
 
-	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
-	t_begin_int = std::chrono::steady_clock::now();
+// 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
+// 	t_begin_int = std::chrono::steady_clock::now();
 
-	ITensor protoK = eRE * (eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) );
-	protoK *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) );
-	protoK *= eD;
-	if(dbg && (dbgLvl >=2)) Print(protoK);
+// 	ITensor protoK = eRE * (eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) );
+// 	protoK *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) );
+// 	protoK *= eD;
+// 	if(dbg && (dbgLvl >=2)) Print(protoK);
 
-	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
-	protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
-	protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
-	protoK.prime(PHYS,-1);
-	if(dbg && (dbgLvl >=2)) Print(protoK);
+// 	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
+// 	protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
+// 	protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
+// 	protoK.prime(PHYS,-1);
+// 	if(dbg && (dbgLvl >=2)) Print(protoK);
 
-	std::cout<<"eRE.scale(): "<< eRE.scale()<<" protoK.scale(): "<< protoK.scale() <<std::endl;
-	t_end_int = std::chrono::steady_clock::now();
-	std::cout<<"Proto Envs for M and K constructed - T: "<< 
-		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
+// 	std::cout<<"eRE.scale(): "<< eRE.scale()<<" protoK.scale(): "<< protoK.scale() <<std::endl;
+// 	t_end_int = std::chrono::steady_clock::now();
+// 	std::cout<<"Proto Envs for M and K constructed - T: "<< 
+// 		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+// 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
 	
-	// ******************************************************************************************** 
-	// 	     OPTIMIZE VIA CG                                                                      *
-	// ********************************************************************************************
+// 	// ******************************************************************************************** 
+// 	// 	     OPTIMIZE VIA CG                                                                      *
+// 	// ********************************************************************************************
 
-	// <psi|U^dag U|psi>
-	auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
-	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
-	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
-	NORMUPSI.prime(PHYS,-1);
-	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
-	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
-	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
+// 	// <psi|U^dag U|psi>
+// 	auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
+// 	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
+// 	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
+// 	NORMUPSI.prime(PHYS,-1);
+// 	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
+// 	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+// 	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
 
-	if (NORMUPSI.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
-	double normUPsi = sumels(NORMUPSI);
+// 	if (NORMUPSI.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
+// 	double normUPsi = sumels(NORMUPSI);
 
-	// trial initialization
-	{
-		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
-		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
-		auto SqrtT   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
-		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
+// 	// trial initialization
+// 	if (fuTrialInit) {
+// 		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+// 		auto cutoffS = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
+// 		auto SqrtT   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
+// 		auto printS  = [](Real r) { std::cout << std::scientific << r << std::endl; };
+// 		auto extractDiagReal = [](Diag<Real> const& d) { return d.store; };
+// 		auto invDiagT = [](ITensor const& t)->ITensor {
+// 			double machine_eps = std::numeric_limits<double>::epsilon();
 
-		auto tmpT = eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) * eB
-			* delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) * eD;
+// 			// assume t is diagTensor of rank 2
+// 			std::vector<double> tmpD(t.inds()[0].m());
+// 			double const tol = t.real(t.inds()[0](1),t.inds()[1](1)) 
+// 				* std::max(t.inds()[0].m(),t.inds()[1].m()) * machine_eps;
 
-		// apply operator
-		tmpT = (( tmpT * delta(opPI[0],phys[0]) ) * uJ1J2.H1) * prime(delta(opPI[0],phys[0]));
-		tmpT = (( tmpT * delta(opPI[1],phys[1]) ) * uJ1J2.H2) * prime(delta(opPI[1],phys[1]));
-		tmpT = (( tmpT * delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
-		tmpT.noprime(PHYS);
+// 			double elem;
+// 			for(int i=1; i<=t.inds()[0].m(); i++) {
+// 				tmpD[i-1] = (std::abs(t.real(t.inds()[0](i),t.inds()[1](i))) > tol) ?  
+// 					1.0 / t.real(t.inds()[0](i),t.inds()[1](i)) : 0.0;
+// 			}
 
-		ITensor teA(iQA,phys[0]),S1,tmpR;
-		svd(tmpT,teA,S1,tmpR,{"Truncate",false});
+// 			return diagTensor(tmpD, t.inds()[0], t.inds()[1]);
+// 		};
+// 		auto sumSquares = [&extractDiagReal](ITensor const& t1, ITensor const& t2)->Real {
+// 			// assume equal length
+// 			auto els1 = applyFunc(extractDiagReal,t1.store());
+// 			auto els2 = applyFunc(extractDiagReal,t2.store());
+// 			double sum = 0.0;
+// 			for (int i=0; i<els1.size(); i++ ) sum += (els1[i] - els2[i]) * (els1[i] - els2[i]) ;
+// 			return sum;
+// 		};
+// 		auto diagCopyAndIndex = [&extractDiagReal](ITensor const& t, Index i1, Index i2)->ITensor {
+// 			// copy storage of t
+// 			auto elems = applyFunc(extractDiagReal,t.store());
+// 			return diagTensor(elems,i1,i2);
+// 		};
+
+// 		// relabel indices on MPO to phys indices of on-site tensors
+// 		auto tEA = (eA * (delta(opPI[0],phys[0]) * uJ1J2.H1)) * delta(prime(opPI[0]),phys[0]);
+// 		auto tEB = (eB * (delta(opPI[1],phys[1]) * uJ1J2.H2)) * delta(prime(opPI[1]),phys[1]);
+// 		auto tED = (eD * (delta(opPI[2],phys[2]) * uJ1J2.H3)) * delta(prime(opPI[2]),phys[2]);
 		
-		S1 *= 1.0/S1.real(S1.inds()[0](1),S1.inds()[1](1));
-		S1.visit(printS);
-		S1.apply(SqrtT);
+// 		// combine enlarged indices
+// 		auto cA  = combiner(uJ1J2.a12,prime(aux[0],pl[1]));
+// 		auto cAB = combiner(uJ1J2.a12,prime(aux[1],pl[2]));
+// 		auto cBD = combiner(uJ1J2.a23,prime(aux[1],pl[3]));
+// 		auto cD  = combiner(uJ1J2.a23,prime(aux[2],pl[4]));
+// 		auto iA  = combinedIndex(cA);
+// 		auto iAB = combinedIndex(cAB);
+// 		auto iBD = combinedIndex(cBD);
+// 		auto iD  = combinedIndex(cD);
 
-		eA = teA*S1*delta(commonIndex(S1,tmpR),prime(aux[0],pl[1]));
+// 		tEA *= cA;
+// 		tEB = (tEB * cAB ) * cBD;		
+// 		tED *= cD;
 
-		tmpR *= S1;
-		tmpR *= delta(commonIndex(S1,teA),prime(aux[1],pl[2]));
+// 		auto lAB = diagTensor(std::vector<double>(iA.m(),1.0), iA, iAB);
+// 		auto lBD = diagTensor(std::vector<double>(iD.m(),1.0), iBD, iD);
 
-		ITensor teB(iQB,phys[1],prime(aux[1],pl[2])), S2, teD;
-		svd(tmpR,teB,S2,teD,{"Truncate",false});
+// 		// quasi-orthoginalization
+// 		ITensor T;
+// 		double tol = 1.0e-8;
+// 		double dist0 = 0.0;
+// 		bool converged = false;
+// 		while (not converged) {
+// 			double dist = 0.0;
 
-		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
-		S2.visit(printS);
-		S2.apply(SqrtT);
+// 			T = tEA * lAB * tEB * lBD;
+// 			tEA = ITensor(iQA,phys[0]);
+// 			ITensor sAB;
+// 			svd(T,tEA,sAB,tEB,{"Truncate",false});
+// 			sAB *= 1.0/sAB.real(sAB.inds()[0](1),sAB.inds()[1](1));
+// 			dist += sumSquares(sAB,lAB);
+// 			lAB = diagCopyAndIndex(sAB,iA,iAB);
+// 			tEA *= delta(commonIndex(tEA,sAB),iA);
+// 			tEB *= delta(commonIndex(tEB,sAB),iAB);
+// 			tEB *= invDiagT(lBD);
 
-		eB = teB*S2*delta(commonIndex(S2,teD),prime(aux[1],pl[3]));
-		eD = teD*S2*delta(commonIndex(S2,teB),prime(aux[2],pl[4]));
-	}
+// 			T = lAB * tEB * lBD * tED;
+// 			tED = ITensor(iQD,phys[2]);
+// 			ITensor sBD;
+// 			svd(T,tED,sBD,tEB,{"Truncate",false});
+// 			sBD *= 1.0/sBD.real(sBD.inds()[0](1),sBD.inds()[1](1));
+// 			dist += sumSquares(sBD,lBD);
+// 			lBD = diagCopyAndIndex(sBD,iD,iBD);
+// 			tED *= delta(commonIndex(tED,sBD),iD);
+// 			tEB *= delta(commonIndex(tEB,sBD),iBD);
+// 			tEB *= invDiagT(lAB);
 
-	auto cmbX1 = combiner(eA.inds()[0], eA.inds()[1], eA.inds()[2]); 
-	auto cmbX2 = combiner(eB.inds()[0], eB.inds()[1], eB.inds()[2], eB.inds()[3]);
-	auto cmbX3 = combiner(eD.inds()[0], eD.inds()[1], eD.inds()[2]);
+// 			if (std::sqrt(std::abs(dist - dist0)) < tol) converged = true;
+// 			dist0 = dist;
+// 		}
 
-	double normPsi, finit, finitN;
-	double prev_finit = 1.0;
-	ITensor M, K, NORMPSI, OVERLAP;
-	double ferr;
-	int fiter;
+// 		// truncate
+// 		Print(lAB);
+// 		lAB.visit(printS);
+// 		Print(lBD);
+// 		lBD.visit(printS);
 
-  	int altlstsquares_iter = 0;
-	bool converged = false;
-	std::vector<bool> als_tensor_stop(3, false);
-  	std::vector<double> fdist, fdistN, vec_normPsi;
-  	std::cout<<"ENTERING ALS LOOP tol: "<< epsdistf <<" solver: "<< linsolver <<std::endl;
-  	t_begin_int = std::chrono::steady_clock::now();
-	while (not converged) {
-		// Optimizing eA
-		// 1) construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA
+// 		lAB.apply(SqrtT);
+// 		lBD.apply(SqrtT);
 
-		// BRA
-		M = eRE * prime(conj(eD), AUXLINK,4);
-		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		M *= prime(conj(eB), AUXLINK,4);
-		M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-		if(dbg && (dbgLvl >= 3)) Print(M);
+// 		eA = (tEA*lAB)*delta(commonIndex(lAB,tEB),prime(aux[0],pl[1]));
+// 		eB = (tEB*lAB)*delta(commonIndex(lAB,tEA),prime(aux[1],pl[2]));
+// 		eB *= lBD;
+// 		eB *= delta(commonIndex(lBD,tED),prime(aux[1],pl[3]));
+// 		eD = (tED*lBD)*delta(commonIndex(lBD,tEB),prime(aux[2],pl[4]));
+// 	}
 
-		// KET
-		M *= eD;
-		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-		M *= eB;
-		M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
-		if(dbg && (dbgLvl >= 2)) Print(M);
+// 	auto cmbX1 = combiner(eA.inds()[0], eA.inds()[1], eA.inds()[2]); 
+// 	auto cmbX2 = combiner(eB.inds()[0], eB.inds()[1], eB.inds()[2], eB.inds()[3]);
+// 	auto cmbX3 = combiner(eD.inds()[0], eD.inds()[1], eD.inds()[2]);
 
-		// 2) construct vector K, which is defined as <psi~|psi'> = eA^dag * K
-		K = protoK * prime(conj(eD), AUXLINK,4);
-		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		K *= prime(conj(eB), AUXLINK,4);
-		K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-		if(dbg && (dbgLvl >= 2)) Print(K);
+// 	double normPsi, finit, finitN;
+// 	double prev_finit = 1.0;
+// 	ITensor M, K, NORMPSI, OVERLAP;
+// 	double ferr;
+// 	int fiter;
 
-		// <psi'|psi'>
-		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
-		// <psi'|U|psi>
-		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
+//   	int altlstsquares_iter = 0;
+// 	bool converged = false;
+// 	std::vector<bool> als_tensor_stop(3, false);
+//   	std::vector<double> fdist, fdistN, vec_normPsi;
+//   	std::cout<<"ENTERING ALS LOOP tol: "<< epsdistf <<" solver: "<< linsolver <<std::endl;
+//   	t_begin_int = std::chrono::steady_clock::now();
+// 	while (not converged) {
+// 		// Optimizing eA
+// 		// 1) construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA
 
-		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
-		normPsi = sumels(NORMPSI);
-		finit   = prev_finit = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		// BRA
+// 		M = eRE * prime(conj(eD), AUXLINK,4);
+// 		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+// 		M *= prime(conj(eB), AUXLINK,4);
+// 		M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+// 		if(dbg && (dbgLvl >= 3)) Print(M);
 
-		fdist.push_back( finit );
-		fdistN.push_back( finitN );
-		vec_normPsi.push_back( normPsi );
-		//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
-		std::cout << "stopCond: " << (fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0] << std::endl;
-		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
-			{ converged = true; break; }
+// 		// KET
+// 		M *= eD;
+// 		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+// 		M *= eB;
+// 		M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
+// 		if(dbg && (dbgLvl >= 2)) Print(M);
 
-		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
-		auto temp = eA;
-		FULSCG_IT fulscg(M,K,eA,cmbX1, combiner(iQA, prime(aux[0],pl[1])), args );
-		fulscg.solve(K, eA, fiter, ferr, ls, args);
+// 		// 2) construct vector K, which is defined as <psi~|psi'> = eA^dag * K
+// 		K = protoK * prime(conj(eD), AUXLINK,4);
+// 		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+// 		K *= prime(conj(eB), AUXLINK,4);
+// 		K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+// 		if(dbg && (dbgLvl >= 2)) Print(K);
+
+// 		// <psi'|psi'>
+// 		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
+// 		// <psi'|U|psi>
+// 		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
+
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
+// 		normPsi = sumels(NORMPSI);
+// 		finit   = prev_finit = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+
+// 		fdist.push_back( finit );
+// 		fdistN.push_back( finitN );
+// 		vec_normPsi.push_back( normPsi );
+// 		//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
+// 		std::cout << "stopCond: " << (fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0] << std::endl;
+// 		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
+// 			{ converged = true; break; }
+
+// 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
+// 		auto temp = eA;
+// 		FULSCG_IT fulscg(M,K,eA,cmbX1, combiner(iQA, prime(aux[0],pl[1])), args );
+// 		fulscg.solve(K, eA, fiter, ferr, ls, args);
 		
-		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
-		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
-		if ( finitN > fdistN.back() ){//|| fulscg.nres < epsdistf ) { 
-			std::cout<<"fdistN increased. Reverting to original tensor"; 
-			eA = temp;
-			fdist.pop_back();
-			fdistN.pop_back();
-			vec_normPsi.pop_back();
-			als_tensor_stop[0] = true;
-		} else {
-			als_tensor_stop[0] = false;
-		}
-		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+// 		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
+// 		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if ( finitN > fdistN.back() ){//|| fulscg.nres < epsdistf ) { 
+// 			std::cout<<"fdistN increased. Reverting to original tensor"; 
+// 			eA = temp;
+// 			fdist.pop_back();
+// 			fdistN.pop_back();
+// 			vec_normPsi.pop_back();
+// 			als_tensor_stop[0] = true;
+// 		} else {
+// 			als_tensor_stop[0] = false;
+// 		}
+// 		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 
 
-	    // Optimizing eB
-		// 1) construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB	
+// 	    // Optimizing eB
+// 		// 1) construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB	
 
-		// BRA
-		M = eRE * prime(conj(eD), AUXLINK,4);
-		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		M *= prime(conj(eA), AUXLINK,4);
-		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-		if(dbg && (dbgLvl >= 3)) Print(M);
+// 		// BRA
+// 		M = eRE * prime(conj(eD), AUXLINK,4);
+// 		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+// 		M *= prime(conj(eA), AUXLINK,4);
+// 		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+// 		if(dbg && (dbgLvl >= 3)) Print(M);
 
-		// KET
-		M *= eD;
-		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
-		M *= eA;
-		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-		if(dbg && (dbgLvl >= 2)) Print(M);
+// 		// KET
+// 		M *= eD;
+// 		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+// 		M *= eA;
+// 		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+// 		if(dbg && (dbgLvl >= 2)) Print(M);
 
-		// 2) construct vector K, which is defined as <psi~|psi'> = eB^dag * K
-		K = protoK * prime(conj(eD), AUXLINK,4);
-		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		K *= prime(conj(eA), AUXLINK,4);
-		K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-		if(dbg && (dbgLvl >= 2)) Print(K);
+// 		// 2) construct vector K, which is defined as <psi~|psi'> = eB^dag * K
+// 		K = protoK * prime(conj(eD), AUXLINK,4);
+// 		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+// 		K *= prime(conj(eA), AUXLINK,4);
+// 		K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+// 		if(dbg && (dbgLvl >= 2)) Print(K);
 
-		// <psi'|psi'>
-		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
-		// <psi'|U|psi>
-		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
+// 		// <psi'|psi'>
+// 		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
+// 		// <psi'|U|psi>
+// 		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
 
-		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-		normPsi = sumels(NORMPSI);
-		prev_finit = finit;
-		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+// 		normPsi = sumels(NORMPSI);
+// 		prev_finit = finit;
+// 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
-		fdist.push_back( finit );
-		fdistN.push_back( finitN );
-		vec_normPsi.push_back( normPsi );
-		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
-		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
-			{ converged = true; break; }
+// 		fdist.push_back( finit );
+// 		fdistN.push_back( finitN );
+// 		vec_normPsi.push_back( normPsi );
+// 		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
+// 		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
+// 			{ converged = true; break; }
 
-		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
-		temp = eB;
-		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), args );
-		fulscgEB.solve(K, eB, fiter, ferr, ls, args);
+// 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
+// 		temp = eB;
+// 		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), args );
+// 		fulscgEB.solve(K, eB, fiter, ferr, ls, args);
 		
-		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
-		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
-		if ( finitN > fdistN.back() ){//|| fulscgEB.nres < epsdistf ) { 
-			std::cout<<"fdistN increased. Reverting to original tensor"; 
-			eB = temp;
-			fdist.pop_back();
-			fdistN.pop_back();
-			vec_normPsi.pop_back();
-			als_tensor_stop[1] = true;
-		} else {
-			als_tensor_stop[1] = false;
-		}
-		std::cout <<"EB f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+// 		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
+// 		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if ( finitN > fdistN.back() ){//|| fulscgEB.nres < epsdistf ) { 
+// 			std::cout<<"fdistN increased. Reverting to original tensor"; 
+// 			eB = temp;
+// 			fdist.pop_back();
+// 			fdistN.pop_back();
+// 			vec_normPsi.pop_back();
+// 			als_tensor_stop[1] = true;
+// 		} else {
+// 			als_tensor_stop[1] = false;
+// 		}
+// 		std::cout <<"EB f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 
 	    
-		// Optimizing eD
-		// 1) construct matrix M, which is defined as <psi~|psi~> = eD^dag * M * eD	
+// 		// Optimizing eD
+// 		// 1) construct matrix M, which is defined as <psi~|psi~> = eD^dag * M * eD	
 
-		// BRA
-		M = eRE * prime(conj(eA), AUXLINK,4);
-		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-		M *= prime(conj(eB), AUXLINK,4);
-		M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-		if(dbg && (dbgLvl >= 3)) Print(M);
+// 		// BRA
+// 		M = eRE * prime(conj(eA), AUXLINK,4);
+// 		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+// 		M *= prime(conj(eB), AUXLINK,4);
+// 		M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+// 		if(dbg && (dbgLvl >= 3)) Print(M);
 
-		// KET
-		M *= eA;
-		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
-		M *= eB;
-		M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
-		if(dbg && (dbgLvl >= 2)) Print(M);
+// 		// KET
+// 		M *= eA;
+// 		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+// 		M *= eB;
+// 		M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
+// 		if(dbg && (dbgLvl >= 2)) Print(M);
 
-		// 2) construct vector K, which is defined as <psi~|psi'> = eD^dag * K
-		K = protoK * prime(conj(eA), AUXLINK,4);
-		K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-		K *= prime(conj(eB), AUXLINK,4);
-		K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-		if(dbg && (dbgLvl >= 2)) Print(K);
+// 		// 2) construct vector K, which is defined as <psi~|psi'> = eD^dag * K
+// 		K = protoK * prime(conj(eA), AUXLINK,4);
+// 		K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+// 		K *= prime(conj(eB), AUXLINK,4);
+// 		K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+// 		if(dbg && (dbgLvl >= 2)) Print(K);
 
-		// <psi'|psi'>
-		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
-		// <psi'|U|psi>
-		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
+// 		// <psi'|psi'>
+// 		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
+// 		// <psi'|U|psi>
+// 		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
 
-		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-		normPsi = sumels(NORMPSI);
-		prev_finit = finit;
-		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
+// 		normPsi = sumels(NORMPSI);
+// 		prev_finit = finit;
+// 		finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
-		fdist.push_back( finit );
-		fdistN.push_back( finitN );
-		vec_normPsi.push_back( normPsi );
-		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
-		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
-			{ converged = true; break; }
+// 		fdist.push_back( finit );
+// 		fdistN.push_back( finitN );
+// 		vec_normPsi.push_back( normPsi );
+// 		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
+// 		if ( (fdistN.size() > 1) && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 
+// 			{ converged = true; break; }
 
-		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
-		temp = eD;
+// 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
+// 		temp = eD;
 
-		FULSCG_IT fulscgED(M,K,eD,cmbX3, combiner(iQD, prime(aux[2],pl[4])), args );
-		fulscgED.solve(K, eD, fiter, ferr, ls, args);
+// 		FULSCG_IT fulscgED(M,K,eD,cmbX3, combiner(iQD, prime(aux[2],pl[4])), args );
+// 		fulscgED.solve(K, eD, fiter, ferr, ls, args);
 
-		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
-		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
-		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
-		if ( finitN > fdistN.back() ){//|| fulscgED.nres < epsdistf ) { 
-			std::cout<<"fdistN increased. Reverting to original tensor"; 
-			eD = temp;
-			fdist.pop_back();
-			fdistN.pop_back();
-			vec_normPsi.pop_back();
-			als_tensor_stop[2] = true;
-		} else {
-			als_tensor_stop[2] = false;
-		}
-		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
+// 		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
+// 		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
+// 		finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if ( finitN > fdistN.back() ){//|| fulscgED.nres < epsdistf ) { 
+// 			std::cout<<"fdistN increased. Reverting to original tensor"; 
+// 			eD = temp;
+// 			fdist.pop_back();
+// 			fdistN.pop_back();
+// 			vec_normPsi.pop_back();
+// 			als_tensor_stop[2] = true;
+// 		} else {
+// 			als_tensor_stop[2] = false;
+// 		}
+// 		std::cout <<"f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
 
 		
-		altlstsquares_iter++;
-		if (altlstsquares_iter >= maxAltLstSqrIter || 
-			(als_tensor_stop[0] && als_tensor_stop[1] && als_tensor_stop[2]) ) converged = true;
-	}
-	t_end_int = std::chrono::steady_clock::now();
+// 		altlstsquares_iter++;
+// 		if (altlstsquares_iter >= maxAltLstSqrIter || 
+// 			(als_tensor_stop[0] && als_tensor_stop[1] && als_tensor_stop[2]) ) converged = true;
+// 	}
+// 	t_end_int = std::chrono::steady_clock::now();
 
-	std::cout <<"STEP f=||psi'>-|psi>|^2 f_normalized <psi'|psi'>" << std::endl;
-	for (int i=0; i < fdist.size(); i++) std::cout << i <<" "<< fdist[i] <<" "<< fdistN[i] 
-		<<" "<< vec_normPsi[i] << std::endl;
+// 	std::cout <<"STEP f=||psi'>-|psi>|^2 f_normalized <psi'|psi'>" << std::endl;
+// 	for (int i=0; i < fdist.size(); i++) std::cout << i <<" "<< fdist[i] <<" "<< fdistN[i] 
+// 		<<" "<< vec_normPsi[i] << std::endl;
 
-	// update on-site tensors of cluster
-	cls.sites.at(tn[0]) = QA * eA;
-	cls.sites.at(tn[1]) = QB * eB;
-	cls.sites.at(tn[2]) = QD * eD;
+// 	// update on-site tensors of cluster
+// 	cls.sites.at(tn[0]) = QA * eA;
+// 	cls.sites.at(tn[1]) = QB * eB;
+// 	cls.sites.at(tn[2]) = QD * eD;
 
-	// max element of on-site tensors
-	// or norm-distance of new versus original tensors
-	std::string diag_maxElem;
-	for (int i=0; i<4; i++) {
-		m = 0.;
-		// cls.sites.at(tn[i]).visit(max_m);
-		if (i<3) m = norm(cls.sites.at(tn[i]) - orig_tensors[i]);
-		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
-		if (i<3) diag_maxElem +=  " ";
-	}
-	std::cout << diag_maxElem << std::endl;
+// 	// max element of on-site tensors
+// 	// or norm-distance of new versus original tensors
+// 	std::string diag_maxElem;
+// 	for (int i=0; i<4; i++) {
+// 		m = 0.;
+// 		// cls.sites.at(tn[i]).visit(max_m);
+// 		if (i<3) m = norm(cls.sites.at(tn[i]) - orig_tensors[i]);
+// 		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
+// 		if (i<3) diag_maxElem +=  " ";
+// 	}
+// 	std::cout << diag_maxElem << std::endl;
 
-	// normalize updated tensors
-	if (otNormType == "BLE") {
-		for (int i=0; i<3; i++) {
-			m = 0.;
-			cls.sites.at(tn[i]).visit(max_m);
-			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
-		}
-	} else if (otNormType == "BALANCE") {
-		double iso_tot_mag = 1.0;
-	    for ( auto & site_e : cls.sites)  {
-	    	m = 0.;
-			site_e.second.visit(max_m);
-	    	site_e.second = site_e.second / m;
-	    	iso_tot_mag = iso_tot_mag * m;
-	    }
-	    for (auto & site_e : cls.sites) {
-	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/8.0) );
-	    }
-	} else if (otNormType == "NONE") {
-	} else {
-		std::cout<<"Unsupported on-site tensor normalisation after full update: "
-			<< otNormType << std::endl;
-		exit(EXIT_FAILURE);
-	}
+// 	// normalize updated tensors
+// 	if (otNormType == "BLE") {
+// 		for (int i=0; i<3; i++) {
+// 			m = 0.;
+// 			cls.sites.at(tn[i]).visit(max_m);
+// 			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
+// 		}
+// 	} else if (otNormType == "BALANCE") {
+// 		double iso_tot_mag = 1.0;
+// 	    for ( auto & site_e : cls.sites)  {
+// 	    	m = 0.;
+// 			site_e.second.visit(max_m);
+// 	    	site_e.second = site_e.second / m;
+// 	    	iso_tot_mag = iso_tot_mag * m;
+// 	    }
+// 	    for (auto & site_e : cls.sites) {
+// 	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/8.0) );
+// 	    }
+// 	} else if (otNormType == "NONE") {
+// 	} else {
+// 		std::cout<<"Unsupported on-site tensor normalisation after full update: "
+// 			<< otNormType << std::endl;
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	// max element of on-site tensors after normalization
-    for (int i=0; i<4; i++) {
-        m = 0.;
-        cls.sites.at(tn[i]).visit(max_m);
-        if (i<3) 
-        	std::cout << tn[i] <<" "<< std::to_string(m) << " ";
-    	else 
-    		std::cout << tn[i] <<" "<< std::to_string(m);
-    }
-    std::cout << std::endl;
+// 	// max element of on-site tensors after normalization
+//     for (int i=0; i<4; i++) {
+//         m = 0.;
+//         cls.sites.at(tn[i]).visit(max_m);
+//         if (i<3) 
+//         	std::cout << tn[i] <<" "<< std::to_string(m) << " ";
+//     	else 
+//     		std::cout << tn[i] <<" "<< std::to_string(m);
+//     }
+//     std::cout << std::endl;
 
-	// prepare and return diagnostic data
-	diag_data.add("alsSweep",altlstsquares_iter);
+// 	// prepare and return diagnostic data
+// 	diag_data.add("alsSweep",altlstsquares_iter);
 
-	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
-	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
-	diag_data.add("siteMaxElem",diag_maxElem);
-	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
-	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
+// 	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+// 	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
+// 	diag_data.add("siteMaxElem",diag_maxElem);
+// 	diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
+// 	diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	
-	std::ostringstream oss;
-	oss << std::scientific << fdist[0] <<" "<< fdist.back() <<" " 
-		<< fdistN[0] <<" "<< fdistN.back() <<" "<< vec_normPsi[0] <<" "<< vec_normPsi.back() <<" "<<
-		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
+// 	std::ostringstream oss;
+// 	oss << std::scientific << fdist[0] <<" "<< fdist.back() <<" " 
+// 		<< fdistN[0] <<" "<< fdistN.back() <<" "<< vec_normPsi[0] <<" "<< vec_normPsi.back() <<" "<<
+// 		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
 
-	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
-	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
-	diag_data.add("locMinDiag", oss.str());
-	if (symmProtoEnv) {
-		diag_data.add("diag_protoEnv", diag_protoEnv);
-		diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
-	}
+// 	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
+// 	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
+// 	diag_data.add("locMinDiag", oss.str());
+// 	if (symmProtoEnv) {
+// 		diag_data.add("diag_protoEnv", diag_protoEnv);
+// 		diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
+// 	}
 
-	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
-	// 	- overlaps[overlaps.size()-4];
-	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
-	// 	- overlaps[overlaps.size()-1];
-	//diag_data.add("finalDist0",dist0);
-	//diag_data.add("finalDist1",dist1);
+// 	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
+// 	// 	- overlaps[overlaps.size()-4];
+// 	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
+// 	// 	- overlaps[overlaps.size()-1];
+// 	//diag_data.add("finalDist0",dist0);
+// 	//diag_data.add("finalDist1",dist1);
 
-	//minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
-	//diag_data.add("minGapDisc",minGapDisc);
-	//diag_data.add("minEvKept",minEvKept);
-	//diag_data.add("maxEvDisc",maxEvDisc);
+// 	//minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
+// 	//diag_data.add("minGapDisc",minGapDisc);
+// 	//diag_data.add("minEvKept",minEvKept);
+// 	//diag_data.add("maxEvDisc",maxEvDisc);
 
-	return diag_data;
-}
+// 	return diag_data;
+// }
 
 FULSCG_IT::FULSCG_IT(ITensor & MM, ITensor & BB, ITensor & AA, 
 	ITensor ccmbA, ITensor ccmbKet, Args const& aargs) 
@@ -5895,1026 +5966,4 @@ Args fullUpdate_ALS4S_LSCG_IT(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	//diag_data.add("maxEvDisc",maxEvDisc);
 
 	return diag_data;
-}
-
-//-----------------------------------------------------------------------------
-Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv,
-	std::vector<std::string> tn, std::vector<int> pl,
-	Args const& args) {
- 
-	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
-    auto dbg = args.getBool("fuDbg",false);
-    auto dbgLvl = args.getInt("fuDbgLevel",0);
-    auto symmProtoEnv = args.getBool("symmetrizeProtoEnv",true);
-    auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
-    auto iso_eps    = args.getReal("isoEpsilon",1.0e-10);
-	auto cg_linesearch_eps = args.getReal("cgLineSearchEps",1.0e-8);
-	auto cg_fdistance_eps  = args.getReal("cgFDistanceEps",1.0e-8);
-	auto cg_gradientNorm_eps = args.getReal("cgGradientNormEps",1.0e-8);
-	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-14);
-	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
-    auto otNormType = args.getString("otNormType");
-
-    double machine_eps = std::numeric_limits<double>::epsilon();
-	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
-
-	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
-
-    // prepare to hold diagnostic data
-    Args diag_data = Args::global();
-
-	if(dbg) {
-		std::cout<<"GATE: ";
-		for(int i=0; i<=3; i++) {
-			std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
-		}
-		std::cout<< std::endl;
-
-		// TODO print OpNS if dbg && dbgLvl
-		Print(uJ1J2.op);
-		for (auto const& i : uJ1J2.pi) Print(i);
-	}
-
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
-	double m = 0.;
-	auto max_m = [&m](double d) {
-		if(std::abs(d) > m) m = std::abs(d);
-	};
-
-	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux;
-	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
-
-	std::array<Index, 4> phys;
-	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
-	
-	std::array<Index, 4> opPI({
-		noprime(uJ1J2.pi[0]),
-		noprime(uJ1J2.pi[1]),
-		noprime(uJ1J2.pi[2]),
-		noprime(uJ1J2.pi[3])
-	});
-	
-	if (dbg) {
-		std::cout << "On-site indices:" << std::endl;
-		for (int i=0; i<4; i++) {
-			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
-		}
-	}
-
-	ITensor deltaBra, deltaKet;
-	std::vector<ITensor> pc(4); // holds corners T-C-T
-	{
-		t_begin_int = std::chrono::steady_clock::now();
-
-		// find integer identifier of on-site tensors within CtmEnv
-		std::vector<int> si;
-		for (int i=0; i<=3; i++) {
-			si.push_back(std::distance(ctmEnv.siteIds.begin(),
-					std::find(std::begin(ctmEnv.siteIds), 
-						std::end(ctmEnv.siteIds), tn[i])));
-		}
-		if(dbg) {
-			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-		}
-
-		// prepare map from on-site tensor aux-indices to half row/column T
-		// environment tensors
-		std::array<const std::vector<ITensor> * const, 4> iToT(
-			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
-
-		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
-		// environment tensors
-		const std::map<int, const std::vector<ITensor> * const > iToC(
-			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
-			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
-			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
-			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
-
-		// for every on-site tensor point from primeLevel(index) to ENV index
-		// eg. I_XH or I_XV (with appropriate prime level). 
-		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
-
-		// Find for site 0 through 3 which are connected to ENV
-		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
-
-		// precompute 4 (proto)corners of 2x2 environment
-		for (int s=0; s<=3; s++) {
-			// aux-indices connected to sites
-			std::vector<int> connected({pl[s*2], pl[s*2+1]});
-			// set_difference gives aux-indices connected to ENV
-			std::sort(connected.begin(), connected.end());
-			std::vector<int> tmp_iToE;
-			std::set_difference(plOfSite.begin(), plOfSite.end(), 
-				connected.begin(), connected.end(), 
-	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
-			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
-			if(dbg) { 
-				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
-					<< tn[s] << std::endl;
-				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
-			}
-
-			// Assign indices by which site is connected to ENV
-			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-			} else {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
-			}
-
-			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
-				(*iToT.at(tmp_iToE[1]))[si[s]];
-			if(dbg) Print(pc[s]);
-			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
-			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
-		
-			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
-			// define combiner
-			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
-			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
-			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
-
-			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
-				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
-		}
-		if(dbg) {
-			for(int i=0; i<=3; i++) {
-				std::cout <<"Site: "<< tn[i] <<" ";
-				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
-				std::cout << std::endl;
-			}
-		}
-
-		t_end_int = std::chrono::steady_clock::now();
-		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
-			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-		// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
-	}
-
-	// // ***** FORM "PROTO" ENVIRONMENTS FOR K *********************************** 
-	// t_begin_int = std::chrono::steady_clock::now();
-
-	// // TODO ?
-
-	// ITensor protoK;
-	// // 	// Variant ONE - precompute U|psi> surrounded in environment
-	// // 	protoK = pc[0] * cls.sites.at(tn[0]);
-	// // 	protoK = protoK * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-	// // 	protoK = protoK * ( pc[1] * cls.sites.at(tn[1]) );
-	// // 	protoK = protoK * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-		
-	// // 	protoK = protoK * ( pc[2] * cls.sites.at(tn[2]) );
-	// // 	protoK = protoK * delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-	// // 	protoK = protoK * delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
-	// // 	protoK = protoK * ( pc[3] * cls.sites.at(tn[3]) );
-	// { 
-	// 	ITensor temp;
-	// 	// Variant ONE - precompute U|psi> surrounded in environment
-	// 	protoK = pc[0] * cls.sites.at(tn[0]);
-	// 	protoK *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-	// 	protoK *= ( pc[1] * cls.sites.at(tn[1]) );
-	// 	protoK *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-	// 	protoK *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
-		
-	// 	temp = pc[2] * cls.sites.at(tn[2]);
-	// 	temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-	// 	temp *= ( pc[3] * cls.sites.at(tn[3]) );
-	
-	// 	protoK *= temp;
-	// }
-
-	// // multiply by 4-site operator
-	// // protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1 * delta(prime(opPI[0]),phys[0]));
-	// // protoK = (( protoK * delta(opPI[1],phys[1]) ) * uJ1J2.H2 * delta(prime(opPI[1]),phys[1]));
-	// // protoK = (( protoK * delta(opPI[2],phys[2]) ) * uJ1J2.H3 * delta(prime(opPI[2]),phys[2]));
-	// {
-	// 	ITensor temp;
-	// 	temp = uJ1J2.H1 * uJ1J2.H2 * uJ1J2.H3;
-	// 	temp = ((temp * delta(opPI[0],phys[0])) * delta(opPI[1],phys[1])) * delta(opPI[2],phys[2]);
-		
-	// 	protoK *= temp;
-	// 	protoK = ((protoK * delta(prime(opPI[0]),phys[0])) * delta(prime(opPI[1]),phys[1]) )
-	// 		* delta(prime(opPI[2]),phys[2]);
-	// }
-	// // TODO For now, assume the operator does not act on 4th site - just a syntactic filler
-
-	// if (dbg && dbgLvl >= 3) { Print(protoK); }
-
-	// std::cout<<"protoK.scale(): "<< protoK.scale() <<std::endl;
-	// t_end_int = std::chrono::steady_clock::now();
-	// std::cout<<"Proto Envs K constructed - T: "<< 
-	// 	std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-	// // ***** FORM "PROTO" ENVIRONMENTS FOR M and K DONE ************************
-	
-	// // ******************************************************************************************** 
-	// // 	     OPTIMIZE VIA CG                                                                      *
-	// // ********************************************************************************************
-
-	ITensor op4s = uJ1J2.op;
-	for (int i=0; i<4; i++ ) {
-		op4s *= delta(opPI[i],phys[i]);
-		op4s *= prime(delta(opPI[i],phys[i]));
-	}
-	Print(op4s);
-
-	t_begin_int = std::chrono::steady_clock::now();
-	
-	CG4S_IT cg4s(pc, aux, tn, pl, op4s, cls, args);
-	cg4s.minimize();
-	
-	t_end_int = std::chrono::steady_clock::now();
-	
-	// // <psi|U^dag U|psi> - Variant ONE
-	// auto NORMUPSI = (( protoK * delta(opPI[0],phys[0]) ) * conj(uJ1J2.H1)) * prime(delta(opPI[0],phys[0]));
-	// NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
-	// NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
-	// // TODO For now, assume the operator does not act on 4th site - just a syntactic filler
-	// NORMUPSI = NORMUPSI * delta(phys[3], prime(phys[3]));
-
-	// NORMUPSI.prime(PHYS,-1);
-	// NORMUPSI *= prime(conj(cls.sites.at(tn[0])), AUXLINK, 4);
-	// NORMUPSI *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// NORMUPSI *= prime(conj(cls.sites.at(tn[1])), AUXLINK, 4);
-	// NORMUPSI *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// NORMUPSI *= prime(conj(cls.sites.at(tn[2])), AUXLINK, 4);
-	// NORMUPSI *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// NORMUPSI *= delta(prime(aux[0],pl[0]+4),prime(aux[3],pl[7]+4));
-	// NORMUPSI *= prime(conj(cls.sites.at(tn[3])), AUXLINK, 4);
-
-	// if (NORMUPSI.r() > 0) std::cout<<"NORMUPSI rank > 0"<<std::endl;
-	// double normUPsi = sumels(NORMUPSI);
-
-	// ITensor M, K, NORMPSI, OVERLAP;
-	// std::vector<ITensor> pcS(4);
-	// for (int i=0; i<4; i++) {
-	// 	pcS[i] = (pc[i] * cls.sites.at(tn[i])) * prime(conj(cls.sites.at(tn[i])), AUXLINK,4);
-	// }
-	// double normPsi, finit, finitN;
-	// double prev_finit = 1.0;
-	// double ferr;
-	// int fiter;
-	// int itol = 1;
-
- //  	int altlstsquares_iter = 0;
-	// bool converged = false;
-	// // cg_gradientNorm_eps = std::max(cg_gradientNorm_eps, condNum * machine_eps);
-	// // // cg_fdistance_eps    = std::max(cg_fdistance_eps, condNum * machine_eps);
- //  	std::vector<double> fdist, fdistN, vec_normPsi;
- //  	std::cout << "ENTERING CG LOOP tol: " << cg_gradientNorm_eps << std::endl;
- //  	t_begin_int = std::chrono::steady_clock::now();
-	// while (not converged) {
-	
-	// 	// Optimizing A
-	// 	// 1) construct matrix M, which is defined as <psi~|psi~> = A^dag * M * A
-
-	// 	// M = (pc[1] * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 	// M *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 	// M = ((M * pc[2]) * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 	// M *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 	// M = ((M * pc[3]) * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 	// M *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 	// M *= delta(prime(aux[1],pl[2]),  prime(aux[0],pl[1]));
-	// 	// M *= delta(prime(aux[1],pl[2]+4),prime(aux[0],pl[1]+4));
-	// 	// M = M * pc[0];
-
-	// 	{
-	// 		ITensor temp;
-	
-	// 		M = pcS[1];
-	// 		M *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 		M *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 		M *= pcS[2];
-	// 		M *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 		M *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 		M *= delta(prime(aux[1],pl[2]),  prime(aux[0],pl[1]));
-	// 		M *= delta(prime(aux[1],pl[2]+4),prime(aux[0],pl[1]+4));
-			
-	// 		temp = pcS[3];
-	// 		temp *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 		temp *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 		temp *= pc[0];
-
-	// 		M *= temp;
-	// 	}
-
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(M);
-
-	// 	//  2) construct vector K, which is defined as <psi~|U|psi> = A^dag * K
-	// 	// K = protoK * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// K *= delta(	prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 	// K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-		
-	// 	{
-	// 		ITensor temp;
-
-	// 		temp = prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 		temp *= delta(	prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 		temp *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-		
-	// 		K = protoK * temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(K);
-
-	// 	// <psi'|psi'>
-	// 	NORMPSI = (prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * M) * cls.sites.at(tn[0]); 
-	// 	// <psi'|U|psi>
-	// 	OVERLAP = prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * K;
-
-	// 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	// 	normPsi = sumels(NORMPSI);
-	// 	finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-	// 	finitN  = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
-	// 	prev_finit = finit;
-
-	// 	fdist.push_back( finit );
-	// 	fdistN.push_back( finitN );
-	// 	vec_normPsi.push_back( normPsi );
-	// 	//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
-		
-	// 	if ( (fdist.size() > 1) && std::abs((fdist.back() - fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps ) 
-	// 	{ 
-	// 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
-	// 		converged = true; break; 
-	// 	} else {
-	// 		std::cout << "stopCond: " << (fdist.back() - fdist[fdist.size()-2])/fdist[0] << std::endl;
-	// 	}
-
-	// 	// ***** SOLVE LINEAR SYSTEM M*A = K by CG ***************************
-	// 	ITensor dummyComb;
-	// 	int tensorDim = cls.physDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim * cls.auxBondDim;
-	// 	FULSCG_IT fulscg(M, K, cls.sites.at(tn[0]), dummyComb, dummyComb, svd_cutoff );
-	// 	fulscg.solveIT(K, cls.sites.at(tn[0]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
-	// 	std::cout <<"A f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
-	// 	pcS[0] = (pc[0] * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-
-	//     // Optimizing B
-	// 	// 1) construct matrix M, which is defined as <psi~|psi~> = B^dag * M * B	
-		
-	// 	// M = (pc[2] * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 	// M *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 	// M = ((M * pc[3]) * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 	// M *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 	// M = ((M * pc[0]) * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 	// M *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 	// M *= delta(prime(aux[2],pl[4]),  prime(aux[1],pl[3]));
-	// 	// M *= delta(prime(aux[2],pl[4]+4),prime(aux[1],pl[3]+4));
-	// 	// M = M * pc[1];
-
-	// 	{
-	// 		ITensor temp;
-
-	// 		M = pcS[2];
-	// 		M *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 		M *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 		M *= pcS[3];
-	// 		M *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 		M *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 		M *= delta(prime(aux[2],pl[4]),  prime(aux[1],pl[3]));
-	// 		M *= delta(prime(aux[2],pl[4]+4),prime(aux[1],pl[3]+4));
-			
-	// 		temp = pcS[0];
-	// 		temp *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 		temp *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 		temp *= pc[1];
-
-	// 		M *= temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(M);
-
-	// 	// 2) construct vector K, which is defined as <psi~|psi'> = eB^dag * K
-	// 	// K = protoK * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 	// K *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		
-	// 	{
-	// 		ITensor temp;
-
-	// 		temp = prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 		temp *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 		temp *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
-		
-	// 		K = protoK * temp;
-	// 	}	
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(K);
-
-	// 	// <psi'|psi'>
-	// 	NORMPSI = (prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * M) * cls.sites.at(tn[1]); 
-	// 	// <psi'|U|psi>
-	// 	OVERLAP = prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * K;
-
-	// 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	// 	normPsi = sumels(NORMPSI);
-	// 	finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-
-	// 	std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
-	// 	prev_finit = finit;
-
-	// 	// ***** SOLVE LINEAR SYSTEM M*B = K ******************************
-	// 	ferr = 1.0;
-	// 	int accfiter = 0;
-	// 	while ( (ferr > cg_gradientNorm_eps) && (accfiter < tensorDim * 10 ) )  {
-	// 		FULSCG_IT fulscgEB(M,K,cls.sites.at(tn[1]),dummyComb, dummyComb, svd_cutoff );
-	// 		fulscgEB.solveIT(K, cls.sites.at(tn[1]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
-	// 		accfiter += fiter;
-	// 		std::cout <<"B f_err= "<< ferr <<" f_iter= "<< accfiter << std::endl;
-	// 	}
-	// 	pcS[1] = (pc[1] * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	    
-	// 	// Optimizing D
-	// 	// 1) construct matrix M, which is defined as <psi~|psi~> = D^dag * M * D	
-
-	// 	// M = (pc[3] * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 	// M *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 	// M = ((M * pc[0]) * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 	// M *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 	// M = ((M * pc[1]) * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 	// M *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 	// M *= delta(prime(aux[3],pl[6]),  prime(aux[2],pl[5]));
-	// 	// M *= delta(prime(aux[3],pl[6]+4),prime(aux[2],pl[5]+4));
-	// 	// M = M * pc[2];
-
-	// 	{
-	// 		ITensor temp;
-
-	// 		M = pcS[3];
-	// 		M *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-	// 		M *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-	// 		M *= pcS[0];
-	// 		M *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 		M *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 		M *= delta(prime(aux[3],pl[6]),  prime(aux[2],pl[5]));
-	// 		M *= delta(prime(aux[3],pl[6]+4),prime(aux[2],pl[5]+4));
-			
-	// 		temp = pcS[1];
-	// 		temp *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 		temp *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 		temp *= pc[2];
-
-	// 		M *= temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(M);
-
-	// 	// 2) construct vector K, which is defined as <psi~|psi'> = D^dag * K
-	// 	// K = protoK * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 	// K *= delta(	prime(aux[3],pl[6]+4), prime(aux[2],pl[5]+4) );
-		
-	// 	{
-	// 		ITensor temp;
-
-	// 		temp = prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 		temp *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 		temp *= delta(	prime(aux[3],pl[6]+4), prime(aux[2],pl[5]+4) );
-		
-	// 		K = protoK * temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(K);
-
-	// 	// <psi'|psi'>
-	// 	NORMPSI = (prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * M) * cls.sites.at(tn[2]); 
-	// 	// <psi'|U|psi>
-	// 	OVERLAP = prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * K;
-
-	// 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	// 	normPsi = sumels(NORMPSI);
-	// 	finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-
-	// 	std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
-	// 	prev_finit = finit;
-
-	// 	// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
-	// 	FULSCG_IT fulscgED(M,K,cls.sites.at(tn[2]),dummyComb, dummyComb, svd_cutoff );
-	// 	fulscgED.solveIT(K, cls.sites.at(tn[2]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
-
-	// 	std::cout <<"D f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
-	// 	pcS[2] = (pc[2] * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-
-	// 	// Optimizing C
-	// 	// 1) construct matrix M, which is defined as <psi~|psi~> = C^dag * M * C	
-
-	// 	// M = (pc[0] * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 	// M *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 	// M = ((M * pc[1]) * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 	// M *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 	// M = ((M * pc[2]) * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// M *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 	// M *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 	// M *= delta(prime(aux[0],pl[0]),  prime(aux[3],pl[7]));
-	// 	// M *= delta(prime(aux[0],pl[0]+4),prime(aux[3],pl[7]+4));
-	// 	// M = M * pc[3];
-
-	// 	{
-	// 		ITensor temp;
-
-	// 		M = pcS[0];
-	// 		M *= delta(prime(aux[0],pl[1]),  prime(aux[1],pl[2]));
-	// 		M *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	// 		M *= pcS[1];
-	// 		M *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-	// 		M *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	// 		M *= delta(prime(aux[0],pl[0]),  prime(aux[3],pl[7]));
-	// 		M *= delta(prime(aux[0],pl[0]+4),prime(aux[3],pl[7]+4));
-			
-	// 		temp = pcS[2];
-	// 		temp *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-	// 		temp *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	// 		temp *= pc[3];
-
-	// 		M *= temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(M);
-
-	// 	// 2) construct vector K, which is defined as <psi~|psi'> = C^dag * K
-	// 	// K = protoK * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 	// K *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 	// K = K * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 	// K *= delta(	prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 	// K *= delta(	prime(aux[0],pl[0]+4), prime(aux[3],pl[7]+4) );
-		
-	// 	{
-	// 		ITensor temp;
-
-	// 		temp = prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	// 		temp *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	// 		temp *= prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	// 		temp *= delta(	prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	// 		temp *= delta(	prime(aux[0],pl[0]+4), prime(aux[3],pl[7]+4) );
-		
-	// 		K = protoK * temp;
-	// 	}
-
-	// 	if(dbg && (dbgLvl >= 3)) Print(K);
-
-	// 	// <psi'|psi'>
-	// 	NORMPSI = (prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * M) * cls.sites.at(tn[3]); 
-	// 	// <psi'|U|psi>
-	// 	OVERLAP = prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * K;
-
-	// 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	// 	normPsi = sumels(NORMPSI);
-	// 	finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi;
-
-	// 	std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
-	// 	prev_finit = finit;
-
-	// 	// ***** SOLVE LINEAR SYSTEM M*C = K ******************************
-	// 	FULSCG_IT fulscgEC(M,K,cls.sites.at(tn[3]),dummyComb, dummyComb, svd_cutoff );
-	// 	fulscgEC.solveIT(K, cls.sites.at(tn[3]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
-
-	// 	std::cout <<"C f_err= "<< ferr <<" f_iter= "<< fiter << std::endl;
-	// 	pcS[3] = (pc[3] * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-
-	// 	// TEST CRITERION TO STOP THE ALS procedure
-	// 	altlstsquares_iter++;
-	// 	if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
-	// }
-	// t_end_int = std::chrono::steady_clock::now();
-
-	// std::cout <<"STEP f=||psi'>-|psi>|^2 f_normalized <psi'|psi'>" << std::endl;
-	// for (int i=0; i < fdist.size(); i++) std::cout << i <<" "<< fdist[i] <<" "<< fdistN[i] 
-	// 	<<" "<< vec_normPsi[i] << std::endl;
-
-	// POST-OPTIMIZATION DIAGNOSTICS ------------------------------------------
-	// max element of on-site tensors
-	std::string diag_maxElem;
-	for (int i=0; i<4; i++) {
-		m = 0.;
-		cls.sites.at(tn[i]).visit(max_m);
-		diag_maxElem = diag_maxElem + tn[i] +" "+ std::to_string(m);
-		if (i < 3) diag_maxElem +=  " ";
-	}
-	std::cout << diag_maxElem << std::endl;
-
-	// normalize updated tensors
-	if (otNormType == "BLE") {
-		for (int i=0; i<3; i++) {
-			m = 0.;
-			cls.sites.at(tn[i]).visit(max_m);
-			cls.sites.at(tn[i]) = cls.sites.at(tn[i]) / sqrt(m);
-		}
-	} else if (otNormType == "BALANCE") {
-		double iso_tot_mag = 1.0;
-	    for ( auto & site_e : cls.sites)  {
-	    	m = 0.;
-			site_e.second.visit(max_m);
-	    	site_e.second = site_e.second / m;
-	    	iso_tot_mag = iso_tot_mag * m;
-	    }
-	    for (auto & site_e : cls.sites) {
-	    	site_e.second = site_e.second * std::pow(iso_tot_mag, (1.0/8.0) );
-	    }
-	} else if (otNormType == "NONE") {
-	} else {
-		std::cout<<"Unsupported on-site tensor normalisation after full update: "
-			<< otNormType << std::endl;
-		exit(EXIT_FAILURE);
-	}
-
-	// max element of on-site tensors after normalization
-    for (int i=0; i<4; i++) {
-        m = 0.;
-        cls.sites.at(tn[i]).visit(max_m);
-        if (i<3) 
-        	std::cout << tn[i] <<" "<< std::to_string(m) << " ";
-    	else 
-    		std::cout << tn[i] <<" "<< std::to_string(m);
-    }
-    std::cout << std::endl;
-
-	// prepare and return diagnostic data
-	diag_data.add("alsSweep", 0); //altlstsquares_iter);
-
-	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
-	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
-	diag_data.add("siteMaxElem",diag_maxElem);
-	diag_data.add("ratioNonSymLE", -1.0); // ratio of largest elements 
-	diag_data.add("ratioNonSymFN", -1.0); // ratio of norms
-	// diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
-	// diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
-	
-	std::ostringstream oss;
-	// oss << std::scientific << fdist[0] <<" "<< fdist.back() <<" " 
-	// 	<< fdistN[0] <<" "<< fdistN.back() <<" "<< vec_normPsi[0] <<" "<< vec_normPsi.back() <<" "<<
-	// 	std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
-	oss << std::scientific << 0.0 <<" "<< 0.0 <<" " 
-		<< 0.0 <<" "<< 0.0 <<" "<< 0.0 <<" "<< cg4s.inst_normPsi <<" "<<
-		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
-
-	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
-	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
-	diag_data.add("locMinDiag", oss.str());
-	// if (symmProtoEnv) {
-	// 	diag_data.add("diag_protoEnv", diag_protoEnv);
-	// 	diag_data.add("diag_protoEnv_descriptor", diag_protoEnv_descriptor);
-	// }
-
-	// auto dist0 = overlaps[overlaps.size()-6] - overlaps[overlaps.size()-5] 
-	// 	- overlaps[overlaps.size()-4];
-	// auto dist1 = overlaps[overlaps.size()-3] - overlaps[overlaps.size()-2] 
-	// 	- overlaps[overlaps.size()-1];
-	diag_data.add("finalDist0", 0.0); //dist0);
-	diag_data.add("finalDist1", 0.0); //dist1);
-
-	// minGapDisc = (minGapDisc < 100.0) ? minGapDisc : -1 ; // whole spectrum taken
-	diag_data.add("minGapDisc", 0.0); //minGapDisc);
-	diag_data.add("minEvKept", -1); //minEvKept);
-	diag_data.add("maxEvDisc", 0.0); //maxEvDisc);
-
-	return diag_data;
-}
-
-CG4S_IT::CG4S_IT(
-		std::vector< ITensor > const& ppc, // protocorners 
-		std::array< Index, 4 > const& aaux,  // aux indices
-		std::vector< std::string > const& ttn,      // site IDs
-		std::vector< int > const& ppl,              // primelevels of aux indices          
-		ITensor const& oop4s,              // four-site operator
-		Cluster & ccls,
-		Args const& aargs) : 
-
-		pc(ppc), aux(aaux), tn(ttn), pl(ppl), op4s(oop4s), cls(ccls), args(aargs),
-		g(4), xi(4), h(4) 
-{
-
-	auto dbg = args.getBool("fuDbg",false);
-    auto dbgLvl = args.getInt("fuDbgLevel",0);
-    epsdistf = args.getReal("epsdistf",1.0e-8);
-
-	// ***** FORM "PROTO" ENVIRONMENTS FOR K *********************************** 
-	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
-	t_begin_int = std::chrono::steady_clock::now();
-
-	// 	// Variant ONE - precompute U|psi> surrounded in environment
-	{ 
-		ITensor temp;
-		// Variant ONE - precompute U|psi> surrounded in environment
-		protoK = pc[0] * cls.sites.at(tn[0]);
-		protoK *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-		protoK *= ( pc[1] * cls.sites.at(tn[1]) );
-		protoK *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-		protoK *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
-		
-		temp = pc[2] * cls.sites.at(tn[2]);
-		temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-		temp *= ( pc[3] * cls.sites.at(tn[3]) );
-	
-		protoK *= temp;
-	}
-	
-	protoK *= op4s;
-	protoK.noprime(PHYS);
-
-	if (dbg && dbgLvl >= 3) { Print(protoK); }
-
-	std::cout<<"protoK.scale(): "<< protoK.scale() <<std::endl;
-	t_end_int = std::chrono::steady_clock::now();
-	std::cout<<"Proto Envs K constructed - T: "<< 
-		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-	// ***** FORM "PROTO" ENVIRONMENTS FOR K DONE *****************************
-
-	// computing NORMUPSI <psi|U^dag U|psi> - Variant ONE
-	auto NORMUPSI = protoK * conj(op4s);
-	NORMUPSI.noprime(PHYS);
-	NORMUPSI *= prime(conj(cls.sites.at(tn[0])), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
-	NORMUPSI *= prime(conj(cls.sites.at(tn[1])), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-	NORMUPSI *= prime(conj(cls.sites.at(tn[2])), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	NORMUPSI *= delta(prime(aux[0],pl[0]+4),prime(aux[3],pl[7]+4));
-	NORMUPSI *= prime(conj(cls.sites.at(tn[3])), AUXLINK, 4);
-
-	if (NORMUPSI.r() > 0) std::cout<<"NORMUPSI rank > 0"<<std::endl;
-	normUPsi = sumels(NORMUPSI);
-	if (dbg && dbgLvl >=3) { std::cout<<"<psi|U^dag U|psi> = "<< normUPsi << std::endl; }
-}
-
-void CG4S_IT::minimize() {
-	const int ITMAX=200;
-	const double EPS=1.0e-18;
-	const double GTOL=1.0e-8;
-	const double FTOL=epsdistf;
-	double gg,dgg,test,fret,finit;
-	
-	// double max_mag = 0.;
-	// auto maxComp = [&max_mag](double r) {
- //  		if(std::fabs(r) > max_mag) max_mag = std::fabs(r);
- //  	};
-
-	// compute initial function value and gradient and set variables
-	double fp = func();
-	finit = fp;
-	std::cout<<"Init distance: "<< finit << std::endl;
-	grad(xi);
-	for(int j=0; j<4; j++) {
-		g[j] = -1.0 * xi[j];
-		xi[j]=h[j]=g[j];
-	}
-
-	for (int its=0;its<ITMAX;its++) {
-		// perform line minization
-		fret=linmin(fp, xi);
-		std::cout<<"its: "<< its << " currentDist: "<< fret << std::endl;
-
-		// if (2.0*abs(fret-fp) <= FTOL*(abs(fret)+abs(fp)+EPS)) {
-		if ( std::abs(fret - fp)/finit <= FTOL  || std::abs(fret) < 1.0e-7 ) {
-			std::cout << "Frprmn: converged iter="<< its 
-				<<". ||psi'> - |psi>|^2 = "<< fret << " Diff: " << std::abs(fret - fp)/finit << std::endl;
-			return;
-		}
-		fp=fret;
-		grad(xi); //func.df(p,xi)
-		test=0.0;
-		// double den=MAX(abs(fp),1.0);
-		// for (Int j=0;j<4;j++) {
-
-		// 	Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
-		// 	if (temp > test) test=temp;
-		// }
-		// if (test < GTOL) { 
-		// 	std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
-		// 	return p;
-		// }
-
-		dgg=gg=0.0;
-		for (int j=0; j<4; j++) {
-			auto temp = norm(g[j]);
-			gg += temp * temp;
-			auto tempT = (xi[j] + g[j])*xi[j];
-			if (tempT.r() > 0) std::cout <<"ERROR: tempT is not a scalar" << std::endl;
-			dgg += sumels(tempT);
-		}
-
-		// for (Int j=0;j<n;j++) {
-		// 	gg += g[j]*g[j];
-		// //	dgg += xi[j]*xi[j];
-		// 	dgg += (xi[j]+g[j])*xi[j];
-		// }
-		if (gg == 0.0) return;
-		double gam=dgg/gg;
-		for (int j=0;j<4;j++) {
-			g[j] = -1.0 * xi[j];
-			xi[j]=h[j]=g[j];//+gam*h[j];
-		}
-	}
-	// throw("Too many iterations in frprmn");
-	std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
-}
-
-double CG4S_IT::func() {
-	ITensor NORMPSI, OVERLAP;
-
-	{
-		ITensor temp;
-
-		NORMPSI = (pc[1] * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-		NORMPSI *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-		NORMPSI *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-		NORMPSI = ((NORMPSI * pc[2]) * cls.sites.at(tn[2])) * prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-		NORMPSI *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-		NORMPSI *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-		NORMPSI *= delta(prime(aux[1],pl[2]),  prime(aux[0],pl[1]));
-		NORMPSI *= delta(prime(aux[1],pl[2]+4),prime(aux[0],pl[1]+4));
-
-		temp = (pc[3] * cls.sites.at(tn[3])) * prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-		temp *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-		temp *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-		temp *= (pc[0] * cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-
-		NORMPSI *= temp;
-	}
-
-	OVERLAP = prime(conj(cls.sites.at(tn[1])), AUXLINK,4);
-	OVERLAP *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
-	OVERLAP *= prime(conj(cls.sites.at(tn[2])), AUXLINK,4);
-	OVERLAP *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
-	
-	OVERLAP *= protoK;
-
-	OVERLAP *= prime(conj(cls.sites.at(tn[3])), AUXLINK,4);
-	OVERLAP *= delta(	prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	OVERLAP *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
-	OVERLAP *= prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
-
-	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	inst_normPsi = sumels(NORMPSI);
-	inst_overlap = sumels(OVERLAP);
-	// return sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
-	return 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(sumels(NORMPSI) * normUPsi) + 1.0;
-}
-
-double CG4S_IT::linmin(double fxi, std::vector< ITensor > const& g) {
-	const int MAXIT = 100;
-	
-	auto ngrad = 0.0;
-	for (int j=0; j<4; j++) { ngrad += std::pow(norm(g[j]),2); }
-	std::cout<<"Entering LinMin |g|: "<< std::sqrt(ngrad) << std::endl;
-
-	std::vector<ITensor> tmpT;
-	for (int j=0; j<4; j++) { tmpT.emplace_back(cls.sites.at(tn[j])); }
-
-	// double mag = 2 * std::atan(1);
-	int sgn = 1; 
-	double mag = fxi * 0.01;
-	// for (int j=0; j<4; j++) { cls.sites.at(tn[j]) = std::cos(mag) * tmpT[j] + std::sin(mag) * g[j]; }
-	for (int j=0; j<4; j++) { cls.sites.at(tn[j]) -= mag * g[j]; }
-	auto tmp_val  = func();
-	std::cout<<"linmin -mag: "<< tmp_val << std::endl;
-	if ( tmp_val < fxi ) { sgn = -1; }
-	for (int j=0; j<4; j++) { cls.sites.at(tn[j]) += (2.0 * mag) * g[j]; }
-	auto tmp_val2 = func();
-	std::cout<<"linmin +mag: "<< tmp_val2 << std::endl;
-	if ( (tmp_val2 < fxi) && (tmp_val2 < tmp_val) ) { sgn = 1; }
-
-	for (int j=0; j<4; j++) { cls.sites.at(tn[j]) -= mag * g[j]; }
-	double fx = 0.0;
-	double fx_prev = fxi;
-	for (int i=0; i<MAXIT; i++) {
-		for (int j=0; j<4; j++) { cls.sites.at(tn[j]) += (sgn * mag) * g[j]; }
-		// for (int j=0; j<4; j++) { cls.sites.at(tn[j]) = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
-		fx = func();
-		std::cout<<"linmin its: "<< i << " dist: "<< fx << std::endl;
-		if (fx > fx_prev) {
-			// mag = mag * 0.5;
-			// for (int j=0; j<4; j++) { cls.sites.at(tn[j]) = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
-			for (int j=0; j<4; j++) { cls.sites.at(tn[j]) -= (sgn * mag) * g[j]; }
-			fx = fx_prev;
-			break;
-		} else {
-			mag = mag * 2.0;
-			
-			fx_prev = fx;
-		}
-		// fx_prev = fx;
-	}
-	for (int j=0; j<4; j++) {std::cout<<"1: "<< norm(tmpT[j] - cls.sites.at(tn[j])) <<" "; }
-	std::cout << std::endl;
-
-	return fx;
-}
-
-void CG4S_IT::grad(std::vector<ITensor> &grad) {
-	// compute d<psi'|psi'> contributions
-	{
-		ITensor M;
-		{
-			ITensor temp;
-			// Variant ONE - precompute |psi'> surrounded in environment
-			M = pc[0] * cls.sites.at(tn[0]);
-			M *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-			M *= ( pc[1] * cls.sites.at(tn[1]) );
-			M *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-			M *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
-			
-			temp = pc[2] * cls.sites.at(tn[2]);
-			temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-			temp *= ( pc[3] * cls.sites.at(tn[3]) );
-		
-			M *= temp;
-		}
-	
-		for (int i=0; i<4; i++) {
-			ITensor temp;
-
-			int j = (i + 1) % 4;
-			int k = (j + 1) % 4;
-			temp = prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j]), prime(aux[i],pl[2*i+1])), 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
-			
-			j = (j + 1) % 4;
-			k = (j + 1) % 4;
-			temp *= prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
-
-			temp *= M;
-		
-			j = (j + 1) % 4;
-			k = (j + 1) % 4;
-			temp *= prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);			
-		
-			grad[i] = temp; //* (1.0 + 2.0 * (1.0 - std::abs(inst_normPsi)));
-			// grad[i] = temp * (0.5 * inst_overlap / (std::sqrt(normUPsi * inst_normPsi) * std::abs(inst_normPsi)) );
-		}
-	}
-
-	// compute d<psi'|U|psi> contributions
-	for (int i=0; i<4; i++) {
-		ITensor temp;
-
-		int j = (i + 1) % 4;
-		int k = (j + 1) % 4;
-		temp = prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j]), prime(aux[i],pl[2*i+1])), 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
-		
-		j = (j + 1) % 4;
-		k = (j + 1) % 4;
-		temp *= prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
-
-		temp *= protoK;
-	
-		j = (j + 1) % 4;
-		k = (j + 1) % 4;
-		temp *= prime(conj(cls.sites.at(tn[j])), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);			
-	
-		grad[i] += -temp;
-		// grad[i] += -temp / std::sqrt(inst_normPsi * normUPsi);
-	}
-
-	for (auto& ten : grad) { 
-		ten.prime(AUXLINK, -4); 
-	}
 }
