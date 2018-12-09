@@ -107,7 +107,7 @@ public:
         int end = 0;
         for( ; ; )
         {
-            std::cout<<"----- LineSearch "<< k <<" -----"<< std::endl;
+            // std::cout<<"----- LineSearch "<< k <<" -----"<< std::endl;
             // Save the curent x and gradient
             m_xp = x;
             m_gradp = m_grad;

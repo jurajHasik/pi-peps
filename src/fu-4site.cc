@@ -441,8 +441,8 @@ Real FU4SiteGradMin::operator()(Vec<Real> const& x, Vec<Real> & grad) {
 	double current_dist = fu4s_data[0];
 	inst_normPsi = fu4s_data[1];
 
-	std::cout<<"f= "<< current_dist << " norm(g)= "<< norm(grad) 
-		<< " norm(Psi_new)=  "<< inst_normPsi <<std::endl;
+	// std::cout<<"f= "<< current_dist << " norm(g)= "<< norm(grad) 
+		// << " norm(Psi_new)=  "<< inst_normPsi <<std::endl;
 
 	return current_dist;
 }
