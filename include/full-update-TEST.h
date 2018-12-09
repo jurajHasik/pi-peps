@@ -198,13 +198,17 @@ struct FU4SiteGradMin {
 		std::vector< itensor::Index > const& iiQX,
 		itensor::Args const& aargs);
 
-	void minimize();
+	// Linear Model
+	itensor::Real operator()(itensor::Vec<itensor::Real> const& x, 
+			itensor::Vec<itensor::Real> & grad);
+
+	// void minimize();
 	
-	double func();
+	std::vector<double> func() const;
 
-	double linmin(double fxi, std::vector< itensor::ITensor > const& g);
+	// double linmin(double fxi, std::vector< itensor::ITensor > const& g);
 
-	void grad(std::vector< itensor::ITensor > &grad);
+	void gradient(std::vector< itensor::ITensor > & grad);
 };
 
 #endif

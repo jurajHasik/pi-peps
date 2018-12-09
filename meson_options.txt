@@ -23,4 +23,5 @@ option('arpack-dir', type: 'string', value: '')
 
 # rsvd (bundled)
 option('rsvd', type: 'boolean', value: false)
+option('lbfgs', type: 'boolean', value: true)
 

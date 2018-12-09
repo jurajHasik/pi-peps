@@ -29,7 +29,7 @@ endforeach
 
 # bundled dependendencies are dealt with in a different way
 # since the directory, for example, is well known
-_bundled = ['rsvd']
+_bundled = ['rsvd','lbfgs']
 
 foreach _opt : _bundled
     _wanted = get_option(_opt)

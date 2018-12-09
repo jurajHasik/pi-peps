@@ -1,4 +1,5 @@
 #include "full-update-TEST.h"
+#include "include/LBFGS.h"
 
 using namespace itensor;
 
@@ -203,8 +204,41 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	t_begin_int = std::chrono::steady_clock::now();
 	
 	FU4SiteGradMin g4s(pc, aux, tn, pl, op4s, rX, iQX, args);
-	g4s.minimize();
+	// g4s.minimize();
 	
+	// prepare init guess by vectorizing vector<ITensor> rX into Vec
+	Vec<Real> x;
+	resize(x, 4 * std::pow(cls.auxBondDim,4) * cls.physDim);
+
+	auto extractDenseReal = [](Dense<Real> const& d) { return d.store; };
+	for (int i=0; i<4; i++) {
+		IndexSet inds(rX[i].inds());
+		int n = 1;
+		for (auto const& ind : inds) { n *= ind.m(); }
+		// std::cout<<"Copying rX["<< i <<"] of size: "<< n << " to x["<< i*n <<":"<< (i+1)*n-1<<"]"<< std::endl;
+		// PrintData(rX[i]);
+		auto rawRX = applyFunc(extractDenseReal,rX[i].store());
+		auto VecRX = makeVecRef<Real>(rawRX.data(), rawRX.size());
+		auto partX = subVector(x,i*n,(i+1)*n-1);
+	
+		std::copy(VecRX.data(),VecRX.data()+n,partX.data());
+
+		// Print(VecRX);
+		// Print(x);
+	}
+
+	LBFGSpp::LBFGSParam<double> param;
+    param.m = 6; // default 6 - number of gradients to preserve
+    // param.epsilon = epsdistf; // norm of grad based convergence tests
+    param.past = 1;
+    param.delta = epsdistf;
+    param.linesearch = LBFGSpp::LBFGS_LINESEARCH_BACKTRACKING_WOLFE;
+
+    LBFGSpp::LBFGSSolver<double,Real> solver(param);
+
+    double final_dist;
+    int niter = solver.minimize(g4s, x, final_dist);
+
 	t_end_int = std::chrono::steady_clock::now();
 
 	for (int i=0; i<4; i++) cls.sites.at(tn[i]) = rX[i] * qX[i];
@@ -258,7 +292,7 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
     std::cout << std::endl;
 
 	// prepare and return diagnostic data
-	diag_data.add("alsSweep", 0); //altlstsquares_iter);
+	diag_data.add("alsSweep", niter); //altlstsquares_iter);
 
 	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
 	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
@@ -268,15 +302,16 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	// diag_data.add("ratioNonSymLE",diag_maxMasymLE/diag_maxMsymLE); // ratio of largest elements 
 	// diag_data.add("ratioNonSymFN",diag_maxMasymFN/diag_maxMsymFN); // ratio of norms
 	
+	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
 	std::ostringstream oss;
 	// oss << std::scientific << fdist[0] <<" "<< fdist.back() <<" " 
 	// 	<< fdistN[0] <<" "<< fdistN.back() <<" "<< vec_normPsi[0] <<" "<< vec_normPsi.back() <<" "<<
 	// 	std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
-	oss << std::scientific << 0.0 <<" "<< 0.0 <<" " 
+	oss << std::scientific << 0.0 <<" "<< final_dist <<" " 
 		<< 0.0 <<" "<< 0.0 <<" "<< 0.0 <<" "<< g4s.inst_normPsi <<" "<<
 		std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 ;
 
-	std::string logMinDiag_descriptor = "f_init f_final normalizedf_init normalizedf_final norm(psi')_init norm(psi')_final time[s]";
+	
 	diag_data.add("locMinDiag_descriptor",logMinDiag_descriptor);
 	diag_data.add("locMinDiag", oss.str());
 	// if (symmProtoEnv) {
@@ -366,79 +401,53 @@ FU4SiteGradMin::FU4SiteGradMin(
 	if (dbg && dbgLvl >=3) { std::cout<<"<psi|U^dag U|psi> = "<< normUPsi << std::endl; }
 }
 
-void FU4SiteGradMin::minimize() {
-	const int ITMAX=200;
-	const double EPS=1.0e-18;
-	const double GTOL=1.0e-8;
-	const double FTOL=epsdistf;
-	double gg,dgg,test,fret,finit;
+Real FU4SiteGradMin::operator()(Vec<Real> const& x, Vec<Real> & grad) {
+	// unwrap Vec x into four tensors rX
+	for (int i=0; i<4; i++) {
+		IndexSet inds(rX[i].inds()); // copy indexset
+		int n = 1;
+		for (auto const& ind : inds) { n *= ind.m(); }
+		auto rawRX = subVector(x,i*n,(i+1)*n-1); // reference to a part of x
+		//std::cout<<"[operator()] making rawRX["<< n <<"] from slice x["<< i*n <<":"<< (i+1)*n-1<<"]"<< std::endl;
+
+		// copy elements into new vector
+		Vec<Real> tmpRX;
+		resize(tmpRX,n);
+		std::copy(rawRX.data(),rawRX.data()+n,tmpRX.data());
+		
+		rX[i] = ITensor(inds,Dense<Real>{move(tmpRX.storage())});
+		// Print(rX[i]);
+	}
+
+	// compute gradient
+	gradient(g);
+	// unwrap vector<ITensor> g into Vec grad
+	auto extractDenseReal = [](Dense<Real> const& d) { return d.store; };
+	for (int i=0; i<4; i++) {
+		IndexSet inds(g[i].inds());
+		int n = 1;
+		for (auto const& ind : inds) { n *= ind.m(); }
+		auto storageGi = applyFunc(extractDenseReal,g[i].store());
+		auto VecGi     = makeVecRef<Real>(storageGi.data(), storageGi.size());
+		auto part_grad = subVector(grad,i*n,(i+1)*n-1);
 	
-	// double max_mag = 0.;
-	// auto maxComp = [&max_mag](double r) {
- //  		if(std::fabs(r) > max_mag) max_mag = std::fabs(r);
- //  	};
-
-	// compute initial function value and gradient and set variables
-	double fp = func();
-	finit = fp;
-	std::cout<<"Init distance: "<< finit << std::endl;
-	grad(xi);
-	for(int j=0; j<4; j++) {
-		g[j] = -1.0 * xi[j];
-		xi[j]=h[j]=g[j];
+		std::copy(VecGi.data(),VecGi.data()+n,part_grad.data());
+		
+		// Print(g[i]);
 	}
 
-	for (int its=0;its<ITMAX;its++) {
-		// perform line minization
-		fret=linmin(fp, xi);
-		std::cout<<"its: "<< its << " currentDist: "<< fret << std::endl;
+	// compute and return value of the function
+	auto fu4s_data = func();
+	double current_dist = fu4s_data[0];
+	inst_normPsi = fu4s_data[1];
 
-		// if (2.0*abs(fret-fp) <= FTOL*(abs(fret)+abs(fp)+EPS)) {
-		if ( std::abs(fret - fp)/finit <= FTOL  || std::abs(fret) < 1.0e-7 ) {
-			std::cout << "Frprmn: converged iter="<< its 
-				<<". ||psi'> - |psi>|^2 = "<< fret << " Diff: " << std::abs(fret - fp)/finit << std::endl;
-			return;
-		}
-		fp=fret;
-		grad(xi); //func.df(p,xi)
-		test=0.0;
-		// double den=MAX(abs(fp),1.0);
-		// for (Int j=0;j<4;j++) {
+	std::cout<<"f= "<< current_dist << " norm(g)= "<< norm(grad) 
+		<< " norm(Psi_new)=  "<< inst_normPsi <<std::endl;
 
-		// 	Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
-		// 	if (temp > test) test=temp;
-		// }
-		// if (test < GTOL) { 
-		// 	std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
-		// 	return p;
-		// }
-
-		dgg=gg=0.0;
-		for (int j=0; j<4; j++) {
-			auto temp = norm(g[j]);
-			gg += temp * temp;
-			auto tempT = (xi[j] + g[j])*xi[j];
-			if (tempT.r() > 0) std::cout <<"ERROR: tempT is not a scalar" << std::endl;
-			dgg += sumels(tempT);
-		}
-
-		// for (Int j=0;j<n;j++) {
-		// 	gg += g[j]*g[j];
-		// //	dgg += xi[j]*xi[j];
-		// 	dgg += (xi[j]+g[j])*xi[j];
-		// }
-		if (gg == 0.0) return;
-		double gam=dgg/gg;
-		for (int j=0;j<4;j++) {
-			g[j] = -1.0 * xi[j];
-			xi[j]=h[j]=g[j];//+gam*h[j];
-		}
-	}
-	// throw("Too many iterations in frprmn");
-	std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
+	return current_dist;
 }
 
-double FU4SiteGradMin::func() {
+std::vector<double> FU4SiteGradMin::func() const {
 	ITensor NORMPSI, OVERLAP;
 
 	{
@@ -474,63 +483,19 @@ double FU4SiteGradMin::func() {
 	OVERLAP *= prime(dag(rX[0]), AUXLINK,4);
 
 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
-	inst_normPsi = sumels(NORMPSI);
-	inst_overlap = sumels(OVERLAP);
-	return sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
+	// inst_normPsi = sumels(NORMPSI);
+	// inst_overlap = sumels(OVERLAP);
+	std::vector<double> v(2);
+	v[0] = sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
+	v[1] = sumels(NORMPSI);
+	return v;
 	// return 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(sumels(NORMPSI) * normUPsi) + 1.0; // normalized
 }
 
-double FU4SiteGradMin::linmin(double fxi, std::vector< ITensor > const& g) {
-	const int MAXIT = 100;
-	
-	auto ngrad = 0.0;
-	for (int j=0; j<4; j++) { ngrad += std::pow(norm(g[j]),2); }
-	std::cout<<"Entering LinMin |g|: "<< std::sqrt(ngrad) << std::endl;
+void FU4SiteGradMin::gradient(std::vector<ITensor> &grad) {
+	// Force the indetical order of indices on both grad and rX tensors
+	for (int i=0; i<4; i++) { grad[i] = 0.0 * prime(rX[i],AUXLINK,4); }
 
-	std::vector<ITensor> tmpT;
-	for (int j=0; j<4; j++) { tmpT.emplace_back(rX[j]); }
-
-	// double mag = 2 * std::atan(1);
-	int sgn = 1; 
-	double mag = fxi * 0.01;
-	// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(mag) * g[j]; }
-	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; }
-	auto tmp_val  = func();
-	std::cout<<"linmin -mag: "<< tmp_val << std::endl;
-	if ( tmp_val < fxi ) { sgn = -1; }
-	for (int j=0; j<4; j++) { rX[j] += (2.0 * mag) * g[j]; }
-	auto tmp_val2 = func();
-	std::cout<<"linmin +mag: "<< tmp_val2 << std::endl;
-	if ( (tmp_val2 < fxi) && (tmp_val2 < tmp_val) ) { sgn = 1; }
-
-	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; }
-	double fx = 0.0;
-	double fx_prev = fxi;
-	for (int i=0; i<MAXIT; i++) {
-		for (int j=0; j<4; j++) { rX[j] += (sgn * mag) * g[j]; }
-		// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
-		fx = func();
-		std::cout<<"linmin its: "<< i << " dist: "<< fx << std::endl;
-		if (fx > fx_prev) {
-			// mag = mag * 0.5;
-			// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
-			for (int j=0; j<4; j++) { rX[j] -= (sgn * mag) * g[j]; }
-			fx = fx_prev;
-			break;
-		} else {
-			mag = mag * 2.0;
-			
-			fx_prev = fx;
-		}
-		// fx_prev = fx;
-	}
-	for (int j=0; j<4; j++) {std::cout<<"1: "<< norm(tmpT[j] - rX[j]) <<" "; }
-	std::cout << std::endl;
-
-	return fx;
-}
-
-void FU4SiteGradMin::grad(std::vector<ITensor> &grad) {
 	// compute d<psi'|psi'> contributions
 	{
 		ITensor M;
@@ -571,7 +536,7 @@ void FU4SiteGradMin::grad(std::vector<ITensor> &grad) {
 			temp *= prime(dag(rX[j]), AUXLINK, 4);
 			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);			
 		
-			grad[i] = temp; //* (1.0 + 2.0 * (1.0 - std::abs(inst_normPsi)));
+			grad[i] += temp; //* (1.0 + 2.0 * (1.0 - std::abs(inst_normPsi)));
 			// grad[i] = temp * (0.5 * inst_overlap / (std::sqrt(normUPsi * inst_normPsi) * std::abs(inst_normPsi)) );
 		}
 	}
@@ -606,3 +571,125 @@ void FU4SiteGradMin::grad(std::vector<ITensor> &grad) {
 		ten.prime(AUXLINK, -4); 
 	}
 }
+
+// void FU4SiteGradMin::minimize() {
+// 	const int ITMAX=200;
+// 	const double EPS=1.0e-18;
+// 	const double GTOL=1.0e-8;
+// 	const double FTOL=epsdistf;
+// 	double gg,dgg,test,fret,finit;
+
+// 	double max_mag = 0.;
+// 	auto maxComp = [&max_mag](double r) {
+//   		if(std::fabs(r) > max_mag) max_mag = std::fabs(r);
+//   	};
+
+// 	// compute initial function value and gradient and set variables
+// 	double fp = func();
+// 	finit = fp;
+// 	std::cout<<"Init distance: "<< finit << std::endl;
+// 	gradient(xi);
+// 	for(int j=0; j<4; j++) {
+// 		g[j] = -1.0 * xi[j];
+// 		xi[j]=h[j]=g[j];
+// 	}
+
+// 	for (int its=0;its<ITMAX;its++) {
+// 		// perform line minization
+// 		fret=linmin(fp, xi);
+// 		std::cout<<"its: "<< its << " currentDist: "<< fret << std::endl;
+
+// 		// if (2.0*abs(fret-fp) <= FTOL*(abs(fret)+abs(fp)+EPS)) {
+// 		if ( std::abs(fret - fp)/finit <= FTOL  || std::abs(fret) < 1.0e-7 ) {
+// 			std::cout << "Frprmn: converged iter="<< its 
+// 				<<". ||psi'> - |psi>|^2 = "<< fret << " Diff: " << std::abs(fret - fp)/finit << std::endl;
+// 			return;
+// 		}
+// 		fp=fret;
+// 		gradient(xi); //func.df(p,xi)
+// 		test=0.0;
+// 		// double den=MAX(abs(fp),1.0);
+// 		// for (Int j=0;j<4;j++) {
+
+// 		// 	Doub temp=abs(xi[j])*MAX(abs(p[j]),1.0)/den;
+// 		// 	if (temp > test) test=temp;
+// 		// }
+// 		// if (test < GTOL) { 
+// 		// 	std::cout << "Frprmn: converged iter="<< its <<". g^2 = "<< test << std::endl;
+// 		// 	return p;
+// 		// }
+
+// 		dgg=gg=0.0;
+// 		for (int j=0; j<4; j++) {
+// 			auto temp = norm(g[j]);
+// 			gg += temp * temp;
+// 			auto tempT = (xi[j] + g[j])*xi[j];
+// 			if (tempT.r() > 0) std::cout <<"ERROR: tempT is not a scalar" << std::endl;
+// 			dgg += sumels(tempT);
+// 		}
+
+// 		// for (Int j=0;j<n;j++) {
+// 		// 	gg += g[j]*g[j];
+// 		// //	dgg += xi[j]*xi[j];
+// 		// 	dgg += (xi[j]+g[j])*xi[j];
+// 		// }
+// 		if (gg == 0.0) return;
+// 		double gam=dgg/gg;
+// 		for (int j=0;j<4;j++) {
+// 			g[j] = -1.0 * xi[j];
+// 			xi[j]=h[j]=g[j];//+gam*h[j];
+// 		}
+// 	}
+// 	throw("Too many iterations in frprmn");
+// 	std::cout << "Frprmn: max iterations exceeded. g^2 = "<< test << std::endl;
+// }
+
+// double FU4SiteGradMin::linmin(double fxi, std::vector< ITensor > const& g) {
+// 	const int MAXIT = 100;
+	
+// 	auto ngrad = 0.0;
+// 	for (int j=0; j<4; j++) { ngrad += std::pow(norm(g[j]),2); }
+// 	std::cout<<"Entering LinMin |g|: "<< std::sqrt(ngrad) << std::endl;
+
+// 	std::vector<ITensor> tmpT;
+// 	for (int j=0; j<4; j++) { tmpT.emplace_back(rX[j]); }
+
+// 	// double mag = 2 * std::atan(1);
+// 	int sgn = 1; 
+// 	double mag = fxi * 0.01;
+// 	// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(mag) * g[j]; }
+// 	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; }
+// 	auto tmp_val  = func();
+// 	std::cout<<"linmin -mag: "<< tmp_val << std::endl;
+// 	if ( tmp_val < fxi ) { sgn = -1; }
+// 	for (int j=0; j<4; j++) { rX[j] += (2.0 * mag) * g[j]; }
+// 	auto tmp_val2 = func();
+// 	std::cout<<"linmin +mag: "<< tmp_val2 << std::endl;
+// 	if ( (tmp_val2 < fxi) && (tmp_val2 < tmp_val) ) { sgn = 1; }
+
+// 	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; }
+// 	double fx = 0.0;
+// 	double fx_prev = fxi;
+// 	for (int i=0; i<MAXIT; i++) {
+// 		for (int j=0; j<4; j++) { rX[j] += (sgn * mag) * g[j]; }
+// 		// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
+// 		fx = func();
+// 		std::cout<<"linmin its: "<< i << " dist: "<< fx << std::endl;
+// 		if (fx > fx_prev) {
+// 			// mag = mag * 0.5;
+// 			// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(sgn * mag) * g[j]; }
+// 			for (int j=0; j<4; j++) { rX[j] -= (sgn * mag) * g[j]; }
+// 			fx = fx_prev;
+// 			break;
+// 		} else {
+// 			mag = mag * 2.0;
+			
+// 			fx_prev = fx;
+// 		}
+// 		// fx_prev = fx;
+// 	}
+// 	for (int j=0; j<4; j++) {std::cout<<"1: "<< norm(tmpT[j] - rX[j]) <<" "; }
+// 	std::cout << std::endl;
+
+// 	return fx;
+// }
