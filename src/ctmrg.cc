@@ -393,8 +393,8 @@ void CtmEnv::compute_IsometriesT3(unsigned int direction, Cluster const& c,
     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
     	double est_tol = std::sqrt(max_sv * rank * machine_eps);
     	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
-    	if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
-    		"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
+    	// if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
+    	// 	"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
     	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
     	auto oneOverSqrtT = [&tol](Real r) 
         	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
@@ -508,7 +508,7 @@ void CtmEnv::compute_IsometriesT4(unsigned int direction, Cluster const& c,
 	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
 	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
 	        S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
-	        std::cout << "WARNING: CTM-Iso3 " << direction << " [col:row]= "<< v 
+	        std::cout << "WARNING: CTM-Iso4 " << direction << " [col:row]= "<< v 
 	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
 	            << std::endl;
 	    }
@@ -525,8 +525,8 @@ void CtmEnv::compute_IsometriesT4(unsigned int direction, Cluster const& c,
     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
     	double est_tol = std::sqrt(max_sv * rank * machine_eps);
     	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
-    	if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
-    		"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
+    	// if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
+    	// 	"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
     	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
     	auto oneOverSqrtT = [&tol](Real r) 
         	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };

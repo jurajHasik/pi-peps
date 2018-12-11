@@ -128,11 +128,12 @@ void PseudoInvSolver::solve(
     int countCTF = 0;
     auto const s1 = commonIndex(U,S);
     auto const s2 = commonIndex(S,VT);
+    double max_sv = S.real(S.inds()[0](1),S.inds()[1](1));
     int rank = std::max(s1.m(),s2.m());
 		std::vector<double> elems_regInvS; elems_regInvS.reserve(rank);
     double const tol = (args.defined("pseudoInvCutoff")) ? 
-      args.getReal("pseudoInvCutoff") :
-      machine_eps * rank * S.real(s1(s1.m()),s2(s2.m()));
+      max_sv * args.getReal("pseudoInvCutoff") :
+      max_sv * machine_eps * rank;
     double const ins = (args.defined("pseudoInvCutoffInsert")) ? 
       args.getReal("pseudoInvCutoffInsert") : 0.0;
     
@@ -155,7 +156,9 @@ void PseudoInvSolver::solve(
 			std::cout<<"cutoff/total: "<< countCTF <<" / "<< s1.m() << std::endl; 
 		}
 
-		X = conj(VT)*(regInvS*(conj(U)*B));
+    VT.dag();
+    U.dag();
+    X = VT*(regInvS*(U*B));
   }
 
 } //namespace itensor

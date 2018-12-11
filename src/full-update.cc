@@ -1595,6 +1595,9 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 			eRE = tempC * pc[1];
 			if(dbg && (dbgLvl >=3)) Print(eRE);
 
+			eRE *= pc[3];
+			if(dbg && (dbgLvl >=3)) Print(eRE);
+
 			// Decompose B tensor on which the gate is applied
 			ITensor tempSB;
 			svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
@@ -1615,19 +1618,6 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 			if(dbg && (dbgLvl >=3)) Print(tempC);
 
 			eRE *= tempC;
-			eRE *= pc[3];
-
-			// if (tn[0]=="A" && tn[1]=="C" && pl[0]==3 && pl[1]==1) {
-			// 	auto tmpT = QA * delta( prime(aux[0],1), prime(aux[1],3) ) * QB;
-
-			// 	ITensor C3( iQB, prime(aux[1],2), prime(aux[1],0) ), SC3A1, A1; 
-			// 	svd(tmpT,C3,SC3A1,A1,{"Truncate",false});
-			// 	Print(C3);
-			// 	Print(A1);
-				
-			// 	auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
-			// 	SC3A1.visit(printS);
-			// }
 		}
 
 		t_end_int = std::chrono::steady_clock::now();
@@ -1790,6 +1780,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	// trial initialization
 	if (fuTrialInit) {
 		auto SqrtT = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
+		// auto SqrtT = [&machine_eps](Real r) { return (r > 10.0*machine_eps) ? sqrt(r) : 0; };
 		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
 
 		auto tmpOp = mpo.H1 * mpo.H2;
