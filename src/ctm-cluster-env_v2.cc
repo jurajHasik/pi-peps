@@ -17,7 +17,7 @@ using namespace itensor;
 
 CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c, 
     SvdSolver & ssolver, Args const& args) 
-    : m_name(t_name), solver(ssolver), 
+    : m_name(t_name), p_cluster(&c), solver(ssolver), 
     d(c.auxBondDim*c.auxBondDim), x(t_x), 
     sizeN(c.sizeN), sizeM(c.sizeM) 
     {
@@ -65,48 +65,82 @@ CtmEnv::CtmEnv (std::string t_name, int t_x, Cluster const& c,
     I_XH = Index(TAG_I_XH, d, HSLINK);
     I_XV = Index(TAG_I_XV, d, VSLINK);
 
+    for (auto const& id : c.siteIds) {
+        eaux[id] = std::vector<Index>(8);
+        eaux[id] = {
+            Index(id+"-"+TAG_I_U, x, ULINK),
+            Index(id+"-"+TAG_I_U, x, ULINK,1),
+            Index(id+"-"+TAG_I_R, x, RLINK),
+            Index(id+"-"+TAG_I_R, x, RLINK,1),
+            Index(id+"-"+TAG_I_D, x, DLINK,1),
+            Index(id+"-"+TAG_I_D, x, DLINK),
+            Index(id+"-"+TAG_I_L, x, LLINK,1),
+            Index(id+"-"+TAG_I_L, x, LLINK)
+        };
+    }
+
     // Combiners from site AUX indices to I_XH, I_XV
     int const BRAKET_OFFSET = 4;
     for ( auto const& id : c.siteIds ) {
         CMB[id] = std::vector<ITensor>(4);
-        auto ai = c.aux[c.SI.at(id)];
             
-        auto formCMB = [&BRAKET_OFFSET, &ai](int dir)->ITensor {
-            return combiner(prime(ai,dir), prime(ai, dir+BRAKET_OFFSET));
+        auto formCMB = [&BRAKET_OFFSET](Index ind)->ITensor {
+            return combiner(ind, prime(ind,BRAKET_OFFSET));
         };
-        for (int i=0; i<4; i++) CMB[id][i] = formCMB(i);
+        for (int i=0; i<4; i++) CMB[id][i] = formCMB(c.AIc(id,i));
     }
     // directions on lattice and their corresponding fused indices
     fusedSiteI = std::vector<Index>({ I_XH, I_XV, prime(I_XH), prime(I_XV) });
+    for ( auto const& id : c.siteIds ) {
+        faux[id] = std::vector<Index>(4);
 
+        faux[id] = { 
+            Index(TAG_I_XH, std::pow(c.AIc(id,0).m(),2), HSLINK),
+            Index(TAG_I_XV, std::pow(c.AIc(id,1).m(),2), VSLINK),
+            Index(TAG_I_XH, std::pow(c.AIc(id,2).m(),2), HSLINK, 1),
+            Index(TAG_I_XV, std::pow(c.AIc(id,3).m(),2), VSLINK, 1)
+        };
+    }
+
+    // create environment tensors
     for (std::size_t i=0; i<c.siteIds.size(); i++) {
+        std::string id = c.siteIds[i];
         // Construct tensors "C_*" for every non-eq cluster site
-        C_LU.push_back( ITensor(I_L, I_U) );
-        C_RU.push_back( ITensor(prime(I_U,1), I_R) );
-        C_RD.push_back( ITensor(prime(I_R,1), prime(I_D,1)) );
-        C_LD.push_back( ITensor(I_D, prime(I_L,1)) );    
+        C_LU.push_back( ITensor(envIndPair(id,7,id,0)) );
+        C_RU.push_back( ITensor(envIndPair(id,1,id,2)) );
+        C_RD.push_back( ITensor(envIndPair(id,3,id,4)) );
+        C_LD.push_back( ITensor(envIndPair(id,5,id,6)) );    
     
         // Construct tensors "T_*"
-        T_L.push_back( ITensor(I_L, prime(I_L,1), I_XH) );
-        T_R.push_back( ITensor(I_R, prime(I_R,1), 
-            prime(I_XH,1)) );
-        T_U.push_back( ITensor(I_U, prime(I_U,1), I_XV) );
-        T_D.push_back( ITensor(I_D, prime(I_D,1),
-            prime(I_XV,1)) );
+        auto tmp = envIndPair(id,0,id,1);
+        tmp.push_back(faux.at(id)[0]);
+        T_L.push_back( ITensor(tmp) );
+        
+        tmp = envIndPair(id,2,id,3);
+        tmp.push_back(faux.at(id)[1]);
+        T_U.push_back( ITensor(tmp) );
+        
+        tmp = envIndPair(id,4,id,5);
+        tmp.push_back(faux.at(id)[2]);
+        T_R.push_back( ITensor(tmp) );
+        
+        tmp = envIndPair(id,6,id,7);
+        tmp.push_back(faux.at(id)[3]);
+        T_D.push_back( ITensor(tmp) );
     }
     
     // Iterate over siteIds as given in Cluster c
-    for( const auto& siteIdEntry : c.siteIds ) {
-        sites.push_back( contractOST(c.sites.at(siteIdEntry)) );
-        siteIds.push_back( siteIdEntry );
+    // for( const auto& siteIdEntry : c.siteIds ) {
+    //     sites.push_back( contractOST(c.sites.at(siteIdEntry)) );
+    //     siteIds.push_back( siteIdEntry );
 
-        // add entries for map from cluster site to tensor 
-        for ( const auto& cToSEntry : c.cToS ) {
-            if( cToSEntry.second == siteIdEntry ) {
-                cToS[ cToSEntry.first ] = sites.size()-1;
-            }
-        }
-    }
+    //     // add entries for map from cluster site to tensor 
+    //     for ( const auto& cToSEntry : c.cToS ) {
+    //         if( cToSEntry.second == siteIdEntry ) {
+    //             cToS[ cToSEntry.first ] = sites.size()-1;
+    //         }
+    //     }
+    // }
 
     // Construct vectors holding SVD spectrum of corner matrices
     spec = {
@@ -293,104 +327,120 @@ void CtmEnv::initCtmrgEnv(bool dbg) {
     std::cout <<"===== INIT_ENV_ctmrg called "<< std::string(44,'=') 
         << std::endl;
     
-    //Define "contractor" tensor
-    int D = round(sqrt(d));
-    auto cI = Index("C",d);
-    auto CT = ITensor(cI);
-    for ( int i=1; i<= D; i++ ) {
-        CT.set(cI(i+D*(i-1)),1.0);
-    }
-    // OBC (?)
-    // for ( int i=1; i<= D*D; i++ ) {
-    //     CT.set(cI(i),1.0);
-    // }
+    int const BRAKET_OFFSET = 4;
 
-    if(dbg) PrintData(CT);
+    auto TBraKet = [this,&BRAKET_OFFSET](std::string id)->ITensor {
+        return p_cluster->sites.at(id) 
+            * dag(prime(p_cluster->sites.at(id),AUXLINK,BRAKET_OFFSET));
+    };
 
-    for ( size_t i=0; i<sites.size(); i++ ) {
-        if(dbg) std::cout <<"----- generating init env for site "<< siteIds[i]
+    auto contractBraKetInd = [this,&BRAKET_OFFSET](ITensor & t, std::string id0, int dir0, 
+        std::string id1, int dir1) {
+        t *= p_cluster->DContract(id0,dir0,id1,dir1);
+        t *= prime(p_cluster->DContract(id0,dir0,id1,dir1), BRAKET_OFFSET);
+    };
+
+    // TODO? dag for one of the indices
+    auto DBraKetInd = [this,&BRAKET_OFFSET](std::string id, int dir)->ITensor {
+        auto a = p_cluster->AIc(id,dir);
+        return delta(a,prime(a,BRAKET_OFFSET));
+    };
+    auto combineSiteBraKetToEnv = [this](ITensor & t, std::string id, int dir,
+        std::string env_id, int env_dir) {
+        t *= CMB.at(id)[dir];
+        t *= delta(combinedIndex(CMB.at(id)[dir]), eaux.at(env_id)[env_dir]);
+    };
+
+    for (std::size_t i=0; i<p_cluster->siteIds.size(); i++) {
+        std::string id = p_cluster->siteIds[i];
+        Vertex v = p_cluster->idToV.at(id);
+
+        if(dbg) std::cout <<"----- generating init env for site "<< id
             <<" -----"<< std::endl;
-        // Locate the first appearance of given site within cluster
-        int row, col;
-        for ( const auto& cToSEntry : cToS ) {
-            if ( cToSEntry.second == i) {
-                col = cToSEntry.first.first;
-                row = cToSEntry.first.second;
-                break;
-            }
-        }
-        if(dbg) std::cout <<"Found "<< siteIds[i] <<" at ["<< col <<","<< row
-            <<"]"<< std::endl;
 
-        //Construct corner matrices
-        std::pair<int,int> site = 
-            std::make_pair((col-1+sizeM)%sizeM,(row-1+sizeN)%sizeN);
-        C_LU[i] = ( ( ( sites[ cToS.at(site) ]
-            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,I_XV)) )
-            *delta( prime(I_XH,1), I_U ) )
-            *delta( prime(I_XV,1), I_L);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LU;
+        // left-upper corner v + (-1,-1)
+        auto tmp_id = p_cluster->vertexToId(v + Shift(-1,-1));
+        auto t = TBraKet(tmp_id);
+        // perform appropriate contractions
+        t *= DBraKetInd(tmp_id,0);
+        t *= DBraKetInd(tmp_id,1);
+        combineSiteBraKetToEnv(t,tmp_id,2,id,0);
+        combineSiteBraKetToEnv(t,tmp_id,3,id,7);
+        C_LU[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_C_LU;
         printfln(" = %s", C_LU[i]); }
         
-        site = 
-            std::make_pair((col+1)%sizeM,(row-1+sizeN)%sizeN);
-        C_RU[i] = ( ( ( sites[ cToS.at(site)]
-            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,I_XV)) )
-            *delta( I_XH, prime(I_U,1) ) )
-            *delta( prime(I_XV,1), I_R);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RU;
+        tmp_id = p_cluster->vertexToId(v + Shift(1,-1));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,1);
+        t *= DBraKetInd(tmp_id,2);
+        combineSiteBraKetToEnv(t,tmp_id,3,id,2);
+        combineSiteBraKetToEnv(t,tmp_id,0,id,1);
+        C_RU[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_C_RU;
         printfln(" = %s", C_RU[i]); }
 
-        site = 
-            std::make_pair((col+1)%sizeM,(row+1)%sizeN);
-        C_RD[i] = ( ( ( sites[ cToS.at(site)]
-            *(CT*delta(cI,prime(I_XH,1))) )*(CT*delta(cI,prime(I_XV,1))) )
-            *delta( I_XH, prime(I_D,1) ) )
-            *delta( I_XV, prime(I_R,1));
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_RD;
+        tmp_id = p_cluster->vertexToId(v + Shift(-1,-1));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,2);
+        t *= DBraKetInd(tmp_id,3);
+        combineSiteBraKetToEnv(t,tmp_id,0,id,4);
+        combineSiteBraKetToEnv(t,tmp_id,1,id,3);
+        C_RD[i] = t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_C_RD;
         printfln(" = %s", C_RD[i]); }
 
-        site = 
-            std::make_pair((col-1+sizeM)%sizeM,(row+1)%sizeN);
-        C_LD[i] = ( ( ( sites[ cToS.at(site)]
-            *(CT*delta(cI,I_XH)) )*(CT*delta(cI,prime(I_XV,1))) )
-            *delta( prime(I_XH,1), I_D ) )
-            *delta( I_XV, prime(I_L,1));
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_C_LD;
+        tmp_id = p_cluster->vertexToId(v + Shift(-1,1));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,3);
+        t *= DBraKetInd(tmp_id,0);
+        combineSiteBraKetToEnv(t,tmp_id,1,id,6);
+        combineSiteBraKetToEnv(t,tmp_id,2,id,5);
+        C_LD[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_C_LD;
         printfln(" = %s", C_LD[i]); }
     
         //Construct half-row/col matrices
-        site = 
-            std::make_pair(col,(row-1+sizeN)%sizeN);
-        T_U[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XV)) )
-            *delta(I_XH, I_U) )*delta(prime(I_XH,1), prime(I_U,1));
-        T_U[i].prime(VSLINK,-1);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_U;
+        tmp_id = p_cluster->vertexToId(v + Shift(-1,0));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,0);
+        contractBraKetInd(t,tmp_id,2,id,0);
+        combineSiteBraKetToEnv(t,tmp_id,1,id,7);
+        combineSiteBraKetToEnv(t,tmp_id,3,id,6);
+        T_L[i] = t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_T_L;
+        printfln(" = %s", T_L[i]); }
+
+        tmp_id = p_cluster->vertexToId(v + Shift(0,-1));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,1);
+        contractBraKetInd(t,tmp_id,3,id,1);
+        combineSiteBraKetToEnv(t,tmp_id,0,id,0);
+        combineSiteBraKetToEnv(t,tmp_id,2,id,1);
+        T_U[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_T_U;
         printfln(" = %s", T_U[i]); }
 
-        site = 
-            std::make_pair((col+1)%sizeM,row);
-        T_R[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XH,1))) )
-            *delta(I_XV, I_R) )*delta(prime(I_XV,1), prime(I_R,1));
-        T_R[i].prime(I_XH,1);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_R;
+        tmp_id = p_cluster->vertexToId(v + Shift(1,0));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,2);
+        contractBraKetInd(t,tmp_id,0,id,2);
+        combineSiteBraKetToEnv(t,tmp_id,1,id,2);
+        combineSiteBraKetToEnv(t,tmp_id,3,id,3);
+        T_R[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_T_R;
         printfln(" = %s", T_R[i]); }
 
-        site = 
-            std::make_pair(col,(row+1)%sizeN);
-        T_D[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,prime(I_XV,1))) )
-            *delta(I_XH, I_D) )*delta(prime(I_XH,1), prime(I_D,1));
-        T_D[i].prime(I_XV,1);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_D;
+        tmp_id = p_cluster->vertexToId(v + Shift(0,1));
+        t = TBraKet(tmp_id);
+        t *= DBraKetInd(tmp_id,3);
+        contractBraKetInd(t,tmp_id,1,id,3);
+        combineSiteBraKetToEnv(t,tmp_id,0,id,5);
+        combineSiteBraKetToEnv(t,tmp_id,2,id,4);
+        T_D[i]= t;
+        if(dbg) { std::cout << id <<" -> "<< TAG_T_D;
         printfln(" = %s", T_D[i]); }
 
-        site = 
-            std::make_pair((col-1+sizeM)%sizeM,row);
-        T_L[i] = (( sites[ cToS.at(site) ] * (CT*delta(cI,I_XH)) )
-            *delta(I_XV, I_L) )*delta(prime(I_XV,1), prime(I_L,1));
-        T_L[i].prime(HSLINK,-1);
-        if(dbg) { std::cout << siteIds[cToS.at(site)] <<" -> "<< TAG_T_L;
-        printfln(" = %s", T_L[i]); }
     }
 
     //    normalizePTN();
@@ -1359,11 +1409,34 @@ std::ostream& CtmEnv::print(std::ostream& s) const {
     }
     s <<"]"<< std::endl;
 
+    s<<"eaux: ["<< std::endl;
+    for(auto const& e : eaux) {
+        s<< e.first <<" : ";
+        for( auto const& i : e.second) s<< i <<" ";
+        s<<std::endl;
+    }
+    s<<"]"<< std::endl;
+
+    s<<"CMB: ["<< std::endl;
+    for(auto const& e : CMB) {
+        s<< e.first <<" : ";
+        for(int dir=0; dir<4; dir++) s<<"dir "<< dir <<" : "<< e.second[dir];
+    }
+    s<<"]"<< std::endl;
+
+    s<<"faux: ["<< std::endl;
+    for(auto const& e : faux) {
+        s<< e.first <<" : ";
+        for( auto const& i : e.second) s<< i << " ";
+        s<< std::endl;
+    }
+    s<<"]"<< std::endl;
+
     // Loop over inequivalent sites and print their environment
-    for (std::size_t i=0; i<sites.size(); i++) {
-        s <<"===="<<" BEGIN ENV OF SITE "<< siteIds[i] <<" "<< 
+    for (std::size_t i=0; i<p_cluster->siteIds.size(); i++) {
+        s <<"===="<<" BEGIN ENV OF SITE "<< p_cluster->siteIds[i] <<" "<< 
             std::string(47,'=') << std::endl;
-        s <<"----"<< siteIds[i] <<" start CORNER TENSORS----"<< std::endl;
+        s <<"----"<< p_cluster->siteIds[i] <<" start CORNER TENSORS----"<< std::endl;
         s << TAG_C_LU;
         printfln(" = %s", C_LU[i]);
         s << TAG_C_RU;
@@ -1374,20 +1447,20 @@ std::ostream& CtmEnv::print(std::ostream& s) const {
         printfln(" = %s", C_LD[i]);
         s <<"------end CORNER TENSORS----"<< std::endl;
 
-        s <<"----"<< siteIds[i] <<" start HALF-ROW TENSORS--"<< std::endl;
+        s <<"----"<< p_cluster->siteIds[i] <<" start HALF-ROW TENSORS--"<< std::endl;
         s << TAG_T_L << i;
         printfln(" = %s", T_L[i]);
         s << TAG_T_R << i;
         printfln(" = %s", T_R[i]);
         s <<"------end HALF-ROW TENSORS--"<< std::endl;
 
-        s <<"----"<< siteIds[i] <<" start HALF-COL TENSORS--"<< std::endl;
+        s <<"----"<< p_cluster->siteIds[i] <<" start HALF-COL TENSORS--"<< std::endl;
         s << TAG_T_U << i;
         printfln(" = %s", T_U[i]);
         s << TAG_T_D << i;
         printfln(" = %s", T_D[i]);
         s <<"------end HALF-COL TENSORS--"<< std::endl;
-        s <<"===="<<" END ENV OF SITE "<< siteIds[i] <<" "<< 
+        s <<"===="<<" END ENV OF SITE "<< p_cluster->siteIds[i] <<" "<< 
             std::string(49,'=') << std::endl;
     }
 

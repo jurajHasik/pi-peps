@@ -28,35 +28,47 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
     auto lX = jsonCls["sizeM"].get<int>();
     auto lY = jsonCls["sizeN"].get<int>();
     
-    Cluster cluster = Cluster(lX, lY);
+    Cluster c = Cluster(lX, lY);
 
-    cluster.physDim    = jsonCls["physDim"].get<int>();
-    cluster.auxBondDim = jsonCls["auxBondDim"].get<int>();
+    c.physDim    = jsonCls["physDim"].get<int>();
+    c.auxBondDim = jsonCls["auxBondDim"].get<int>();
 
     for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
     {
-        cluster.cToS[ make_pair( mapEntry["x"].get<int>(),
-            mapEntry["y"].get<int>() ) ] = mapEntry["siteId"].get<string>();
-        cluster.vToId[ Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]
-            = mapEntry["siteId"].get<string>();
+        c.cToS[ make_pair(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]=
+            mapEntry["siteId"].get<string>();
+        c.vToId[ Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]=
+            mapEntry["siteId"].get<string>();
+        c.idToV[ mapEntry["siteId"].get<string>() ]=
+            Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>());
     }   
 
-    for( const auto& siteIdEntry : jsonCls["siteIds"].get < vector<string> >() )
+    for( const auto& siteIdEntry : jsonCls["siteIds"].get< vector<string> >() )
     {
-        cluster.siteIds.push_back(siteIdEntry);
-        cluster.SI[siteIdEntry] = cluster.siteIds.size() - 1;
+        c.siteIds.push_back(siteIdEntry);
+        c.SI[siteIdEntry] = c.siteIds.size() - 1;
     }
 
-    initClusterSites(cluster);
+    // initClusterSites(c);
+    // setOnSiteTensorsFromJSON(c, jsonCls);
+    for( const auto& siteEntry : jsonCls["sites"] )
+    {
+        auto id  = siteEntry["siteId"].get<string>();
+        auto tmp = readIndsAndTfromJSON(siteEntry);
 
-    setOnSiteTensorsFromJSON(cluster, jsonCls);
+        c.mphys[id] = tmp.first[0];
+        c.caux[id]  = std::vector<itensor::Index>(tmp.first.size()-1);
+        for(int i=1; i<tmp.first.size(); i++) c.caux[id][i-1] = tmp.first[i];
+        // std::copy( tmp.first.begin()+1, tmp.first.end(), c.caux[id] );
+        c.sites[id] = tmp.second; // tensor
+    }
 
-    // construction of weights on links within cluster
-    if (jsonCls.value("linkWeightsUsed",false)) readClusterWeights(cluster, jsonCls);
+    // construction of weights on links within c
+    if (jsonCls.value("linkWeightsUsed",false)) readClusterWeights(c, jsonCls);
 
-    initClusterWeights(cluster);
+    initClusterWeights(c);
 
-    return cluster;
+    return c;
 }
 
 void readClusterWeights(Cluster & cls, nlohmann::json const& jsonCls) {
@@ -134,8 +146,18 @@ void writeCluster(string const& filename, Cluster const& cls) {
         jentry["siteId"]  = entry.first;
         jentry["physDim"] = cls.physDim;
         jentry["auxDim"]  = cls.auxBondDim;
+        vector<nlohmann::json> auxInds(cls.caux.at(entry.first).size());
+        for (int i=0; i<cls.caux.at(entry.first).size(); i++ ) {
+            auto ind = cls.caux.at(entry.first)[i];
+            auxInds[i] = {
+                {"dir", i},
+                {"ad", ind.m()},
+                {"name", ind.rawname()}
+            };
+        }
+        jentry["auxInds"] = auxInds;
         vector< string > tensorElems;
-        writeOnSiteTElems(tensorElems, entry.second);
+        writeOnSiteTElems(tensorElems, cls, entry.first);
         jentry["numEntries"] = tensorElems.size();
         jentry["entries"] = tensorElems;
         jsites.push_back(jentry);
@@ -151,18 +173,61 @@ void writeCluster(string const& filename, Cluster const& cls) {
  * TODO? check auxBondDim vs auxDim per site consistency
  *
  */
-itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset) {
-    auto physI = itensor::Index(TAG_I_PHYS, j["physDim"].get<int>(), 
-        PHYS);
-    auto auxI0 = itensor::Index(TAG_I_AUX, j["auxDim"].get<int>(),
-        AUXLINK);
-    auto auxI1 = prime(auxI0,1);
-    auto auxI2 = prime(auxI0,2);
-    auto auxI3 = prime(auxI0,3);
+pair<int,itensor::Index> readAuxIndex(nlohmann::json const& j) {
+    auto dir    = j["dir"].get<int>();
+    auto auxDim = j["ad"].get<int>();
+    auto name   = j["name"].get<string>();
+    return make_pair(dir,itensor::Index(name, auxDim, AUXLINK, dir));
+}
 
-    auto t = itensor::ITensor(physI, auxI0, auxI1, auxI2, auxI3);
+itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset) {
+    auto result = readIndsAndTfromJSON(j,offset);
+    return result.second;
+}
+
+// returns pair < indices, tensor >
+// IndexSet of ITensor, where 0th index is the physical one. Remaining 
+// indices are auxiliary
+pair< vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(nlohmann::json const& j,
+    int offset) {
     
+    auto id = j["siteId"].get<string>();
     
+    vector<itensor::Index> ti(5,itensor::Index());
+    ti[0] = itensor::Index(TAG_I_PHYS, j["physDim"].get<int>(), PHYS);
+
+    // check if tensor has custom set of auxiliary indices provided
+    auto p_json_inds_array =  j.find("auxInds");
+    if (p_json_inds_array == j.end()) {
+        std::cout<<"[readOnSiteT] "<< id <<" : auxInds array not found. "
+            << " Assuming identical auxiliary indices on all bonds." << std::endl;
+    
+        ti[1] = itensor::Index(TAG_I_AUX, j["auxDim"].get<int>(), AUXLINK);
+        for (int i=2; i<ti.size(); i++) ti[i] = prime(ti[1],i-1);
+    } else {
+        if ( j["auxInds"].size() != 4 ) { 
+            std::cout<<"[readOnSiteT] "<< id <<" : auxInds has to contain"
+                <<" four auxiliary indices"<< std::endl;
+            throw std::runtime_error("Invalid input");
+        }
+    
+        for ( const auto& i : j["auxInds"] ) {
+            auto tmp = readAuxIndex(i);
+            ti[1+tmp.first] = tmp.second;
+        }
+
+        // verify, that indices for each direction have been read
+        for ( int i=1; i<ti.size(); i++ ) {
+            if (not ti[i]) { 
+                std::cout<<"[readOnSiteT] "<< id <<" : auxInds does not contain "
+                    <<" auxiliary index for direction "<< i-1 << std::endl;
+                throw std::runtime_error("Invalid input"); 
+            }
+        }
+    }
+
+    auto t = itensor::ITensor(ti);
+
     string token[7];
     int pI, aI0, aI1, aI2, aI3;
     char delim = ' ';
@@ -183,12 +248,11 @@ itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset) {
         aI2 = offset + stoi(token[3]);
         aI3 = offset + stoi(token[4]);
 
-        t.set( physI(pI), auxI0(aI0), auxI1(aI1), auxI2(aI2), 
-            auxI3(aI3), 
+        t.set( ti[0](pI), ti[1](aI0), ti[2](aI1), ti[3](aI2), ti[4](aI3), 
             complex<double>( stod(token[5]),stod(token[6]) ) );
     }
 
-    return t;
+    return make_pair(ti,t);
 }
 
 void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
@@ -248,30 +312,24 @@ void setOnSiteTensorsFromJSON(Cluster & c, nlohmann::json const& j, bool dbg) {
 }
 
 void writeOnSiteTElems(vector< string > & tEs,
-    itensor::ITensor const& T, int offset, double threshold) {
+   Cluster const& c, std::string id, int offset, double threshold) {
 
-    auto pI = itensor::findtype(T, PHYS);
-    auto aI = itensor::findtype(T, AUXLINK);
-
-    auto aI0 = itensor::noprime(aI);
-    auto aI1 = itensor::prime(aI0,1);
-    auto aI2 = itensor::prime(aI0,2);
-    auto aI3 = itensor::prime(aI0,3);
+    auto pI = c.mphys.at(id);
+    auto aI = c.caux.at(id);
 
     string t_entry_str;
     //ostringstream ost;
     //ost.precision( numeric_limits< double >::max_digits10 );
-    for(int p=1;p<=pI.m();p++) {
-        for(int a0=1;a0<=aI.m();a0++) {
-        for(int a1=1;a1<=aI.m();a1++) {
-        for(int a2=1;a2<=aI.m();a2++) {
-        for(int a3=1;a3<=aI.m();a3++) {
-            complex<double> elem = T.cplx(pI(p), aI0(a0), aI1(a1), aI2(a2), 
-                aI3(a3));
+    for(int p=0;p<pI.m();p++) {
+        for(int a0=0;a0<aI[0].m();a0++) {
+        for(int a1=0;a1<aI[1].m();a1++) {
+        for(int a2=0;a2<aI[2].m();a2++) {
+        for(int a3=0;a3<aI[3].m();a3++) {
+            complex<double> elem = c.sites.at(id).cplx(pI(p+offset), aI[0](a0+offset), 
+                aI[1](a1+offset), aI[2](a2+offset), aI[3](a3+offset));
             if( abs(elem) >= threshold ) {
-                t_entry_str = to_string(p-offset)+" "+to_string(a0-offset)
-                    +" "+to_string(a1-offset)+" "+to_string(a2-offset)+" "
-                    +to_string(a3-offset)+" ";
+                t_entry_str = to_string(p)+" "+to_string(a0)+" "+to_string(a1)
+                    +" "+to_string(a2)+" "+to_string(a3)+" ";
                 ostringstream ost;
                 ost.precision( numeric_limits< double >::max_digits10 );
                 ost << elem.real() <<" "<< elem.imag();
@@ -359,11 +417,11 @@ void writeEnv(IO_ENV_FMT ioFmt, string TAG, CtmData const& ctmD) {
  * TODO? Redundancy of information sizeN,sizeM both in CtmData and Cluster
  *
  */
-CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
+CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& c) {
     CtmData ctmD;
 
-    ctmD.sizeN = cls.sizeN;
-    ctmD.sizeM = cls.sizeM;
+    ctmD.sizeN = c.sizeN;
+    ctmD.sizeM = c.sizeM;
 
     switch(ioFmt) {
         case(IO_ENV_FMT_txt): {
@@ -376,14 +434,14 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
             ctmD.C_RD = readTensorF(TAG+"-"+TAG_C_RD+SUFFIX);
             ctmD.C_LD = readTensorF(TAG+"-"+TAG_C_LD+SUFFIX);
             
-            for( int i=0; i<cls.sizeN; i++ ) {
+            for( int i=0; i<c.sizeN; i++ ) {
                 ctmD.T_L.push_back(
                     readTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
                 ctmD.T_R.push_back( 
                     readTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
             }
             
-            for( int i=0; i<cls.sizeM; i++ ) {
+            for( int i=0; i<c.sizeM; i++ ) {
                 ctmD.T_U.push_back(
                     readTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
                 ctmD.T_D.push_back(
@@ -403,15 +461,15 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
 
             // Sync indices across env tensors
             ctmD.C_RU *= itensor::delta( itensor::findtype(
-                ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,cls.sizeM) );
+                ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,c.sizeM) );
 
             ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,cls.sizeN) );
+                ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,c.sizeN) );
             ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD,DLINK), prime(ctmD.I_D,cls.sizeM) );
+                ctmD.C_RD,DLINK), prime(ctmD.I_D,c.sizeM) );
 
             ctmD.C_LD *= itensor::delta( itensor::findtype(
-                ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,cls.sizeN) );
+                ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,c.sizeN) );
 
             itensor::IndexSet iSet;
             for( auto& t : ctmD.T_U ) {
@@ -475,14 +533,14 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
             ctmD.C_RD = readTensorB(TAG+"-"+TAG_C_RD+SUFFIX);
             ctmD.C_LD = readTensorB(TAG+"-"+TAG_C_LD+SUFFIX);
             
-            for( int i=0; i<cls.sizeN; i++ ) {
+            for( int i=0; i<c.sizeN; i++ ) {
                 ctmD.T_L.push_back(
                     readTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
                 ctmD.T_R.push_back(
                     readTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
             }
             
-            for( int i=0; i<cls.sizeM; i++ ) {
+            for( int i=0; i<c.sizeM; i++ ) {
                 ctmD.T_U.push_back(
                     readTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
                 ctmD.T_D.push_back(
@@ -511,7 +569,7 @@ CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& cls) {
 
     // Read in the dimensions of tensors
     ctmD.auxDimEnv  = ctmD.I_U.m();
-    ctmD.auxDimSite = cls.auxBondDim*cls.auxBondDim;
+    ctmD.auxDimSite = c.auxBondDim*c.auxBondDim;
 
     cout << ctmD;
 

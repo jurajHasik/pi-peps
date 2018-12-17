@@ -22,6 +22,8 @@ class CtmEnv
     // Additional structures
     public:
 
+    const Cluster * p_cluster;
+
     itensor::SvdSolver & solver;
 
     enum class DIRECTION {
@@ -137,18 +139,61 @@ class CtmEnv
     // aux indices of environment tensors (of auxEnvDim == x)
     itensor::Index I_U, I_R, I_D, I_L;
     
+    // from C_LU corner in counter-clockwise fashion
+    // C_LU--0--T_U--1--C_RU
+    //  7                2
+    // T_L              T_R
+    //  6                3  
+    // C_LD--5--T_D--4--C_RD
+    //
+    // mapping to 0->I_U0, 1->I_U1, 2->I_R0, 3->I_R1, 4->I_D1, 5->I_D0,
+    //            6->I_L1, 7->I_L0 
+    std::map<std::string, std::vector<itensor::Index> > eaux; // environment aux indices
+
+    std::vector<itensor::Index> envIndPair(
+        std::string const& id0, int i0, 
+        std::string const& id1, int i1) const {
+        return { eaux.at(id0)[i0], eaux.at(id1)[i1] };
+    }
+
+    itensor::ITensor DContractEnv(
+        std::string const& id0, int i0, 
+        std::string const& id1, int i1) const {
+        auto tmp = envIndPair(id0,i0,id1,i1);
+        return itensor::delta(tmp[0],tmp[1]);
+    }
+
+    // corner_index maps to
+    // 0|1 => C_LU|C_RU
+    // 3|2 => C_LD|C_RD
+    std::vector<itensor::Index> envIndCornerPair(
+        std::string const& id, int ci) const {
+        int i1 = ci * 2;
+        int i2 = (ci * 2 + 7) % 8;
+        return { eaux.at(id)[i1], eaux.at(id)[i2] };
+    }
+
     // aux bond indices of sites ( of auxBondDim == d)
     itensor::Index I_XH, I_XV;
-
+    
     
     // vector indexes combiners 0 1 2 3 in respect to four directions on
-    // lattice L, U, R, D
+    // lattice L, U, R, D for each site
     std::map< std::string, std::vector<itensor::ITensor> > CMB;
     // TODO
     // since combiner cant be contracted with delta we have to
     // keep the map from directions to fused site indices I_XH and I_XV
     // L->0->I_XH, U->1->I_XV, R->2->prime(I_XH), D->3->prime(I_XV)
     std::vector<itensor::Index> fusedSiteI;
+    std::map< std::string, std::vector<itensor::Index> > faux; // fused index
+
+    // itensor::ITensor DContractSiteBraKet(Vertex const& v, int dir) const {
+    //     return delta(CMB.at(id)[dir],faux.at(id)[dir]);
+    // }
+
+    itensor::ITensor DContractCmbEnvInd(std::string const& id, int dir) const {
+        return itensor::delta(combinedIndex(CMB.at(id)[dir]),faux.at(id)[dir]);
+    }
 
     // simple wrapper around spectra of corner matrices 
     CtmSpec spec;

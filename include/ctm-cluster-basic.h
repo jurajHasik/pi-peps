@@ -70,6 +70,7 @@ struct Cluster_2x2_ABCD : Cluster {
 	        {std::make_pair(1,1),"D"}
 	    };
 	    vToId = { {{0,0},"A"}, {{1,0},"B"}, {{0,1},"C"}, {{1,1},"D"} };
+        idToV = { {"A",{0,0}}, {"B",{1,0}}, {"C",{0,1}}, {"D",{1,1}} };
 
 	    auto aIA = Index(TAG_I_AUX, auxBondDim, AUXLINK);
 	    auto aIB = Index(TAG_I_AUX, auxBondDim, AUXLINK);
@@ -84,6 +85,10 @@ struct Cluster_2x2_ABCD : Cluster {
     	phys = {pIA, pIB, pIC, pID};
     	maux  = {{"A",aIA},{"B",aIB},{"C",aIC},{"D",aID}};
     	mphys = {{"A",pIA},{"B",pIB},{"C",pIC},{"D",pID}};
+        for (const auto& id : siteIds) { 
+            caux[id] = std::vector<Index>(4);
+            for(int i=0; i<caux[id].size(); i++) caux[id][i] = prime(maux.at(id),i);
+        }
 
 	    auto A = ITensor(aIA, prime(aIA,1), prime(aIA,2), prime(aIA,3), pIA);
 	    auto B = ITensor(aIB, prime(aIB,1), prime(aIB,2), prime(aIB,3), pIB);
@@ -159,10 +164,10 @@ struct Cluster_2x2_ABCD : Cluster {
     void init_RANDOM_BIPARTITE() {
     	std::cout <<"Initializing by RANDOM TENSORS A,B,C=B,D=A"<< std::endl;
 
-        auto aIA = maux.at("A");
-        auto aIB = maux.at("B");
-        auto aIC = maux.at("C");
-        auto aID = maux.at("D");
+        auto aIA = caux.at("A")[0];
+        auto aIB = caux.at("B")[0];
+        auto aIC = caux.at("C")[0];
+        auto aID = caux.at("D")[0];
 
         auto pIA = mphys.at("A");
         auto pIB = mphys.at("B");
@@ -187,10 +192,10 @@ struct Cluster_2x2_ABCD : Cluster {
     void init_AFM() {
         std::cout <<"Initializing by AFM order A=down, B=up"<< std::endl;
 
-        auto aIA = maux.at("A");
-        auto aIB = maux.at("B");
-        auto aIC = maux.at("C");
-        auto aID = maux.at("D");
+        auto aIA = caux.at("A")[0];
+        auto aIB = caux.at("B")[0];
+        auto aIC = caux.at("C")[0];
+        auto aID = caux.at("D")[0];
 
         auto pIA = mphys.at("A");
         auto pIB = mphys.at("B");
@@ -212,10 +217,10 @@ struct Cluster_2x2_ABCD : Cluster {
 	void init_ALIGNX() {
 		std::cout <<"Initializing by PRODUCT STATE along X"<< std::endl;
 
-        auto aIA = maux.at("A");
-        auto aIB = maux.at("B");
-        auto aIC = maux.at("C");
-        auto aID = maux.at("D");
+        auto aIA = caux.at("A")[0];
+        auto aIB = caux.at("B")[0];
+        auto aIC = caux.at("C")[0];
+        auto aID = caux.at("D")[0];
 
         auto pIA = mphys.at("A");
         auto pIB = mphys.at("B");
@@ -243,10 +248,10 @@ struct Cluster_2x2_ABCD : Cluster {
 	void init_ALIGNZ() {
 		std::cout <<"Initializing by PRODUCT STATE along Z +1/2"<< std::endl;
 
-        auto aIA = maux.at("A");
-        auto aIB = maux.at("B");
-        auto aIC = maux.at("C");
-        auto aID = maux.at("D");
+        auto aIA = caux.at("A")[0];
+        auto aIB = caux.at("B")[0];
+        auto aIC = caux.at("C")[0];
+        auto aID = caux.at("D")[0];
 
         auto pIA = mphys.at("A");
         auto pIB = mphys.at("B");
@@ -267,10 +272,10 @@ struct Cluster_2x2_ABCD : Cluster {
 	void init_VBS() {
 		std::cout <<"Initializing by VERTICAL VBS STATE"<< std::endl;
 
-        auto aIA = maux.at("A");
-        auto aIB = maux.at("B");
-        auto aIC = maux.at("C");
-        auto aID = maux.at("D");
+        auto aIA = caux.at("A")[0];
+        auto aIB = caux.at("B")[0];
+        auto aIC = caux.at("C")[0];
+        auto aID = caux.at("D")[0];
 
         auto pIA = mphys.at("A");
         auto pIB = mphys.at("B");

@@ -69,6 +69,8 @@ struct Shift {
 struct Vertex {
     std::array<int, 2> r;
 
+    Vertex() : r({0,0}) { /* Default Vertex */ }
+
     Vertex(int x, int y) : r({x,y}) {}
 
     bool operator== (const Vertex &v) const {
@@ -133,7 +135,27 @@ struct Cluster {
 
     // aux indices and phys indicies of sites siteIds[0] <-> aux[0],phys[0] 
     std::vector< itensor::Index > aux, phys;
-    std::map< std::string, itensor::Index > maux, mphys;
+    std::map< std::string, itensor::Index > mphys, maux;
+    std::map< std::string, std::vector<itensor::Index> > caux;
+
+    
+    itensor::Index const& AIc(Vertex const& v, int dir) const {
+        return AIc(vertexToId(v),dir);
+    }
+
+    itensor::Index const& AIc(std::string const& id, int dir) const {
+        return caux.at(id)[dir];
+    }
+
+    itensor::ITensor DContract(Vertex const& v0, int dir0, 
+        Vertex const& v1, int dir1) const {
+        return itensor::delta(AIc(v0,dir0),AIc(v1,dir1));
+    }
+
+    itensor::ITensor DContract(std::string const& id0, int dir0, 
+        std::string const& id1, int dir1) const {
+        return itensor::delta(AIc(id0,dir0),AIc(id1,dir1));
+    }
 
     // inequivalent sites
     std::map< std::string, itensor::ITensor > sites;
@@ -141,6 +163,7 @@ struct Cluster {
     // map from cluster sites to inequivalent sites
     std::map< std::pair< int,int >, std::string > cToS;
     std::map< Vertex, std::string > vToId;
+    std::map< std::string, Vertex > idToV;
 
     // each link between two sites might hold a matrix of weights
     // each site identified by siteId holds information about all
@@ -155,6 +178,9 @@ struct Cluster {
     Cluster() {}
 
     Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+
+    Cluster(int lX_, int lY_, int pd) : physDim(pd),
+        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
         lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
@@ -180,7 +206,7 @@ struct Cluster {
     itensor::ITensor getSite(Vertex const& v) const {
         itensor::ITensor t = sites.at(vertexToId(v));
         return t;
-    }
+    }  
 };
 
 void initClusterSites(Cluster & c, bool dbg = false);

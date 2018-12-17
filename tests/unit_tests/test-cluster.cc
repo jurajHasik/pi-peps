@@ -1,6 +1,9 @@
 #include <iostream>
+#include <string>
 #include <gtest/gtest.h>
 #include "ctm-cluster.h"
+#include "ctm-cluster-basic.h"
+#include "ctm-cluster-io.h"
 
 using namespace itensor;
 
@@ -41,4 +44,17 @@ TEST(Cluster1, Default_cotr){
 
 	v2 -= s1;
 	EXPECT_TRUE(v2 == Vertex(4,4));
+}
+
+// TODO test for equality
+TEST(ClusterIO0, Default_cotr){
+	std::string inClusterFile = "RVB_2x2_ABCD_customIndices.in";
+	auto cluster = readCluster(inClusterFile);
+	std::string outClusterFile = "test_RVB_2x2_ABCD.in";
+	writeCluster(outClusterFile,cluster);
+}
+
+TEST(ClusterIO1, Default_cotr){
+	auto cluster = Cluster_2x2_ABCD(3,2);
+	std::cout<< cluster;
 }

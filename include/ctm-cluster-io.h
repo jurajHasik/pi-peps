@@ -24,6 +24,12 @@ typedef enum IO_ENV_FMT {
 // string to enum conversion
 IO_ENV_FMT toIO_ENV_FMT(std::string const& ioFmt);
 
+struct IO_site {
+    itensor::Index phys;
+    std::vector<itensor::Index> aux;
+    itensor::ITensor t;
+};
+
 Cluster readCluster(std::string const& filename);
 
 Cluster readCluster(nlohmann::json const& jsonCls);
@@ -41,7 +47,8 @@ void writeCluster(std::string const& filename, Cluster const& cls);
  * I(h)--|T|--I(h)'
  *        |
  *      I(v)'
- * 
+ *
+ *               dir 0  2   1  3  
  * where the indices h, h', v, v' denote bond indices within
  * a square lattice and index "s" is a physical index enumerating
  * local Hilbert space
@@ -52,7 +59,16 @@ void writeCluster(std::string const& filename, Cluster const& cls);
  * s h v h' v' Re(T) Im(T) <-> ids[0..4] Re(val) Im(val) 
  *
  */
-itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
+
+//        dir index 
+std::pair<int,itensor::Index> readAuxIndex(nlohmann::json const& j);
+
+// itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
+
+itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset = 1);
+
+std::pair< std::vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
+    nlohmann::json const& j, int offset = 1);
 
 void readOnSiteFromJSON(Cluster & c, nlohmann::json const& j, bool dbg = false);
 
@@ -66,7 +82,7 @@ void setOnSiteTensorsFromJSON(Cluster & cls, nlohmann::json const& j, bool dbg =
  * of abs value > threshold
  */
 void writeOnSiteTElems(std::vector< std::string > & tEs,
-    itensor::ITensor const& T, int offset = 1, double threshold = 1.0e-10);
+    Cluster const& cls, std::string id, int offset = 1, double threshold = 1.0e-10);
 
 // ############################################################################
 // IO for environment of nxm cluster

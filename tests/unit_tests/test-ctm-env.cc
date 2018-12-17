@@ -5,6 +5,22 @@
 
 using namespace itensor;
 
+TEST(CtmEnv_init0, Default_cotr){
+    auto cls = Cluster_2x2_ABCD("AFM",2,3);
+    std::cout<<cls;
+
+    auto pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
+    CtmEnv ctmEnv("TEST_2x2_ABCD", 2, cls, *pSvdSolver,
+        {"isoPseudoInvCutoff",1.0e-8,
+         "SVD_METHOD","itensor",
+         "dbg",true,
+         "dbgLevel",3}
+        );
+    ctmEnv.init(CtmEnv::INIT_ENV_ctmrg, false, true);
+
+    std::cout << ctmEnv; 
+}
+
 TEST(CtmEnv_buildCorner0, Default_cotr){
 	
     auto cls = Cluster_2x2_ABCD("AFM",2,3);

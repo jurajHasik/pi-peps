@@ -18,34 +18,46 @@ void initClusterSites(Cluster & c, bool dbg) {
 }
 
 void initClusterWeights(Cluster & c, bool dbg) {
+    if (c.siteToWeights.size() == 0) {
+        std::cout<<"[initClusterWeights]"<<" no weights stored for this cluster"
+            << std::endl;
+        throw std::runtime_error("Invalid input");
+    }
+
     // reset
     c.weights.clear();
 
     // create map holding LinkWeights
     std::map<std::string, LinkWeight> tmpLWs;
 
-    for (const auto& lwSet : c.siteToWeights) 
-        for (const auto& lw : lwSet.second) 
+    for (const auto& lwSet : c.siteToWeights) // map< string, vector<LinkWeight> >
+        for (const auto& lw : lwSet.second) // loop over linkWeights
             if ( (tmpLWs.find( lw.wId ) == tmpLWs.end()) ) tmpLWs[lw.wId] = lw;
 
-    for (const auto& lw : tmpLWs) 
+    for (const auto& lw : tmpLWs)
         c.weights[lw.second.wId] = ITensor(
-            prime(c.aux[c.SI.at(lw.second.sId[0])],lw.second.dirs[0]),
-            prime(c.aux[c.SI.at(lw.second.sId[1])],lw.second.dirs[1])
-            );
+            c.AIc(lw.second.sId[0],lw.second.dirs[0]),
+            c.AIc(lw.second.sId[1],lw.second.dirs[1])
+        );
 }
 
 void setWeights(Cluster & c, std::string option, bool dbg) {
+    if (c.siteToWeights.size() == 0) {
+        std::cout<<"[setWeights]"<<" no weights stored for this cluster"
+            << std::endl;
+        throw std::runtime_error("Invalid input");
+    }
+
     if(option == "DELTA") {
-        for (auto & wEntry : c.weights) {
-            std::vector<double> tmpD(c.auxBondDim, 1.0);
-            wEntry.second = diagTensor(tmpD, 
-                wEntry.second.inds()[0], wEntry.second.inds()[1] );
+        for (auto & wEntry : c.weights) // map < string, tensor >
+        {
+            std::vector<double> tmpD(wEntry.second.inds()[0].m(), 1.0);
+            wEntry.second = diagTensor(tmpD, wEntry.second.inds());
         }
     } else {
-        std::cout <<"ctm-cluster setWeights unsupported option: "
+        std::cout <<"[setWeights] ctm-cluster setWeights unsupported option: "
             << option << std::endl;
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("Invalid option");
     }
 }
 
@@ -316,8 +328,8 @@ void absorbWeightsToSites(Cluster & c, bool dbg) {
         // and set back the original index
         for ( auto const& stw : c.siteToWeights.at(sId) ) {
             siteEntry.second *= c.weights.at(stw.wId);
-            siteEntry.second *= delta(prime(c.aux[c.SI[sId]], stw.dirs[0]),
-                prime(c.aux[c.SI[stw.sId[1]]], stw.dirs[1]) );
+            siteEntry.second *= delta(c.weights.at(stw.wId).inds());
+            // siteEntry.second *= c.DContract(stw.sId[0],stw.dirs[0],stw.sId[1],stw.dirs[1]);
         }
     }
 
@@ -395,6 +407,18 @@ std::ostream& operator<<(std::ostream& s, Cluster const& c) {
         s << c.siteIds[i]<< ": " << c.phys[i] <<" -- "<< c.aux[i] << std::endl;
     }
     s <<"]"<< std::endl;
+
+    s<<"PHYS indices: ["<< std::endl;
+    for(auto const& e : c.mphys) s << e.first <<" : "<< e.second << std::endl;
+    s<<"]"<< std::endl;
+
+    s<<"AUX indices: ["<< std::endl;
+    for(auto const& e : c.caux) {
+        s << e.first <<" : ";
+        for(auto const& i : e.second) s << i <<" ";
+        s << std::endl;
+    }
+    s<<"]"<< std::endl;
 
     s <<"clusterToSite: ["<< std::endl; 
     for( const auto& cToSEntry : c.cToS ) {
