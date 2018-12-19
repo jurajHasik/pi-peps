@@ -93,73 +93,73 @@ void writeOnSiteTElems(std::vector< std::string > & tEs,
  * TODO possibly redundant entries for size of the cluster
  * 
  */
-struct CtmData {
-    int auxDimEnv;
-    int auxDimSite;
+// struct CtmData {
+//     int auxDimEnv;
+//     int auxDimSite;
 
-    int sizeN, sizeM; // size of n(row) x m(columns) cluster
+//     int sizeN, sizeM; // size of n(row) x m(columns) cluster
 
-    std::vector< itensor::ITensor > sites;
-    // map from cluster to sites
-    std::map< std::pair<int,int>, int> cToS;
+//     std::vector< itensor::ITensor > sites;
+//     // map from cluster to sites
+//     std::map< std::pair<int,int>, int> cToS;
 
-    // arrays holding half-row/column tensors
-    std::vector< itensor::ITensor > T_U;
-    std::vector< itensor::ITensor > T_R;
-    std::vector< itensor::ITensor > T_D;
-    std::vector< itensor::ITensor > T_L;
+//     // arrays holding half-row/column tensors
+//     std::vector< itensor::ITensor > T_U;
+//     std::vector< itensor::ITensor > T_R;
+//     std::vector< itensor::ITensor > T_D;
+//     std::vector< itensor::ITensor > T_L;
 
-    // corner tensors
-    itensor::ITensor C_LU, C_RU, C_RD, C_LD;
+//     // corner tensors
+//     itensor::ITensor C_LU, C_RU, C_RD, C_LD;
    
-    itensor::Index I_U, I_R, I_D, I_L;
-    itensor::Index I_XH, I_XV;
-};
+//     itensor::Index I_U, I_R, I_D, I_L;
+//     itensor::Index I_XH, I_XV;
+// };
 
-struct CtmData_Full {
-    int auxDimEnv;
-    int auxDimSite;
+// struct CtmData_Full {
+//     int auxDimEnv;
+//     int auxDimSite;
 
-    int sizeN, sizeM; // size of n(row) x m(columns) cluster
+//     int sizeN, sizeM; // size of n(row) x m(columns) cluster
 
-    std::vector< itensor::ITensor > sites;
-    // map from cluster to sites
-    std::map< std::pair<int,int>, int> cToS;
+//     std::vector< itensor::ITensor > sites;
+//     // map from cluster to sites
+//     std::map< std::pair<int,int>, int> cToS;
 
-    // arrays holding half-row/column tensors
-    std::vector< itensor::ITensor > T_U;
-    std::vector< itensor::ITensor > T_R;
-    std::vector< itensor::ITensor > T_D;
-    std::vector< itensor::ITensor > T_L;
+//     // arrays holding half-row/column tensors
+//     std::vector< itensor::ITensor > T_U;
+//     std::vector< itensor::ITensor > T_R;
+//     std::vector< itensor::ITensor > T_D;
+//     std::vector< itensor::ITensor > T_L;
 
-    // corner tensors
-    std::vector< itensor::ITensor > C_LU;
-    std::vector< itensor::ITensor > C_RU;
-    std::vector< itensor::ITensor > C_RD;
-    std::vector< itensor::ITensor > C_LD;
+//     // corner tensors
+//     std::vector< itensor::ITensor > C_LU;
+//     std::vector< itensor::ITensor > C_RU;
+//     std::vector< itensor::ITensor > C_RD;
+//     std::vector< itensor::ITensor > C_LD;
    
-    itensor::Index I_U, I_R, I_D, I_L;
-    itensor::Index I_XH, I_XV;
-};
+//     itensor::Index I_U, I_R, I_D, I_L;
+//     itensor::Index I_XH, I_XV;
+// };
 
 /*
  * store/read environment to/from file(s)
  *
  */
-void writeEnv(IO_ENV_FMT ioFmt, std::string TAG, CtmData const& ctmD);
+// void writeEnv(IO_ENV_FMT ioFmt, std::string TAG, CtmData const& ctmD);
 
-/*
- * store/read environment to/from file(s)
- *
- */
-CtmData readEnv(IO_ENV_FMT ioFmt, std::string const& TAG, Cluster const& cls);
+// /*
+//  * store/read environment to/from file(s)
+//  *
+//  */
+// CtmData readEnv(IO_ENV_FMT ioFmt, std::string const& TAG, Cluster const& cls);
 
-/*
- * Read full environment of a cluster composed from simple environments
- * of non-equivalent sites
- */
-std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, std::string const& TAG, 
-    Cluster const& cls);
+
+//  * Read full environment of a cluster composed from simple environments
+//  * of non-equivalent sites
+ 
+// std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, std::string const& TAG, 
+//     Cluster const& cls);
 
 // ############################################################################
 // IO for ITensor tensors
@@ -194,10 +194,10 @@ itensor::ITensor readTensorB(std::string const& fname);
  * with printf and printfln.
  *
  */
-std::ostream& 
-operator<<(std::ostream& s, CtmData const& d);
+// std::ostream& 
+// operator<<(std::ostream& s, CtmData const& d);
 
-std::ostream& 
-operator<<(std::ostream& s, CtmData_Full const& d);
+// std::ostream& 
+// operator<<(std::ostream& s, CtmData_Full const& d);
 
 #endif

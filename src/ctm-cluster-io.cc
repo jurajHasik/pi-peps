@@ -350,238 +350,238 @@ void writeOnSiteTElems(vector< string > & tEs,
  * TODO implement compression
  *
  */
-void writeEnv(IO_ENV_FMT ioFmt, string TAG, CtmData const& ctmD) {
+// void writeEnv(IO_ENV_FMT ioFmt, string TAG, CtmData const& ctmD) {
     
-    cout << ctmD;
+//     cout << ctmD;
 
-    switch(ioFmt) {
-        case(IO_ENV_FMT_txt): {
-            cout << "Writing ENV in TEXT with TAG: " << TAG << endl;
+//     switch(ioFmt) {
+//         case(IO_ENV_FMT_txt): {
+//             cout << "Writing ENV in TEXT with TAG: " << TAG << endl;
 
-            string SUFFIX = ".dat";
+//             string SUFFIX = ".dat";
 
-            writeTensorF(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
-            writeTensorF(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
-            writeTensorF(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
-            writeTensorF(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
+//             writeTensorF(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
+//             writeTensorF(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
+//             writeTensorF(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
+//             writeTensorF(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
 
-            for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
-                writeTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX, ctmD.T_U[i]);
-            }
-            for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
-                writeTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX, ctmD.T_R[i]);
-            }
-            for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
-                writeTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX, ctmD.T_D[i]);
-            }
-            for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
-                writeTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX, ctmD.T_L[i]);
-            }
+//             for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
+//                 writeTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX, ctmD.T_U[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
+//                 writeTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX, ctmD.T_R[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
+//                 writeTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX, ctmD.T_D[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
+//                 writeTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX, ctmD.T_L[i]);
+//             }
 
-            break;
-        }
-        case(IO_ENV_FMT_bin): {
-            cout << "Writing ENV in BINARY with TAG: " << TAG << endl;
+//             break;
+//         }
+//         case(IO_ENV_FMT_bin): {
+//             cout << "Writing ENV in BINARY with TAG: " << TAG << endl;
             
-            string SUFFIX = ".bin";
+//             string SUFFIX = ".bin";
 
-            writeTensorB(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
-            writeTensorB(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
-            writeTensorB(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
-            writeTensorB(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
+//             writeTensorB(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
+//             writeTensorB(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
+//             writeTensorB(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
+//             writeTensorB(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
 
-            for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
-                writeTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX, ctmD.T_U[i]);
-            }
-            for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
-                writeTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX, ctmD.T_R[i]);
-            }
-            for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
-                writeTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX, ctmD.T_D[i]);
-            }
-            for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
-                writeTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX, ctmD.T_L[i]);
-            }
+//             for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
+//                 writeTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX, ctmD.T_U[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
+//                 writeTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX, ctmD.T_R[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
+//                 writeTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX, ctmD.T_D[i]);
+//             }
+//             for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
+//                 writeTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX, ctmD.T_L[i]);
+//             }
 
-            break;
-        }
-        default: {
-            cout << "Invalid ENV i/o format" << endl;
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
-}
+//             break;
+//         }
+//         default: {
+//             cout << "Invalid ENV i/o format" << endl;
+//             exit(EXIT_FAILURE);
+//             break;
+//         }
+//     }
+// }
 
-/*
- * TODO? Redundancy of information sizeN,sizeM both in CtmData and Cluster
- *
- */
-CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& c) {
-    CtmData ctmD;
+// /*
+//  * TODO? Redundancy of information sizeN,sizeM both in CtmData and Cluster
+//  *
+//  */
+// CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& c) {
+//     CtmData ctmD;
 
-    ctmD.sizeN = c.sizeN;
-    ctmD.sizeM = c.sizeM;
+//     ctmD.sizeN = c.sizeN;
+//     ctmD.sizeM = c.sizeM;
 
-    switch(ioFmt) {
-        case(IO_ENV_FMT_txt): {
-            cout <<"Reading ENV in TEXT with TAG: "<< TAG << endl;
+//     switch(ioFmt) {
+//         case(IO_ENV_FMT_txt): {
+//             cout <<"Reading ENV in TEXT with TAG: "<< TAG << endl;
 
-            string SUFFIX = ".dat";
+//             string SUFFIX = ".dat";
 
-            ctmD.C_LU = readTensorF(TAG+"-"+TAG_C_LU+SUFFIX);
-            ctmD.C_RU = readTensorF(TAG+"-"+TAG_C_RU+SUFFIX);
-            ctmD.C_RD = readTensorF(TAG+"-"+TAG_C_RD+SUFFIX);
-            ctmD.C_LD = readTensorF(TAG+"-"+TAG_C_LD+SUFFIX);
+//             ctmD.C_LU = readTensorF(TAG+"-"+TAG_C_LU+SUFFIX);
+//             ctmD.C_RU = readTensorF(TAG+"-"+TAG_C_RU+SUFFIX);
+//             ctmD.C_RD = readTensorF(TAG+"-"+TAG_C_RD+SUFFIX);
+//             ctmD.C_LD = readTensorF(TAG+"-"+TAG_C_LD+SUFFIX);
             
-            for( int i=0; i<c.sizeN; i++ ) {
-                ctmD.T_L.push_back(
-                    readTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
-                ctmD.T_R.push_back( 
-                    readTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
-            }
+//             for( int i=0; i<c.sizeN; i++ ) {
+//                 ctmD.T_L.push_back(
+//                     readTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
+//                 ctmD.T_R.push_back( 
+//                     readTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
+//             }
             
-            for( int i=0; i<c.sizeM; i++ ) {
-                ctmD.T_U.push_back(
-                    readTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
-                ctmD.T_D.push_back(
-                    readTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
-            }
+//             for( int i=0; i<c.sizeM; i++ ) {
+//                 ctmD.T_U.push_back(
+//                     readTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
+//                 ctmD.T_D.push_back(
+//                     readTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
+//             }
 
-            // Read of the indices from environment and
-            // expose them in CtmData
-            ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
-            ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
+//             // Read of the indices from environment and
+//             // expose them in CtmData
+//             ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
+//             ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
             
-            ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
-            ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
+//             ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
+//             ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
 
-            ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
-            ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
+//             ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
+//             ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
 
-            // Sync indices across env tensors
-            ctmD.C_RU *= itensor::delta( itensor::findtype(
-                ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,c.sizeM) );
+//             // Sync indices across env tensors
+//             ctmD.C_RU *= itensor::delta( itensor::findtype(
+//                 ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,c.sizeM) );
 
-            ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,c.sizeN) );
-            ctmD.C_RD *= itensor::delta( itensor::findtype(
-                ctmD.C_RD,DLINK), prime(ctmD.I_D,c.sizeM) );
+//             ctmD.C_RD *= itensor::delta( itensor::findtype(
+//                 ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,c.sizeN) );
+//             ctmD.C_RD *= itensor::delta( itensor::findtype(
+//                 ctmD.C_RD,DLINK), prime(ctmD.I_D,c.sizeM) );
 
-            ctmD.C_LD *= itensor::delta( itensor::findtype(
-                ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,c.sizeN) );
+//             ctmD.C_LD *= itensor::delta( itensor::findtype(
+//                 ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,c.sizeN) );
 
-            itensor::IndexSet iSet;
-            for( auto& t : ctmD.T_U ) {
-                iSet = t.inds();
-                for ( auto& i : iSet ) {
-                    Print(i);
-                    if ( i.type() == ULINK ) {
-                        t *= itensor::delta( i, 
-                            itensor::prime( ctmD.I_U,i.primeLevel()) );
-                    } else if ( i.type() == VSLINK ) {
-                        t *= itensor::delta( i, ctmD.I_XV );
-                    }
-                }
-            }
+//             itensor::IndexSet iSet;
+//             for( auto& t : ctmD.T_U ) {
+//                 iSet = t.inds();
+//                 for ( auto& i : iSet ) {
+//                     Print(i);
+//                     if ( i.type() == ULINK ) {
+//                         t *= itensor::delta( i, 
+//                             itensor::prime( ctmD.I_U,i.primeLevel()) );
+//                     } else if ( i.type() == VSLINK ) {
+//                         t *= itensor::delta( i, ctmD.I_XV );
+//                     }
+//                 }
+//             }
 
-            for( auto& t : ctmD.T_R ) {
-                iSet = t.inds();
-                for ( auto& i : iSet ) {
-                    if ( i.type() == RLINK ) {
-                        t *= itensor::delta( i, 
-                            itensor::prime( ctmD.I_R,i.primeLevel()) );
-                    } else if ( i.type() == HSLINK ) {
-                        t *= itensor::delta( i, itensor::prime(ctmD.I_XH,1) );
-                    }
-                }
-            }
+//             for( auto& t : ctmD.T_R ) {
+//                 iSet = t.inds();
+//                 for ( auto& i : iSet ) {
+//                     if ( i.type() == RLINK ) {
+//                         t *= itensor::delta( i, 
+//                             itensor::prime( ctmD.I_R,i.primeLevel()) );
+//                     } else if ( i.type() == HSLINK ) {
+//                         t *= itensor::delta( i, itensor::prime(ctmD.I_XH,1) );
+//                     }
+//                 }
+//             }
 
-            for( auto& t : ctmD.T_D ) {
-                iSet = t.inds();
-                for ( auto& i : iSet ) {
-                    if ( i.type() == DLINK ) {
-                        t *= itensor::delta( i, 
-                            itensor::prime( ctmD.I_D,i.primeLevel()) );
-                    } else if ( i.type() == VSLINK ) {
-                        t *= itensor::delta( i, itensor::prime(ctmD.I_XV,1) );
-                    }
-                }
-            }
+//             for( auto& t : ctmD.T_D ) {
+//                 iSet = t.inds();
+//                 for ( auto& i : iSet ) {
+//                     if ( i.type() == DLINK ) {
+//                         t *= itensor::delta( i, 
+//                             itensor::prime( ctmD.I_D,i.primeLevel()) );
+//                     } else if ( i.type() == VSLINK ) {
+//                         t *= itensor::delta( i, itensor::prime(ctmD.I_XV,1) );
+//                     }
+//                 }
+//             }
 
-            for( auto& t : ctmD.T_L ) {
-                iSet = t.inds();
-                for ( auto& i : iSet ) {
-                    if ( i.type() == LLINK ) {
-                        t *= itensor::delta( i, 
-                            itensor::prime( ctmD.I_L,i.primeLevel()) );
-                    } else if ( i.type() == HSLINK ) {
-                        t *= itensor::delta( i, ctmD.I_XH );
-                    }
-                }
-            }
+//             for( auto& t : ctmD.T_L ) {
+//                 iSet = t.inds();
+//                 for ( auto& i : iSet ) {
+//                     if ( i.type() == LLINK ) {
+//                         t *= itensor::delta( i, 
+//                             itensor::prime( ctmD.I_L,i.primeLevel()) );
+//                     } else if ( i.type() == HSLINK ) {
+//                         t *= itensor::delta( i, ctmD.I_XH );
+//                     }
+//                 }
+//             }
 
-            break;
-        }
-        case(IO_ENV_FMT_bin): {
-            cout <<"Reading ENV in BINARY with TAG: "<< TAG << endl;
+//             break;
+//         }
+//         case(IO_ENV_FMT_bin): {
+//             cout <<"Reading ENV in BINARY with TAG: "<< TAG << endl;
             
-            string SUFFIX = ".bin";
+//             string SUFFIX = ".bin";
 
-            ctmD.C_LU = readTensorB(TAG+"-"+TAG_C_LU+SUFFIX);
-            ctmD.C_RU = readTensorB(TAG+"-"+TAG_C_RU+SUFFIX);
-            ctmD.C_RD = readTensorB(TAG+"-"+TAG_C_RD+SUFFIX);
-            ctmD.C_LD = readTensorB(TAG+"-"+TAG_C_LD+SUFFIX);
+//             ctmD.C_LU = readTensorB(TAG+"-"+TAG_C_LU+SUFFIX);
+//             ctmD.C_RU = readTensorB(TAG+"-"+TAG_C_RU+SUFFIX);
+//             ctmD.C_RD = readTensorB(TAG+"-"+TAG_C_RD+SUFFIX);
+//             ctmD.C_LD = readTensorB(TAG+"-"+TAG_C_LD+SUFFIX);
             
-            for( int i=0; i<c.sizeN; i++ ) {
-                ctmD.T_L.push_back(
-                    readTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
-                ctmD.T_R.push_back(
-                    readTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
-            }
+//             for( int i=0; i<c.sizeN; i++ ) {
+//                 ctmD.T_L.push_back(
+//                     readTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
+//                 ctmD.T_R.push_back(
+//                     readTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
+//             }
             
-            for( int i=0; i<c.sizeM; i++ ) {
-                ctmD.T_U.push_back(
-                    readTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
-                ctmD.T_D.push_back(
-                    readTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
-            }
+//             for( int i=0; i<c.sizeM; i++ ) {
+//                 ctmD.T_U.push_back(
+//                     readTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
+//                 ctmD.T_D.push_back(
+//                     readTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
+//             }
 
-            // Read of the indices from environment and
-            // expose them in CtmData
-            ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
-            ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
+//             // Read of the indices from environment and
+//             // expose them in CtmData
+//             ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
+//             ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
             
-            ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
-            ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
+//             ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
+//             ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
 
-            ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
-            ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
+//             ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
+//             ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
 
-            break;
-        }
-        default: {
-            cout <<"Invalid ENV i/o format"<< endl;
-            exit(EXIT_FAILURE);
-            break;
-        }
-    }
+//             break;
+//         }
+//         default: {
+//             cout <<"Invalid ENV i/o format"<< endl;
+//             exit(EXIT_FAILURE);
+//             break;
+//         }
+//     }
 
-    // Read in the dimensions of tensors
-    ctmD.auxDimEnv  = ctmD.I_U.m();
-    ctmD.auxDimSite = c.auxBondDim*c.auxBondDim;
+//     // Read in the dimensions of tensors
+//     ctmD.auxDimEnv  = ctmD.I_U.m();
+//     ctmD.auxDimSite = c.auxBondDim*c.auxBondDim;
 
-    cout << ctmD;
+//     cout << ctmD;
 
-    return ctmD;
-}
+//     return ctmD;
+// }
 
-std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, string const& TAG, 
-    Cluster const& cls) {
+// std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, string const& TAG, 
+//     Cluster const& cls) {
 
-    std::vector<CtmData> result;
-    return result;
-}
+//     std::vector<CtmData> result;
+//     return result;
+// }
 
 // ############################################################################
 // IO for ITensor tensors
@@ -839,58 +839,58 @@ itensor::ITensor readTensorB(string const& fname) {
 // ############################################################################
 // IO toString methods
 
-ostream& operator<<(ostream& s, CtmData const& d) {
-    s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
-        << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl
-        << TAG_C_LU <<" "<< d.C_LU << TAG_C_RU <<" "<< d.C_RU 
-        << TAG_C_RD <<" "<< d.C_RD << TAG_C_LD <<" "<< d.C_LD; 
+// ostream& operator<<(ostream& s, CtmData const& d) {
+//     s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
+//         << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl
+//         << TAG_C_LU <<" "<< d.C_LU << TAG_C_RU <<" "<< d.C_RU 
+//         << TAG_C_RD <<" "<< d.C_RD << TAG_C_LD <<" "<< d.C_LD; 
         
-        for( size_t i=0; i<d.T_U.size(); i++ ) {
-            s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
-        }
-        for( size_t i=0; i<d.T_R.size(); i++ ) {
-            s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
-        }
-        for( size_t i=0; i<d.T_D.size(); i++ ) {
-            s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
-        }
-        for( size_t i=0; i<d.T_L.size(); i++ ) {
-            s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
-        }
-        s << endl;
-    return s;
-}
+//         for( size_t i=0; i<d.T_U.size(); i++ ) {
+//             s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
+//         }
+//         for( size_t i=0; i<d.T_R.size(); i++ ) {
+//             s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
+//         }
+//         for( size_t i=0; i<d.T_D.size(); i++ ) {
+//             s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
+//         }
+//         for( size_t i=0; i<d.T_L.size(); i++ ) {
+//             s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
+//         }
+//         s << endl;
+//     return s;
+// }
 
-ostream& operator<<(ostream& s, CtmData_Full const& d) {
-    s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
-        << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl;
+// ostream& operator<<(ostream& s, CtmData_Full const& d) {
+//     s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
+//         << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl;
         
-    s <<"----- CORNER MATRICES --------------------------------------"<< endl;
-        for( size_t i=0; i<d.C_LU.size(); i++ ) {
-            s << TAG_C_LU << to_string(i) <<" "<< d.C_LU[i];
-        }
-        for( size_t i=0; i<d.C_RU.size(); i++ ) {
-            s << TAG_C_RU << to_string(i) <<" "<< d.C_RU[i];
-        }
-        for( size_t i=0; i<d.C_RD.size(); i++ ) {
-            s << TAG_C_RD << to_string(i) <<" "<< d.C_RD[i];
-        }
-        for( size_t i=0; i<d.C_LD.size(); i++ ) {
-            s << TAG_C_LD << to_string(i) <<" "<< d.C_LD[i];
-        }
-    s <<"----- HALF ROW/COLUMN TENSORS ------------------------------"<< endl;
-        for( size_t i=0; i<d.T_U.size(); i++ ) {
-            s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
-        }
-        for( size_t i=0; i<d.T_R.size(); i++ ) {
-            s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
-        }
-        for( size_t i=0; i<d.T_D.size(); i++ ) {
-            s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
-        }
-        for( size_t i=0; i<d.T_L.size(); i++ ) {
-            s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
-        }
-        s << endl;
-    return s;
-}
+//     s <<"----- CORNER MATRICES --------------------------------------"<< endl;
+//         for( size_t i=0; i<d.C_LU.size(); i++ ) {
+//             s << TAG_C_LU << to_string(i) <<" "<< d.C_LU[i];
+//         }
+//         for( size_t i=0; i<d.C_RU.size(); i++ ) {
+//             s << TAG_C_RU << to_string(i) <<" "<< d.C_RU[i];
+//         }
+//         for( size_t i=0; i<d.C_RD.size(); i++ ) {
+//             s << TAG_C_RD << to_string(i) <<" "<< d.C_RD[i];
+//         }
+//         for( size_t i=0; i<d.C_LD.size(); i++ ) {
+//             s << TAG_C_LD << to_string(i) <<" "<< d.C_LD[i];
+//         }
+//     s <<"----- HALF ROW/COLUMN TENSORS ------------------------------"<< endl;
+//         for( size_t i=0; i<d.T_U.size(); i++ ) {
+//             s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
+//         }
+//         for( size_t i=0; i<d.T_R.size(); i++ ) {
+//             s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
+//         }
+//         for( size_t i=0; i<d.T_D.size(); i++ ) {
+//             s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
+//         }
+//         for( size_t i=0; i<d.T_L.size(); i++ ) {
+//             s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
+//         }
+//         s << endl;
+//     return s;
+// }

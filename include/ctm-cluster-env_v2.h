@@ -26,8 +26,12 @@ class CtmEnv
 
     itensor::SvdSolver & solver;
 
-    enum class DIRECTION {
+    enum DIRECTION {
         LEFT = 0, UP = 1, RIGHT = 2, DOWN = 3
+    };
+
+    enum CORNER {
+        LU = 1, RU = 2, RD = 3, LD = 4
     };
 
     typedef enum INIT_ENV {
@@ -131,13 +135,13 @@ class CtmEnv
     std::map< std::pair<int,int>, int> cToS;
 
     // arrays holding half-row/column tensors
-    std::vector< itensor::ITensor > T_U, T_R, T_D, T_L;
+    std::map< std::string, itensor::ITensor > T_U, T_R, T_D, T_L;
 
     // corner tensors
-    std::vector< itensor::ITensor > C_LD, C_LU, C_RU, C_RD;
+    std::map< std::string, itensor::ITensor > C_LD, C_LU, C_RU, C_RD;
    
     // aux indices of environment tensors (of auxEnvDim == x)
-    itensor::Index I_U, I_R, I_D, I_L;
+    //itensor::Index I_U, I_R, I_D, I_L;
     
     // from C_LU corner in counter-clockwise fashion
     // C_LU--0--T_U--1--C_RU
@@ -149,6 +153,14 @@ class CtmEnv
     // mapping to 0->I_U0, 1->I_U1, 2->I_R0, 3->I_R1, 4->I_D1, 5->I_D0,
     //            6->I_L1, 7->I_L0 
     std::map<std::string, std::vector<itensor::Index> > eaux; // environment aux indices
+    // indices labeled by direction of T_* tensors
+    //   LEFT, UP, RIGHT, DOWN     id  direction      
+    std::vector< std::map<std::string, std::vector<itensor::Index> > > itaux;
+    
+    // direction = enum DIRECTION, dir = site-tensor auxiliary index label
+    itensor::Index const& tauxByVertex(int direction, Vertex const& v, int dir ) const {
+        return itaux[direction].at(p_cluster->vertexToId(v))[dir];
+    }
 
     std::vector<itensor::Index> envIndPair(
         std::string const& id0, int i0, 
@@ -212,9 +224,9 @@ class CtmEnv
     // Reconstructs CtmEnv from given CtmData - a CtmEnv for each
     // of non-equivalent sites within cluster (compatibility with
     // LEGACY ctm-cluster-io.h )
-    CtmEnv(std::string t_name, std::vector<CtmData> const& ctmD, 
-        Cluster const& c, itensor::SvdSolver & solver,
-        itensor::Args const& args = itensor::Args::global()); 
+    // CtmEnv(std::string t_name, std::vector<CtmData> const& ctmD, 
+    //     Cluster const& c, itensor::SvdSolver & solver,
+    //     itensor::Args const& args = itensor::Args::global()); 
 
     /*
      * Return tensor resulting from contraction of on-site tensor T (ket)
@@ -223,8 +235,8 @@ class CtmEnv
      * If expose = true, the physical index is not contracted, but aux-bonds are 
      * fused
      */
-    itensor::ITensor contractOST(itensor::ITensor const& T,
-        bool expose = false) const;
+    // itensor::ITensor contractOST(itensor::ITensor const& T,
+    //     bool expose = false) const;
 
     // ########################################################################
     // environment initalization methods
@@ -241,70 +253,68 @@ class CtmEnv
 
     void initCtmrgEnv(bool dbg = false);
 
-    void initOBCEnv(bool dbg = false);
+    // void initOBCEnv(bool dbg = false);
 
-    void initPWREnv(bool dbg = false);
+    // void initPWREnv(bool dbg = false);
 
     void init(INIT_ENV initEnvType, bool isComplex = false, 
         bool dbg = false);
 
-    void symmetrizeEnv(bool dbg = false);
+    // void symmetrizeEnv(bool dbg = false);
 
-    void testCtmrgEnv();
+    // void testCtmrgEnv();
 
     // ########################################################################
     // CTM iterative methods
 
-    void move_unidirectional(unsigned int direction, ISOMETRY iso_type,
-        Cluster const& c, std::vector<double> & accT);
+    // void move_unidirectional(unsigned int direction, ISOMETRY iso_type,
+    //     Cluster const& c, std::vector<double> & accT);
 
-    void move_singleDirection(unsigned int direction, ISOMETRY iso_type,
-        Cluster const& c, std::vector<double> & accT);
+    // void move_singleDirection(unsigned int direction, ISOMETRY iso_type,
+    //     Cluster const& c, std::vector<double> & accT);
 
     // ########################################################################
     // isometries
     
-    void compute_IsometriesT3(unsigned int direction, Cluster const& c,
-        itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
-        std::vector<itensor::ITensor> & P, 
-        std::vector<itensor::ITensor> & Pt,
-        std::vector<double> & accT) const;
+    // void compute_IsometriesT3(unsigned int direction, Cluster const& c,
+    //     itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
+    //     std::vector<itensor::ITensor> & P, 
+    //     std::vector<itensor::ITensor> & Pt,
+    //     std::vector<double> & accT) const;
 
-    void compute_IsometriesT4(unsigned int direction, Cluster const& c,
-        itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
-        std::vector<itensor::ITensor> & P, 
-        std::vector<itensor::ITensor> & Pt,
-        std::vector<double> & accT) const;
+    // void compute_IsometriesT4(DIRECTION direction, Cluster const& c,
+    //     itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
+    //     std::vector<itensor::ITensor> & P, 
+    //     std::vector<itensor::ITensor> & Pt,
+    //     std::vector<double> & accT) const;
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from
     // position (col,row), where starting site is always nearest site in
     // clock-wise direction wrt. to cut
     // CONVENTION indices clockwise wrt. to cut have primeLevel 0
-    itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
-
-    void build_halves_V2(
-        unsigned int direction, Cluster const& c, Vertex const& v,
-        itensor::ITensor & H, itensor::ITensor & Ht) const;
+    // itensor::ITensor build_2x2_RDM(char ctmMove, int col, int row) const;
 
     // builds the corner of environment of site (col,row) + site where 
     // corner is 1,2,3 or 4 according to following key 1|2
     //                                                 4|3
-    itensor::ITensor build_corner_V2(unsigned int direction, 
-        Cluster const& c, Vertex const& v) const;
+    itensor::ITensor build_corner_V2(CORNER cornerType, Vertex const& v) const;
+
+    void build_halves_V2(DIRECTION direction, Vertex const& v,
+        itensor::ITensor & H, itensor::ITensor & Ht) const;
 
     // ########################################################################
     // environment normalization methods
 
-    double getNorm() const;
+    // double getNorm() const;
 
-    void normalizeBLE();
+    // void normalizeBLE();
 
-    void normalizeBLE_ctmStep(char ctmMove, int col, int row, bool dbg = false);
+    // void normalizeBLE_ctmStep(char ctmMove, int col, int row, bool dbg = false);
 
-    void normalizePTN();
+    // void normalizePTN();
 
-    void normalizePTN_ctmStep(char ctmMove, int col, int row);
+    // void normalizePTN_ctmStep(char ctmMove, int col, int row);
 
     // ########################################################################
     // methods handling SVD spectra of corner matrices
@@ -314,10 +324,10 @@ class CtmEnv
      * original cluster
      *
      */
-    void computeSVDspec();
+    // void computeSVDspec();
 
     // Print stored SVD spectrum of corner matrices C_*
-    void printSVDspec() const;
+    // void printSVDspec() const;
 
     // Compute the spectral dist between stored spectrum
     // in spec_c* and current spectrum
@@ -326,22 +336,14 @@ class CtmEnv
     // Update original cluster with new one of same type
     void updateCluster(Cluster const& c);
 
-    CtmSpec getCtmSpec() const;
-
-    // DEPRECATED
-    // Compatibility with LEGACY ctm-cluster-io.h, cluster-ev-builder.h
-    /* Store canonical environment = one of the original cluster
-     */
-    CtmData getCtmData() const;
-    // DEPRECATED
-    CtmData getCtmData_DBG() const;
+    // CtmSpec getCtmSpec() const;
 
     /* 
      * Export Full environment of cluster - C's and T's for every 
      * non-equivalent lattice site
      *
      */
-    CtmData_Full getCtmData_Full_DBG(bool dbg = false) const;
+    // CtmData_Full getCtmData_Full_DBG(bool dbg = false) const;
 
     std::ostream& print(std::ostream& s) const;
 };
@@ -364,8 +366,8 @@ class CtmEnv
 std::ostream&
 operator<<(std::ostream& s, CtmEnv const& c);
 
-std::ostream&
-operator<<(std::ostream& s, CtmEnv::CtmSpec const& spec);
+// std::ostream&
+// operator<<(std::ostream& s, CtmEnv::CtmSpec const& spec);
 
 // string to enum conversion
 CtmEnv::INIT_ENV toINIT_ENV(std::string const& inEnv);

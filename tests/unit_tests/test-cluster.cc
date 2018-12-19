@@ -50,8 +50,10 @@ TEST(Cluster1, Default_cotr){
 TEST(ClusterIO0, Default_cotr){
 	std::string inClusterFile = "RVB_2x2_ABCD_customIndices.in";
 	auto cluster = readCluster(inClusterFile);
+	
 	std::string outClusterFile = "test_RVB_2x2_ABCD.in";
 	writeCluster(outClusterFile,cluster);
+	auto cluster_out = readCluster(outClusterFile);
 }
 
 TEST(ClusterIO1, Default_cotr){

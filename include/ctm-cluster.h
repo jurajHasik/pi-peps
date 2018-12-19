@@ -116,6 +116,8 @@ struct LinkWeight {
  *
  */
 struct Cluster {
+    const int BRAKET_OFFSET = 4;
+
     // meta information about the origin of cluster
     std::string metaInfo;
     nlohmann::json simParam;
@@ -136,6 +138,13 @@ struct Cluster {
     // aux indices and phys indicies of sites siteIds[0] <-> aux[0],phys[0] 
     std::vector< itensor::Index > aux, phys;
     std::map< std::string, itensor::Index > mphys, maux;
+    // map to individual aux indices of sites
+    // A -> { index in dir 0, ..., index in dir 3 }
+    //         dir 1
+    //          |
+    // dir 0 -- A -- dir 2
+    //          | 
+    //         dir 3
     std::map< std::string, std::vector<itensor::Index> > caux;
 
     
@@ -145,6 +154,14 @@ struct Cluster {
 
     itensor::Index const& AIc(std::string const& id, int dir) const {
         return caux.at(id)[dir];
+    }
+
+    std::vector<itensor::Index> AIBraKetPair(Vertex const& v, int dir) const {
+        return AIBraKetPair(vertexToId(v),dir);
+    }
+
+    std::vector<itensor::Index> AIBraKetPair(std::string const& id, int dir) const {
+        return { AIc(id,dir), prime(AIc(id,dir),BRAKET_OFFSET) };
     }
 
     itensor::ITensor DContract(Vertex const& v0, int dir0, 
@@ -179,8 +196,8 @@ struct Cluster {
 
     Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
-    Cluster(int lX_, int lY_, int pd) : physDim(pd),
-        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+    // Cluster(int lX_, int lY_, int pd) : physDim(pd),
+    //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
         lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
@@ -221,9 +238,9 @@ double weightDist(Cluster const& c);
 
 void setSites(Cluster & c, std::string option, bool dbg = false);
 
-itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
+// itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
 
-itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
+// itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
 
 void absorbWeightsToSites(Cluster & cls, bool dbg = false);
 
