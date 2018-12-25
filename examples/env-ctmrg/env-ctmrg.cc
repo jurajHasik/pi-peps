@@ -187,57 +187,62 @@ int main( int argc, char *argv[] ) {
             }
             e_prev = e_curr;
 
-            // Compute spectra of Corner matrices
-            // if (expValEnvConv) {
-            //     diag_ctmIter.push_back(envI);
+            // Perform loop termination
+            if (expValEnvConv) {
 
-            //     std::ostringstream oss;
-            //     oss << std::scientific;
+                diag_ctmIter.push_back(envI);
 
-            //     // diagnose spectra
-            //     std::cout << std::endl;
-            //     double tmpVal;
-            //     double minCornerSV = 1.0e+16;
-            //     Args args_dbg_cornerSVD = {"Truncate",false};
-            //     std::cout << "Spectra: " << std::endl;
+                std::ostringstream oss;
+                oss << std::scientific;
 
-            //     ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-            //     auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
-            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-            //         sv.inds().back()(auxEnvDim));
-            //     PrintData(sv);
-            //     minCornerSV = std::min(minCornerSV, tmpVal);
-            //     oss << tmpVal;
+                // Compute spectra of Corner matrices
+                std::cout << std::endl;
+                double tmpVal;
+                double minCornerSV = 1.0e+16;
+                Args args_dbg_cornerSVD = {"Truncate",false};
+                std::cout << "Spectra: " << std::endl;
 
-            //     tL = ITensor(ctmEnv.C_RU[0].inds().front());
-            //     spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
-            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-            //         sv.inds().back()(auxEnvDim));
-            //     PrintData(sv);
-            //     minCornerSV = std::min(minCornerSV, tmpVal);
-            //     oss <<" "<< tmpVal;
+                ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
+                auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss << tmpVal;
 
-            //     tL = ITensor(ctmEnv.C_RD[0].inds().front());
-            //     spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
-            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-            //         sv.inds().back()(auxEnvDim));
-            //     PrintData(sv);
-            //     minCornerSV = std::min(minCornerSV, tmpVal);
-            //     oss <<" "<< tmpVal;
+                tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
 
-            //     tL = ITensor(ctmEnv.C_LD[0].inds().front());
-            //     spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
-            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-            //         sv.inds().back()(auxEnvDim));
-            //     PrintData(sv);
-            //     minCornerSV = std::min(minCornerSV, tmpVal);
-            //     oss <<" "<< tmpVal;
+                tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
 
-            //     diag_minCornerSV.push_back(minCornerSV);
-            //     std::cout << "MinVals: "<< oss.str() << std::endl;
+                tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+                    sv.inds().back()(auxEnvDim));
+                PrintData(sv);
+                minCornerSV = std::min(minCornerSV, tmpVal);
+                oss <<" "<< tmpVal;
 
-            //     break;
-            // }
+                diag_minCornerSV.push_back(minCornerSV);
+                std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                break;
+            }
 
         }
         std::cout << std::endl;

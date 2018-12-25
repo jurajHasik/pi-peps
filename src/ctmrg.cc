@@ -113,7 +113,7 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
  			dir0= 1;
  			dir1= 3;
  			opposite_direction = DIRECTION::RIGHT;
- 			break; 
+ 			break;
  		}
  		case DIRECTION::UP: {
  			// C(v)  * Taux(v)  * Pt(v+(-1,0))        -> nC(v+(0,-1)) 
@@ -297,9 +297,9 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
         t *= 1.0/m;
 	};
 	for (auto const& id : p_cluster->siteIds ) { 
-		normalizeBLE_T(nC[id]); 
-		normalizeBLE_T(nT[id]);
-		normalizeBLE_T(nCt[id]);
+		normalizeBLE_T(nC.at(id)); 
+		normalizeBLE_T(nT.at(id));
+		normalizeBLE_T(nCt.at(id));
 	}
 
 	// Update environment tensors
