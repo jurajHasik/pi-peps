@@ -225,19 +225,17 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 		// Print(c.aux[v_pos]);
 
 		nC[id_shift] = Taux.at(id) * C[id];
-		readyToContract(nC[id_shift],direction,v,dir0,v_p_shifted,dir0);
-		nC[id_shift] *= Pt[id];
+		nC[id_shift] *= Pt[id_p_shifted];
 
 		nT[id_shift] = T[id];
-		readyToContract(nT[id_shift],direction,v,dir0,v,dir1);
-		nT[id_shift] *= P[id];
+		readyToContract(nT[id_shift],direction,v,dir0,v_p_shifted,dir1);
+		nT[id_shift] *= P[id_p_shifted];
 		nT[id_shift] *= (sites.at(id) * dag(prime(sites.at(id),AUXLINK,BRAKET_OFFSET)));
-		readyToContract(nT[id_shift],direction,v,dir1,v,dir0);
-		nT[id_shift] *= Pt[id_p_shifted];
+		readyToContract(nT[id_shift],direction,v,dir1,v_p_shifted,dir0);
+		nT[id_shift] *= Pt[id];
 	
 		nCt[id_shift] = Tauxt.at(id) * Ct[id];
-		readyToContract(nCt[id_shift],direction,v,dir1,v_p_shifted,dir1);
-		nCt[id_shift] *= P[id_p_shifted];
+		nCt[id_shift] *= P[id];
 
 		// (dbg) Print(nC[shifted_pos]); Print(nT[shifted_pos]); Print(nCt[shifted_pos]);
 	}
@@ -260,20 +258,20 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 		nC[id_shift] *= delta(
 			tauxByVertex(dir0,v,opposite_direction),
 			tauxByVertex(dir0,v_shifted,direction));
-		nC[id_shift] *= delta(ipt.at(id), tauxByVertex(direction,v_shifted,dir0));
+		nC[id_shift] *= delta(ipt.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir0));
 		
 
 		nT[id_shift] *= p_cluster->DContract(id,opposite_direction,id_shift,direction);
 		nT[id_shift] *= prime(p_cluster->DContract(id,opposite_direction,id_shift,direction),
 			p_cluster->BRAKET_OFFSET);
-		nT[id_shift] *= delta(ip.at(id), tauxByVertex(direction,v_shifted,dir0));
-		nT[id_shift] *= delta(ipt.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir1));
+		nT[id_shift] *= delta(ip.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir0));
+		nT[id_shift] *= delta(ipt.at(id), tauxByVertex(direction,v_shifted,dir1));
 
 
 		nCt[id_shift] *= delta(
 			tauxByVertex(dir1,v,opposite_direction),
 			tauxByVertex(dir1,v_shifted,direction));
-		nCt[id_shift] *= delta(ip.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir1));
+		nCt[id_shift] *= delta(ip.at(id), tauxByVertex(direction,v_shifted,dir1));
 	}
 
 	// 	std::cout<<"=DONE====================================================================="<<std::endl;
