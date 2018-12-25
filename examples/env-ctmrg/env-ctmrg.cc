@@ -3,14 +3,13 @@
 #include <fstream>
 #include <chrono>
 #include "json.hpp"
+#include "itensor/all.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "mpo.h"
 #include "models.h"
-#include "engine.h"
-#include "itensor/all.h"
 #include "itensor-svd-solvers.h"
 #include "lapacksvd-solver.h"
 #include "rsvd-solver.h"
@@ -71,10 +70,6 @@ int main( int argc, char *argv[] ) {
 	// ***** INITIALIZE CLUSTER ***********************************************
     Cluster cls;
     
-    // set auxiliary dimension to the desired one
-    cls.auxBondDim = auxBondDim;
-    
-
     // choose initial wavefunction
     if (sitesInit == "FILE") {
         cls = readCluster(inClusterFile);
@@ -87,8 +82,8 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE MODEL
-    std::unique_ptr<Model>  ptr_model;
-    ptr_model =  getModel(json_model_params);
+    std::unique_ptr<Model> ptr_model;
+    ptr_model = getModel(json_model_params);
     // ***** INITIALIZE MODEL DONE ********************************************
 
     // *****
@@ -145,28 +140,18 @@ int main( int argc, char *argv[] ) {
     ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
-    EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    EVBuilder ev(arg_ioEnvTag, cls, ctmEnv);
     
-    ctmEnv.updateCluster(cls);
-    ev.setCluster(cls);
-
-
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
     // PERFORM CTMRG
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
-
-        // ctmEnv.insLCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-        // ctmEnv.insURow_DBG(iso_type, norm_type, accT, arg_envDbg);
-        // ctmEnv.insRCol_DBG(iso_type, norm_type, accT, arg_envDbg);
-        // ctmEnv.insDRow_DBG(iso_type, norm_type, accT, arg_envDbg);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
         t_end_int = std::chrono::steady_clock::now();
         std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
@@ -175,12 +160,10 @@ int main( int argc, char *argv[] ) {
         if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
             t_begin_int = std::chrono::steady_clock::now();
             
-            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0), true);
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1), true);
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1), true);
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1), true);
 
             t_end_int = std::chrono::steady_clock::now();
 
@@ -205,56 +188,56 @@ int main( int argc, char *argv[] ) {
             e_prev = e_curr;
 
             // Compute spectra of Corner matrices
-            if (expValEnvConv) {
-                diag_ctmIter.push_back(envI);
+            // if (expValEnvConv) {
+            //     diag_ctmIter.push_back(envI);
 
-                std::ostringstream oss;
-                oss << std::scientific;
+            //     std::ostringstream oss;
+            //     oss << std::scientific;
 
-                // diagnose spectra
-                std::cout << std::endl;
-                double tmpVal;
-                double minCornerSV = 1.0e+16;
-                Args args_dbg_cornerSVD = {"Truncate",false};
-                std::cout << "Spectra: " << std::endl;
+            //     // diagnose spectra
+            //     std::cout << std::endl;
+            //     double tmpVal;
+            //     double minCornerSV = 1.0e+16;
+            //     Args args_dbg_cornerSVD = {"Truncate",false};
+            //     std::cout << "Spectra: " << std::endl;
 
-                ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss << tmpVal;
+            //     ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
+            //     auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
+            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+            //         sv.inds().back()(auxEnvDim));
+            //     PrintData(sv);
+            //     minCornerSV = std::min(minCornerSV, tmpVal);
+            //     oss << tmpVal;
 
-                tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
+            //     tL = ITensor(ctmEnv.C_RU[0].inds().front());
+            //     spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
+            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+            //         sv.inds().back()(auxEnvDim));
+            //     PrintData(sv);
+            //     minCornerSV = std::min(minCornerSV, tmpVal);
+            //     oss <<" "<< tmpVal;
 
-                tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
+            //     tL = ITensor(ctmEnv.C_RD[0].inds().front());
+            //     spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
+            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+            //         sv.inds().back()(auxEnvDim));
+            //     PrintData(sv);
+            //     minCornerSV = std::min(minCornerSV, tmpVal);
+            //     oss <<" "<< tmpVal;
 
-                tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
+            //     tL = ITensor(ctmEnv.C_LD[0].inds().front());
+            //     spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
+            //     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
+            //         sv.inds().back()(auxEnvDim));
+            //     PrintData(sv);
+            //     minCornerSV = std::min(minCornerSV, tmpVal);
+            //     oss <<" "<< tmpVal;
 
-                diag_minCornerSV.push_back(minCornerSV);
-                std::cout << "MinVals: "<< oss.str() << std::endl;
+            //     diag_minCornerSV.push_back(minCornerSV);
+            //     std::cout << "MinVals: "<< oss.str() << std::endl;
 
-                break;
-            }
+            //     break;
+            // }
 
         }
         std::cout << std::endl;
@@ -267,13 +250,12 @@ int main( int argc, char *argv[] ) {
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
 
-    
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-    // Compute initial properties
+
+    // Compute final observables
     ptr_model->setObservablesHeader(out_file_energy);
     auto metaInf = Args("lineNo",0);
     t_begin_int = std::chrono::steady_clock::now();
-    ptr_model->computeAndWriteObservables(ev, out_file_energy,metaInf);
+    ptr_model->computeAndWriteObservables(ev, out_file_energy, metaInf);
     t_end_int = std::chrono::steady_clock::now();
     std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
         <<" [sec] "<< std::endl;

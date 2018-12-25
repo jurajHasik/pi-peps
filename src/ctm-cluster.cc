@@ -2,6 +2,12 @@
 
 using namespace itensor;
 
+const int Cluster::BRAKET_OFFSET = 4;
+
+Shift operator * (int x, Shift const& s) {
+  return s * x;
+}
+
 void initClusterSites(Cluster & c, bool dbg) {
     // reset
     c.aux.clear();

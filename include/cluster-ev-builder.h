@@ -3,33 +3,30 @@
 
 #include <string>
 #include <iostream>
-#include "ctm-cluster-io.h"
-#include "ctm-cluster.h"
+#include "itensor/all.h"
 #include "ctm-cluster-global.h"
+#include "ctm-cluster.h"
+#include "ctm-cluster-env_v2.h"
+#include "ctm-cluster-io.h"
 #include "mpo.h"
 #include "su2.h"
-#include "itensor/all.h"
 #include "arpack-rcdn.h"
 
 
 class EVBuilder {
 
-    std::string name;
-
     public:
 
-    // Cluster
-    Cluster cls;
+    std::string name;
 
-    // With Environment Data one can compute expectation values
-    CtmData cd;
+    const Cluster * p_cluster;
+    const CtmEnv  * p_ctmEnv;
+
+    Cluster cls;
     CtmData_Full cd_f;
 
-    // Default Constructor
-    EVBuilder();
-
     // Basic Constructor
-    EVBuilder(std::string in_name, Cluster const& in_cls, CtmData const& in_cd);
+    EVBuilder(std::string in_name, Cluster const& cls, CtmEnv const& env);
 
     // Supported types of 1-site operators
     enum MPO_1S {
@@ -42,12 +39,12 @@ class EVBuilder {
 
     // Get on-site contracted tensor <T(bra)|MPO|T(ket)>,
     // with prime level "l"
+    MpoNS getTOT(MPO_1S mpo, Vertex const& v, int primeLvl,
+        bool DBG = false) const;
+
     MpoNS getTOT(MPO_1S mpo, std::string siteId, int primeLvl,
         bool DBG = false) const;
     
-    MpoNS getTOT(MPO_1S mpo, std::pair<int ,int> site, int primeLvl,
-        bool DBG = false) const;
-
     // Assume op to be tensor of at least rank 2 with exactly two copies
     // of single PHYS index with primeLevel 0 and 1
     MpoNS getTOT(itensor::ITensor const& op, std::string siteId,
@@ -63,10 +60,10 @@ class EVBuilder {
      */
 
     // compute ev_1sO using environment of a single site
-    double eV_1sO_1sENV(MPO_1S op1s, std::pair<int,int> site,
+    double eV_1sO_1sENV(MPO_1S op1s, Vertex const& v,
         bool DBG = false) const;
 
-    double eV_1sO_1sENV(MpoNS const& op, std::pair<int,int> site,
+    double eV_1sO_1sENV(MpoNS const& op, Vertex const& v,
         bool DBG = false) const;
 
     // Supported types of 2-site operators
@@ -84,40 +81,39 @@ class EVBuilder {
     // compute ev_2sO using minimal rectangle defined by s1 and s2
     double eV_2sO_Rectangle(
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2,
-        bool DBG = false) const;
+        Vertex const& v1, Vertex const& v2, bool DBG = false) const;
 
     // compute norm of TN defined by sites s1, s2 (with ID operators)
-    double getNorm_Rectangle(bool DBG, std::pair<int,int> s1, 
-        std::pair<int,int> s2) const;
+    double getNorm_Rectangle(bool DBG, Vertex const& v1, 
+        Vertex const& v2) const;
 
     // contract network using minimal rectangle defined by s1 and s2
     // with Op.first inserted on s1 and Op.second inserted in s2
     double get2SOPTN(bool DBG,
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2) const;
+        Vertex const& v1, Vertex const& v2) const;
 
     // coefs[0] * SxSx + coefs[1] * SySy + coefs[2] * SzSz
-    double evalSS(std::pair<int,int> s1, std::pair<int,int> s2, 
+    double evalSS(Vertex const& v1, Vertex const& v2, 
         std::vector<double> coefs = {1.0, 1.0, 1.0}, bool DBG = false) const;
 
     double eval2Smpo(OP_2S op2s,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
+        Vertex const& v1, Vertex const& v2, bool DBG = false) const;
 
     double eval2Smpo(std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
+        Vertex const& v1, Vertex const& v2, bool DBG = false) const;
 
     double contract2Smpo(OP_2S op2s,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
+        Vertex const& v1, Vertex const& v2, bool DBG = false) const;
 
     double contract2Smpo(std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG = false) const;
+        Vertex const& v1, Vertex const& v2, bool DBG = false) const;
 
-    double eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
-        bool DBG = false) const;
+    // double eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
+    //     bool DBG = false) const;
 
-    itensor::ITensor redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
-        bool DBG = false) const; 
+    // itensor::ITensor redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
+    //     bool DBG = false) const; 
 
 
     // Correlation function
@@ -135,23 +131,23 @@ class EVBuilder {
      * Hence "dist" = 0, means adjacent sites 
      *
      */
-    std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1, 
-        MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
+    // std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1, 
+    //     MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
 
-    struct TransferOpVecProd {
-        std::string dir;
-        std::pair<int,int> s0;
-        EVBuilder const& ev;
-        CtmData_Full const& cd;
+    // struct TransferOpVecProd {
+    //     std::string dir;
+    //     std::pair<int,int> s0;
+    //     EVBuilder const& ev;
+    //     CtmData_Full const& cd;
 
-        TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd, 
-            std::pair<int,int> ss0, std::string ddir="HORIZONTAL");
+    //     TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd, 
+    //         std::pair<int,int> ss0, std::string ddir="HORIZONTAL");
 
-        void operator() (double const* const x, double* const y); 
-    };
+    //     void operator() (double const* const x, double* const y); 
+    // };
 
-    void analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
-        std::string alg_type = "ARPACK");
+    // void analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
+    //     std::string alg_type = "ARPACK");
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 
@@ -167,23 +163,23 @@ class EVBuilder {
      * |C|--|T|--|T |--|C|
      * 
      */
-    double eval2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
+    double eval2x2Diag11(OP_2S op2s, Vertex const& v1, 
         bool DBG = false) const;
 
-    double contract2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
+    double contract2x2Diag11(OP_2S op2s, Vertex const& v1, 
         bool DBG = false) const;
 
-    // double eval2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+    // double eval2x2Diag1N1(OP_2S op2s, Vertex const& v1, 
     //     bool DBG = false) const;
 
-    // double contract2x2Diag1N1(OP_2S op2s, std::pair<int,int> s1, 
+    // double contract2x2Diag1N1(OP_2S op2s, Vertex const& v1, 
     //     bool DBG = false) const;
 
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 
      * Diagonal is defined with respect to a position of O1 given by site s1,
-     * with operator O2 being inserted at s1 + [-1,-1]
+     * with operator O2 being inserted at s1 + [-1,+1]
      * 
      * |C|--|T|---|T|--|C|
      *  |    |     |    |
@@ -194,21 +190,21 @@ class EVBuilder {
      * |C|--|T|---|T|--|C|
      * 
      */
-    double eval2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
+    double eval2x2DiagN11(OP_2S op2s, Vertex const& v1, 
         bool DBG = false) const;
 
-    double contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
+    double contract2x2DiagN11(OP_2S op2s, Vertex const& v1, 
         bool DBG = false) const;
 
 
-    itensor::ITensor getT(itensor::ITensor const& s, 
-        std::array< itensor::Index, 4> const& plToEnv, bool dbg) const; 
+    // itensor::ITensor getT(itensor::ITensor const& s, 
+    //     std::array< itensor::Index, 4> const& plToEnv, bool dbg) const; 
 
-    double contract3Smpo2x2(MPO_3site const& mpo3s,
-        std::vector< std::pair<int,int> > siteSeq, bool dbg = false) const;
+    // double contract3Smpo2x2(MPO_3site const& mpo3s,
+    //     std::vector< std::pair<int,int> > siteSeq, bool dbg = false) const;
 
-    double contract3Smpo2x2(MPO_3site const& mpo3s,
-        std::vector<std::string> tn, std::vector<int> pl, bool dbg = false) const; 
+    // double contract3Smpo2x2(MPO_3site const& mpo3s,
+    //     std::vector<std::string> tn, std::vector<int> pl, bool dbg = false) const; 
 
     // Correlation function
     // Compute expectation value of two 1-site operators O1, O2
@@ -270,11 +266,6 @@ class EVBuilder {
   //  std::complex<double> expVal_2sOH2sOH_H(int dist, 
   //          Mpo2S const& op1, Mpo2S const& op2);
 
-    void setCluster(Cluster const& new_c);
-
-    void setCtmData(CtmData const& new_cd);
-
-    void setCtmData_Full(CtmData_Full const& new_cd_f);
 
     MPO_3site get3Smpo(std::string mpo3s, bool DBG = false) const;
 

@@ -72,14 +72,14 @@ struct Cluster_2x2_ABCD : Cluster {
 	    vToId = { {{0,0},"A"}, {{1,0},"B"}, {{0,1},"C"}, {{1,1},"D"} };
         idToV = { {"A",{0,0}}, {"B",{1,0}}, {"C",{0,1}}, {"D",{1,1}} };
 
-	    auto aIA = Index(TAG_I_AUX, auxBondDim, AUXLINK);
-	    auto aIB = Index(TAG_I_AUX, auxBondDim, AUXLINK);
-	    auto aIC = Index(TAG_I_AUX, auxBondDim, AUXLINK);
-	    auto aID = Index(TAG_I_AUX, auxBondDim, AUXLINK);
-	    auto pIA = Index(TAG_I_PHYS, physDim, PHYS);
-	    auto pIB = Index(TAG_I_PHYS, physDim, PHYS);
-	    auto pIC = Index(TAG_I_PHYS, physDim, PHYS);
-	    auto pID = Index(TAG_I_PHYS, physDim, PHYS);
+	    auto aIA = Index("A", auxBondDim, AUXLINK);
+	    auto aIB = Index("B", auxBondDim, AUXLINK);
+	    auto aIC = Index("C", auxBondDim, AUXLINK);
+	    auto aID = Index("D", auxBondDim, AUXLINK);
+	    auto pIA = Index("A", physDim, PHYS);
+	    auto pIB = Index("B", physDim, PHYS);
+	    auto pIC = Index("C", physDim, PHYS);
+	    auto pID = Index("D", physDim, PHYS);
 
 	    aux  = {aIA, aIB, aIC, aID};
     	phys = {pIA, pIB, pIC, pID};

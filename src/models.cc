@@ -572,51 +572,51 @@ void J1J2Model::computeAndWriteObservables(EVBuilder const& ev,
     bool compute_SS_NNN = ( std::abs(J2) > 1.0e-15 );
 
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,0)) ); //AB
+        Vertex(0,0), Vertex(1,0)) ); //AB
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(0,1)) ); //AC
+        Vertex(0,0), Vertex(0,1)) ); //AC
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(1,1)) ); //BD
+        Vertex(1,0), Vertex(1,1)) ); //BD
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(1,1)) ); //CD
+        Vertex(0,1), Vertex(1,1)) ); //CD
 
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
+        Vertex(1,0), Vertex(2,0))); //BA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
+        Vertex(0,1), Vertex(0,2))); //CA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
+        Vertex(1,1), Vertex(1,2))); //DB
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
+        Vertex(1,1), Vertex(2,1))); //DC
 
     // compute energies NNN links
     if ( compute_SS_NNN ) {
-        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, std::make_pair(2,1)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(0,0)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(1,1)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(1,0)) );
+        evNNN.push_back( ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(2,1)) );
 
-        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,0)) );
-        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,1)) );
-        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(1,0)) );
-        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, std::make_pair(0,1)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(0,0)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(1,1)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(1,0)) );
+        evNNN.push_back( ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(0,1)) );
     }
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
 
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
 
     
     output << lineNo <<" "; 
@@ -682,38 +682,38 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sD(3,0.0);
 
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,0)) ); //AB
+        Vertex(0,0), Vertex(1,0)) ); //AB
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(0,1)) ); //AC
+        Vertex(0,0), Vertex(0,1)) ); //AC
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(1,1)) ); //BD
+        Vertex(1,0), Vertex(1,1)) ); //BD
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(1,1)) ); //CD
+        Vertex(0,1), Vertex(1,1)) ); //CD
 
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
+        Vertex(1,0), Vertex(2,0))); //BA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
+        Vertex(0,1), Vertex(0,2))); //CA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
+        Vertex(1,1), Vertex(1,2))); //DB
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
+        Vertex(1,1), Vertex(2,1))); //DC
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
 
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
 
     // write energy
     double avgE_CAplusDB = 0.;
@@ -770,38 +770,38 @@ void IsingModel::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sD(3,0.0);
 
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(1,0)) );    //AB
+        Vertex(0,0), Vertex(1,0)) );    //AB
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(0,1)) );    //AC
+        Vertex(0,0), Vertex(0,1)) );    //AC
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(1,1)) );    //BD
+        Vertex(1,0), Vertex(1,1)) );    //BD
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(1,1)) );    //CD
+        Vertex(0,1), Vertex(1,1)) );    //CD
 
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
+        Vertex(1,0), Vertex(2,0))); //BA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
+        Vertex(0,1), Vertex(0,2))); //CA
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
+        Vertex(1,1), Vertex(1,2))); //DB
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
+        Vertex(1,1), Vertex(2,1))); //DC
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
 
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
 
     // write energy
     double avgE_8links = 0.;
@@ -829,148 +829,148 @@ void IsingModel::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
-Ising3BodyModel::Ising3BodyModel(double arg_J1, double arg_J2, double arg_h)
-    : J1(arg_J1), J2(arg_J2), h(arg_h) {}
+// Ising3BodyModel::Ising3BodyModel(double arg_J1, double arg_J2, double arg_h)
+//     : J1(arg_J1), J2(arg_J2), h(arg_h) {}
 
-void Ising3BodyModel::setObservablesHeader(std::ofstream & output) {
-    output <<"STEP, " 
-        <<"SzSz AB (0,0)(1,0), "<<"SzSz AC (0,0)(0,1), "
-        <<"SzSz BD (1,0)(1,1), "<<"SzSz CD (0,1)(1,1), "
-        <<"SzSz BA (1,0)(2,0), "<<"SzSz CA (0,1)(0,2), "
-        <<"SzSz DB (1,1)(1,2), "<<"SzSz DC (1,1)(2,1), "
-        <<"Avg SzSz, "<<"Avg SzSzSz, "<<"Avg Sz, "<<"Avg Sx, "<<"Energy"
-        <<std::endl;
-}
+// void Ising3BodyModel::setObservablesHeader(std::ofstream & output) {
+//     output <<"STEP, " 
+//         <<"SzSz AB (0,0)(1,0), "<<"SzSz AC (0,0)(0,1), "
+//         <<"SzSz BD (1,0)(1,1), "<<"SzSz CD (0,1)(1,1), "
+//         <<"SzSz BA (1,0)(2,0), "<<"SzSz CA (0,1)(0,2), "
+//         <<"SzSz DB (1,1)(1,2), "<<"SzSz DC (1,1)(2,1), "
+//         <<"Avg SzSz, "<<"Avg SzSzSz, "<<"Avg Sz, "<<"Avg Sx, "<<"Energy"
+//         <<std::endl;
+// }
 
-void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args & metaInf) {
+// void Ising3BodyModel::computeAndWriteObservables(EVBuilder const& ev, 
+//     std::ofstream & output, Args & metaInf) {
 
-    auto lineNo = metaInf.getInt("lineNo",0);
+//     auto lineNo = metaInf.getInt("lineNo",0);
 
-    std::vector<double> evNN;
-    std::vector<double> ev3SZ;
-    std::vector<double> ev_sA(3,0.0);
-    std::vector<double> ev_sB(3,0.0);
-    std::vector<double> ev_sC(3,0.0);
-    std::vector<double> ev_sD(3,0.0);
+//     std::vector<double> evNN;
+//     std::vector<double> ev3SZ;
+//     std::vector<double> ev_sA(3,0.0);
+//     std::vector<double> ev_sB(3,0.0);
+//     std::vector<double> ev_sC(3,0.0);
+//     std::vector<double> ev_sD(3,0.0);
 
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(1,0)) );    //AB
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,0), std::make_pair(0,1)) );    //AC
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(1,1)) );    //BD
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(1,1)) );    //CD
+//     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(0,0), Vertex(1,0)) );    //AB
+//     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(0,0), Vertex(0,1)) );    //AC
+//     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(1,0), Vertex(1,1)) );    //BD
+//     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(0,1), Vertex(1,1)) );    //CD
 
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
+//     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(1,0), Vertex(2,0))); //BA
+//     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(0,1), Vertex(0,2))); //CA
+//     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(1,1), Vertex(1,2))); //DB
+//     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+//         Vertex(1,1), Vertex(2,1))); //DC
 
-    // compute "3-site" terms Sz_i Sz_j Sz_k
-    // 4 triangles centered on site [0,0]
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,-1), std::make_pair(0,0), std::make_pair(1,0), std::make_pair(1,-1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,-1), std::make_pair(0,0), std::make_pair(-1,0), std::make_pair(-1,-1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,1), std::make_pair(0,0), std::make_pair(1,0), std::make_pair(1,1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,1), std::make_pair(0,0), std::make_pair(-1,0), std::make_pair(-1,1)}) );
-    // 4 triangles centered on site [1,0]
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,-1), std::make_pair(1,0), std::make_pair(2,0), std::make_pair(2,-1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,-1), std::make_pair(1,0), std::make_pair(0,0), std::make_pair(0,-1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,1), std::make_pair(1,0), std::make_pair(2,0), std::make_pair(2,1)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,1), std::make_pair(1,0), std::make_pair(0,0), std::make_pair(0,1)}) );
-    // 4 triangles centered on site [0,1]
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,0), std::make_pair(0,1), std::make_pair(1,1), std::make_pair(1,0)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,0), std::make_pair(0,1), std::make_pair(-1,1), std::make_pair(-1,0)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,2), std::make_pair(0,1), std::make_pair(1,1), std::make_pair(1,2)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(0,2), std::make_pair(0,1), std::make_pair(-1,1), std::make_pair(-1,2)}) );
-    // 4 triangles centered on site [1,1]
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,0), std::make_pair(1,1), std::make_pair(2,1), std::make_pair(2,0)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,0), std::make_pair(1,1), std::make_pair(0,1), std::make_pair(0,0)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,2), std::make_pair(1,1), std::make_pair(2,1), std::make_pair(2,2)}) );
-    ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
-        {std::make_pair(1,2), std::make_pair(1,1), std::make_pair(0,1), std::make_pair(0,2)}) );
-    // end computing "3-site" terms Sz_i Sz_j Sz_k
+//     // compute "3-site" terms Sz_i Sz_j Sz_k
+//     // 4 triangles centered on site [0,0]
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,-1), Vertex(0,0), Vertex(1,0), Vertex(1,-1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,-1), Vertex(0,0), Vertex(-1,0), Vertex(-1,-1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,1), Vertex(0,0), Vertex(1,0), Vertex(1,1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,1), Vertex(0,0), Vertex(-1,0), Vertex(-1,1)}) );
+//     // 4 triangles centered on site [1,0]
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,-1), Vertex(1,0), Vertex(2,0), Vertex(2,-1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,-1), Vertex(1,0), Vertex(0,0), Vertex(0,-1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,1), Vertex(1,0), Vertex(2,0), Vertex(2,1)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,1), Vertex(1,0), Vertex(0,0), Vertex(0,1)}) );
+//     // 4 triangles centered on site [0,1]
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,0), Vertex(0,1), Vertex(1,1), Vertex(1,0)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,0), Vertex(0,1), Vertex(-1,1), Vertex(-1,0)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,2), Vertex(0,1), Vertex(1,1), Vertex(1,2)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(0,2), Vertex(0,1), Vertex(-1,1), Vertex(-1,2)}) );
+//     // 4 triangles centered on site [1,1]
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,0), Vertex(1,1), Vertex(2,1), Vertex(2,0)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,0), Vertex(1,1), Vertex(0,1), Vertex(0,0)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,2), Vertex(1,1), Vertex(2,1), Vertex(2,2)}) );
+//     ev3SZ.push_back(ev.contract3Smpo2x2( ev.get3Smpo("3SZ"),
+//         {Vertex(1,2), Vertex(1,1), Vertex(0,1), Vertex(0,2)}) );
+//     // end computing "3-site" terms Sz_i Sz_j Sz_k
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+//     ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+//     ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+//     ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+//     ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+//     ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+//     ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+//     ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+//     ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+//     ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
 
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+//     ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+//     ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+//     ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
 
-    // write energy
-    double avgE_8links = 0.;
-    output << lineNo <<" "; 
-    for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
-        avgE_8links += evNN[j];
-        output<<" "<< evNN[j];
-    }
-    avgE_8links = avgE_8links/8.0;
-    output <<" "<< avgE_8links;
+//     // write energy
+//     double avgE_8links = 0.;
+//     output << lineNo <<" "; 
+//     for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
+//         avgE_8links += evNN[j];
+//         output<<" "<< evNN[j];
+//     }
+//     avgE_8links = avgE_8links/8.0;
+//     output <<" "<< avgE_8links;
     
-    // write energy
-    double avgE_3sz = 0.;
-    for ( unsigned int j=0; j<ev3SZ.size(); j++ ) {
-        avgE_3sz += ev3SZ[j];
-    }
-    avgE_3sz = avgE_3sz/16.0;
-    output <<" "<< avgE_3sz;
+//     // write energy
+//     double avgE_3sz = 0.;
+//     for ( unsigned int j=0; j<ev3SZ.size(); j++ ) {
+//         avgE_3sz += ev3SZ[j];
+//     }
+//     avgE_3sz = avgE_3sz/16.0;
+//     output <<" "<< avgE_3sz;
 
-    // write Z magnetization
-    double evMagZ_avg = 0.;
-    double evMagX_avg = 0.;
-    evMagZ_avg = 0.25*(
-        sqrt(ev_sA[0]*ev_sA[0])
-        + sqrt(ev_sB[0]*ev_sB[0])
-        + sqrt(ev_sC[0]*ev_sC[0])
-        + sqrt(ev_sD[0]*ev_sD[0])
-        );
-    output <<" "<< evMagZ_avg;
-    evMagX_avg = 0.25*(
-        sqrt(ev_sA[1]*ev_sA[1])
-        + sqrt(ev_sB[1]*ev_sB[1])
-        + sqrt(ev_sC[1]*ev_sC[1])
-        + sqrt(ev_sD[1]*ev_sD[1])
-        );
-    output <<" "<< evMagX_avg;
+//     // write Z magnetization
+//     double evMagZ_avg = 0.;
+//     double evMagX_avg = 0.;
+//     evMagZ_avg = 0.25*(
+//         sqrt(ev_sA[0]*ev_sA[0])
+//         + sqrt(ev_sB[0]*ev_sB[0])
+//         + sqrt(ev_sC[0]*ev_sC[0])
+//         + sqrt(ev_sD[0]*ev_sD[0])
+//         );
+//     output <<" "<< evMagZ_avg;
+//     evMagX_avg = 0.25*(
+//         sqrt(ev_sA[1]*ev_sA[1])
+//         + sqrt(ev_sB[1]*ev_sB[1])
+//         + sqrt(ev_sC[1]*ev_sC[1])
+//         + sqrt(ev_sD[1]*ev_sD[1])
+//         );
+//     output <<" "<< evMagX_avg;
 
-    // write Energy 
-    // * working with spin DoFs instead of Ising DoFs hence factor of 2
-    double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg
-        -8.0*(16.0*avgE_3sz) * J2;
-    output <<" "<< energy; 
+//     // write Energy 
+//     // * working with spin DoFs instead of Ising DoFs hence factor of 2
+//     double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg
+//         -8.0*(16.0*avgE_3sz) * J2;
+//     output <<" "<< energy; 
 
-    output << std::endl;
-}
+//     output << std::endl;
+// }
 
 NNHModel_2x2Cell_AB::NNHModel_2x2Cell_AB(double arg_J, double arg_h, double arg_del)
     : J1(arg_J), h(arg_h), del(arg_del) {}
@@ -993,22 +993,22 @@ void NNHModel_2x2Cell_AB::computeAndWriteObservables(EVBuilder const& ev,
     std::vector<double> ev_sB(3,0.0);
 
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(1,0)) ); //AB horizontal
+        Vertex(0,0), Vertex(1,0)) ); //AB horizontal
     evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,0), std::make_pair(0,1)) ); //AB vertical
+        Vertex(0,0), Vertex(0,1)) ); //AB vertical
 
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(1,0), std::make_pair(2,0))); //BA horizontal
+        Vertex(1,0), Vertex(2,0))); //BA horizontal
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
-        std::make_pair(0,1), std::make_pair(0,2))); //BA vertical
+        Vertex(0,1), Vertex(0,2))); //BA vertical
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
     // write energy
     output << lineNo <<" "; 
@@ -1075,38 +1075,38 @@ void NNHModel_2x2Cell_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     auto nnSS = symmMPO2Sdecomp(h12, s1, s2);
 
     evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(0,0), std::make_pair(1,0)) ); //AB
+        Vertex(0,0), Vertex(1,0)) ); //AB
     evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(0,0), std::make_pair(0,1)) ); //AC
+        Vertex(0,0), Vertex(0,1)) ); //AC
     evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(1,0), std::make_pair(1,1)) ); //BD
+        Vertex(1,0), Vertex(1,1)) ); //BD
     evNN.push_back( ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(0,1), std::make_pair(1,1)) ); //CD
+        Vertex(0,1), Vertex(1,1)) ); //CD
 
     evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(1,0), std::make_pair(2,0))); //BA
+        Vertex(1,0), Vertex(2,0))); //BA
     evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(0,1), std::make_pair(0,2))); //CA
+        Vertex(0,1), Vertex(0,2))); //CA
     evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(1,1), std::make_pair(1,2))); //DB
+        Vertex(1,1), Vertex(1,2))); //DB
     evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1,nnSS.H2),
-        std::make_pair(1,1), std::make_pair(2,1))); //DC
+        Vertex(1,1), Vertex(2,1))); //DC
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,0));
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(0,1));
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
 
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, std::make_pair(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, std::make_pair(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, std::make_pair(1,1));
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
 
     // write energy
     output << lineNo <<" "; 
@@ -1490,14 +1490,14 @@ std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model) 
 //     }
 // }
 
-std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model) {
+// std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model) {
 
-    double arg_J1     = json_model["J1"].get<double>();
-    double arg_J2     = json_model["J2"].get<double>();
-    double arg_h      = json_model["h"].get<double>();
+//     double arg_J1     = json_model["J1"].get<double>();
+//     double arg_J2     = json_model["J2"].get<double>();
+//     double arg_h      = json_model["h"].get<double>();
     
-    return std::unique_ptr<Model>(new Ising3BodyModel(arg_J1, arg_J2, arg_h));
-}
+//     return std::unique_ptr<Model>(new Ising3BodyModel(arg_J1, arg_J2, arg_h));
+// }
 
 // void getModel_Ising3Body(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,
@@ -1707,8 +1707,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
         return getModel_NNH_2x2Cell_Ladder(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
-    } else if (arg_modelType == "Ising3Body") {
-        return getModel_Ising3Body(json_model);
+    // } else if (arg_modelType == "Ising3Body") {
+    //     return getModel_Ising3Body(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {
     //     return getModel_NNH_2x2Cell_AB(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_ABCD") {

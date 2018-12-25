@@ -2,7 +2,7 @@
 examples = [
 #            'opt-full-update-2x2-3site',
 #            'opt-su-3site',
-#            'env-ctmrg'
+            'env-ctmrg'
 ]
 
 foreach _example : examples

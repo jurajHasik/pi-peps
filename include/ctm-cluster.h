@@ -43,6 +43,10 @@ struct Shift {
         return (this->d[0] != s.d[0]) || (this->d[1] != s.d[1]);
     }
 
+    Shift operator*(int x) const {
+        return Shift(x * this->d[0], x * this->d[1]);
+    }
+
     Shift operator+(Shift const& s) const {
         return Shift(this->d[0] + s.d[0], this->d[1] + s.d[1]);
     }
@@ -61,6 +65,8 @@ struct Shift {
         return *this;
     }
 };
+
+Shift operator * (int x, Shift const& s);
 
 /*
  * A vertex of a square lattice. One can obtain new vertices
@@ -116,7 +122,7 @@ struct LinkWeight {
  *
  */
 struct Cluster {
-    const int BRAKET_OFFSET = 4;
+    static const int BRAKET_OFFSET;
 
     // meta information about the origin of cluster
     std::string metaInfo;

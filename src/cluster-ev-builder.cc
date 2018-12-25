@@ -2,89 +2,86 @@
 
 using namespace itensor;
 
-EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& eev, 
-    CtmData_Full const& ccd, std::pair<int,int> ss0, std::string ddir) 
-    : ev(eev), cd(ccd), s0(ss0), dir(ddir) {}
+// EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& eev, 
+//     CtmData_Full const& ccd, std::pair<int,int> ss0, std::string ddir) 
+//     : ev(eev), cd(ccd), s0(ss0), dir(ddir) {}
 
-void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* const y) {
-    int N = cd.auxDimSite * cd.auxDimEnv * cd.auxDimEnv;
+// void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* const y) {
+//     int N = cd.auxDimSite * cd.auxDimEnv * cd.auxDimEnv;
     
-    auto i  = Index("i",N);
-    auto ip = prime(i);
+//     auto i  = Index("i",N);
+//     auto ip = prime(i);
 
-    // copy x
-    std::vector<double> cpx(N); 
-    std::copy(x, x+N, cpx.data());
+//     // copy x
+//     std::vector<double> cpx(N); 
+//     std::copy(x, x+N, cpx.data());
 
-    //auto vecRefX = makeVecRef(cpx.data(),cpx.size()); 
+//     //auto vecRefX = makeVecRef(cpx.data(),cpx.size()); 
 
-    auto isX = IndexSet(i);
-    auto X = ITensor(isX,Dense<double>(std::move(cpx)));
+//     auto isX = IndexSet(i);
+//     auto X = ITensor(isX,Dense<double>(std::move(cpx)));
     
-    ITensor cmbX;
-    std::pair<int,int> s1,s2;
-    if (dir=="HORIZONTAL") {
-        cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
-        s1 = getNextSite(ev.cls, s0, 2);
-        s2 = getNextSite(ev.cls, s1, 2);
-    } 
-    else if (dir=="VERTICAL") {
-        cmbX = combiner(prime(cd.I_L),prime(cd.I_XV),prime(cd.I_R));
-        s1 = getNextSite(ev.cls, s0, 1);
-        s2 = getNextSite(ev.cls, s1, 1);
-    }
-    else {
-        std::cout<<"[TransferOpVecProd] Unsupported option: "<< dir << std::endl;
-        exit(EXIT_FAILURE);
-    }
+//     ITensor cmbX;
+//     std::pair<int,int> s1,s2;
+//     if (dir=="HORIZONTAL") {
+//         cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
+//         s1 = getNextSite(ev.cls, s0, 2);
+//         s2 = getNextSite(ev.cls, s1, 2);
+//     } 
+//     else if (dir=="VERTICAL") {
+//         cmbX = combiner(prime(cd.I_L),prime(cd.I_XV),prime(cd.I_R));
+//         s1 = getNextSite(ev.cls, s0, 1);
+//         s2 = getNextSite(ev.cls, s1, 1);
+//     }
+//     else {
+//         std::cout<<"[TransferOpVecProd] Unsupported option: "<< dir << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
 
-    X *= delta(combinedIndex(cmbX),i);
-    X *= cmbX;
+//     X *= delta(combinedIndex(cmbX),i);
+//     X *= cmbX;
 
-    if (dir=="HORIZONTAL") {
-        X *= cd.T_U[cd.cToS.at(s1)];
-        X *= cd.sites[cd.cToS.at(s1)];
-        X *= cd.T_D[cd.cToS.at(s1)];
-    } 
-    else if (dir=="VERTICAL") {
-        X *= cd.T_L[cd.cToS.at(s1)];
-        X *= cd.sites[cd.cToS.at(s1)];
-        X *= cd.T_R[cd.cToS.at(s1)];
-    }
+//     if (dir=="HORIZONTAL") {
+//         X *= cd.T_U[cd.cToS.at(s1)];
+//         X *= cd.sites[cd.cToS.at(s1)];
+//         X *= cd.T_D[cd.cToS.at(s1)];
+//     } 
+//     else if (dir=="VERTICAL") {
+//         X *= cd.T_L[cd.cToS.at(s1)];
+//         X *= cd.sites[cd.cToS.at(s1)];
+//         X *= cd.T_R[cd.cToS.at(s1)];
+//     }
 
-    X.prime();
+//     X.prime();
 
-    if (dir=="HORIZONTAL") {
-        X *= cd.T_U[cd.cToS.at(s2)];
-        X *= cd.sites[cd.cToS.at(s2)];
-        X *= cd.T_D[cd.cToS.at(s2)];
-    } 
-    else if (dir=="VERTICAL") {
-        X *= cd.T_L[cd.cToS.at(s2)];
-        X *= cd.sites[cd.cToS.at(s2)];
-        X *= cd.T_R[cd.cToS.at(s2)];
-    }
+//     if (dir=="HORIZONTAL") {
+//         X *= cd.T_U[cd.cToS.at(s2)];
+//         X *= cd.sites[cd.cToS.at(s2)];
+//         X *= cd.T_D[cd.cToS.at(s2)];
+//     } 
+//     else if (dir=="VERTICAL") {
+//         X *= cd.T_L[cd.cToS.at(s2)];
+//         X *= cd.sites[cd.cToS.at(s2)];
+//         X *= cd.T_R[cd.cToS.at(s2)];
+//     }
 
-    cmbX.noprime();
-    X *= cmbX;
-    X *= delta(combinedIndex(cmbX),i);
+//     cmbX.noprime();
+//     X *= cmbX;
+//     X *= delta(combinedIndex(cmbX),i);
 
-    X.scaleTo(1.0);
+//     X.scaleTo(1.0);
 
-    auto extractReal = [](Dense<Real> const& d) {
-        return d.store;
-    };
+//     auto extractReal = [](Dense<Real> const& d) {
+//         return d.store;
+//     };
 
-    auto xData = applyFunc(extractReal,X.store());
-    std::copy(xData.data(), xData.data()+N, y);
-}
+//     auto xData = applyFunc(extractReal,X.store());
+//     std::copy(xData.data(), xData.data()+N, y);
+// }
 
-//Default constructor
-EVBuilder::EVBuilder () {}
-
-EVBuilder::EVBuilder (std::string in_name, Cluster const& in_cls, 
-    CtmData const& in_cd) 
-    : name(in_name), cls(in_cls), cd(in_cd) {
+EVBuilder::EVBuilder (std::string in_name, Cluster const& cls, 
+    CtmEnv const& env) 
+    : name(in_name), p_cluster(&cls), p_ctmEnv(&env) {
 }
 
 /* 
@@ -96,24 +93,18 @@ MpoNS EVBuilder::getTOT(MPO_1S mpo, std::string siteId,
         int primeLvl, bool DBG) const 
 {
     // Construct MPO
-    auto op = getSpinOp(mpo, 
-        noprime(findtype(cls.sites.at(siteId), PHYS)), DBG);
+    auto op = getSpinOp(mpo, p_cluster->mphys.at(siteId), DBG);
 
     return getTOT(op, siteId, primeLvl, DBG);
 }
 
-MpoNS EVBuilder::getTOT(MPO_1S mpo, std::pair<int ,int> site, int primeLvl,
+MpoNS EVBuilder::getTOT(MPO_1S mpo, Vertex const& v, int primeLvl,
         bool DBG) const
 {
-    // shift site to elementary supercell
-    auto shift_site = site;
-    shift_site.first  = shift_site.first % cls.sizeM;
-    shift_site.second = shift_site.second % cls.sizeN;
-    auto siteId = cls.cToS.at(shift_site);
-
+    auto siteId = p_cluster->vertexToId(v);
+ 
     // Construct MPO
-    auto op = getSpinOp(mpo, 
-        noprime(findtype(cls.sites.at(siteId), PHYS)), DBG);
+    auto op = getSpinOp(mpo, p_cluster->mphys.at(siteId), DBG);
 
     return getTOT(op, siteId, primeLvl, DBG);
 }
@@ -170,22 +161,9 @@ MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
      *
      */
      
-    ITensor const& T = cls.sites.at(siteId);
-    // Get auxBond index of T
-    auto auxI = noprime(findtype(T, AUXLINK));
-
-    if(auxI.m()*auxI.m() != cd.auxDimSite) {
-        std::cout <<"ctmData.auxDimSite does not agree with onSiteT.dimD^2"
-            << std::endl;
-        exit(EXIT_FAILURE);
-    }
+    ITensor const& T = p_cluster->sites.at(siteId);
     
-    // Define combiner tensors Y*
-    auto C04 = combiner(auxI, prime(auxI,4));
-    auto C15 = prime(C04,1);
-    auto C26 = prime(C04,2);
-    auto C37 = prime(C04,3);
-
+    
     // if(isB) {
     //     std::cout << "site B - rotation on spin index" << "\n";
     //     // Operator corresponds to "odd" site of bipartite AKLT
@@ -214,23 +192,17 @@ MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
     // }
 
     // Get physical index of T and op
-    auto s   = noprime(findtype(T, PHYS));
+    auto s   = p_cluster->mphys.at(siteId);
     auto opI = noprime(findtype(op, PHYS));
 
-    if(DBG) { Print(s);
-        Print(opI); }
+    if(DBG) { 
+        Print(s);
+        Print(opI); 
+    }
 
     ITensor D = (s==opI) ? ITensor(1.0) : delta(s,opI); 
-    auto TOT = (T* D*op*prime(D,1) * ( conj(T).prime(AUXLINK,4).prime(PHYS,1) ))
-        *C04*C15*C26*C37;
-
-    // Define delta tensors D* to relabel combiner indices to I_XH, I_XV
-    auto DH0 = delta(cd.I_XH, commonIndex(TOT,C04));
-    auto DV0 = delta(cd.I_XV, commonIndex(TOT,C15));
-    auto DH1 = delta(prime(cd.I_XH,1), commonIndex(TOT,C26));
-    auto DV1 = delta(prime(cd.I_XV,1), commonIndex(TOT,C37));
-
-    TOT = TOT*DH0*DV0*DH1*DV1;
+    auto TOT = (((T* D) *op) *prime(D,1)) * 
+        ( dag(T).prime(AUXLINK,p_cluster->BRAKET_OFFSET).prime(PHYS,1) );
 
     MpoNS result;
     result.nSite = 1;
@@ -248,46 +220,42 @@ MpoNS EVBuilder::getTOT(ITensor const& op, std::string siteId,
  *
  */
 double EVBuilder::eV_1sO_1sENV(MPO_1S op1s, 
-    std::pair<int,int> site, bool DBG) const 
+    Vertex const& v, bool DBG) const 
 {
-    auto mpo = getTOT(op1s, cls.cToS.at(site), 0, DBG);
-    return eV_1sO_1sENV(mpo, site, DBG);
+    auto mpo = getTOT(op1s, v, 0, DBG);
+    return eV_1sO_1sENV(mpo, v, DBG);
 } 
 
 double EVBuilder::eV_1sO_1sENV(MpoNS const& op, 
-    std::pair<int,int> site, bool DBG) const 
+    Vertex const& v, bool DBG) const 
 {
+    auto siteId = p_cluster->vertexToId(v);
+
     if ( op.nSite != 1) {
         std::cout <<"MPO with #sites != 1 (#sites = "<< op.nSite 
             << std::endl;
         exit(EXIT_FAILURE);
     }
-    if ( !(op.siteIds[0] == cls.cToS.at(std::make_pair(
-        site.first % cls.sizeM, site.second % cls.sizeN)) ) ) {
+    if ( op.siteIds[0] != siteId ) {
         std::cout <<"WARNING: MPO constructed on site "<< op.siteIds[0]
-            <<" inserted at site "<< cls.cToS.at(site) << std::endl;
+            <<" inserted at site "<< siteId << std::endl;
     }
 
-    // Move site to unit cell
-    site.first  = site.first % cd_f.sizeM;
-    site.second = site.second % cd_f.sizeN;
+    auto ev = p_ctmEnv->C_LU.at(siteId);
+    ev *= p_ctmEnv->T_L.at(siteId);
+    ev *= p_ctmEnv->C_LD.at(siteId);
 
-    auto ev = cd_f.C_LU[cd_f.cToS.at(site)];
-    ev *= cd_f.T_L[cd_f.cToS.at(site)];
-    ev *= cd_f.C_LD[cd_f.cToS.at(site)];
-
-    ev *= cd_f.T_U[cd_f.cToS.at(site)];
+    ev *= p_ctmEnv->T_U.at(siteId);
     // substitute original on-site tensor for op at position site
-    if(DBG) std::cout <<"OP inserted at ("<< site.first <<","<< site.second <<") -> "
-        << cls.cToS.at(site) << std::endl;
+    if(DBG) std::cout <<"OP inserted at "<< v <<" -> "<< siteId << std::endl;
     ev *= op.mpo[0];
-    ev *= cd_f.T_D[cd_f.cToS.at(site)];
+    ev *= p_ctmEnv->T_D.at(siteId);
 
-    ev *= cd_f.C_RU[cd_f.cToS.at(site)];
-    ev *= cd_f.T_R[cd_f.cToS.at(site)];
-    ev *= cd_f.C_RD[cd_f.cToS.at(site)];
+    ev *= p_ctmEnv->C_RU.at(siteId);
+    ev *= p_ctmEnv->T_R.at(siteId);
+    ev *= p_ctmEnv->C_RD.at(siteId);
 
-    return sumels(ev)/getNorm_Rectangle(DBG, site, site);
+    return sumels(ev)/getNorm_Rectangle(DBG, v, v);
 }
 
 /* 
@@ -296,294 +264,284 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
  */
 double EVBuilder::eV_2sO_Rectangle(
     std::pair< itensor::ITensor,itensor::ITensor > const& Op,
-    std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
+    Vertex const& v1, Vertex const& v2, bool DBG) const 
 {
-    return get2SOPTN(DBG, Op, s1, s2) / getNorm_Rectangle(DBG, s1, s2); 
+    return get2SOPTN(DBG, Op, v1, v2) / getNorm_Rectangle(DBG, v1, v2); 
 }
 
 // TODO REDUNDANCY FOR HANDLING s1 = s2 case
-double EVBuilder::getNorm_Rectangle(bool DBG, std::pair<int,int> s1, 
-        std::pair<int,int> s2) const 
+double EVBuilder::getNorm_Rectangle(bool DBG, Vertex const& v1, 
+        Vertex const& v2) const 
 {
-    auto o1(getTOT(MPO_Id, cls.cToS.at(
-        std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN)), 0, DBG));
-    auto o2(getTOT(MPO_Id, cls.cToS.at(
-        std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN)), 0, DBG));
+    auto o1(getTOT(MPO_Id, v1, 0, DBG));
+    auto o2(getTOT(MPO_Id, v2, 0, DBG));
 
-    return get2SOPTN(DBG, std::make_pair(o1.mpo[0], o2.mpo[0]), s1, s2);
+    return get2SOPTN(DBG, std::make_pair(o1.mpo[0], o2.mpo[0]), v1, v2);
 }
 
 double EVBuilder::get2SOPTN(bool DBG,
         std::pair<ITensor,ITensor> const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2) const 
+        Vertex const& v1, Vertex const& v2) const 
 {
+    using DIRECTION = CtmEnv::DIRECTION;
+
+    auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
+
+    auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
+        return p_cluster->sites.at(vToId(v)) * 
+            dag(p_cluster->sites.at(vToId(v))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    };
+
+    auto applyDeltaEdge = [this] (ITensor & t, Vertex const& v, 
+        DIRECTION edge, DIRECTION dir) { 
+
+        // (edge = LEFT or RIGHT => dir = UP or DOWN) or 
+        // (edge = UP or DOWN => dir = LEFT or RIGHT)
+        if ( (edge == dir) || ((edge + 2)%4 == dir) ) {
+            std::cout<<"[get2SOPTN::applyDeltaEdge] Invalid input: edge= "<< edge 
+                <<" dir: "<< dir << std::endl;
+            throw std::runtime_error("[get2SOPTN::applyDeltaEdge] Invalid input");
+        }
+
+        Shift s;
+        switch (dir) {
+            case DIRECTION::LEFT: {
+                s = Shift(1,0);
+                break;
+            }
+            case DIRECTION::UP: {
+                s = Shift(0,1);
+                break;
+            }
+            case DIRECTION::RIGHT: {
+                s = Shift(-1,0);
+                break;
+            }
+            case DIRECTION::DOWN: {
+                s = Shift(0,-1);
+                break;
+            }
+        }
+
+        t *= delta(
+            p_ctmEnv->tauxByVertex(edge, v + s, dir), 
+            p_ctmEnv->tauxByVertex(edge, v, (dir+2)%4) );
+    };
+
+    auto applyDeltaSite = [this] (ITensor & t, Vertex const& v, DIRECTION dir) {
+        
+        Shift s;
+        switch (dir) {
+            case DIRECTION::LEFT: {
+                s = Shift(-1,0);
+                break;
+            }
+            case DIRECTION::UP: {
+                s = Shift(0,-1);
+                break;
+            }
+            case DIRECTION::RIGHT: {
+                s = Shift(1,0);
+                break;
+            }
+            case DIRECTION::DOWN: {
+                s = Shift(0,1);
+                break;
+            }
+        }
+
+        t *= p_cluster->DContract(v+s,(dir+2)%4,v,dir);
+        t *= p_cluster->DContract(v+s,(dir+2)%4,v,dir).prime(p_cluster->BRAKET_OFFSET);
+    };
+
     if(DBG) std::cout <<"===== EVBuilder::get2SOPTN called ====="
         << std::string(34,'=') << std::endl;
     /*
      *  Contract network defined as a rectangle by sites s1 and s2 
      *
-     *  C T  T  T  T  C 
-     *  T s1 .  .  .  T 
-     *  T .  .  .  s2 T
-     *  C T  T  T  T  C
+     *  s1b(efore)s2 = true     s1b2 = false
+     *  x1<x2 && y1<y2          x1<x2 && y1>y2
+     *  && (x2-x1)>(y2-y1)      && (x2-x1)>(y1-y2)
      *
+     *  C T  T ... T  T  C      C T  T ... T  T C 
+     *  T v1 . ... .  .  T      T .  . ... . v2 T
+     *  T .  . ... .  v2 T      T v1 . ... .  . T
+     *  C T  T ... T  T  C  or  C T  T ... T  T C
+     *
+     *  && (x2-x1)<(y2-y1)      && (x2-x1)<(y1-y2)
+     *
+     *  C T  T C                C T  T C
+     *  T v1 . T                T . v2 T
+     *  ...                     ...
+     *  T . v2 T                T v1 . T
+     *  C T  T C            or  C T  T C
      */
-    bool singleSite = false; // Assume s1 != s2
-    bool wBEh       = true;  // Assume width of rectangle >= height 
+    bool singleSite = false; // Assume v1 != v2
+    bool s1bs2      = true;  // Assume y1 <= y2
+    bool wBEh       = true;  // Assume width of rectangle >= height
 
     // Perform some coord manipulation (assumed coords are >= 0) and
     // s1.first <= s2.second && s1.second <= s2.second
-    if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
-        || (s1.first > s2.first) || (s1.second > s2.second) ) {
-        std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
-        exit(EXIT_FAILURE);
+    if ((v1.r[0] < 0) || (v1.r[1] < 0) || (v2.r[0] < 0) || (v2.r[1] < 0)) {
+        std::cout <<"[get2SOPTN] Improper coordinates of sites v1, v2"<< std::endl;
+        throw std::runtime_error("[get2SOPTN] Invalid input");
+    }
+    if ( v1.r[0] > v2.r[0] ) {
+        // TODO transform input
     }
 
-    if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
+    if ( v1 == v2 ) {
         if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
             << std::endl;
         singleSite = true;
     }
 
-    int sXdiff = s2.first - s1.first;
-    int sYdiff = s2.second - s1.second;
+    Vertex v_init = v1;
+    int sXdiff = std::abs(v2.r[0] - v1.r[0]);
+    int sYdiff = std::abs(v2.r[1] - v1.r[1]);
+    
+    if ( sXdiff < sYdiff ) { 
+        wBEh = false;
+        if(DBG) std::cout <<"TN Width < Height => contracting row by row"<< std::endl;
+    }
+    if ( v1.r[1] > v2.r[1] ) {
+        s1bs2  = false;
+        v_init = v1 + sYdiff*Shift(0,-1);    
+    } 
+
     if ( !(sXdiff >= sYdiff) ) {
-        if(DBG) std::cout <<"TN Width < Height => contracting row by row"
-            << std::endl;
+        
         wBEh = false;
     }
 
-    // shift s1 to supercell
-    s1.first  = s1.first % cls.sizeM;
-    s1.second = s1.second % cls.sizeN;
-    // shift s2 wrt to new position of s1
-    s2.first  = s1.first + sXdiff;
-    s2.second = s1.second + sYdiff;
-
-    std::pair< int, int > s(s1);
+    Vertex v = v_init;
     ITensor tN;
-
     if (wBEh) {
-        // Construct LEFT edge
-        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+        // 1) ##### Construct LEFT edge ########################################################
+        if(DBG) std::cout << "C_LU["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN  = p_ctmEnv->C_LU.at(vToId(v));
+        for ( int row=0; row <= sYdiff; row++ ) {
+            if (row>0) v = v + Shift(0,1);
 
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
-
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-            tN.prime(HSLINK,2);
-            tN.noprime(LLINK);
-            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+            if(DBG) std::cout<<"T_L["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
+            
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::LEFT, DIRECTION::DOWN);
+            tN *= p_ctmEnv->T_L.at(vToId(v));
         }
-        s.second -= 1;
-        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-        s.second = s.second % cd_f.sizeN;
-        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+        if(DBG) std::cout<<"C_LD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_LD.at(vToId(v));
         if(DBG) Print(tN);
+        // ##### Construct LEFT edge DONE ######################################################
+        // 2) ##### APPEND COLUMNS #############################################################
+        for ( int col=0; col <= sXdiff; col++ ) {
+            v = v_init + col*Shift(1,0);
+            
+            if(DBG) std::cout<<"T_U["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-        s = s1;
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            s.second = s1.second;
-            if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN.noprime(ULINK, DLINK);
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::UP, DIRECTION::RIGHT);
+            tN *= p_ctmEnv->T_U.at(vToId(v));
             
             if(DBG) Print(tN);
 
-            for ( int row=s1.second; row<=s2.second; s.second = ++row ) {
-                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
+            for ( int row=0; row <= sYdiff; row++ ) {
+                if (row>0) v = v + Shift(0,1);
 
-                s.second = s.second % cd_f.sizeN; 
-                tN.noprime(VSLINK);
+                if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-                if ((col==s1.first) && (row == s1.second)) {
-                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                    tN *= prime(Op.first, HSLINK, 2*(sYdiff-row+s1.second));
-                } else if ((col==s2.first) && (row == s2.second)) {
-                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                        << std::endl;
-                    tN *= prime(Op.second, HSLINK, 2*(sYdiff-row+s1.second));
-                } else {
-                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-                        HSLINK, 2*(sYdiff-row+s1.second) );
-                }
+                if (row>0) applyDeltaSite(tN,v,DIRECTION::UP);
+                if (col>0) applyDeltaSite(tN,v,DIRECTION::LEFT);
                 
+                if (v == v1) { tN *= Op.first; }
+                else if (v == v2) { tN *= Op.second; } 
+                else { tN *= getSiteBraKet(v); }
             }
-            tN.prime(HSLINK,-1);
             
-            s.second -= 1;
-            if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+            if(DBG) std::cout <<"T_D["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-            s.second = s.second % cd_f.sizeN;
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
+            tN *= p_ctmEnv->T_D.at(vToId(v));
 
-            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
-                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col <<" <<<<<"<< std::endl;
             if(DBG) Print(tN);
         }
+        // 2) ##### APPEND COLUMNS DONE ########################################################
+        // 3) ##### Construct RIGHT edge #######################################################
+        v = v_init + sXdiff*Shift(1,0);
+        if(DBG) std::cout << "C_RU["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_RU.at(vToId(v));
+        for ( int row=0; row <= sYdiff; row++ ) {
+            if (row>0) v = v + Shift(0,1);
+            if(DBG) std::cout<<"T_R["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
 
-        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
-            << std::endl;
-
-        // Construct RIGHT edge
-        s = std::make_pair(s2.first, s1.second); 
-        if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-        
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
-        if(DBG) Print(tN);
-        
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            tN.noprime(RLINK);
-            tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
-            if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
-                1 << std::endl;
-
-            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
+            tN *= p_ctmEnv->T_R.at(vToId(v));
         }
+        if(DBG) std::cout <<"C_RD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_RD.at(vToId(v));
+        // 3) ##### Construct RIGHT edge DONE ##################################################
+    }
+    else {
+        // 1) ##### Construct UP edge ########################################################
+        if(DBG) std::cout << "C_LU["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN  = p_ctmEnv->C_LU.at(vToId(v));
+        for ( int col=0; col <= sXdiff; col++ ) {
+            if (col>0) v = v + Shift(1,0);
 
-        s.second -= 1;
-        if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-        
-        s.second = s.second % cd_f.sizeN;        
-        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tN);
-    } else {
-        // Construct UP edge
-        if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
-
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
-
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN.prime(VSLINK,2);
-            tN.noprime(ULINK);
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+            if(DBG) std::cout<<"T_U["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
+            
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::UP, DIRECTION::RIGHT);
+            tN *= p_ctmEnv->T_U.at(vToId(v));
         }
-        s.first -= 1;
-        if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
+        if(DBG) std::cout<<"C_RU["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_RU.at(vToId(v));
         if(DBG) Print(tN);
+        // ##### Construct LEFT edge DONE ######################################################
+        // 2) ##### APPEND ROWS #############################################################
+        for ( int row=0; row <= sYdiff; row++ ) {
+            v = v_init + row*Shift(0,1);
+            
+            if(DBG) std::cout<<"T_L["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-        s = s1;
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            s.first = s1.first;
-            if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-            tN.noprime(LLINK, RLINK);
-            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::LEFT, DIRECTION::DOWN);
+            tN *= p_ctmEnv->T_L.at(vToId(v));
             
             if(DBG) Print(tN);
 
-            for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
-                if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                    <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                    <<std::endl;
+            for ( int col=0; col <= sXdiff; col++ ) {
+                if (col>0) v = v + Shift(1,0);
 
-                s.first = s.first % cd_f.sizeM;
-                tN.noprime(HSLINK);
+                if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-                if ((col==s1.first) && (row == s1.second)) {
-                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                    tN *= prime(Op.first, VSLINK, 2*(sXdiff-col+s1.first));
-                } else if ((col==s2.first) && (row == s2.second)) {
-                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                        << std::endl;
-                    tN *= prime(Op.second, VSLINK, 2*(sXdiff-col+s1.first));
-                } else {
-                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-                        VSLINK, 2*(sXdiff-col+s1.first) );
-                }
-            
+                if (row>0) applyDeltaSite(tN,v,DIRECTION::UP);
+                if (col>0) applyDeltaSite(tN,v,DIRECTION::LEFT);
+                
+                if (v == v1) { tN *= Op.first; }
+                else if (v == v2) { tN *= Op.second; } 
+                else { tN *= getSiteBraKet(v); }
             }
-            tN.prime(VSLINK,-1);
             
-            s.first -= 1;
-            if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+            if(DBG) std::cout <<"T_R["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-            s.first = s.first % cd_f.sizeM;
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
+            tN *= p_ctmEnv->T_R.at(vToId(v));
 
-            if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
-                " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
+            if(DBG) std::cout << ">>>>> Appended row X= "<< row <<" <<<<<"<< std::endl;
             if(DBG) Print(tN);
         }
+        // 3) ##### Construct RIGHT edge #######################################################
+        v = v_init + sYdiff*Shift(0,1);
+        if(DBG) std::cout << "C_LD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_LD.at(vToId(v));
+        for ( int col=0; col <= sXdiff; col++ ) {
+            if (col>0) v = v + Shift(1,0);
+            if(DBG) std::cout<<"T_D["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
 
-        if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
-            << std::endl;
-
-        s = std::make_pair(s1.first, s2.second); 
-        if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
-            <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
-        
-        s.second = s.second % cd_f.sizeN;
-        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
-        if(DBG) Print(tN);
-        
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            tN.noprime(DLINK);
-            tN.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
-            if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
-                1 << std::endl;
-
-            if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                <<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
+            tN *= p_ctmEnv->T_D.at(vToId(v));
         }
-
-        s.first -= 1;
-        if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-        
-        s.first = s.first % cd_f.sizeM;        
-        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tN);
+        if(DBG) std::cout <<"C_RD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+        tN *= p_ctmEnv->C_RD.at(vToId(v));
+        // 3) ##### Construct RIGHT edge DONE ##################################################
     }
 
     if ( tN.r() > 0 ) {
@@ -596,46 +554,46 @@ double EVBuilder::get2SOPTN(bool DBG,
     return sumels(tN);
 }
 
-double EVBuilder::evalSS(std::pair<int,int> s1, std::pair<int,int> s2, 
+double EVBuilder::evalSS(Vertex const& v1, Vertex const& v2, 
     std::vector<double> coefs, bool DBG) const
 {
     // find corresponding sites in elementary cluster
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    auto id1 = p_cluster->vertexToId(v1);
+    auto id2 = p_cluster->vertexToId(v2);
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(id1);
+    auto pI2 = p_cluster->mphys.at(id2);
 
     auto opId = get2SiteSpinOP(OP2S_Id, pI1, pI2, DBG);
-    auto n = contract2Smpo(opId, s1, s2, DBG);
+    auto n = contract2Smpo(opId, v1, v2, DBG);
 
-    auto SpSm = std::make_pair(getSpinOp(MPO_S_P, pI1), getSpinOp(MPO_S_M, pI2));
-    auto SmSp = std::make_pair(getSpinOp(MPO_S_M, pI1), getSpinOp(MPO_S_P, pI2));
-    auto SzSz = std::make_pair(getSpinOp(MPO_S_Z, pI1), getSpinOp(MPO_S_Z, pI2));
+    auto SPSM = std::make_pair(getSpinOp(MPO_S_P, pI1), getSpinOp(MPO_S_M, pI2));
+    auto SMSP = std::make_pair(getSpinOp(MPO_S_M, pI1), getSpinOp(MPO_S_P, pI2));
+    auto SZSZ = std::make_pair(getSpinOp(MPO_S_Z, pI1), getSpinOp(MPO_S_Z, pI2));
 
-    auto spsm = contract2Smpo(SpSm, s1, s2, DBG);
-    auto smsp = contract2Smpo(SmSp, s1, s2, DBG);
-    auto szsz = contract2Smpo(SzSz, s1, s2, DBG);
+    auto spsm = contract2Smpo(SPSM, v1, v2, DBG);
+    auto smsp = contract2Smpo(SMSP, v1, v2, DBG);
+    auto szsz = contract2Smpo(SZSZ, v1, v2, DBG);
 
     double ss =  (coefs[2] * szsz + 0.5 * (spsm + smsp))/n;
     return ss;
 }
 
 double EVBuilder::eval2Smpo(OP_2S op2s,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const
+        Vertex const& v1, Vertex const& v2, bool DBG) const
 {
-    return contract2Smpo(op2s, s1, s2, DBG)/contract2Smpo(OP2S_Id, s1, s2, DBG);
+    return contract2Smpo(op2s, v1, v2, DBG)/contract2Smpo(OP2S_Id, v1, v2, DBG);
 }
 
 double EVBuilder::eval2Smpo(std::pair<ITensor,ITensor> const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const
+        Vertex const& v1, Vertex const& v2, bool DBG) const
 {
     // find corresponding sites in elementary cluster
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    auto id1 = p_cluster->vertexToId(v1);
+    auto id2 = p_cluster->vertexToId(v2);
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(id1);
+    auto pI2 = p_cluster->mphys.at(id2);
 
     // Assume Op.first and Op.second have both pair of physical indices with primes 0 and 1
     auto tmpOp = Op;
@@ -647,1358 +605,943 @@ double EVBuilder::eval2Smpo(std::pair<ITensor,ITensor> const& Op,
     tmpOp.second *= delta(tmpPI2,pI2);
     tmpOp.second *= delta(prime(tmpPI2),prime(pI2));
 
-    return contract2Smpo(tmpOp, s1, s2, DBG)/contract2Smpo(OP2S_Id, s1, s2, DBG);
+    return contract2Smpo(tmpOp, v1, v2, DBG)/contract2Smpo(OP2S_Id, v1, v2, DBG);
 }
 
 double EVBuilder::contract2Smpo(OP_2S op2s,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
+        Vertex const& v1, Vertex const& v2, bool DBG) const 
 {
     // find corresponding sites in elementary cluster
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    auto id1 = p_cluster->vertexToId(v1);
+    auto id2 = p_cluster->vertexToId(v2);
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(id1);
+    auto pI2 = p_cluster->mphys.at(id2);
 
     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
 
-    return contract2Smpo(op, s1, s2, DBG);
+    return contract2Smpo(op, v1, v2, DBG);
 }
 
 double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
-        std::pair<int,int> s1, std::pair<int,int> s2, bool DBG) const 
+        Vertex const& v1, Vertex const& v2, bool DBG) const 
 {
-    if(DBG) std::cout <<"===== EVBuilder::contract2Smpo called ====="
-        << std::string(34,'=') << std::endl;
-    /*
-     *  Contract network defined as a rectangle by sites s1 and s2 
-     *
-     *  C T  T  T  T  C 
-     *  T s1 .  .  .  T 
-     *  T .  .  .  s2 T
-     *  C T  T  T  T  C
-     *
-     */
-    bool singleSite = false; // Assume s1 != s2
-    bool s1bs2      = true;  // Assume s1.first <= s2.first
-    bool wBEh       = true;  // Assume width of rectangle >= height 
-
-    // Perform some coord manipulation (assumed coords are >= 0) and
-    // s1.first <= s2.second && s1.second <= s2.second
-    if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
-        || (s1.second > s2.second) ) {
-        std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
-        if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
-            << std::endl;
-        singleSite = true;
-    }
-
-    if (s1.first > s2.first) {
-        if(DBG) std::cout <<"s1.first > s2.first => s1 defines upper right corner"
-            << std::endl;
-        s1bs2 = false;
-    }
-
-    int sXdiff = s2.first - s1.first;
-    int sYdiff = s2.second - s1.second;
-    if ( !(abs(sXdiff) >= abs(sYdiff)) ) {
-        if(DBG) std::cout <<"TN Width < Height => contracting row by row"
-            << std::endl;
-        wBEh = false;
-    }
-
-    ITensor tN;
-
-    if (wBEh && s1bs2) {
-        // shift s1 to supercell
-        s1.first  = s1.first % cls.sizeM;
-        s1.second = s1.second % cls.sizeN;
-        // shift s2 wrt to new position of s1
-        s2.first  = s1.first + sXdiff;
-        s2.second = s1.second + sYdiff;
-
-        std::pair< int, int > s(s1);
-
-        // Construct LEFT edge
-        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
-
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
-
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-            tN.prime(HSLINK,2);
-            tN.noprime(LLINK);
-            tN = tN * cd_f.T_L[cd_f.cToS.at(s)];
-        }
-        s.second -= 1;
-        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-        s.second = s.second % cd_f.sizeN;
-        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-        if(DBG) Print(tN);
-
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            s.second = s1.second;
-            if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN.noprime(ULINK, DLINK);
-            tN = tN * cd_f.T_U[cd_f.cToS.at(s)];
-            
-            if(DBG) Print(tN);
-
-            for ( int row=s1.second; row<=s2.second; s.second = ++row ) {
-                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
-
-                s.second = s.second % cd_f.sizeN; 
-                tN.noprime(VSLINK);
-
-                if ((col==s1.first) && (row == s1.second)) {
-                    // contract Op.first with bra and ket on-site tensors of site s1
-                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                    tN = tN * prime(mpo_s1.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
-                } else if ((col==s2.first) && (row == s2.second)) {
-                    // contract Op.second with bra and ket on-site tensors of site s2
-                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                        << std::endl;
-                    tN = tN * prime(mpo_s2.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
-                } else {
-                    tN = tN * prime( cd_f.sites[cd_f.cToS.at(s)],
-                        HSLINK, 2*(sYdiff-row+s1.second) );
-                }
-                
-            }
-            tN.prime(HSLINK,-1);
-            
-            s.second -= 1;
-            if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
-
-            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
-                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
-            if(DBG) Print(tN);
-        }
-
-        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
-            << std::endl;
-
-        // Construct RIGHT edge
-        s = std::make_pair(s2.first, s1.second); 
-        if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-        
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
-        if(DBG) Print(tN);
-        
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            tN.noprime(RLINK);
-            tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
-            if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
-                1 << std::endl;
-
-            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
-        }
-
-        s.second -= 1;
-        if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-        
-        s.second = s.second % cd_f.sizeN;        
-        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tN);
-    } else if(!wBEh && s1bs2) {
-        // shift s1 to supercell
-        s1.first  = s1.first % cls.sizeM;
-        s1.second = s1.second % cls.sizeN;
-        // shift s2 wrt to new position of s1
-        s2.first  = s1.first + sXdiff;
-        s2.second = s1.second + sYdiff;
-
-        std::pair< int, int > s(s1);
-
-        // Construct UP edge
-        if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
-
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
-
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN.prime(VSLINK,2);
-            tN.noprime(ULINK);
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
-        }
-        s.first -= 1;
-        if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
-        if(DBG) Print(tN);
-
-        s = s1;
-        for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            s.first = s1.first;
-            if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = s.second % cd_f.sizeN;
-            tN.noprime(LLINK, RLINK);
-            tN *= cd_f.T_L[cd_f.cToS.at(s)];
-            
-            if(DBG) Print(tN);
-
-            for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
-                if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                    <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                    <<std::endl;
-
-                s.first = s.first % cd_f.sizeM;
-                tN.noprime(HSLINK);
-
-                if ((col==s1.first) && (row == s1.second)) {
-                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                    tN *= prime(mpo_s1.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
-                } else if ((col==s2.first) && (row == s2.second)) {
-                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                        << std::endl;
-                    tN *= prime(mpo_s2.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
-                } else {
-                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-                        VSLINK, 2*(sXdiff-col+s1.first) );
-                }
-            
-            }
-            tN.prime(VSLINK,-1);
-            
-            s.first -= 1;
-            if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
-
-            if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
-                " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
-            if(DBG) Print(tN);
-        }
-
-        if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
-            << std::endl;
-
-        s = std::make_pair(s1.first, s2.second); 
-        if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
-            <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
-        
-        s.second = s.second % cd_f.sizeN;
-        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
-        if(DBG) Print(tN);
-        
-        for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-            tN.noprime(DLINK);
-            tN.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
-            if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
-                1 << std::endl;
-
-            if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                <<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
-        }
-
-        s.first -= 1;
-        if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-        
-        s.first = s.first % cd_f.sizeM;        
-        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tN);
-    } else if(wBEh && !s1bs2) {
-        sXdiff = s1.first - s2.first;
-        sYdiff = s1.second - s2.second;
-
-        if(DBG) { std::cout <<"Args: s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
-            std::cout <<"Args: s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
-
-        // shift s2 to supercell
-        s2.first  = s2.first % cls.sizeM;
-        s2.second = s2.second % cls.sizeN;
-        // shift s1 wrt to new position of s2
-        s1.first  = s2.first + sXdiff;
-        s1.second = s2.second + sYdiff;
-
-        if(DBG) { std::cout <<"After shift: "<< std::endl;
-            std::cout <<"s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
-            std::cout <<"s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
-
-        // start from
-        std::pair< int, int > s{s2};
-
-        // Construct LEFT edge
-        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"]"<<std::endl;
-
-        tN = cd_f.C_LD[cd_f.cToS.at(s)];
-
-        for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-            if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< 
-            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-            tN.prime(HSLINK,2);
-            tN.mapprime(LLINK,0,1);
-            tN *= cd_f.T_L[cd_f.cToS.at(s)];
-        }
-        s.second += 1;
-        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first <<","<< 
-        (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-
-        s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-        tN *= cd_f.C_LU[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-        if(DBG) Print(tN);
-
-        for ( int col=s2.first; col <= s1.first; s.first = ++col ) {
-            s.second = s2.second;
-            if(DBG) std::cout<<"T_D["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-
-            s.first = s.first % cd_f.sizeM;
-            tN.noprime(ULINK, DLINK);
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
-            
-            if(DBG) Print(tN);
-
-            for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< 
-                (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-
-                s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN; 
-
-                if ((col==s1.first) && (row == s1.second)) {
-                    // contract Op.first with bra and ket on-site tensors of site s1
-                    auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                        << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-                            << std::endl; 
-                    tN *= prime(mpo_s1.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
-                } else if ((col==s2.first) && (row == s2.second)) {
-                    // contract Op.second with bra and ket on-site tensors of site s2
-                    auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-                    if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                        <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                        << std::endl;
-                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-                            << std::endl;
-                    tN *= prime(mpo_s2.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
-                } else {
-                    if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-                            << std::endl;
-                    tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-                        HSLINK, 2*abs(abs(sYdiff)+row-s2.second) );
-                }
-
-                tN.prime(VSLINK);
-            }
-            tN.prime(VSLINK,-1);
-            tN.prime(HSLINK,-1);
-            
-            s.second -= 1;
-            if(DBG) std::cout <<"T_U["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< 
-            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
-
-            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
-                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
-            if(DBG) Print(tN);
-        }
-
-        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
-            << std::endl;
-
-        // Construct RIGHT edge
-        s = std::make_pair(s1.first, s2.second); 
-        if(DBG) std::cout << "C_RD["<< s1.first <<","<< s2.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
-        
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-        if(DBG) Print(tN);
-        
-        for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-            tN.mapprime(2*abs(abs(sYdiff)+row-s2.second), 1,HSLINK);
-            if(DBG) std::cout <<"HSLINK "<< 2*abs(abs(sYdiff)+row-s2.second) <<" -> "<<  
-                1 << std::endl;
-
-            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< 
-                (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-
-            s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
-            tN.prime(RLINK);
-        }
-        tN.noprime(RLINK);
-        s.second -= 1;
-        if(DBG) std::cout <<"C_RU["<< s2.first <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< 
-            (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
-        
-        s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;        
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
-
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tN);
-    }
-
-    if ( tN.r() > 0 ) {
-        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    if(DBG) std::cout <<"===== EVBuilder::contract2Smpo done ====="
-        << std::string(36,'=') << std::endl;
-
-    return sumels(tN);
-}
-
-double EVBuilder::eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
-        bool DBG) const 
-{
-    auto rdm = redDenMat2x1(s1,s2,DBG);
-    if ( rdm.r() != 4 ) std::cout << "ERROR rdm rank: "<< rdm.r() << std::endl;
+    auto BRAKET_OFFSET = p_cluster->BRAKET_OFFSET;
 
     // find corresponding sites in elementary cluster
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+    auto id1 = p_cluster->vertexToId(v1);
+    auto id2 = p_cluster->vertexToId(v2);
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(id1);
+    auto pI2 = p_cluster->mphys.at(id2);
 
-    auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
+    auto tmp_Op_v1 = (p_cluster->sites.at(id1) * 
+        Op.first) * delta(prime(pI1,1),prime(pI1,BRAKET_OFFSET)) *
+        dag(p_cluster->sites.at(id1)).prime(BRAKET_OFFSET);
 
-    auto valT = rdm * op.first * op.second;
-    if (valT.r() > 0) std::cout << "ERROR valT rank" << std::endl;
-    double val  = sumels(rdm * op.first * op.second);
+    auto tmp_Op_v2 = (p_cluster->sites.at(id2) * 
+        Op.second) * delta(prime(pI2,1),prime(pI2,BRAKET_OFFSET)) *
+        dag(p_cluster->sites.at(id2)).prime(BRAKET_OFFSET);
 
-    auto normT = rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2));
-    if (normT.r() > 0) std::cout << "ERROR normT rank" << std::endl;
-    double n = sumels(rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2)) );
-
-    return val/n;
+    return get2SOPTN(DBG, std::make_pair(tmp_Op_v1,tmp_Op_v2), v1, v2);
 }
 
-ITensor EVBuilder::redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
-    bool DBG) const 
-{
-    if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 called ====="
-        << std::string(34,'=') << std::endl;
-    /*
-     *  Contract network defined as a rectangle by sites s1 and s2 
-     *
-     *  C T  T  C           C T  C
-     *  T s1 s2 T           T s1 T 
-     *  C T  T  C    or     T s2 T
-     *                      C T  C
-     */
-    bool singleSite = false; // Assume s1 != s2
-    bool s1bs2      = true;  // Assume s1.first <= s2.first
-    bool wBEh       = true;  // Assume width of rectangle >= height 
+// double EVBuilder::eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1, std::pair<int,int> s2, 
+//         bool DBG) const 
+// {
+//     auto rdm = redDenMat2x1(s1,s2,DBG);
+//     if ( rdm.r() != 4 ) std::cout << "ERROR rdm rank: "<< rdm.r() << std::endl;
 
-    // Perform some coord manipulation (assumed coords are >= 0) and
-    // s1.first <= s2.second && s1.second <= s2.second
-    if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
-        || (s1.second > s2.second) ) {
-        std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
-        exit(EXIT_FAILURE);
-    }
+//     // find corresponding sites in elementary cluster
+//     auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
+//     auto e_s2 = std::make_pair(s2.first % cls.sizeM, s2.second % cls.sizeN);
+//     // find the index of site given its elem position within cluster
+//     auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
+//     auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
 
-    if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
-        if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
-            << std::endl;
-        singleSite = true;
-    }
+//     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
 
-    if ( s1.first > s2.first ) {
-        if(DBG) std::cout <<"s1.first > s2.first => s1 defines upper right corner"
-            << std::endl;
-        s1bs2 = false;
-    }
+//     auto valT = rdm * op.first * op.second;
+//     if (valT.r() > 0) std::cout << "ERROR valT rank" << std::endl;
+//     double val  = sumels(rdm * op.first * op.second);
 
-    int sXdiff = s2.first - s1.first;
-    int sYdiff = s2.second - s1.second;
-    if ( !(abs(sXdiff) >= abs(sYdiff)) ) {
-        if(DBG) std::cout <<"TN Width < Height => contracting row by row"
-            << std::endl;
-        wBEh = false;
-    }
+//     auto normT = rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2));
+//     if (normT.r() > 0) std::cout << "ERROR normT rank" << std::endl;
+//     double n = sumels(rdm * delta(pI1,prime(pI1)) * delta(pI2,prime(pI2)) );
 
-    ITensor tN;
+//     return val/n;
+// }
 
-    if (wBEh && s1bs2) 
-    { // width >= height AND s1 is on the left of s2
-        // shift s1 to supercell
-        s1.first  = s1.first % cls.sizeM;
-        s1.second = s1.second % cls.sizeN;
-        // shift s2 wrt to new position of s1
-        s2.first  = s1.first + sXdiff;
-        s2.second = s1.second + sYdiff;
+// ITensor EVBuilder::redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2, 
+//     bool DBG) const 
+// {
+//     if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 called ====="
+//         << std::string(34,'=') << std::endl;
+//     /*
+//      *  Contract network defined as a rectangle by sites s1 and s2 
+//      *
+//      *  C T  T  C           C T  C
+//      *  T s1 s2 T           T s1 T 
+//      *  C T  T  C    or     T s2 T
+//      *                      C T  C
+//      */
+//     bool singleSite = false; // Assume s1 != s2
+//     bool s1bs2      = true;  // Assume s1.first <= s2.first
+//     bool wBEh       = true;  // Assume width of rectangle >= height 
 
-        std::pair< int, int > s(s1);
+//     // Perform some coord manipulation (assumed coords are >= 0) and
+//     // s1.first <= s2.second && s1.second <= s2.second
+//     if ( (s1.first < 0) || (s1.second < 0) || (s2.first < 0) || (s2.second <0)
+//         || (s1.second > s2.second) ) {
+//         std::cout <<"Improper coordinates of sites s1, s2"<< std::endl;
+//         exit(EXIT_FAILURE);
+//     }
 
-        // Construct LEFT edge
-        if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+//     if ( (s1.first == s2.first) && (s1.second == s2.second) ) {
+//         if(DBG) std::cout <<"s1 = s2 => Computing norm for single site"
+//             << std::endl;
+//         singleSite = true;
+//     }
 
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+//     if ( s1.first > s2.first ) {
+//         if(DBG) std::cout <<"s1.first > s2.first => s1 defines upper right corner"
+//             << std::endl;
+//         s1bs2 = false;
+//     }
+
+//     int sXdiff = s2.first - s1.first;
+//     int sYdiff = s2.second - s1.second;
+//     if ( !(abs(sXdiff) >= abs(sYdiff)) ) {
+//         if(DBG) std::cout <<"TN Width < Height => contracting row by row"
+//             << std::endl;
+//         wBEh = false;
+//     }
+
+//     ITensor tN;
+
+//     if (wBEh && s1bs2) 
+//     { // width >= height AND s1 is on the left of s2
+//         // shift s1 to supercell
+//         s1.first  = s1.first % cls.sizeM;
+//         s1.second = s1.second % cls.sizeN;
+//         // shift s2 wrt to new position of s1
+//         s2.first  = s1.first + sXdiff;
+//         s2.second = s1.second + sYdiff;
+
+//         std::pair< int, int > s(s1);
+
+//         // Construct LEFT edge
+//         if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+
+//         tN = cd_f.C_LU[cd_f.cToS.at(s)];
         
-        int row = s.second; 
-        if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+//         int row = s.second; 
+//         if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+//             <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
 
-        s.second = s.second % cd_f.sizeN;
-        tN.noprime(LLINK);
-        tN *= cd_f.T_L[cd_f.cToS.at(s)];
+//         s.second = s.second % cd_f.sizeN;
+//         tN.noprime(LLINK);
+//         tN *= cd_f.T_L[cd_f.cToS.at(s)];
         
-        if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+//         if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"] =>"
+//             <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
 
-        s.second = s.second % cd_f.sizeN;
-        tN *= cd_f.C_LD[cd_f.cToS.at(s)];
+//         s.second = s.second % cd_f.sizeN;
+//         tN *= cd_f.C_LD[cd_f.cToS.at(s)];
 
-        if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-        if(DBG) Print(tN);
+//         if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+//         if(DBG) Print(tN);
 
-        int col=s1.first;
-            s.second = s1.second;
-            if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//         int col=s1.first;
+//             s.second = s1.second;
+//             if(DBG) std::cout<<"T_U["<< col <<","<< s.second <<"] =>"
+//                 <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
 
-            s.first = s.first % cd_f.sizeM;
-            tN.noprime(ULINK, DLINK);
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
+//             s.first = s.first % cd_f.sizeM;
+//             tN.noprime(ULINK, DLINK);
+//             tN *= cd_f.T_U[cd_f.cToS.at(s)];
             
-            if(DBG) Print(tN);
+//             if(DBG) Print(tN);
 
-            row=s1.second;
-                if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
+//             row=s1.second;
+//                 if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+//                     <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+//                     <<std::endl;
 
-                s.second = s.second % cd_f.sizeN; 
-                tN.noprime(VSLINK);
+//                 s.second = s.second % cd_f.sizeN; 
+//                 tN.noprime(VSLINK);
 
-                auto cmbL0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
-                // cmbL0 *= delta(cd_f.I_XH, combinedIndex(cmbL0));
-                auto cmbL1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
-                // cmbL1 *= delta(cd_f.I_XV, combinedIndex(cmbL1));
-                auto cmbL3 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
-                // cmbL3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
-                tN *= delta(cd_f.I_XH, combinedIndex(cmbL0));
-                tN *= cmbL0;
-                tN *= delta(cd_f.I_XV, combinedIndex(cmbL1));
-                tN *= cmbL1;
+//                 auto cmbL0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+//                 // cmbL0 *= delta(cd_f.I_XH, combinedIndex(cmbL0));
+//                 auto cmbL1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+//                 // cmbL1 *= delta(cd_f.I_XV, combinedIndex(cmbL1));
+//                 auto cmbL3 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+//                 // cmbL3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
+//                 tN *= delta(cd_f.I_XH, combinedIndex(cmbL0));
+//                 tN *= cmbL0;
+//                 tN *= delta(cd_f.I_XV, combinedIndex(cmbL1));
+//                 tN *= cmbL1;
 
-                // if ((col==s1.first) && (row == s1.second)) {
-                //     // contract Op.first with bra and ket on-site tensors of site s1
-                //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-                //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                //     tN = tN * prime(mpo_s1.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
-                // } else if ((col==s2.first) && (row == s2.second)) {
-                //     // contract Op.second with bra and ket on-site tensors of site s2
-                //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-                //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                //         << std::endl;
-                //     tN = tN * prime(mpo_s2.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
-                // } else {
-                    tN *= cls.sites.at(cls.cToS.at(s));
-                    tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
-                // }
-                tN *= cmbL3;
-                tN *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
+//                 // if ((col==s1.first) && (row == s1.second)) {
+//                 //     // contract Op.first with bra and ket on-site tensors of site s1
+//                 //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+//                 //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+//                 //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+//                 //     tN = tN * prime(mpo_s1.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+//                 // } else if ((col==s2.first) && (row == s2.second)) {
+//                 //     // contract Op.second with bra and ket on-site tensors of site s2
+//                 //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+//                 //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+//                 //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+//                 //         << std::endl;
+//                 //     tN = tN * prime(mpo_s2.mpo[0], HSLINK, 2*(sYdiff-row+s1.second));
+//                 // } else {
+//                     tN *= cls.sites.at(cls.cToS.at(s));
+//                     tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+//                 // }
+//                 tN *= cmbL3;
+//                 tN *= delta(prime(cd_f.I_XV), combinedIndex(cmbL3));
                 
-                auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+//                 auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
 
-            // tN.prime(HSLINK,-1);
+//             // tN.prime(HSLINK,-1);
             
-            if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+//             if(DBG) std::cout <<"T_D["<< col <<","<< s.second <<"] =>"
+//                 <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
 
-            s.second = s.second % cd_f.sizeN;
-            tN *= cd_f.T_D[cd_f.cToS.at(s)];
+//             s.second = s.second % cd_f.sizeN;
+//             tN *= cd_f.T_D[cd_f.cToS.at(s)];
 
-            if(DBG) std::cout << ">>>>> Appended col X= "<< col 
-                <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
-            if(DBG) Print(tN);
-        // }
+//             if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+//                 <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+//             if(DBG) Print(tN);
+//         // }
 
-        if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
-            << std::endl;
+//         if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+//             << std::endl;
 
-        // Construct RIGHT edge
-        s = std::make_pair(s2.first, s1.second);
-        if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//         // Construct RIGHT edge
+//         s = std::make_pair(s2.first, s1.second);
+//         if(DBG) std::cout << "C_RU["<< s2.first <<","<< s1.second <<"] =>"
+//             <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
         
-        s.first = s.first % cd_f.sizeM;
-        auto tNR = cd_f.C_RU[cd_f.cToS.at(s)];
-        if(DBG) Print(tNR);
+//         s.first = s.first % cd_f.sizeM;
+//         auto tNR = cd_f.C_RU[cd_f.cToS.at(s)];
+//         if(DBG) Print(tNR);
         
-        // for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-            tNR.noprime(RLINK);
-            // tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
-            // if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
-                // 1 << std::endl;
+//         // for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+//             tNR.noprime(RLINK);
+//             // tN.mapprime(2*(sYdiff-row+s1.second), 1,HSLINK);
+//             // if(DBG) std::cout <<"HSLINK "<< 2*(sYdiff-row+s1.second) <<" -> "<<  
+//                 // 1 << std::endl;
 
-            if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
-                    <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
-                    <<std::endl;
+//             if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+//                     <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"
+//                     <<std::endl;
 
-            s.second = s.second % cd_f.sizeN;
+//             s.second = s.second % cd_f.sizeN;
 
-            tNR *= cd_f.T_R[cd_f.cToS.at(s)];
-        // }
+//             tNR *= cd_f.T_R[cd_f.cToS.at(s)];
+//         // }
 
-        if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+//         if(DBG) std::cout <<"C_RD["<< s2.first <<","<< s.second <<"] =>"
+//                 <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
         
-        s.second = s.second % cd_f.sizeN;        
-        tNR *= cd_f.C_RD[cd_f.cToS.at(s)];
+//         s.second = s.second % cd_f.sizeN;        
+//         tNR *= cd_f.C_RD[cd_f.cToS.at(s)];
 
 
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tNR);
+//         if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+//             << std::endl;
+//         if(DBG) Print(tNR);
 
 
-        // tNR.noprime(ULINK, DLINK);
-        tNR *= cd_f.T_U[cd_f.cToS.at(s)];
+//         // tNR.noprime(ULINK, DLINK);
+//         tNR *= cd_f.T_U[cd_f.cToS.at(s)];
 
 
-        auto cmbR1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
-        // cmbR1 *= delta(cd_f.I_XV, combinedIndex(cmbR1));
-        auto cmbR2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
-        // cmbR2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
-        auto cmbR3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
-        // cmbR3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
-        tNR *= delta(cd_f.I_XV, combinedIndex(cmbR1));
-        tNR *= cmbR1;
-        tNR *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
-        tNR *= cmbR2;
+//         auto cmbR1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+//         // cmbR1 *= delta(cd_f.I_XV, combinedIndex(cmbR1));
+//         auto cmbR2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+//         // cmbR2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
+//         auto cmbR3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+//         // cmbR3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
+//         tNR *= delta(cd_f.I_XV, combinedIndex(cmbR1));
+//         tNR *= cmbR1;
+//         tNR *= delta(prime(cd_f.I_XH), combinedIndex(cmbR2));
+//         tNR *= cmbR2;
 
 
-        tNR *= cls.sites.at(cls.cToS.at(s));
-        tNR *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+//         tNR *= cls.sites.at(cls.cToS.at(s));
+//         tNR *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
 
-        tNR *= cmbR3;
-        tNR *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
+//         tNR *= cmbR3;
+//         tNR *= delta(prime(cd_f.I_XV), combinedIndex(cmbR3));
 
-        tNR *= cd_f.T_D[cd_f.cToS.at(s)];
+//         tNR *= cd_f.T_D[cd_f.cToS.at(s)];
 
 
-        auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+//         auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
 
-        tN.noprime(ULINK,DLINK);
-        tN *= delta( prime(aIs1,2) , prime(aIs2,0) );
-        tN *= delta( prime(aIs1,6) , prime(aIs2,4) );
+//         tN.noprime(ULINK,DLINK);
+//         tN *= delta( prime(aIs1,2) , prime(aIs2,0) );
+//         tN *= delta( prime(aIs1,6) , prime(aIs2,4) );
 
-        return tN * tNR;
-    } 
-    else if (!wBEh && s1bs2) 
-    { // width < height AND s1 is on the left of s2
-        // shift s1 to supercell
-        s1.first  = s1.first % cls.sizeM;
-        s1.second = s1.second % cls.sizeN;
-        // shift s2 wrt to new position of s1
-        s2.first  = s1.first + sXdiff;
-        s2.second = s1.second + sYdiff;
+//         return tN * tNR;
+//     } 
+//     else if (!wBEh && s1bs2) 
+//     { // width < height AND s1 is on the left of s2
+//         // shift s1 to supercell
+//         s1.first  = s1.first % cls.sizeM;
+//         s1.second = s1.second % cls.sizeN;
+//         // shift s2 wrt to new position of s1
+//         s2.first  = s1.first + sXdiff;
+//         s2.second = s1.second + sYdiff;
 
-        std::pair< int, int > s(s1);
+//         std::pair< int, int > s(s1);
 
-        // Construct UP edge
-        if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
+//         // Construct UP edge
+//         if(DBG) std::cout <<"C_LU["<< s.first <<","<< s.second <<"]"<<std::endl;
 
-        tN = cd_f.C_LU[cd_f.cToS.at(s)];
+//         tN = cd_f.C_LU[cd_f.cToS.at(s)];
 
-        //for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-        int col = s1.first;
-            if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//         //for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+//         int col = s1.first;
+//             if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+//                 <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
 
-            s.first = s.first % cd_f.sizeM;
-            tN.prime(VSLINK,2);
-            tN.noprime(ULINK);
-            tN *= cd_f.T_U[cd_f.cToS.at(s)];
-        //}
+//             s.first = s.first % cd_f.sizeM;
+//             tN.prime(VSLINK,2);
+//             tN.noprime(ULINK);
+//             tN *= cd_f.T_U[cd_f.cToS.at(s)];
+//         //}
         
-        if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
-            <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//         if(DBG) std::cout << "C_RU["<< s.first <<","<< s.second <<"] =>"
+//             <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
 
-        s.first = s.first % cd_f.sizeM;
-        tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+//         s.first = s.first % cd_f.sizeM;
+//         tN *= cd_f.C_RU[cd_f.cToS.at(s)];
 
-        if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
-        if(DBG) Print(tN);
+//         if(DBG) std::cout <<">>>>> 1) up edge constructed <<<<<"<< std::endl;
+//         if(DBG) Print(tN);
 
-        s = s1;
-        //for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
-        int row=s1.second;
+//         s = s1;
+//         //for ( int row=s1.second; row <= s2.second; s.second = ++row ) {
+//         int row=s1.second;
 
-            s.first = s1.first;
-            if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
+//             s.first = s1.first;
+//             if(DBG) std::cout<<"T_L["<< s.first <<","<< row <<"] =>"
+//                 <<"["<< s.first <<","<< s.second % cd_f.sizeN <<"]"<<std::endl;
 
-            s.second = s.second % cd_f.sizeN;
-            //tN.noprime(LLINK, RLINK);
-            tN *= cd_f.T_L[cd_f.cToS.at(s)];
+//             s.second = s.second % cd_f.sizeN;
+//             //tN.noprime(LLINK, RLINK);
+//             tN *= cd_f.T_L[cd_f.cToS.at(s)];
             
-            if(DBG) Print(tN);
+//             if(DBG) Print(tN);
 
-            //for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
-            col=s1.first;
-                if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-                    <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                    <<std::endl;
+//             //for ( int col=s1.first; col<=s2.first; s.first = ++col ) {
+//             col=s1.first;
+//                 if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+//                     <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+//                     <<std::endl;
 
-                s.first = s.first % cd_f.sizeM;
-                //tN.noprime(HSLINK);
+//                 s.first = s.first % cd_f.sizeM;
+//                 //tN.noprime(HSLINK);
 
-                auto cmbT0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
-                // cmbT0 *= delta(cd_f.I_XH, combinedIndex(cmbT0));
-                auto cmbT1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
-                // cmbT1 *= delta(cd_f.I_XV, combinedIndex(cmbT1));
-                auto cmbT2 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
-                    prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
-                // cmbT2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
-                tN *= delta(cd_f.I_XH, combinedIndex(cmbT0));
-                tN *= cmbT0;
-                tN *= delta(cd_f.I_XV, combinedIndex(cmbT1));
-                tN *= cmbT1;
+//                 auto cmbT0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+//                 // cmbT0 *= delta(cd_f.I_XH, combinedIndex(cmbT0));
+//                 auto cmbT1 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],1), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],5) );
+//                 // cmbT1 *= delta(cd_f.I_XV, combinedIndex(cmbT1));
+//                 auto cmbT2 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+//                     prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+//                 // cmbT2 *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
+//                 tN *= delta(cd_f.I_XH, combinedIndex(cmbT0));
+//                 tN *= cmbT0;
+//                 tN *= delta(cd_f.I_XV, combinedIndex(cmbT1));
+//                 tN *= cmbT1;
 
-                // if ((col==s1.first) && (row == s1.second)) {
-                //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-                //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-                //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-                //     tN *= prime(mpo_s1.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
-                // } else if ((col==s2.first) && (row == s2.second)) {
-                //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-                //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-                //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-                //         << std::endl;
-                //     tN *= prime(mpo_s2.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
-                // } else {
-                    // tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-                    //     VSLINK, 2*(sXdiff-col+s1.first) );
-                    tN *= cls.sites.at(cls.cToS.at(s));
-                    tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
-                // }
+//                 // if ((col==s1.first) && (row == s1.second)) {
+//                 //     auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+//                 //     if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+//                 //         << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+//                 //     tN *= prime(mpo_s1.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+//                 // } else if ((col==s2.first) && (row == s2.second)) {
+//                 //     auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+//                 //     if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+//                 //         <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+//                 //         << std::endl;
+//                 //     tN *= prime(mpo_s2.mpo[0], VSLINK, 2*(sXdiff-col+s1.first));
+//                 // } else {
+//                     // tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+//                     //     VSLINK, 2*(sXdiff-col+s1.first) );
+//                     tN *= cls.sites.at(cls.cToS.at(s));
+//                     tN *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+//                 // }
             
-                tN *= cmbT2;
-                tN *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
+//                 tN *= cmbT2;
+//                 tN *= delta(prime(cd_f.I_XH), combinedIndex(cmbT2));
 
-            //}
-            auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
-            //tN.prime(VSLINK,-1);
+//             //}
+//             auto aIs1 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+//             //tN.prime(VSLINK,-1);
             
             
-            if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//             if(DBG) std::cout <<"T_R["<< s.first <<","<< row <<"] =>"
+//                 <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
 
-            s.first = s.first % cd_f.sizeM;
-            tN *= cd_f.T_R[cd_f.cToS.at(s)];
+//             s.first = s.first % cd_f.sizeM;
+//             tN *= cd_f.T_R[cd_f.cToS.at(s)];
 
-            if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
-                " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
-            if(DBG) Print(tN);
-        //}
+//             if(DBG) std::cout <<">>>>> Appended row Y= "<< row <<
+//                 " row mod sizeN: "<< row % cd_f.sizeN <<" <<<<<"<< std::endl;
+//             if(DBG) Print(tN);
+//         //}
 
-        if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
-            << std::endl;
+//         if(DBG) std::cout <<">>>>> 2) "<< sYdiff+1 <<" rows appended <<<<<"
+//             << std::endl;
 
-        s = std::make_pair(s1.first, s2.second); 
-        if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
-            <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
+//         s = std::make_pair(s1.first, s2.second); 
+//         if(DBG) std::cout << "C_LD["<< s1.first <<","<< s2.second <<"] =>"
+//             <<"["<< s.first <<","<< s.second  % cd_f.sizeN <<"]"<<std::endl;
         
-        s.second = s.second % cd_f.sizeN;
-        auto tNB = cd_f.C_LD[cd_f.cToS.at(s)];
-        if(DBG) Print(tNB);
+//         s.second = s.second % cd_f.sizeN;
+//         auto tNB = cd_f.C_LD[cd_f.cToS.at(s)];
+//         if(DBG) Print(tNB);
         
-        // for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
-        col = s1.first;
-            //tNB.noprime(DLINK);
-            //tNB.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
-            if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
-                1 << std::endl;
+//         // for ( int col=s1.first; col <= s2.first; s.first = ++col ) {
+//         col = s1.first;
+//             //tNB.noprime(DLINK);
+//             //tNB.mapprime(2*(sXdiff-col+s1.first), 1,VSLINK);
+//             if(DBG) std::cout <<"VSLINK "<< 2*(sXdiff-col+s1.first) <<" -> "<<  
+//                 1 << std::endl;
 
-            if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
-                <<std::endl;
+//             if(DBG) std::cout<<"["<< s.first <<","<< s2.second <<"] =>"
+//                 <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"
+//                 <<std::endl;
 
-            s.first = s.first % cd_f.sizeM;
+//             s.first = s.first % cd_f.sizeM;
 
-            tNB *= cd_f.T_D[cd_f.cToS.at(s)];
-        // }
+//             tNB *= cd_f.T_D[cd_f.cToS.at(s)];
+//         // }
 
         
-        if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
-                <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//         if(DBG) std::cout <<"C_RD["<< s.first <<","<< s2.second <<"] =>"
+//                 <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
         
-        s.first = s.first % cd_f.sizeM;        
-        tNB *= cd_f.C_RD[cd_f.cToS.at(s)];
+//         s.first = s.first % cd_f.sizeM;        
+//         tNB *= cd_f.C_RD[cd_f.cToS.at(s)];
 
-        if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-            << std::endl;
-        if(DBG) Print(tNB);
+//         if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+//             << std::endl;
+//         if(DBG) Print(tNB);
 
-        //tNB.noprime(LLINK, RLINK);
-        tNB *= cd_f.T_L[cd_f.cToS.at(s)];
+//         //tNB.noprime(LLINK, RLINK);
+//         tNB *= cd_f.T_L[cd_f.cToS.at(s)];
 
 
-        auto cmbB0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
-        // cmbB0 *= delta(cd_f.I_XH, combinedIndex(cmbB0));
-        auto cmbB2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
-        // cmbB0 *= delta(prime(cd_f.I_XH), combinedIndex(cmbB0));
-        auto cmbB3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
-            prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
-        // cmbB3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
-        tNB *= delta(cd_f.I_XH, combinedIndex(cmbB0));
-        tNB *= cmbB0;
-        tNB *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
-        tNB *= cmbB3;
+//         auto cmbB0 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],0), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],4) );
+//         // cmbB0 *= delta(cd_f.I_XH, combinedIndex(cmbB0));
+//         auto cmbB2 = combiner(prime(cls.aux[cls.SI.at(cls.cToS.at(s))],2), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],6) );
+//         // cmbB0 *= delta(prime(cd_f.I_XH), combinedIndex(cmbB0));
+//         auto cmbB3 = combiner( prime(cls.aux[cls.SI.at(cls.cToS.at(s))],3), 
+//             prime(cls.aux[cls.SI.at(cls.cToS.at(s))],7) );
+//         // cmbB3 *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
+//         tNB *= delta(cd_f.I_XH, combinedIndex(cmbB0));
+//         tNB *= cmbB0;
+//         tNB *= delta(prime(cd_f.I_XV), combinedIndex(cmbB3));
+//         tNB *= cmbB3;
 
-        tNB *= cls.sites.at(cls.cToS.at(s));
-        tNB *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
+//         tNB *= cls.sites.at(cls.cToS.at(s));
+//         tNB *= prime(prime(conj(cls.sites.at(cls.cToS.at(s))), AUXLINK, 4 ), PHYS, 1);
 
-        tNB *= cmbB2;
-        tNB *= delta(prime(cd_f.I_XH), combinedIndex(cmbB2));
+//         tNB *= cmbB2;
+//         tNB *= delta(prime(cd_f.I_XH), combinedIndex(cmbB2));
 
-        tNB *= cd_f.T_R[cd_f.cToS.at(s)];
+//         tNB *= cd_f.T_R[cd_f.cToS.at(s)];
 
-        auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
-        tN.noprime(LLINK,RLINK);
-        tN *= delta( prime(aIs1,3) , prime(aIs2,1) );
-        tN *= delta( prime(aIs1,7) , prime(aIs2,5) );
+//         auto aIs2 = cls.aux[cls.SI.at(cls.cToS.at(s))];
+//         tN.noprime(LLINK,RLINK);
+//         tN *= delta( prime(aIs1,3) , prime(aIs2,1) );
+//         tN *= delta( prime(aIs1,7) , prime(aIs2,5) );
 
-        return tN * tNB;
-    } 
-    // else if(wBEh && !s1bs2) {
-    //     sXdiff = s1.first - s2.first;
-    //     sYdiff = s1.second - s2.second;
+//         return tN * tNB;
+//     } 
+//     // else if(wBEh && !s1bs2) {
+//     //     sXdiff = s1.first - s2.first;
+//     //     sYdiff = s1.second - s2.second;
 
-    //     if(DBG) { std::cout <<"Args: s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
-    //         std::cout <<"Args: s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+//     //     if(DBG) { std::cout <<"Args: s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+//     //         std::cout <<"Args: s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
 
-    //     // shift s2 to supercell
-    //     s2.first  = s2.first % cls.sizeM;
-    //     s2.second = s2.second % cls.sizeN;
-    //     // shift s1 wrt to new position of s2
-    //     s1.first  = s2.first + sXdiff;
-    //     s1.second = s2.second + sYdiff;
+//     //     // shift s2 to supercell
+//     //     s2.first  = s2.first % cls.sizeM;
+//     //     s2.second = s2.second % cls.sizeN;
+//     //     // shift s1 wrt to new position of s2
+//     //     s1.first  = s2.first + sXdiff;
+//     //     s1.second = s2.second + sYdiff;
 
-    //     if(DBG) { std::cout <<"After shift: "<< std::endl;
-    //         std::cout <<"s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
-    //         std::cout <<"s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
+//     //     if(DBG) { std::cout <<"After shift: "<< std::endl;
+//     //         std::cout <<"s1["<< s1.first <<","<< s1.second <<"]"<< std::endl;
+//     //         std::cout <<"s2["<< s2.first <<","<< s2.second <<"]"<< std::endl; }
 
-    //     // start from
-    //     std::pair< int, int > s{s2};
+//     //     // start from
+//     //     std::pair< int, int > s{s2};
 
-    //     // Construct LEFT edge
-    //     if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"]"<<std::endl;
+//     //     // Construct LEFT edge
+//     //     if(DBG) std::cout << "C_LD["<< s.first <<","<< s.second <<"]"<<std::endl;
 
-    //     tN = cd_f.C_LD[cd_f.cToS.at(s)];
+//     //     tN = cd_f.C_LD[cd_f.cToS.at(s)];
 
-    //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-    //         if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
-    //             <<"["<< s.first <<","<< 
-    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+//     //         if(DBG) std::cout<<"["<< s.first <<","<< row <<"] =>"
+//     //             <<"["<< s.first <<","<< 
+//     //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
 
-    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-    //         tN.prime(HSLINK,2);
-    //         tN.mapprime(LLINK,0,1);
-    //         tN *= cd_f.T_L[cd_f.cToS.at(s)];
-    //     }
-    //     s.second += 1;
-    //     if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"] =>"
-    //         <<"["<< s.first <<","<< 
-    //     (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+//     //         tN.prime(HSLINK,2);
+//     //         tN.mapprime(LLINK,0,1);
+//     //         tN *= cd_f.T_L[cd_f.cToS.at(s)];
+//     //     }
+//     //     s.second += 1;
+//     //     if(DBG) std::cout << "C_LU["<< s.first <<","<< s.second <<"] =>"
+//     //         <<"["<< s.first <<","<< 
+//     //     (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
 
-    //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-    //     tN *= cd_f.C_LU[cd_f.cToS.at(s)];
+//     //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+//     //     tN *= cd_f.C_LU[cd_f.cToS.at(s)];
 
-    //     if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
-    //     if(DBG) Print(tN);
+//     //     if(DBG) std::cout <<">>>>> 1) Left edge constructed <<<<<"<< std::endl;
+//     //     if(DBG) Print(tN);
 
-    //     for ( int col=s2.first; col <= s1.first; s.first = ++col ) {
-    //         s.second = s2.second;
-    //         if(DBG) std::cout<<"T_D["<< col <<","<< s.second <<"] =>"
-    //             <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//     //     for ( int col=s2.first; col <= s1.first; s.first = ++col ) {
+//     //         s.second = s2.second;
+//     //         if(DBG) std::cout<<"T_D["<< col <<","<< s.second <<"] =>"
+//     //             <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
 
-    //         s.first = s.first % cd_f.sizeM;
-    //         tN.noprime(ULINK, DLINK);
-    //         tN *= cd_f.T_D[cd_f.cToS.at(s)];
+//     //         s.first = s.first % cd_f.sizeM;
+//     //         tN.noprime(ULINK, DLINK);
+//     //         tN *= cd_f.T_D[cd_f.cToS.at(s)];
             
-    //         if(DBG) Print(tN);
+//     //         if(DBG) Print(tN);
 
-    //         for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-    //             if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
-    //                 <<"["<< s.first <<","<< 
-    //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //         for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+//     //             if(DBG) std::cout<<"["<< col <<","<< s.second <<"] =>"
+//     //                 <<"["<< s.first <<","<< 
+//     //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
 
-    //             s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN; 
+//     //             s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN; 
 
-    //             if ((col==s1.first) && (row == s1.second)) {
-    //                 // contract Op.first with bra and ket on-site tensors of site s1
-    //                 auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
-    //                 if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
-    //                     << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
-    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-    //                         << std::endl; 
-    //                 tN *= prime(mpo_s1.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
-    //             } else if ((col==s2.first) && (row == s2.second)) {
-    //                 // contract Op.second with bra and ket on-site tensors of site s2
-    //                 auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
-    //                 if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
-    //                     <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
-    //                     << std::endl;
-    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-    //                         << std::endl;
-    //                 tN *= prime(mpo_s2.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
-    //             } else {
-    //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
-    //                         << std::endl;
-    //                 tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
-    //                     HSLINK, 2*abs(abs(sYdiff)+row-s2.second) );
-    //             }
+//     //             if ((col==s1.first) && (row == s1.second)) {
+//     //                 // contract Op.first with bra and ket on-site tensors of site s1
+//     //                 auto mpo_s1 = getTOT(Op.first, cls.cToS.at(s), 0, DBG);
+//     //                 if(DBG) std::cout <<"Op.first inserted at ["<< s.first <<","
+//     //                     << s.second <<"] -> "<< cls.cToS.at(s) << std::endl;
+//     //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+//     //                         << std::endl; 
+//     //                 tN *= prime(mpo_s1.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+//     //             } else if ((col==s2.first) && (row == s2.second)) {
+//     //                 // contract Op.second with bra and ket on-site tensors of site s2
+//     //                 auto mpo_s2 = getTOT(Op.second, cls.cToS.at(s), 0, DBG);
+//     //                 if(DBG) std::cout <<"Op.second inserted at ["<< s.first 
+//     //                     <<","<< s.second <<"] -> "<< cls.cToS.at(s) 
+//     //                     << std::endl;
+//     //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+//     //                         << std::endl;
+//     //                 tN *= prime(mpo_s2.mpo[0], HSLINK, 2*abs(abs(sYdiff)+row-s2.second));
+//     //             } else {
+//     //                 if(DBG) std::cout <<"HSLINK primeLvl: "<< 2*abs(abs(sYdiff)+row-s2.second)
+//     //                         << std::endl;
+//     //                 tN *= prime( cd_f.sites[cd_f.cToS.at(s)],
+//     //                     HSLINK, 2*abs(abs(sYdiff)+row-s2.second) );
+//     //             }
 
-    //             tN.prime(VSLINK);
-    //         }
-    //         tN.prime(VSLINK,-1);
-    //         tN.prime(HSLINK,-1);
+//     //             tN.prime(VSLINK);
+//     //         }
+//     //         tN.prime(VSLINK,-1);
+//     //         tN.prime(HSLINK,-1);
             
-    //         s.second -= 1;
-    //         if(DBG) std::cout <<"T_U["<< col <<","<< s.second <<"] =>"
-    //             <<"["<< s.first <<","<< 
-    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //         s.second -= 1;
+//     //         if(DBG) std::cout <<"T_U["<< col <<","<< s.second <<"] =>"
+//     //             <<"["<< s.first <<","<< 
+//     //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
 
-    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
-    //         tN *= cd_f.T_U[cd_f.cToS.at(s)];
+//     //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+//     //         tN *= cd_f.T_U[cd_f.cToS.at(s)];
 
-    //         if(DBG) std::cout << ">>>>> Appended col X= "<< col 
-    //             <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
-    //         if(DBG) Print(tN);
-    //     }
+//     //         if(DBG) std::cout << ">>>>> Appended col X= "<< col 
+//     //             <<" col mod sizeM: "<< col % cd_f.sizeM <<" <<<<<"<< std::endl;
+//     //         if(DBG) Print(tN);
+//     //     }
 
-    //     if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
-    //         << std::endl;
+//     //     if(DBG) std::cout <<">>>>> 2) "<< sXdiff+1 <<" cols appended <<<<<"
+//     //         << std::endl;
 
-    //     // Construct RIGHT edge
-    //     s = std::make_pair(s1.first, s2.second); 
-    //     if(DBG) std::cout << "C_RD["<< s1.first <<","<< s2.second <<"] =>"
-    //         <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
+//     //     // Construct RIGHT edge
+//     //     s = std::make_pair(s1.first, s2.second); 
+//     //     if(DBG) std::cout << "C_RD["<< s1.first <<","<< s2.second <<"] =>"
+//     //         <<"["<< s.first % cd_f.sizeM <<","<< s.second <<"]"<<std::endl;
         
-    //     s.first = s.first % cd_f.sizeM;
-    //     tN *= cd_f.C_RD[cd_f.cToS.at(s)];
-    //     if(DBG) Print(tN);
+//     //     s.first = s.first % cd_f.sizeM;
+//     //     tN *= cd_f.C_RD[cd_f.cToS.at(s)];
+//     //     if(DBG) Print(tN);
         
-    //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
-    //         tN.mapprime(2*abs(abs(sYdiff)+row-s2.second), 1,HSLINK);
-    //         if(DBG) std::cout <<"HSLINK "<< 2*abs(abs(sYdiff)+row-s2.second) <<" -> "<<  
-    //             1 << std::endl;
+//     //     for ( int row=s2.second; row >= s1.second; s.second = --row ) {
+//     //         tN.mapprime(2*abs(abs(sYdiff)+row-s2.second), 1,HSLINK);
+//     //         if(DBG) std::cout <<"HSLINK "<< 2*abs(abs(sYdiff)+row-s2.second) <<" -> "<<  
+//     //             1 << std::endl;
 
-    //         if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
-    //                 <<"["<< s.first <<","<< 
-    //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //         if(DBG) std::cout<<"["<< s2.first <<","<< s.second <<"] =>"
+//     //                 <<"["<< s.first <<","<< 
+//     //             (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
 
-    //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
+//     //         s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;
 
-    //         tN *= cd_f.T_R[cd_f.cToS.at(s)];
-    //         tN.prime(RLINK);
-    //     }
-    //     tN.noprime(RLINK);
-    //     s.second -= 1;
-    //     if(DBG) std::cout <<"C_RU["<< s2.first <<","<< s.second <<"] =>"
-    //             <<"["<< s.first <<","<< 
-    //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
+//     //         tN *= cd_f.T_R[cd_f.cToS.at(s)];
+//     //         tN.prime(RLINK);
+//     //     }
+//     //     tN.noprime(RLINK);
+//     //     s.second -= 1;
+//     //     if(DBG) std::cout <<"C_RU["<< s2.first <<","<< s.second <<"] =>"
+//     //             <<"["<< s.first <<","<< 
+//     //         (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN <<"]"<<std::endl;
         
-    //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;        
-    //     tN *= cd_f.C_RU[cd_f.cToS.at(s)];
+//     //     s.second = (s.second + abs(s.second)*cd_f.sizeN) % cd_f.sizeN;        
+//     //     tN *= cd_f.C_RU[cd_f.cToS.at(s)];
 
-    //     if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
-    //         << std::endl;
-    //     if(DBG) Print(tN);
-    // }
+//     //     if(DBG) std::cout <<">>>>> 3) contraction with right edge <<<<<"
+//     //         << std::endl;
+//     //     if(DBG) Print(tN);
+//     // }
 
-    if ( tN.r() != 4 ) {
-        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-        exit(EXIT_FAILURE);
-    }
-    if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 done ====="
-        << std::string(36,'=') << std::endl;
+//     if ( tN.r() != 4 ) {
+//         std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+//     if(DBG) std::cout <<"===== EVBuilder::redDenMat2x1 done ====="
+//         << std::string(36,'=') << std::endl;
 
-    return ITensor();
-} 
+//     return ITensor();
+// } 
 
-std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H( 
-        MPO_1S o1, MPO_1S o2,
-        std::pair< int, int > site, int dist, bool dbg)
-{
-    ITensor N, NId;
-    MpoNS op2;
-    std::vector< std::complex<double> > ccVal;
-    std::pair< int, int > site_op2;
+// std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H( 
+//         MPO_1S o1, MPO_1S o2,
+//         Vertex const& v, int dist, bool dbg)
+// {
+//     ITensor N, NId;
+//     MpoNS op2;
+//     std::vector< std::complex<double> > ccVal;
+//     std::pair< int, int > site_op2;
 
-    // Shift site to unit cell
-    if(dbg) std::cout << "OP1 -> ["<< site.first <<","<< site.second <<"] => [";
-    site.first  = site.first % cd_f.sizeM;
-    site.second = site.second % cd_f.sizeN;
-    if(dbg) std::cout << site.first <<","<< site.second <<"] = "
-        << cls.cToS[site] << std::endl;
-    auto op1 = getTOT(o1, cls.cToS[site], 0);
+//     // Shift site to unit cell
+//     if(dbg) std::cout << "OP1 -> ["<< site.first <<","<< site.second <<"] => [";
+//     site.first  = site.first % cd_f.sizeM;
+//     site.second = site.second % cd_f.sizeN;
+//     if(dbg) std::cout << site.first <<","<< site.second <<"] = "
+//         << cls.cToS[site] << std::endl;
+//     auto op1 = getTOT(o1, cls.cToS[site], 0);
     
-    /*
-     * Construct the "left" part tensor L
-     *  _    __                __
-     * |C|--|T |--I(T_u)'     |  |--I(T_u)
-     *  |    |            ==> |  |
-     * |T|--|O1|--I(XH)'  ==> |L |--I(Xh)
-     *  |    |            ==> |  |
-     * |C|--|T |--I(T_d)'     |__|--I(T_d)
-     *
-     */
-    auto idOp = getTOT(MPO_Id, cls.cToS[site], 0);
+//     /*
+//      * Construct the "left" part tensor L
+//      *  _    __                __
+//      * |C|--|T |--I(T_u)'     |  |--I(T_u)
+//      *  |    |            ==> |  |
+//      * |T|--|O1|--I(XH)'  ==> |L |--I(Xh)
+//      *  |    |            ==> |  |
+//      * |C|--|T |--I(T_d)'     |__|--I(T_d)
+//      *
+//      */
+//     auto idOp = getTOT(MPO_Id, cls.cToS[site], 0);
 
-    auto L = (cd_f.C_LU[cd_f.cToS[site]]
-        *cd_f.T_L[cd_f.cToS[site]])
-        *cd_f.C_LD[cd_f.cToS[site]];
-    auto LId = L;
-    L.noprime();
-    LId.noprime();
-    L = ((L * cd_f.T_U[cd_f.cToS[site]] )
-        * op1.mpo[0] ) 
-        * cd_f.T_D[cd_f.cToS[site]];
-    LId = ((LId * cd_f.T_U[cd_f.cToS[site]] )
-        * idOp.mpo[0] )
-        * cd_f.T_D[cd_f.cToS[site]];
-    L.noprime();
-    LId.noprime();
-    Print(L);
-    Print(LId);
+//     auto L = (cd_f.C_LU[cd_f.cToS[site]]
+//         *cd_f.T_L[cd_f.cToS[site]])
+//         *cd_f.C_LD[cd_f.cToS[site]];
+//     auto LId = L;
+//     L.noprime();
+//     LId.noprime();
+//     L = ((L * cd_f.T_U[cd_f.cToS[site]] )
+//         * op1.mpo[0] ) 
+//         * cd_f.T_D[cd_f.cToS[site]];
+//     LId = ((LId * cd_f.T_U[cd_f.cToS[site]] )
+//         * idOp.mpo[0] )
+//         * cd_f.T_D[cd_f.cToS[site]];
+//     L.noprime();
+//     LId.noprime();
+//     Print(L);
+//     Print(LId);
 
-    /*
-     * Contract L with "dist" copies of a column
-     *
-     * I(T_u)--|T|--I(T_u)'
-     *          |
-     *  I(Xh)--|X|--I(Xh)'
-     *          |
-     * I(T_d)--|T|--I(T_d)'
-     *
-     */
-    for(int i=0;i<dist;i++) {
-        // (1) compute correlation at current distance i
-        site_op2 = site;
-        site_op2.first = site_op2.first + 1;
-        if(dbg) std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
-            ","<< site_op2.second <<"]";
-        site_op2.first = site_op2.first % cd_f.sizeM;
-        if(dbg) std::cout <<"=>["<< site_op2.first <<","<< site_op2.second <<"] = "
-            << cls.cToS[site_op2] <<" --T_D"<< std::endl; 
-        op2 = getTOT(o2, cls.cToS[site_op2], 0);
-        idOp = getTOT(MPO_Id, cls.cToS[site_op2], 0);
+//     /*
+//      * Contract L with "dist" copies of a column
+//      *
+//      * I(T_u)--|T|--I(T_u)'
+//      *          |
+//      *  I(Xh)--|X|--I(Xh)'
+//      *          |
+//      * I(T_d)--|T|--I(T_d)'
+//      *
+//      */
+//     for(int i=0;i<dist;i++) {
+//         // (1) compute correlation at current distance i
+//         site_op2 = site;
+//         site_op2.first = site_op2.first + 1;
+//         if(dbg) std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
+//             ","<< site_op2.second <<"]";
+//         site_op2.first = site_op2.first % cd_f.sizeM;
+//         if(dbg) std::cout <<"=>["<< site_op2.first <<","<< site_op2.second <<"] = "
+//             << cls.cToS[site_op2] <<" --T_D"<< std::endl; 
+//         op2 = getTOT(o2, cls.cToS[site_op2], 0);
+//         idOp = getTOT(MPO_Id, cls.cToS[site_op2], 0);
 
-        N = ((L * cd_f.T_U[cd_f.cToS[site_op2]])
-            * op2.mpo[0]) 
-            * cd_f.T_D[cd_f.cToS[site_op2]];
-        NId = ((LId * cd_f.T_U[cd_f.cToS[site_op2]])
-            * idOp.mpo[0]) 
-            * cd_f.T_D[cd_f.cToS[site_op2]];
+//         N = ((L * cd_f.T_U[cd_f.cToS[site_op2]])
+//             * op2.mpo[0]) 
+//             * cd_f.T_D[cd_f.cToS[site_op2]];
+//         NId = ((LId * cd_f.T_U[cd_f.cToS[site_op2]])
+//             * idOp.mpo[0]) 
+//             * cd_f.T_D[cd_f.cToS[site_op2]];
 
-        // normalize
-        auto sqrtN = std::sqrt(norm(N));
-        N   = N / sqrtN;
-        NId = NId / sqrtN;
+//         // normalize
+//         auto sqrtN = std::sqrt(norm(N));
+//         N   = N / sqrtN;
+//         NId = NId / sqrtN;
 
-        // construct the right part
-        /*    
-         * Construct the "right" part tensor R
-         *          __    _                 __
-         * I(T_u)--|T |--|C|       I(T_u)--|  |
-         *          |     |   ==>          |  |
-         *  I(Xh)--|O2|--|T|  ==>   I(Xh)--|R |
-         *          |     |   ==>          |  |
-         * I(T_d)--|T |--|C|       I(T_d)--|__|
-         */
-        N = ((N * cd_f.C_RU[cd_f.cToS[site_op2]])
-            * cd_f.T_R[cd_f.cToS[site_op2]]) 
-            * cd_f.C_RD[cd_f.cToS[site_op2]];
-        NId = ((NId * cd_f.C_RU[cd_f.cToS[site_op2]])
-            * cd_f.T_R[cd_f.cToS[site_op2]]) 
-            * cd_f.C_RD[cd_f.cToS[site_op2]];
+//         // construct the right part
+            
+//          * Construct the "right" part tensor R
+//          *          __    _                 __
+//          * I(T_u)--|T |--|C|       I(T_u)--|  |
+//          *          |     |   ==>          |  |
+//          *  I(Xh)--|O2|--|T|  ==>   I(Xh)--|R |
+//          *          |     |   ==>          |  |
+//          * I(T_d)--|T |--|C|       I(T_d)--|__|
+         
+//         N = ((N * cd_f.C_RU[cd_f.cToS[site_op2]])
+//             * cd_f.T_R[cd_f.cToS[site_op2]]) 
+//             * cd_f.C_RD[cd_f.cToS[site_op2]];
+//         NId = ((NId * cd_f.C_RU[cd_f.cToS[site_op2]])
+//             * cd_f.T_R[cd_f.cToS[site_op2]]) 
+//             * cd_f.C_RD[cd_f.cToS[site_op2]];
     
-        Print(N);
-        Print(NId);
+//         Print(N);
+//         Print(NId);
 
-        // Assign value
-        ccVal.push_back(sumelsC(N)/sumelsC(NId));
+//         // Assign value
+//         ccVal.push_back(sumelsC(N)/sumelsC(NId));
 
-        // (2) Contract with single "transfer" matrix
-        site.first = site.first + 1;
-        if(dbg) std::cout <<"Inserting T_U--X["<< site.first <<
-            ","<< site.second <<"]";
-        site.first = site.first % cd_f.sizeM;
-        if(dbg) std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
-            << cls.cToS[site] <<" --T_D"<< std::endl; 
+//         // (2) Contract with single "transfer" matrix
+//         site.first = site.first + 1;
+//         if(dbg) std::cout <<"Inserting T_U--X["<< site.first <<
+//             ","<< site.second <<"]";
+//         site.first = site.first % cd_f.sizeM;
+//         if(dbg) std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
+//             << cls.cToS[site] <<" --T_D"<< std::endl; 
 
-        idOp = getTOT(MPO_Id, cls.cToS[site], 0);
+//         idOp = getTOT(MPO_Id, cls.cToS[site], 0);
         
-        L = ((L * cd_f.T_U[cd_f.cToS[site]] )
-            * idOp.mpo[0] ) 
-            * cd_f.T_D[cd_f.cToS[site]];
-        LId = ((LId * cd_f.T_U[cd_f.cToS[site]])
-            * idOp.mpo[0] )
-            * cd_f.T_D[cd_f.cToS[site]];
-        L.noprime();
-        LId.noprime();
-    }
+//         L = ((L * cd_f.T_U[cd_f.cToS[site]] )
+//             * idOp.mpo[0] ) 
+//             * cd_f.T_D[cd_f.cToS[site]];
+//         LId = ((LId * cd_f.T_U[cd_f.cToS[site]])
+//             * idOp.mpo[0] )
+//             * cd_f.T_D[cd_f.cToS[site]];
+//         L.noprime();
+//         LId.noprime();
+//     }
 
-    for(int i=0;i<ccVal.size();i++) {
-        std::cout << ccVal[i].real() <<" "<< ccVal[i].imag() << std::endl;
-    }
+//     for(int i=0;i<ccVal.size();i++) {
+//         std::cout << ccVal[i].real() <<" "<< ccVal[i].imag() << std::endl;
+//     }
 
-    return ccVal;
-}
+//     return ccVal;
+// }
 
-void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
-    std::string alg_type) 
-{
-    if(alg_type=="ARPACK") {
-        TransferOpVecProd tvp( (*this), this->cd_f, s0, dir);
+// void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
+//     std::string alg_type) 
+// {
+//     if(alg_type=="ARPACK") {
+//         TransferOpVecProd tvp( (*this), this->cd_f, s0, dir);
 
-        int N = cd_f.auxDimSite * cd_f.auxDimEnv * cd_f.auxDimEnv;
-        ARDNS<TransferOpVecProd> ardns(tvp);
-        ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
-    } 
-    else if (alg_type=="rsvd") {
-        std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
-        auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-        auto cmbI = combinedIndex(cmbX);
-        //cmbX.prime(cmbI);
+//         int N = cd_f.auxDimSite * cd_f.auxDimEnv * cd_f.auxDimEnv;
+//         ARDNS<TransferOpVecProd> ardns(tvp);
+//         ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
+//     } 
+//     else if (alg_type=="rsvd") {
+//         std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
+//         auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+//         auto cmbI = combinedIndex(cmbX);
+//         //cmbX.prime(cmbI);
 
-        auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-        X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-        X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+//         auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+//         X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+//         X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-        X *= cmbX;
-        X.prime();
-        Print(X);
-        {
-            auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-            X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-            X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-            X *= X2;
-        }
-        Print(X);
-        X *= noprime(cmbX);
+//         X *= cmbX;
+//         X.prime();
+//         Print(X);
+//         {
+//             auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+//             X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+//             X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+//             X *= X2;
+//         }
+//         Print(X);
+//         X *= noprime(cmbX);
 
-        auto argsSVDRRt = Args(
-            "Cutoff",-1.0,
-            "Maxm",3,
-            "SVDThreshold",1E-2,
-            "SVD_METHOD","rsvd",
-            "rsvd_power",2,
-            "rsvd_reortho",1
-        );
-        ITensor U(cmbI), S, V;
-        svd(X, U, S, V, argsSVDRRt);
+//         auto argsSVDRRt = Args(
+//             "Cutoff",-1.0,
+//             "Maxm",3,
+//             "SVDThreshold",1E-2,
+//             "SVD_METHOD","rsvd",
+//             "rsvd_power",2,
+//             "rsvd_reortho",1
+//         );
+//         ITensor U(cmbI), S, V;
+//         svd(X, U, S, V, argsSVDRRt);
     
-        PrintData(S);
-    }
-    else if (alg_type=="gesdd") {
-        std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
-        auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-        auto cmbI = combinedIndex(cmbX);
-        //cmbX.prime(cmbI);
+//         PrintData(S);
+//     }
+//     else if (alg_type=="gesdd") {
+//         std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
+//         auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+//         auto cmbI = combinedIndex(cmbX);
+//         //cmbX.prime(cmbI);
 
-        auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-        X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-        X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+//         auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+//         X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+//         X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-        X *= cmbX;
-        X.prime();
-        Print(X);
-        {
-            auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-            X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-            X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-            X *= X2;
-        }
-        Print(X);
-        X *= noprime(cmbX);
+//         X *= cmbX;
+//         X.prime();
+//         Print(X);
+//         {
+//             auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+//             X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+//             X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+//             X *= X2;
+//         }
+//         Print(X);
+//         X *= noprime(cmbX);
 
-        auto argsSVDRRt = Args(
-            "Cutoff",-1.0,
-            "Maxm",3,
-            "SVDThreshold",1E-2,
-            "SVD_METHOD","gesdd"
-        );
-        ITensor U(cmbI), S, V;
-        svd(X, U, S, V, argsSVDRRt);
+//         auto argsSVDRRt = Args(
+//             "Cutoff",-1.0,
+//             "Maxm",3,
+//             "SVDThreshold",1E-2,
+//             "SVD_METHOD","gesdd"
+//         );
+//         ITensor U(cmbI), S, V;
+//         svd(X, U, S, V, argsSVDRRt);
     
-        PrintData(S);
-    }
-    else {
-        std::cout<<"[EVBuilder::analyseTransferMatrix] Unsupported option: "
-            << alg_type <<std::endl;
-    }
-}
+//         PrintData(S);
+//     }
+//     else {
+//         std::cout<<"[EVBuilder::analyseTransferMatrix] Unsupported option: "
+//             << alg_type <<std::endl;
+//     }
+// }
 
 // Diagonal s1, s1+[1,1]
-double EVBuilder::eval2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
+double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, 
         bool DBG) const
 {
-    return contract2x2Diag11(op2s, s1, DBG)/contract2x2Diag11(OP2S_Id, s1, DBG);
+    return contract2x2Diag11(op2s, v1, DBG)/contract2x2Diag11(OP2S_Id, v1, DBG);
 }
 
-double EVBuilder::contract2x2Diag11(OP_2S op2s, std::pair<int,int> s1, 
+double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1, 
     bool DBG) const 
 {
+    using DIRECTION = CtmEnv::DIRECTION;
+
+    auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
+
+    auto readyToContract = [this](ITensor & t, DIRECTION direction, 
+        Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+        // relabel env auxiliary indices
+        t *= delta(
+            p_ctmEnv->tauxByVertex(direction,v0,dir0), 
+            p_ctmEnv->tauxByVertex(direction,v1,dir1));
+        // relabel site auxiliary indices
+        t *= p_cluster->DContract(v0,dir0,v1,dir1);
+        t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
+    };
+
     if(DBG) std::cout <<"===== EVBuilder::expVal2x2Diag11 called ====="
         << std::string(34,'=') << std::endl;
 
-    //shift to unit cell
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    //diagonal s2 = s1 + [1,1]
-    auto e_s2 = std::make_pair((s1.first+1) % cls.sizeM, (s1.second+1) % cls.sizeN);
-
     // s1 sX
     // sY s2
-    auto sX = std::make_pair((s1.first+1) % cls.sizeM, s1.second % cls.sizeN);
-    auto sY = std::make_pair(s1.first % cls.sizeM, (s1.second+1) % cls.sizeN);
-
-    if(DBG) { std::cout <<"s1: ["<< e_s1.first <<","<< e_s1.second <<"]"<<std::endl;
-    std::cout <<"sX: ["<< sX.first <<","<< sX.second <<"]"<<std::endl;
-    std::cout <<"sY: ["<< sY.first <<","<< sY.second <<"]"<<std::endl;
-    std::cout <<"s2: ["<< e_s2.first <<","<< e_s2.second <<"]"<<std::endl; }
+    auto vX = v1 + Shift(1,0);
+    auto vY = v1 + Shift(0,1);
+    auto v2 = v1 + Shift(1,1);
 
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(vToId(v1));
+    auto pI2 = p_cluster->mphys.at(vToId(v2));
 
     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
 
     // build upper left corner
-    auto tN = cd_f.C_LU[cd_f.cToS.at(e_s1)] * cd_f.T_U[cd_f.cToS.at(e_s1)] * 
-        cd_f.T_L[cd_f.cToS.at(e_s1)];
+    auto tN = p_ctmEnv->C_LU.at(vToId(v1)) * p_ctmEnv->T_U.at(vToId(v1));
+    tN *= p_ctmEnv->T_L.at(vToId(v1));
 
     // get operator on site s1
-    auto mpo1s = getTOT(op.first, cls.cToS.at(e_s1), 0, DBG);
+    auto mpo1s = getTOT(op.first, vToId(v1), 0, DBG);
     tN = tN * mpo1s.mpo[0];
-    tN.mapprime(ULINK,1,0, HSLINK,1,0);
-    if(DBG) { std::cout <<">>>>> 1) Upper Left corner done <<<<<"
-            << std::endl;
-        Print(tN); }
+    if(DBG) { 
+        std::cout <<">>>>> 1) Upper Left corner done <<<<<"<< std::endl;
+        Print(tN);
+    }
 
-    // build upper right corner
-    auto urc = cd_f.C_RU[cd_f.cToS.at(sX)] * cd_f.T_U[cd_f.cToS.at(sX)] * 
-        cd_f.T_R[cd_f.cToS.at(sX)] * cd_f.sites[cd_f.cToS.at(sX)];
-    urc.mapprime(VSLINK,1,2);
-    if(DBG) Print(urc);
+    // build right upper corner
+    auto tmp = p_ctmEnv->C_RU.at(vToId(vX)) * p_ctmEnv->T_U.at(vToId(vX));
+    tmp *= p_ctmEnv->T_R.at(vToId(vX));
+    tmp *= p_cluster->sites.at(vToId(vX))*
+        dag(p_cluster->sites.at(vToId(vX))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    if(DBG) Print(tmp);
 
-    tN = tN * urc;
-    if(DBG) { std::cout <<">>>>> 2) Upper Right corner done <<<<<"
-            << std::endl;
-        Print(tN); }
+    readyToContract(tN,DIRECTION::UP,v1,DIRECTION::RIGHT,v2,DIRECTION::LEFT);
+    tN *= tmp;
+    if(DBG) { 
+        std::cout <<">>>>> 2) Upper Right corner done <<<<<"<< std::endl;
+        Print(tN); 
+    }
 
-    // build lower right corner
-    urc = cd_f.C_RD[cd_f.cToS.at(e_s2)] * cd_f.T_R[cd_f.cToS.at(e_s2)] * 
-        cd_f.T_D[cd_f.cToS.at(e_s2)];
+    // build right down corner
+    tmp = p_ctmEnv->C_RD.at(vToId(v2)) * p_ctmEnv->T_R.at(vToId(v2));
+    tmp *= p_ctmEnv->T_D.at(vToId(v2));
 
     // get operator on site s1
-    mpo1s = getTOT(op.second, cls.cToS.at(e_s2), 0, DBG);
-    urc = urc * mpo1s.mpo[0];
-    urc.mapprime(RLINK,0,1, VSLINK,0,2);
-    if(DBG) Print(urc);
+    mpo1s = getTOT(op.second, vToId(v2), 0, DBG);
+    tmp = tmp * mpo1s.mpo[0];
 
-    tN = tN * urc;
-    if(DBG) { std::cout <<">>>>> 3) Down Right corner done <<<<<"
-            << std::endl;
-        Print(tN); }
+    readyToContract(tN,DIRECTION::RIGHT,vX,DIRECTION::DOWN,v2,DIRECTION::UP);
+    tN *= tmp;
+    if(DBG) { 
+        std::cout <<">>>>> 3) Down Right corner done <<<<<"<< std::endl;
+        Print(tN); 
+    }
 
-    urc = cd_f.C_LD[cd_f.cToS.at(sY)] * cd_f.T_D[cd_f.cToS.at(sY)] * 
-        cd_f.T_L[cd_f.cToS.at(sY)] * cd_f.sites[cd_f.cToS.at(sY)];
-    urc.mapprime(LLINK,0,1, VSLINK,0,1, DLINK,1,0, HSLINK,1,0);
-    if(DBG) Print(urc);
+    tmp = p_ctmEnv->C_LD.at(vToId(vY)) * p_ctmEnv->T_D.at(vToId(vY));
+    tmp *= p_ctmEnv->T_L.at(vToId(vY));
+    tmp *= p_cluster->sites.at(vToId(vY))*
+        dag(p_cluster->sites.at(vToId(vY))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    if(DBG) Print(tmp);
 
-    tN = tN * urc;
-    if(DBG) std::cout <<">>>>> 4) Down Left corner done <<<<<"
-            << std::endl;
+    readyToContract(tN,DIRECTION::LEFT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    readyToContract(tN,DIRECTION::DOWN,v2,DIRECTION::LEFT,vY,DIRECTION::RIGHT);
+    tN *= tmp;
+    if(DBG) std::cout <<">>>>> 4) Down Left corner done <<<<<"<< std::endl;
 
     if(tN.r() > 0) {
-        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-        exit(EXIT_FAILURE);
+        std::cout <<"[contract2x2Diag11] Unexpected rank r="<< tN.r() << std::endl;
+        throw std::runtime_error("[contract2x2Diag11] observable is not a scalar");
     }
 
     if(DBG) std::cout <<"===== EVBuilder::expVal2x2Diag11 done ====="
@@ -2100,94 +1643,104 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, std::pair<int,int> s1,
 //     return sumels(tN);
 // }
 
-// Diagonal s1, s1+[-1,-1]
-double EVBuilder::eval2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
+// Diagonal s1, s1+[-1,1]
+double EVBuilder::eval2x2DiagN11(OP_2S op2s, Vertex const& v1, 
         bool DBG) const
 {
-    return contract2x2DiagN11(op2s, s1, DBG)/contract2x2DiagN11(OP2S_Id, s1, DBG);
+    return contract2x2DiagN11(op2s, v1, DBG)/contract2x2DiagN11(OP2S_Id, v1, DBG);
 }
 
-double EVBuilder::contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1, 
+double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1, 
     bool DBG) const 
 {
-    if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN1N1 called ====="
-        << std::string(34,'=') << std::endl;
+    using DIRECTION = CtmEnv::DIRECTION;
 
-    //shift to unit cell
-    auto e_s1 = std::make_pair(s1.first % cls.sizeM, s1.second % cls.sizeN);
-    //diagonal s2 = s1 + [-1,+1]
-    auto e_s2 = std::make_pair((s1.first-1+cls.sizeM) % cls.sizeM, 
-        (s1.second-1+cls.sizeN) % cls.sizeN);
+    auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
+
+    auto readyToContract = [this](ITensor & t, DIRECTION direction, 
+        Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+        // relabel env auxiliary indices
+        t *= delta(
+            p_ctmEnv->tauxByVertex(direction,v0,dir0), 
+            p_ctmEnv->tauxByVertex(direction,v1,dir1));
+        // relabel site auxiliary indices
+        t *= p_cluster->DContract(v0,dir0,v1,dir1);
+        t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
+    };
+
+    if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN11 called ====="
+        << std::string(34,'=') << std::endl;
 
     // sX s1
     // s2 sY
-    auto sX = std::make_pair((s1.first-1+cls.sizeM) % cls.sizeM, s1.second % cls.sizeN);
-    auto sY = std::make_pair(s1.first % cls.sizeM, (s1.second-1+cls.sizeN) % cls.sizeN);
-
-    if(DBG) { std::cout <<"s1: ["<< e_s1.first <<","<< e_s1.second <<"]"<<std::endl;
-    std::cout <<"sX: ["<< sX.first <<","<< sX.second <<"]"<<std::endl;
-    std::cout <<"sY: ["<< sY.first <<","<< sY.second <<"]"<<std::endl;
-    std::cout <<"s2: ["<< e_s2.first <<","<< e_s2.second <<"]"<<std::endl; }
+    auto vX = v1 + Shift(-1,0);
+    auto vY = v1 + Shift(0,1);
+    auto v2 = v1 + Shift(-1,1);
 
     // find the index of site given its elem position within cluster
-    auto pI1 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s1)), PHYS));
-    auto pI2 = noprime(findtype(cls.sites.at(cls.cToS.at(e_s2)), PHYS));
+    auto pI1 = p_cluster->mphys.at(vToId(v1));
+    auto pI2 = p_cluster->mphys.at(vToId(v2));
 
     auto op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
 
-    // build upper right corner
-    auto tN = cd_f.C_RU[cd_f.cToS.at(e_s1)] * cd_f.T_U[cd_f.cToS.at(e_s1)] * 
-        cd_f.T_R[cd_f.cToS.at(e_s1)];
+    // build right upper corner
+    auto tN = p_ctmEnv->C_RU.at(vToId(v1)) * p_ctmEnv->T_U.at(vToId(v1));
+    tN *= p_ctmEnv->T_R.at(vToId(v1));
 
     // get operator on site s1
-    auto mpo1s = getTOT(op.first, cls.cToS.at(e_s1), 0, DBG);
+    auto mpo1s = getTOT(op.first, vToId(v1), 0, DBG);
     tN = tN * mpo1s.mpo[0];
-    tN.mapprime(RLINK,1,0, VSLINK,1,0);
-    if(DBG) { std::cout <<">>>>> 1) Upper Right corner done <<<<<"
-            << std::endl;
-        Print(tN); }
-
-    // build down right corner
-    auto urc = cd_f.C_RD[cd_f.cToS.at(sY)] * cd_f.T_R[cd_f.cToS.at(sY)] * 
-        cd_f.T_D[cd_f.cToS.at(sY)] * cd_f.sites[cd_f.cToS.at(sY)];
-    urc.mapprime(HSLINK,0,1);
-    if(DBG) Print(urc);
-
-    tN = tN * urc;
-    if(DBG) { std::cout <<">>>>> 2) Lower Right corner done <<<<<"
-            << std::endl;
-        Print(tN); }
-
-    // build lower left corner
-    urc = cd_f.C_LD[cd_f.cToS.at(e_s2)] * cd_f.T_L[cd_f.cToS.at(e_s2)] * 
-        cd_f.T_D[cd_f.cToS.at(e_s2)];
-
-    // get operator on site s2
-    mpo1s = getTOT(op.second, cls.cToS.at(e_s2), 0, DBG);
-    urc = urc * mpo1s.mpo[0];
-    urc.mapprime(DLINK,1,0);
-    if(DBG) Print(urc);
-
-    tN = tN * urc;
-    if(DBG) { std::cout <<">>>>> 3) Lower Left corner done <<<<<"
-            << std::endl;
-        Print(tN); }
-
-    urc = cd_f.C_LU[cd_f.cToS.at(sX)] * cd_f.T_U[cd_f.cToS.at(sX)] * 
-        cd_f.T_L[cd_f.cToS.at(sX)] * cd_f.sites[cd_f.cToS.at(sX)];
-    urc.mapprime(LLINK,1,0, VSLINK,1,0, ULINK,1,0, HSLINK,1,0);
-    if(DBG) Print(urc);
-
-    tN = tN * urc;
-    if(DBG) std::cout <<">>>>> 4) Upper Left corner done <<<<<"
-            << std::endl;
-
-    if(tN.r() > 0) {
-        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-        exit(EXIT_FAILURE);
+    if(DBG) { 
+        std::cout <<">>>>> 1) right upper corner done <<<<<"<< std::endl;
+        Print(tN);
     }
 
-    if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN1N1 done ====="
+    // build right down corner
+    auto tmp = p_ctmEnv->C_RD.at(vToId(vY)) * p_ctmEnv->T_R.at(vToId(vY));
+    tmp *= p_ctmEnv->T_D.at(vToId(vY));
+    tmp *= p_cluster->sites.at(vToId(vY))*
+        dag(p_cluster->sites.at(vToId(vY))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    if(DBG) Print(tmp);
+
+    readyToContract(tN,DIRECTION::RIGHT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    tN *= tmp;
+    if(DBG) { 
+        std::cout <<">>>>> 2) right down corner done <<<<<"<< std::endl;
+        Print(tN); 
+    }
+
+    // build left down corner
+    tmp = p_ctmEnv->C_LD.at(vToId(v2)) * p_ctmEnv->T_D.at(vToId(v2));
+    tmp *= p_ctmEnv->T_L.at(vToId(v2));
+
+    // get operator on site s1
+    mpo1s = getTOT(op.second, vToId(v2), 0, DBG);
+    tmp = tmp * mpo1s.mpo[0];
+
+    readyToContract(tN,DIRECTION::DOWN,vY,DIRECTION::LEFT,v2,DIRECTION::RIGHT);
+    tN *= tmp;
+    if(DBG) { 
+        std::cout <<">>>>> 3) left down corner done <<<<<"<< std::endl;
+        Print(tN); 
+    }
+
+    tmp = p_ctmEnv->C_LU.at(vToId(vX)) * p_ctmEnv->T_L.at(vToId(vX));
+    tmp *= p_ctmEnv->T_U.at(vToId(vX));
+    tmp *= p_cluster->sites.at(vToId(vX))*
+        dag(p_cluster->sites.at(vToId(vX))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    if(DBG) Print(tmp);
+
+    readyToContract(tN,DIRECTION::UP,v1,DIRECTION::LEFT,vX,DIRECTION::RIGHT);
+    readyToContract(tN,DIRECTION::LEFT,v2,DIRECTION::UP,vX,DIRECTION::DOWN);
+    tN *= tmp;
+    if(DBG) std::cout <<">>>>> 4) left upper corner done <<<<<"<< std::endl;
+
+    if(tN.r() > 0) {
+        std::cout <<"[contract2x2DiagN11] Unexpected rank r="<< tN.r() << std::endl;
+        throw std::runtime_error("[contract2x2DiagN11] Invalid input");
+    }
+
+    if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN11 done ====="
         << std::string(36,'=') << std::endl;
 
     return sumels(tN);
@@ -2195,337 +1748,337 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, std::pair<int,int> s1,
 
 
 
-ITensor EVBuilder::getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
-    bool dbg) const
-{  
+// ITensor EVBuilder::getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
+//     bool dbg) const
+// {  
 
-    Index aS(noprime(findtype(s, AUXLINK)));
-    Index pS(noprime(findtype(s, PHYS)));
+//     Index aS(noprime(findtype(s, AUXLINK)));
+//     Index pS(noprime(findtype(s, PHYS)));
 
-    // build |ket> part
-    ITensor res = s;
-    res = res * prime(conj(s), AUXLINK, 4);
-    if (dbg) Print(res);
+//     // build |ket> part
+//     ITensor res = s;
+//     res = res * prime(conj(s), AUXLINK, 4);
+//     if (dbg) Print(res);
 
-    // contract given indices into ENV compatible indices
-    auto cmb = combiner(aS,prime(aS,4));
-    for (int i=0; i<=3; i++) {
-        if(plToEnv[i]) {
-            res = res * prime(cmb,i);
-            res = res * delta(plToEnv[i],commonIndex(res,prime(cmb,i)));    
-            if (dbg) {
-                Print(plToEnv[i]);
-                Print(res);
-            }
-        }
-    }
+//     // contract given indices into ENV compatible indices
+//     auto cmb = combiner(aS,prime(aS,4));
+//     for (int i=0; i<=3; i++) {
+//         if(plToEnv[i]) {
+//             res = res * prime(cmb,i);
+//             res = res * delta(plToEnv[i],commonIndex(res,prime(cmb,i)));    
+//             if (dbg) {
+//                 Print(plToEnv[i]);
+//                 Print(res);
+//             }
+//         }
+//     }
 
-    return res;
-}
+//     return res;
+// }
 
-double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
-    std::vector< std::pair<int,int> > siteSeq, bool dbg) const
-{
+// double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
+//     std::vector< std::pair<int,int> > siteSeq, bool dbg) const
+// {
 
-    if(siteSeq.size() != 4) {
-        std::cout<<"EVBuilder::contract3Smpo2x2: siteSeq.size() != 4"<<std::endl;
-        exit(EXIT_FAILURE);
-    }
+//     if(siteSeq.size() != 4) {
+//         std::cout<<"EVBuilder::contract3Smpo2x2: siteSeq.size() != 4"<<std::endl;
+//         exit(EXIT_FAILURE);
+//     }
 
-    std::vector< std::string > tn(4);
-    std::vector<int> pl(8);
+//     std::vector< std::string > tn(4);
+//     std::vector<int> pl(8);
 
-    for (int i=0; i<4; i++) {
-        // shift to unit cell
-        auto pos = std::make_pair(
-            (siteSeq[i].first + cls.sizeM * std::abs(siteSeq[i].first)) % cls.sizeM,
-            (siteSeq[i].second + cls.sizeN * std::abs(siteSeq[i].second)) % cls.sizeN
-        );
+//     for (int i=0; i<4; i++) {
+//         // shift to unit cell
+//         auto pos = std::make_pair(
+//             (siteSeq[i].first + cls.sizeM * std::abs(siteSeq[i].first)) % cls.sizeM,
+//             (siteSeq[i].second + cls.sizeN * std::abs(siteSeq[i].second)) % cls.sizeN
+//         );
 
-        tn[i] = cls.cToS.at(pos);
+//         tn[i] = cls.cToS.at(pos);
 
-        int j = (i + 4 - 1) % 4; 
-        auto sv = std::make_pair(siteSeq[i].first - siteSeq[j].first,
-            siteSeq[i].second - siteSeq[j].second); 
+//         int j = (i + 4 - 1) % 4; 
+//         auto sv = std::make_pair(siteSeq[i].first - siteSeq[j].first,
+//             siteSeq[i].second - siteSeq[j].second); 
 
-        int plI0 = 2*j+1;
-        int plI1 = 2*i; 
-        if (sv == std::make_pair(1,0)) {
-            pl[plI0] = 2;
-            pl[plI1] = 0;
-        } else if (sv == std::make_pair(-1,0)) {
-            pl[plI0] = 0;
-            pl[plI1] = 2;
-        } else if (sv == std::make_pair(0,1)) {
-            pl[plI0] = 3;
-            pl[plI1] = 1;
-        } else {
-            pl[plI0] = 1;
-            pl[plI1] = 3;
-        }
-    }
+//         int plI0 = 2*j+1;
+//         int plI1 = 2*i; 
+//         if (sv == std::make_pair(1,0)) {
+//             pl[plI0] = 2;
+//             pl[plI1] = 0;
+//         } else if (sv == std::make_pair(-1,0)) {
+//             pl[plI0] = 0;
+//             pl[plI1] = 2;
+//         } else if (sv == std::make_pair(0,1)) {
+//             pl[plI0] = 3;
+//             pl[plI1] = 1;
+//         } else {
+//             pl[plI0] = 1;
+//             pl[plI1] = 3;
+//         }
+//     }
 
-    return contract3Smpo2x2(mpo3s, tn, pl, dbg);
-}
+//     return contract3Smpo2x2(mpo3s, tn, pl, dbg);
+// }
 
-double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
-    std::vector<std::string> tn, std::vector<int> pl, bool dbg) const
-{
-    int dbgLvl = 3;
+// double EVBuilder::contract3Smpo2x2(MPO_3site const& mpo3s,
+//     std::vector<std::string> tn, std::vector<int> pl, bool dbg) const
+// {
+//     int dbgLvl = 3;
 
-    std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+//     std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 
-    if (dbg) {
-        std::cout<<"GATE: ";
-        for(int i=0; i<=3; i++) {
-            std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
-        }
-        std::cout<< std::endl;
-    }
+//     if (dbg) {
+//         std::cout<<"GATE: ";
+//         for(int i=0; i<=3; i++) {
+//             std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+//         }
+//         std::cout<< std::endl;
+//     }
 
-    if(dbg && (dbgLvl >= 2)) {
-        std::cout<< mpo3s;
-        PrintData(mpo3s.H1);
-        PrintData(mpo3s.H2);
-        PrintData(mpo3s.H3);
-    }
+//     if(dbg && (dbgLvl >= 2)) {
+//         std::cout<< mpo3s;
+//         PrintData(mpo3s.H1);
+//         PrintData(mpo3s.H2);
+//         PrintData(mpo3s.H3);
+//     }
 
-    // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+//     // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
 
-    // map MPOs
-    ITensor dummyMPO = ITensor();
-    std::array<const ITensor *, 4> mpo({&mpo3s.H1, &mpo3s.H2, &mpo3s.H3, &dummyMPO});
+//     // map MPOs
+//     ITensor dummyMPO = ITensor();
+//     std::array<const ITensor *, 4> mpo({&mpo3s.H1, &mpo3s.H2, &mpo3s.H3, &dummyMPO});
 
-    // find integer identifier of on-site tensors within CtmEnv
-    std::vector<int> si;
-    for (int i=0; i<=3; i++) {
-        si.push_back(std::distance(cls.siteIds.begin(),
-                std::find(std::begin(cls.siteIds), 
-                    std::end(cls.siteIds), tn[i])));
-    }
-    if(dbg) {
-        std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-        for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-    }
+//     // find integer identifier of on-site tensors within CtmEnv
+//     std::vector<int> si;
+//     for (int i=0; i<=3; i++) {
+//         si.push_back(std::distance(cls.siteIds.begin(),
+//                 std::find(std::begin(cls.siteIds), 
+//                     std::end(cls.siteIds), tn[i])));
+//     }
+//     if(dbg) {
+//         std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
+//         for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
+//     }
 
-    // read off auxiliary and physical indices of the cluster sites
-    std::array<Index, 4> aux({
-        noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
-        noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
-        noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
-        noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
+//     // read off auxiliary and physical indices of the cluster sites
+//     std::array<Index, 4> aux({
+//         noprime(findtype(cls.sites.at(tn[0]), AUXLINK)),
+//         noprime(findtype(cls.sites.at(tn[1]), AUXLINK)),
+//         noprime(findtype(cls.sites.at(tn[2]), AUXLINK)),
+//         noprime(findtype(cls.sites.at(tn[3]), AUXLINK)) });
 
-    std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
-    std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
+//     std::array<Index, 4> auxRT({ aux[0], aux[1], aux[1], aux[2] });
+//     std::array<int, 4> plRT({ pl[1], pl[2], pl[3], pl[4] });
 
-    std::array<Index, 4> phys({
-        noprime(findtype(cls.sites.at(tn[0]), PHYS)),
-        noprime(findtype(cls.sites.at(tn[1]), PHYS)),
-        noprime(findtype(cls.sites.at(tn[2]), PHYS)),
-        noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
+//     std::array<Index, 4> phys({
+//         noprime(findtype(cls.sites.at(tn[0]), PHYS)),
+//         noprime(findtype(cls.sites.at(tn[1]), PHYS)),
+//         noprime(findtype(cls.sites.at(tn[2]), PHYS)),
+//         noprime(findtype(cls.sites.at(tn[3]), PHYS)) });
 
-    std::array<Index, 3> opPI({
-        noprime(findtype(mpo3s.H1, PHYS)),
-        noprime(findtype(mpo3s.H2, PHYS)),
-        noprime(findtype(mpo3s.H3, PHYS)) });
+//     std::array<Index, 3> opPI({
+//         noprime(findtype(mpo3s.H1, PHYS)),
+//         noprime(findtype(mpo3s.H2, PHYS)),
+//         noprime(findtype(mpo3s.H3, PHYS)) });
 
-    // prepare map from on-site tensor aux-indices to half row/column T
-    // environment tensors
-    std::array<const std::vector<ITensor> * const, 4> iToT(
-        {&cd_f.T_L, &cd_f.T_U, &cd_f.T_R ,&cd_f.T_D});
+//     // prepare map from on-site tensor aux-indices to half row/column T
+//     // environment tensors
+//     std::array<const std::vector<ITensor> * const, 4> iToT(
+//         {&cd_f.T_L, &cd_f.T_U, &cd_f.T_R ,&cd_f.T_D});
 
-    // prepare map from on-site tensor aux-indices pair to half corner T-C-T
-    // environment tensors
-    const std::map<int, const std::vector<ITensor> * const > iToC(
-        {{23, &cd_f.C_LU}, {32, &cd_f.C_LU},
-        {21, &cd_f.C_LD}, {12, &cd_f.C_LD},
-        {3, &cd_f.C_RU}, {30, &cd_f.C_RU},
-        {1, &cd_f.C_RD}, {10, &cd_f.C_RD}});
+//     // prepare map from on-site tensor aux-indices pair to half corner T-C-T
+//     // environment tensors
+//     const std::map<int, const std::vector<ITensor> * const > iToC(
+//         {{23, &cd_f.C_LU}, {32, &cd_f.C_LU},
+//         {21, &cd_f.C_LD}, {12, &cd_f.C_LD},
+//         {3, &cd_f.C_RU}, {30, &cd_f.C_RU},
+//         {1, &cd_f.C_RD}, {10, &cd_f.C_RD}});
 
-    // for every on-site tensor point from primeLevel(index) to ENV index
-    // eg. I_XH or I_XV (with appropriate prime level). 
-    std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
+//     // for every on-site tensor point from primeLevel(index) to ENV index
+//     // eg. I_XH or I_XV (with appropriate prime level). 
+//     std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
 
-    // Find for site 0 through 3 which are connected to ENV
-    std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
+//     // Find for site 0 through 3 which are connected to ENV
+//     std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
 
-    Index iQA, iQD, iQB;
-    ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
-    ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
-    ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+//     Index iQA, iQD, iQB;
+//     ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
+//     ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
+//     ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
     
-    ITensor eRE;
-    ITensor deltaBra, deltaKet;
+//     ITensor eRE;
+//     ITensor deltaBra, deltaKet;
 
-    {
-        // precompute 4 (proto)corners of 2x2 environment
-        std::vector<ITensor> pc(4);
-        for (int s=0; s<=3; s++) {
-            // aux-indices connected to sites
-            std::vector<int> connected({pl[s*2], pl[s*2+1]});
-            // set_difference gives aux-indices connected to ENV
-            std::sort(connected.begin(), connected.end());
-            std::vector<int> tmp_iToE;
-            std::set_difference(plOfSite.begin(), plOfSite.end(), 
-                connected.begin(), connected.end(), 
-                std::inserter(tmp_iToE, tmp_iToE.begin())); 
-            tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
-            if(dbg) { 
-                std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
-                    << tn[s] << std::endl;
-                std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
-            }
+//     {
+//         // precompute 4 (proto)corners of 2x2 environment
+//         std::vector<ITensor> pc(4);
+//         for (int s=0; s<=3; s++) {
+//             // aux-indices connected to sites
+//             std::vector<int> connected({pl[s*2], pl[s*2+1]});
+//             // set_difference gives aux-indices connected to ENV
+//             std::sort(connected.begin(), connected.end());
+//             std::vector<int> tmp_iToE;
+//             std::set_difference(plOfSite.begin(), plOfSite.end(), 
+//                 connected.begin(), connected.end(), 
+//                 std::inserter(tmp_iToE, tmp_iToE.begin())); 
+//             tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
+//             if(dbg) { 
+//                 std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
+//                     << tn[s] << std::endl;
+//                 std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
+//             }
 
-            // Assign indices by which site is connected to ENV
-            if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-                iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
-                iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-            } else {
-                iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
-                iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
-            }
+//             // Assign indices by which site is connected to ENV
+//             if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
+//                 iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
+//                 iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
+//             } else {
+//                 iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
+//                 iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+//             }
 
-            pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
-                (*iToT.at(tmp_iToE[1]))[si[s]];
-            if(dbg) Print(pc[s]);
-            // set primeLevel of ENV indices between T's to 0 to be ready for contraction
-            pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
-        }
-        if(dbg) {
-            for(int i=0; i<=3; i++) {
-                std::cout <<"Site: "<< tn[i] <<" ";
-                for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
-                std::cout << std::endl;
-            }
-        }
-        // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+//             pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
+//                 (*iToT.at(tmp_iToE[1]))[si[s]];
+//             if(dbg) Print(pc[s]);
+//             // set primeLevel of ENV indices between T's to 0 to be ready for contraction
+//             pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
+//         }
+//         if(dbg) {
+//             for(int i=0; i<=3; i++) {
+//                 std::cout <<"Site: "<< tn[i] <<" ";
+//                 for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
+//                 std::cout << std::endl;
+//             }
+//         }
+//         // ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
 
-        // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
-        t_begin_int = std::chrono::steady_clock::now();
+//         // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+//         t_begin_int = std::chrono::steady_clock::now();
 
-        // C  D
-        //    |
-        // A--B
-        // ITensor eRE;
-        // ITensor deltaBra, deltaKet;
+//         // C  D
+//         //    |
+//         // A--B
+//         // ITensor eRE;
+//         // ITensor deltaBra, deltaKet;
 
-        // Decompose A tensor on which the gate is applied
-        //ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
-        ITensor tempSA;
-        svd(cls.sites.at(tn[0]), eA, tempSA, QA);
-        iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
-        eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
-        QA *= delta(commonIndex(QA,tempSA), iQA);
+//         // Decompose A tensor on which the gate is applied
+//         //ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+//         ITensor tempSA;
+//         svd(cls.sites.at(tn[0]), eA, tempSA, QA);
+//         iQA = Index("auxQA", commonIndex(QA,tempSA).m(), AUXLINK, 0);
+//         eA = (eA*tempSA) * delta(commonIndex(QA,tempSA), iQA);
+//         QA *= delta(commonIndex(QA,tempSA), iQA);
 
-        // Prepare corner of A
-        ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         // Prepare corner of A
+//         ITensor tempC = pc[0] * getT(QA, iToE[0], (dbg && (dbgLvl >= 3)) );
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
 
-        deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
-        deltaBra = prime(deltaKet,4);
-        tempC = (tempC * deltaBra) * deltaKet;
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
+//         deltaBra = prime(deltaKet,4);
+//         tempC = (tempC * deltaBra) * deltaKet;
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
 
-        eRE = tempC;
+//         eRE = tempC;
 
-        // Prepare corner of C
-        tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         // Prepare corner of C
+//         tempC = pc[3] * getT(cls.sites.at(tn[3]), iToE[3], (dbg && (dbgLvl >= 3)));
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
         
-        deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
-        deltaBra = prime(deltaKet,4);
-        tempC = (tempC * deltaBra) * deltaKet;
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
+//         deltaBra = prime(deltaKet,4);
+//         tempC = (tempC * deltaBra) * deltaKet;
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
 
-        eRE = eRE * tempC;
+//         eRE = eRE * tempC;
 
-        // Decompose D tensor on which the gate is applied
-        //ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
-        ITensor tempSD;
-        svd(cls.sites.at(tn[2]), eD, tempSD, QD);
-        iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
-        eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
-        QD *= delta(commonIndex(QD,tempSD), iQD);
+//         // Decompose D tensor on which the gate is applied
+//         //ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+//         ITensor tempSD;
+//         svd(cls.sites.at(tn[2]), eD, tempSD, QD);
+//         iQD = Index("auxQD", commonIndex(QD,tempSD).m(), AUXLINK, 0);
+//         eD = (eD*tempSD) * delta(commonIndex(QD,tempSD), iQD);
+//         QD *= delta(commonIndex(QD,tempSD), iQD);
 
-        // Prepare corner of D
-        tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         // Prepare corner of D
+//         tempC = pc[2] * getT(QD, iToE[2], (dbg && (dbgLvl >= 3)));
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
 
-        eRE = eRE * tempC;
+//         eRE = eRE * tempC;
 
-        // Decompose B tensor on which the gate is applied
-        //ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
-        ITensor tempSB;
-        svd(cls.sites.at(tn[1]), eB, tempSB, QB);
-        iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
-        eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
-        QB *= delta(commonIndex(QB,tempSB), iQB);
+//         // Decompose B tensor on which the gate is applied
+//         //ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+//         ITensor tempSB;
+//         svd(cls.sites.at(tn[1]), eB, tempSB, QB);
+//         iQB = Index("auxQB", commonIndex(QB,tempSB).m(), AUXLINK, 0);
+//         eB = (eB*tempSB) * delta(commonIndex(QB,tempSB), iQB);
+//         QB *= delta(commonIndex(QB,tempSB), iQB);
 
-        tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
-        if(dbg && (dbgLvl >=3)) Print(tempC);
+//         tempC = pc[1] * getT(QB, iToE[1], (dbg && (dbgLvl >= 3)));
+//         if(dbg && (dbgLvl >=3)) Print(tempC);
 
-        eRE = eRE * tempC;
+//         eRE = eRE * tempC;
 
-        t_end_int = std::chrono::steady_clock::now();
-        if (dbg) std::cout<<"Constructed reduced Env - T: "<< 
-            std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-        if(dbg && (dbgLvl >=3)) Print(eRE);
-        // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
-    }
+//         t_end_int = std::chrono::steady_clock::now();
+//         if (dbg) std::cout<<"Constructed reduced Env - T: "<< 
+//             std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+//         if(dbg && (dbgLvl >=3)) Print(eRE);
+//         // ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE **********************
+//     }
 
-    // ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
-    t_begin_int = std::chrono::steady_clock::now();
+//     // ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
+//     t_begin_int = std::chrono::steady_clock::now();
 
-    ITensor protoK = (eRE * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
-    protoK = (protoK * eB) * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4]));
-    protoK = (protoK * eD);
-    if(dbg && (dbgLvl >=3)) Print(protoK);
+//     ITensor protoK = (eRE * eA) * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]));
+//     protoK = (protoK * eB) * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4]));
+//     protoK = (protoK * eD);
+//     if(dbg && (dbgLvl >=3)) Print(protoK);
 
-    auto protoKId = protoK;
-    protoK = ( protoK * delta(opPI[0],phys[0]) ) * mpo3s.H1;
-    protoK = ( protoK * delta(opPI[1],phys[1]) ) * mpo3s.H2;
-    protoK = ( protoK * delta(opPI[2],phys[2]) ) * mpo3s.H3;
-    protoK = (( protoK * delta(prime(opPI[0],1),phys[0]) ) * 
-        delta(prime(opPI[1],1),phys[1]) ) * delta(prime(opPI[2],1),phys[2]);
-    if(dbg && (dbgLvl >=3)) Print(protoK);
+//     auto protoKId = protoK;
+//     protoK = ( protoK * delta(opPI[0],phys[0]) ) * mpo3s.H1;
+//     protoK = ( protoK * delta(opPI[1],phys[1]) ) * mpo3s.H2;
+//     protoK = ( protoK * delta(opPI[2],phys[2]) ) * mpo3s.H3;
+//     protoK = (( protoK * delta(prime(opPI[0],1),phys[0]) ) * 
+//         delta(prime(opPI[1],1),phys[1]) ) * delta(prime(opPI[2],1),phys[2]);
+//     if(dbg && (dbgLvl >=3)) Print(protoK);
 
-    // PROTOK - VARIANT 1
-    protoKId *= conj(eA).prime(AUXLINK,4);
-    protoKId *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
-    protoK = protoK * conj(eA).prime(AUXLINK,4);
-    protoK *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
-    if(dbg && (dbgLvl >=3)) Print(protoK);
+//     // PROTOK - VARIANT 1
+//     protoKId *= conj(eA).prime(AUXLINK,4);
+//     protoKId *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
+//     protoK = protoK * conj(eA).prime(AUXLINK,4);
+//     protoK *= delta(prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4));
+//     if(dbg && (dbgLvl >=3)) Print(protoK);
 
-    protoKId *= conj(eB).prime(AUXLINK,4);
-    protoKId *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
-    protoK = protoK * conj(eB).prime(AUXLINK,4);
-    protoK *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
-    if(dbg && (dbgLvl >=3)) Print(protoK);
+//     protoKId *= conj(eB).prime(AUXLINK,4);
+//     protoKId *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
+//     protoK = protoK * conj(eB).prime(AUXLINK,4);
+//     protoK *= delta(prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4));
+//     if(dbg && (dbgLvl >=3)) Print(protoK);
 
-    protoKId *= conj(eD).prime(AUXLINK,4);
-    protoK = protoK * conj(eD).prime(AUXLINK,4);
-    if(dbg && (dbgLvl >=3)) Print(protoK);
+//     protoKId *= conj(eD).prime(AUXLINK,4);
+//     protoK = protoK * conj(eD).prime(AUXLINK,4);
+//     if(dbg && (dbgLvl >=3)) Print(protoK);
 
-    if (rank(protoK) > 0) std::cout<<"ERROR - protoK not a scalar"<<std::endl;
-    if (rank(protoKId) > 0) std::cout<<"ERROR - protoKId not a scalar"<<std::endl;
-    std::complex<double> ev   = sumelsC(protoK);
-    std::complex<double> evId = sumelsC(protoKId);
-    if (isComplex(protoK)) {
-        std::cout<<"Expectation value is Complex: imag(ev)="<< ev.imag() << std::endl;
-    }
-    if (isComplex(protoKId)) {
-        std::cout<<"evId is Complex: imag(evId)="<< evId.imag() << std::endl;
-    }
+//     if (rank(protoK) > 0) std::cout<<"ERROR - protoK not a scalar"<<std::endl;
+//     if (rank(protoKId) > 0) std::cout<<"ERROR - protoKId not a scalar"<<std::endl;
+//     std::complex<double> ev   = sumelsC(protoK);
+//     std::complex<double> evId = sumelsC(protoKId);
+//     if (isComplex(protoK)) {
+//         std::cout<<"Expectation value is Complex: imag(ev)="<< ev.imag() << std::endl;
+//     }
+//     if (isComplex(protoKId)) {
+//         std::cout<<"evId is Complex: imag(evId)="<< evId.imag() << std::endl;
+//     }
 
-    t_end_int = std::chrono::steady_clock::now();
-    if (dbg) {
-        std::cout<<"ev: "<< ev <<" evId: "<< evId << std::endl;
-        std::cout<<"EVBuilder::contract3Smpo2x2 - T: "<< 
-        std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
-    }
+//     t_end_int = std::chrono::steady_clock::now();
+//     if (dbg) {
+//         std::cout<<"ev: "<< ev <<" evId: "<< evId << std::endl;
+//         std::cout<<"EVBuilder::contract3Smpo2x2 - T: "<< 
+//         std::chrono::duration_cast<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl;
+//     }
 
-    return ev.real()/evId.real();
-}
+//     return ev.real()/evId.real();
+// }
 
 // std::complex<double> ExpValBuilder::expVal_1sO1sO_V(int dist, 
 //         itensor::ITensor const& op1, itensor::ITensor const& op2)
@@ -3030,18 +2583,6 @@ ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s, bool DBG) {
     }
 
     return SU2_getSpinOp(su2o, s, DBG);
-}
-
-void EVBuilder::setCluster(Cluster const& new_c) {
-    cls = new_c;
-}
-
-void EVBuilder::setCtmData(CtmData const& new_cd) {
-    cd = new_cd;
-}
-
-void EVBuilder::setCtmData_Full(CtmData_Full const& new_cd_f) {
-    cd_f = new_cd_f;
 }
 
 std::ostream& EVBuilder::print(std::ostream& s) const {

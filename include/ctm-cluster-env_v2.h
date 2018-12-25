@@ -154,7 +154,7 @@ class CtmEnv
     //            6->I_L1, 7->I_L0 
     std::map<std::string, std::vector<itensor::Index> > eaux; // environment aux indices
     // indices labeled by direction of T_* tensors
-    //   LEFT, UP, RIGHT, DOWN     id  direction      
+    //   LEFT, UP, RIGHT, DOWN     id  direction
     std::vector< std::map<std::string, std::vector<itensor::Index> > > itaux;
     
     // direction = enum DIRECTION, dir = site-tensor auxiliary index label
@@ -267,11 +267,11 @@ class CtmEnv
     // ########################################################################
     // CTM iterative methods
 
-    // void move_unidirectional(unsigned int direction, ISOMETRY iso_type,
-    //     Cluster const& c, std::vector<double> & accT);
+    void move_unidirectional(DIRECTION direction, ISOMETRY iso_type,
+        std::vector<double> & accT);
 
-    // void move_singleDirection(unsigned int direction, ISOMETRY iso_type,
-    //     Cluster const& c, std::vector<double> & accT);
+    void move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
+        std::vector<double> & accT);
 
     // ########################################################################
     // isometries
@@ -282,11 +282,12 @@ class CtmEnv
     //     std::vector<itensor::ITensor> & Pt,
     //     std::vector<double> & accT) const;
 
-    // void compute_IsometriesT4(DIRECTION direction, Cluster const& c,
-    //     itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
-    //     std::vector<itensor::ITensor> & P, 
-    //     std::vector<itensor::ITensor> & Pt,
-    //     std::vector<double> & accT) const;
+    void compute_IsometriesT4(DIRECTION direction, 
+        std::map<std::string, itensor::Index> & ip,
+        std::map<std::string, itensor::Index> & ipt,
+        std::map<std::string, itensor::ITensor> & P, 
+        std::map<std::string, itensor::ITensor> & Pt,
+        std::vector<double> & accT) const;
 
     // build reduced density matrix of 2x2 cluster with cut(=uncontracted
     // indices) along one of the CTM directions U,R,D or L starting from

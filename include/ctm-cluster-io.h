@@ -116,31 +116,31 @@ void writeOnSiteTElems(std::vector< std::string > & tEs,
 //     itensor::Index I_XH, I_XV;
 // };
 
-// struct CtmData_Full {
-//     int auxDimEnv;
-//     int auxDimSite;
+struct CtmData_Full {
+    int auxDimEnv;
+    int auxDimSite;
 
-//     int sizeN, sizeM; // size of n(row) x m(columns) cluster
+    int sizeN, sizeM; // size of n(row) x m(columns) cluster
 
-//     std::vector< itensor::ITensor > sites;
-//     // map from cluster to sites
-//     std::map< std::pair<int,int>, int> cToS;
+    std::vector< itensor::ITensor > sites;
+    // map from cluster to sites
+    std::map< std::pair<int,int>, int> cToS;
 
-//     // arrays holding half-row/column tensors
-//     std::vector< itensor::ITensor > T_U;
-//     std::vector< itensor::ITensor > T_R;
-//     std::vector< itensor::ITensor > T_D;
-//     std::vector< itensor::ITensor > T_L;
+    // arrays holding half-row/column tensors
+    std::vector< itensor::ITensor > T_U;
+    std::vector< itensor::ITensor > T_R;
+    std::vector< itensor::ITensor > T_D;
+    std::vector< itensor::ITensor > T_L;
 
-//     // corner tensors
-//     std::vector< itensor::ITensor > C_LU;
-//     std::vector< itensor::ITensor > C_RU;
-//     std::vector< itensor::ITensor > C_RD;
-//     std::vector< itensor::ITensor > C_LD;
+    // corner tensors
+    std::vector< itensor::ITensor > C_LU;
+    std::vector< itensor::ITensor > C_RU;
+    std::vector< itensor::ITensor > C_RD;
+    std::vector< itensor::ITensor > C_LD;
    
-//     itensor::Index I_U, I_R, I_D, I_L;
-//     itensor::Index I_XH, I_XV;
-// };
+    itensor::Index I_U, I_R, I_D, I_L;
+    itensor::Index I_XH, I_XV;
+};
 
 /*
  * store/read environment to/from file(s)
