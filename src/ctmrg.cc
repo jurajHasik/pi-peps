@@ -207,6 +207,7 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 
 	// iterate over pairs (Vertex, Id) within elementary cell of cluster
 	// Id identifies tensor belonging to Vertex
+	time_point t0_inner, t1_inner;
 	t_iso_begin = std::chrono::high_resolution_clock::now();
 	for (auto const& v_id : p_cluster->vToId) {
 		Vertex const& v    = v_id.first;
@@ -224,18 +225,27 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 		// std::cout<< p_shifted <<"="<< c.vertexToId(p_shifted) << std::endl;
 		// Print(c.aux[v_pos]);
 
+		t0_inner = std::chrono::high_resolution_clock::now();
 		nC[id_shift] = Taux.at(id) * C[id];
 		nC[id_shift] *= Pt[id_p_shifted];
+		t1_inner = std::chrono::high_resolution_clock::now();
+		accT[8] += get_mS(t0_inner, t1_inner);
 
+		t0_inner = std::chrono::high_resolution_clock::now();
 		nT[id_shift] = T[id];
 		readyToContract(nT[id_shift],direction,v,dir0,v_p_shifted,dir1);
 		nT[id_shift] *= P[id_p_shifted];
 		nT[id_shift] *= (sites.at(id) * dag(prime(sites.at(id),AUXLINK,BRAKET_OFFSET)));
 		readyToContract(nT[id_shift],direction,v,dir1,v_p_shifted,dir0);
 		nT[id_shift] *= Pt[id];
+		t1_inner = std::chrono::high_resolution_clock::now();
+		accT[9] += get_mS(t0_inner, t1_inner);
 	
+		t0_inner = std::chrono::high_resolution_clock::now();
 		nCt[id_shift] = Tauxt.at(id) * Ct[id];
 		nCt[id_shift] *= P[id];
+		t1_inner = std::chrono::high_resolution_clock::now();
+		accT[10] += get_mS(t0_inner, t1_inner);
 
 		// (dbg) Print(nC[shifted_pos]); Print(nT[shifted_pos]); Print(nCt[shifted_pos]);
 	}

@@ -104,7 +104,7 @@ int main( int argc, char *argv[] ) {
     // hold energies
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
 
-    std::vector<double> accT(8,0.0); // holds timings for CTM moves
+    std::vector<double> accT(12,0.0); // holds timings for CTM moves
     time_point t_begin_int, t_end_int;
     // *****
 
@@ -251,9 +251,12 @@ int main( int argc, char *argv[] ) {
     std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
     std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
         <<" "<< accT[3] << std::endl;
-    std::cout <<"Timings(Projectors) :"<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
+    std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
+    std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+    std::cout <<"isoZ [mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+        <<" "<< accT[11] << std::endl;
 
 
     // Compute final observables
