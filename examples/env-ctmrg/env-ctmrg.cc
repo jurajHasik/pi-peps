@@ -255,7 +255,7 @@ int main( int argc, char *argv[] ) {
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
     std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
-    std::cout <<"isoZ [mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+    std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
         <<" "<< accT[11] << std::endl;
 
 
