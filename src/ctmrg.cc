@@ -76,7 +76,7 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
  	std::map<std::string, ITensor> P, Pt;
  	switch(iso_type) {
         case ISOMETRY_T3: {
-            compute_IsometriesT4(direction, ip, ipt, P, Pt, accT);
+            compute_IsometriesT3(direction, ip, ipt, P, Pt, accT);
             break;
         }
         case ISOMETRY_T4: {
