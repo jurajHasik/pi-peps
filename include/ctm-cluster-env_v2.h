@@ -276,11 +276,12 @@ class CtmEnv
     // ########################################################################
     // isometries
     
-    // void compute_IsometriesT3(unsigned int direction, Cluster const& c,
-    //     itensor::Index & ip, itensor::Index & ipt, itensor::Index & ia,
-    //     std::vector<itensor::ITensor> & P, 
-    //     std::vector<itensor::ITensor> & Pt,
-    //     std::vector<double> & accT) const;
+    void compute_IsometriesT3(DIRECTION direction, 
+        std::map<std::string, itensor::Index> & ip,
+        std::map<std::string, itensor::Index> & ipt,
+        std::map<std::string, itensor::ITensor> & P, 
+        std::map<std::string, itensor::ITensor> & Pt,
+        std::vector<double> & accT) const;
 
     void compute_IsometriesT4(DIRECTION direction, 
         std::map<std::string, itensor::Index> & ip,

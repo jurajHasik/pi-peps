@@ -75,10 +75,10 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
  	std::map<std::string, Index> ip, ipt;
  	std::map<std::string, ITensor> P, Pt;
  	switch(iso_type) {
-        // case ISOMETRY_T3: {
-        //     compute_IsometriesT3(direction, c, ip, ipt, ia, P, Pt, accT);
-        //     break;
-        // }
+        case ISOMETRY_T3: {
+            compute_IsometriesT4(direction, ip, ipt, P, Pt, accT);
+            break;
+        }
         case ISOMETRY_T4: {
             compute_IsometriesT4(direction, ip, ipt, P, Pt, accT);
             break;
@@ -367,138 +367,172 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 // Pt
 // I_L1,a3,a7<==I_L1,a1,a5--Pt--Ipt
 //
-// void CtmEnv::compute_IsometriesT3(unsigned int direction, Cluster const& c,
-//         Index & ip, Index & ipt, Index & ia,
-//         std::vector<ITensor> & P, std::vector<ITensor> & Pt,
-//         std::vector<double> & accT) const
-// {
-// 	double const machine_eps = std::numeric_limits<double>::epsilon();
-// 	int const BRAKET_OFFSET  = 4;
-// 	using time_point = std::chrono::steady_clock::time_point;
-// 	time_point t_iso_begin, t_iso_end;
-// 	auto get_mS = [](time_point ti, time_point tf) { return std::chrono::duration_cast
-//             <std::chrono::microseconds>(tf - ti).count()/1000.0; };
+void CtmEnv::compute_IsometriesT3(DIRECTION direction, 
+        std::map<std::string, Index> & ip,  std::map<std::string, Index> & ipt,
+        std::map<std::string, ITensor> & P, std::map<std::string, ITensor> & Pt,
+        std::vector<double> & accT) const
+{
+	using time_point = std::chrono::high_resolution_clock::time_point;
 
-// 	auto argsSVDRRt = Args(
-//         "Cutoff",-1.0,
-//         "Maxm",x,
-//         "SVDThreshold",1E-2,
-//         "SVD_METHOD",SVD_METHOD,
-//         "rsvd_power",rsvd_power,
-//         "rsvd_reortho",rsvd_reortho,
-//         "rsvd_oversampling",rsvd_oversampling
-//     );
+	double const machine_eps = std::numeric_limits<double>::epsilon();
 
-//     // Take the square-root of SV's
-//     double loc_psdInvCutoff = isoPseudoInvCutoff;
-    
+	auto get_mS = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1000.0; };
 
-// 	// TODO santize this
-// 	// glue that maps from Vertex to position within C,T,Ct,Taux,Tauxt
-// 	auto vToPos = [&c] (Vertex const& v)->int { return c.SI.at(c.vertexToId(v)); };
-// 	auto vToId  = [&c] (Vertex const& v)->std::string { return c.vertexToId(v); };
+    auto vToId  = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
 
-// 	// Corners to be used in construction of projectors
-// 	Shift shift;
-// 	int corner_i, corner_it;
-//     switch (direction) {								// pl_oi--T--pl_pi--C--pl_pl_pti--T--
-// 		case 0: { corner_i = 1; corner_it = 4; shift = Shift( 0, 1); break; } // 2--U--3--L--1--D
-// 		case 1: { corner_i = 2; corner_it = 1; shift = Shift(-1, 0); break; } // R--U--L  
-// 		case 2: { corner_i = 3; corner_it = 2; shift = Shift( 0,-1); break; } // D--R--U 
-// 		case 3: { corner_i = 4; corner_it = 3; shift = Shift( 1, 0); break; } // L--D--R
-// 	}
+    auto readyToContract = [this](ITensor & t, CtmEnv::DIRECTION direction, 
+    	Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+    	// relabel env auxiliary indices
+    	t *= delta(tauxByVertex(direction,v0,dir0), tauxByVertex(direction,v1,dir1));
+    	// relabel site auxiliary indices
+    	t *= p_cluster->DContract(v0,dir0,v1,dir1);
+    	t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
+    };
 
-// 	int pl_pi, pl_pti, pl_oi;
-// 	std::vector<Index> I(4);
-// 	switch (direction) {
-// 		// I_U,2,6--R---I_L,3,7
-// 		// I_L,1,5--Rt--I_D,2,6
-// 		// I_U,2,6--R--I_L,3,7--dai(pl_pi,pl_pti)&&(I[0],prime(I[0]))--I_L,1,5--Rt--I_D,2,6
-// 		case 0:	{ I[0] = I_L; I[1] = I_XH; I[2] = I_U; I[3] = I_D; 
-// 			pl_oi = 2; pl_pi = 3; pl_pti = 1; break; }
-// 		case 1: { I[0] = I_U; I[1] = I_XV; I[2] = I_R; I[3] = I_L;
-// 			pl_oi = 3; pl_pi = 0; pl_pti = 2; break; }
-// 		case 2: { I[0] = I_R; I[1] = prime(I_XH); I[2] = prime(I_D); I[3] = prime(I_U); 
-// 			pl_oi = 0; pl_pi = 1; pl_pti = 3; break; }
-// 		case 3: { I[0] = I_D; I[1] = prime(I_XV); I[2] = prime(I_L); I[3] = prime(I_R);
-// 			pl_oi = 1; pl_pi = 2; pl_pti = 0; break; } 
-// 	}
+    auto edgeIndices = [this](CtmEnv::DIRECTION direction, Vertex const& v, int dir) {
+    	std::vector<Index> tmp = p_cluster->AIBraKetPair(v,dir);
+    	tmp.emplace_back(tauxByVertex(direction,v,dir));
+    	return tmp;
+    };
 
-// 	// Prepare vectors P, Pt to hold projectors
-// 	P  = std::vector<ITensor>( c.sites.size() );
-// 	Pt = std::vector<ITensor>( c.sites.size() );
-// 	ia  = Index("AUX",c.auxBondDim,AUXLINK);
-// 	ip  = Index("AUXP", x);
-// 	ipt = Index("AUXPt",x);
+	auto argsSVDRRt = Args(
+        "Cutoff",-1.0,
+        "Maxm",x,
+        "SVDThreshold",1E-2,
+        "SVD_METHOD",SVD_METHOD,
+        "rsvd_power",rsvd_power,
+        "rsvd_reortho",rsvd_reortho,
+        "rsvd_oversampling",rsvd_oversampling
+    );
 
-//     for(auto const& v_id : c.vToId) {
-//     	Vertex const& v = v_id.first;
-//     	auto ap  = c.aux[vToPos(v)];
-//     	auto apt = c.aux[vToPos(v+shift)];
-//     	std::string id  = v_id.second; // == vToId(v)
-//     	std::string idt = vToId(v+shift);
-//     	auto da = delta(prime(ap,pl_pi), prime(apt,pl_pti));
+    // Take the square-root of SV's
+    double loc_psdInvCutoff = isoPseudoInvCutoff;
 
-//     	// Compute enlarged corners
-//     	t_iso_begin = std::chrono::steady_clock::now();
-//     	ITensor U, S, V;
-//     	auto R  = build_corner_V2(corner_i,  c, v);
-//     	auto Rt = build_corner_V2(corner_it, c, v+shift);
-//   		R *= da;
-//   		R *= prime(da,BRAKET_OFFSET);
-//     	R *= delta(I[0],prime(I[0]));
-//     	t_iso_end = std::chrono::steady_clock::now();
-//     	accT[4] += get_mS(t_iso_begin,t_iso_end);
+	// Corners to be used in construction of projectors
+	DIRECTION p_direction;
+	Shift shift;
+    CORNER corner_i, corner_it;
+    int dir0, dir1, p_dir;
+    switch (direction) {
+		case DIRECTION::LEFT: { 
+			// P   v--------2 <--indices of U
+			//     3
+			//     1
+			// Pt  v+(0,1)--2
+			corner_i  = CORNER::LU;
+			corner_it = CORNER::LD;
+			shift    = Shift( 0, 1);
+			dir0 = 3;
+			dir1 = 1;
+			p_direction = DIRECTION::UP;
+			p_dir = 2;
+			break; 
+		}
+		case DIRECTION::UP: { 
+			// Pt              P
+			// v+(-1,0)--2 0---v
+			// |               |
+            // 3               3
+			//                 ^--indices of U
+			corner_i  = CORNER::RU;
+			corner_it = CORNER::LU;
+			shift    = Shift(-1, 0);
+			dir0 = 0;
+			dir1 = 2;
+			p_direction = DIRECTION::RIGHT;
+			p_dir = 3;
+			break; 
+		}  
+		case DIRECTION::RIGHT: {
+			//                  0---v+(0,-1) Pt
+			//                      3
+			//                      1
+			// indices of U --> 0---v P
+			corner_i  = CORNER::RD;
+			corner_it = CORNER::RU;
+			shift    = Shift( 0,-1);
+			dir0 = 1;
+			dir1 = 3;
+			p_direction = DIRECTION::DOWN;
+			p_dir = 0;
+			break; 
+		} 
+		case DIRECTION::DOWN: {
+		    // indices of U --V
+			//                1       1
+			//                |       |
+            //                v--2 0--v+(1,0)
+            //                P       Pt
+            corner_i  = CORNER::LD;
+			corner_it = CORNER::RD;
+			shift = Shift( 1, 0);
+			dir0 = 2;
+			dir1 = 0;
+			p_direction = DIRECTION::LEFT;
+			p_dir = 1; 
+			break; 
+		}
+	}
 
-//     	// truncated SVD
-//     	t_iso_begin = std::chrono::steady_clock::now();
-//     	U = ITensor(I[2], prime(ap,pl_oi), prime(ap,pl_oi+BRAKET_OFFSET));
-// 	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
-// 	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
-// 	        S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
-// 	        std::cout << "WARNING: CTM-Iso3 " << direction << " [col:row]= "<< v 
-// 	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
-// 	            << std::endl;
-// 	    }
-// 	    t_iso_end = std::chrono::steady_clock::now();
-//     	accT[6] += get_mS(t_iso_begin,t_iso_end);
-// 	    // (dbg) Print(U); Print(V);
+	time_point t_iso_begin, t_iso_end;
+    for(auto const& v_id : p_cluster->vToId) {
+    	std::string id = v_id.second;   
+    	Vertex const& v = v_id.first;
+    	Vertex v_shift  = v + shift;
+
+    	// Compute two halfs of 2x2 density matrix
+    	t_iso_begin = std::chrono::high_resolution_clock::now();
+    	ITensor U, S, V, R, Rt;
+    	R  = build_corner_V2(corner_i,  v);
+    	Rt = build_corner_V2(corner_it, v+shift);
+    	t_iso_end = std::chrono::high_resolution_clock::now();
+    	accT[4] += get_mS(t_iso_begin,t_iso_end);
 
 
-// 	    // Create pseudo-inverse matrix and compute projectors
-//     	t_iso_begin = std::chrono::steady_clock::now();
-//     	auto sIU = commonIndex(U,S);
-//     	auto sIV = commonIndex(S,V);
-//     	int rank = std::max(sIU.m(),sIV.m());
-//     	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
-//     	double est_tol = std::sqrt(max_sv * rank * machine_eps);
-//     	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
-//     	// if ( (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
-//     	// 	"[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
-//     	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
-//     	auto oneOverSqrtT = [&tol](Real r) 
-//         	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
-//     	S.apply(oneOverSqrtT);
+    	// truncated SVD
+    	t_iso_begin = std::chrono::high_resolution_clock::now();
+    	U = ITensor(edgeIndices(p_direction,v,p_dir));
+    	readyToContract(R,direction,v,dir0,v_shift,dir1);
+	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
+	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
+	        S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
+	        std::cout << "WARNING: CTM-Iso4 " << direction << " [col:row]= "<< v 
+	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
+	            << std::endl;
+	    }
+	    t_iso_end = std::chrono::high_resolution_clock::now();
+    	accT[6] += get_mS(t_iso_begin,t_iso_end);
 
-//     	// Inner indices are back to original state
-//     	R *= da;
-//   		R *= prime(da,BRAKET_OFFSET);
-//   		R *= delta(I[0],prime(I[0]));
 
-// 	    P[ vToPos(v)] = (R* U.dag())*S*delta(sIV, ip );
-// 	   	Pt[vToPos(v)] = (Rt*V.dag())*S*delta(sIU, ipt);
-	
-// 	 	// Post-process indices of projectors
-// 	 	auto dR  = delta(prime(ap,pl_pi  ),prime(ia,pl_pi ));
-// 	 	auto dRt = delta(prime(apt,pl_pti),prime(ia,pl_pti));
-// 	   	P[ vToPos(v)] *= dR;  P [vToPos(v)] *= prime(dR,BRAKET_OFFSET);
-// 	   	Pt[vToPos(v)] *= dRt; Pt[vToPos(v)] *= prime(dRt,BRAKET_OFFSET);
+	    // Create pseudo-inverse matrix and compute projectors
+    	t_iso_begin = std::chrono::high_resolution_clock::now();
+    	auto sIU = commonIndex(U,S);
+    	auto sIV = commonIndex(S,V);
+    	int rank = std::max(sIU.m(),sIV.m());
+    	double max_sv = S.real(S.inds().front()(1),S.inds().back()(1));
+    	double est_tol = std::sqrt(max_sv * rank * machine_eps);
+    	double arg_tol = std::sqrt(max_sv) * loc_psdInvCutoff;
+    	// TODO expose debug setting here
+    	// if ( dbg && (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
+    		// "[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
+    	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
+    	auto oneOverSqrtT = [&tol](Real r) 
+        	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
+    	S.apply(oneOverSqrtT);
 
-// 	   	t_iso_end = std::chrono::steady_clock::now();
-//     	accT[7] += get_mS(t_iso_begin,t_iso_end);
-// 	   	// (dbg) Print(P[vToPos(v)]); Print(Pt[vToPos(v)]);
-// 	}
-// }
+    	// set innner indices back to original state
+    	readyToContract(R,direction,v,dir0,v_shift,dir1);
+
+    	ip[ id] = Index("P_"+id,tauxByVertex(direction,v,dir0).m());
+    	ipt[id] = Index("Pt_"+id,tauxByVertex(direction,v,dir1).m());
+	    P[ id] = (R* U.dag())*S*delta(sIV, ip[id] );
+	   	Pt[id] = (Rt*V.dag())*S*delta(sIU, ipt[id]);
+
+	   	t_iso_end = std::chrono::high_resolution_clock::now();
+    	accT[7] += get_mS(t_iso_begin,t_iso_end);
+	}
+}
 
 void CtmEnv::compute_IsometriesT4(DIRECTION direction, 
         std::map<std::string, Index> & ip,  std::map<std::string, Index> & ipt,
