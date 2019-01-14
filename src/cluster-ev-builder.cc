@@ -285,6 +285,8 @@ double EVBuilder::get2SOPTN(bool DBG,
 {
     using DIRECTION = CtmEnv::DIRECTION;
 
+    int const tmp_prime_offset = 10;
+
     auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
 
     auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
@@ -426,7 +428,7 @@ double EVBuilder::get2SOPTN(bool DBG,
             if(DBG) std::cout<<"T_L["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
             
             if (row>0) applyDeltaEdge(tN, v, DIRECTION::LEFT, DIRECTION::DOWN);
-            tN *= p_ctmEnv->T_L.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_L.at(vToId(v)), AUXLINK, tmp_prime_offset * row);
         }
         if(DBG) std::cout<<"C_LD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
         tN *= p_ctmEnv->C_LD.at(vToId(v));
@@ -448,18 +450,53 @@ double EVBuilder::get2SOPTN(bool DBG,
 
                 if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-                if (row>0) applyDeltaSite(tN,v,DIRECTION::UP);
-                if (col>0) applyDeltaSite(tN,v,DIRECTION::LEFT);
+                int tmp_pl0 = std::min(0,row-1) * tmp_prime_offset;
+                int tmp_pl1 = row * tmp_prime_offset;
+                Index tmp_down, tmp_right;
+                if (row > 0) { 
+                //     applyDeltaSite(tN,v,DIRECTION::UP,tmp_pl)
+                    tmp_down = prime(p_cluster->AIc(v+Shift(0,-1),DIRECTION::DOWN), tmp_pl0);
+                } else {
+                    tmp_down = p_cluster->AIc(v,DIRECTION::UP);
+                }
+                if (col>0) {
+                //     applyDeltaSite(tN,v,DIRECTION::LEFT,tmp_pl)
+                    tmp_right = prime(p_cluster->AIc(v+Shift(-1,0),DIRECTION::RIGHT), tmp_pl1);
+                } else {
+                    tmp_right = prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1);
+                };
                 
-                if (v == v1) { tN *= Op.first; }
-                else if (v == v2) { tN *= Op.second; } 
-                else { tN *= getSiteBraKet(v); }
+                auto tmp_cmb0 = combiner(
+                    tmp_down,
+                    prime(tmp_down, p_cluster->BRAKET_OFFSET),
+                    tmp_right,
+                    prime(tmp_right, p_cluster->BRAKET_OFFSET)
+                    );
+                auto tmp_cmb1 = combiner(
+                    prime(p_cluster->AIc(v,DIRECTION::UP), tmp_pl1),
+                    prime(p_cluster->AIc(v,DIRECTION::UP), tmp_pl1 + p_cluster->BRAKET_OFFSET),
+                    prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1),
+                    prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1 + p_cluster->BRAKET_OFFSET)
+                    );
+
+                tN *= tmp_cmb0;
+                tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+                if (v == v1) { 
+                    tN *= prime(Op.first, AUXLINK, tmp_pl1) * tmp_cmb1; 
+                }
+                else if (v == v2) { 
+                    tN *= prime(Op.second, AUXLINK, tmp_pl1) * tmp_cmb1; 
+                } 
+                else { 
+                    // tN *= getSiteBraKet(v);
+                    tN *= prime(getSiteBraKet(v), AUXLINK, tmp_pl1) * tmp_cmb1;
+                }
             }
             
             if(DBG) std::cout <<"T_D["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
             if (col>0) applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
-            tN *= p_ctmEnv->T_D.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_D.at(vToId(v)), AUXLINK, sYdiff * tmp_prime_offset);
 
             if(DBG) std::cout << ">>>>> Appended col X= "<< col <<" <<<<<"<< std::endl;
             if(DBG) Print(tN);
@@ -474,7 +511,7 @@ double EVBuilder::get2SOPTN(bool DBG,
             if(DBG) std::cout<<"T_R["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
 
             if (row>0) applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
-            tN *= p_ctmEnv->T_R.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_R.at(vToId(v)), AUXLINK, row * tmp_prime_offset);
         }
         if(DBG) std::cout <<"C_RD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
         tN *= p_ctmEnv->C_RD.at(vToId(v));
@@ -2372,18 +2409,20 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
      *           s      s''  |ket>    
      *
      */ 
+    // Assume s0 is different then s2
+    Index tmp_sB = sB;
+    if( sA == sB ) {
+        std::cout <<"On-site PHYS indices sA and sB are identitcal"<< std::endl;
+        // exit(EXIT_FAILURE);
+        tmp_sB = Index(sB.rawname()+"_copy", sB.m(), sB.type(), sB.primeLevel());
+    }
+
     //auto s0 = findtype(TA.inds(), PHYS);
     auto s0 = sA;
     auto s1 = prime(s0,1);
     //auto s2 = prime(findtype(TB.inds(), PHYS), 2);
-    auto s2 = sB;
+    auto s2 = tmp_sB;
     auto s3 = prime(s2,1);
-
-    // Assume s0 is different then s2
-    if( s0 == s2 ) {
-        std::cout <<"On-site PHYS indices sA and sB are identitcal"<< std::endl;
-        exit(EXIT_FAILURE);
-    }
 
     // check dimensions of phys indices on TA and TB
     if( s0.m() != s2.m() ) {
@@ -2542,6 +2581,11 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     OpA = ( OpA*S )*delta(commonIndex(S,OpB), commonIndex(OpA,S));
     OpB = S*OpB;
     
+    if (sA == sB) {
+        OpB *= delta(tmp_sB,sB);
+        OpB *= delta(tmp_sB,sB).prime(1);
+    }
+
     if(dbg) { std::cout <<">>>>> 4) Absorbing sqrt(S) to both OpA and OpB <<<<<"
         << std::endl;
         PrintData(OpA);

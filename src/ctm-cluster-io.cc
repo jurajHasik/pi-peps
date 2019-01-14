@@ -64,9 +64,10 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
     }
 
     // construction of weights on links within c
-    if (jsonCls.value("linkWeightsUsed",false)) readClusterWeights(c, jsonCls);
-
-    initClusterWeights(c);
+    if (jsonCls.value("linkWeightsUsed",false)) {
+        readClusterWeights(c, jsonCls); // reads the link-weights data
+        initClusterWeights(c); // creates the link-weight tensors
+    }
 
     return c;
 }

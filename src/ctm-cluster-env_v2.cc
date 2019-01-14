@@ -143,22 +143,22 @@ CtmEnv::CtmEnv (
         C_LD[id]= ITensor(envIndPair(id,5,id,6));    
     
         // Construct tensors "T_*"
-        auto tmp  = envIndPair(id,0,id,1);
+        auto tmp  = envIndPair(id,6,id,7);
         auto tmp2 = AIBraKetPair(id,0);
         tmp.insert(tmp.end(), tmp2.begin(), tmp2.end());
         T_L[id]= ITensor(tmp);
         
-        tmp = envIndPair(id,2,id,3);
+        tmp = envIndPair(id,0,id,1);
         tmp2 = AIBraKetPair(id,1);
         tmp.insert(tmp.end(), tmp2.begin(), tmp2.end());
         T_U[id]= ITensor(tmp);
         
-        tmp = envIndPair(id,4,id,5);
+        tmp = envIndPair(id,2,id,3);
         tmp2 = AIBraKetPair(id,2);
         tmp.insert(tmp.end(), tmp2.begin(), tmp2.end());
         T_R[id]= ITensor(tmp);
         
-        tmp = envIndPair(id,6,id,7);
+        tmp = envIndPair(id,4,id,5);
         tmp2 = AIBraKetPair(id,3);
         tmp.insert(tmp.end(), tmp2.begin(), tmp2.end());
         T_D[id]= ITensor(tmp);
