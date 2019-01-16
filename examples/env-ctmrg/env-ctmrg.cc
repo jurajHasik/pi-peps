@@ -274,6 +274,10 @@ int main( int argc, char *argv[] ) {
     std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
         <<" [sec] "<< std::endl;
     
+    // Analyze transfer matrix
+    ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+    ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+
     // FINISHED
     std::cout <<"FINISHED"<< std::endl;
 }

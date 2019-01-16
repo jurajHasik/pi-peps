@@ -225,7 +225,6 @@ struct Cluster {
         auto elemV = Vertex(
             (v.r[0] + std::abs(v.r[0])*lX ) % lX, 
             (v.r[1] + std::abs(v.r[1])*lY ) % lY );
-        std::cout << "[Cluster::vertexToId] "<< elemV << std::endl;
         return vToId.at(elemV);
     }
 

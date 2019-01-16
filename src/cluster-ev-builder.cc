@@ -2,82 +2,228 @@
 
 using namespace itensor;
 
-// EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& eev, 
-//     CtmData_Full const& ccd, std::pair<int,int> ss0, std::string ddir) 
-//     : ev(eev), cd(ccd), s0(ss0), dir(ddir) {}
+EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& ev_, 
+    Vertex const& v_, CtmEnv::DIRECTION dir_) 
+    : ev(ev_), v_ref(v_), dir(dir_) {}
 
-// void EVBuilder::TransferOpVecProd::operator() (double const* const x, double* const y) {
-//     int N = cd.auxDimSite * cd.auxDimEnv * cd.auxDimEnv;
+void EVBuilder::TransferOpVecProd::operator() (
+    double const* const x, 
+    double* const y, 
+    bool DBG) 
+{
+    using DIRECTION = CtmEnv::DIRECTION;
+
+    auto vToId = [this] (Vertex const& v) { return ev.p_cluster->vertexToId(v); };
+
+    auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
+        return ev.p_cluster->sites.at(vToId(v)) * 
+            dag(ev.p_cluster->sites.at(vToId(v))).prime(AUXLINK,ev.p_cluster->BRAKET_OFFSET);
+    };
+
+    auto applyDeltaEdge = [this] (ITensor & t, Vertex const& v, 
+        DIRECTION edge, DIRECTION dir) { 
+
+        // (edge = LEFT or RIGHT => dir = UP or DOWN) or 
+        // (edge = UP or DOWN => dir = LEFT or RIGHT)
+        if ( (edge == dir) || ((edge + 2)%4 == dir) ) {
+            std::cout<<"[TransferOpVecProd::operator()] Invalid input: edge= "<< edge 
+                <<" dir: "<< dir << std::endl;
+            throw std::runtime_error("[get2SOPTN::applyDeltaEdge] Invalid input");
+        }
+
+        Shift s;
+        switch (dir) {
+            case DIRECTION::LEFT: {
+                s = Shift(1,0);
+                break;
+            }
+            case DIRECTION::UP: {
+                s = Shift(0,1);
+                break;
+            }
+            case DIRECTION::RIGHT: {
+                s = Shift(-1,0);
+                break;
+            }
+            case DIRECTION::DOWN: {
+                s = Shift(0,-1);
+                break;
+            }
+        }
+
+        t *= delta(
+            ev.p_ctmEnv->tauxByVertex(edge, v + s, dir), 
+            ev.p_ctmEnv->tauxByVertex(edge, v, (dir+2)%4) );
+    };
+
+    // Depending on a direction, get the dimension of the TransferOp
+    int N = std::pow(ev.p_cluster->AIc(v_ref,dir).m(),2) * std::pow(ev.p_ctmEnv->x,2);
     
-//     auto i  = Index("i",N);
-//     auto ip = prime(i);
+    auto i  = Index("i",N);
+    auto ip = prime(i);
 
-//     // copy x
-//     std::vector<double> cpx(N); 
-//     std::copy(x, x+N, cpx.data());
+    // copy x
+    std::vector<double> cpx(N); 
+    std::copy(x, x+N, cpx.data());
 
-//     //auto vecRefX = makeVecRef(cpx.data(),cpx.size()); 
+    //auto vecRefX = makeVecRef(cpx.data(),cpx.size()); 
 
-//     auto isX = IndexSet(i);
-//     auto X = ITensor(isX,Dense<double>(std::move(cpx)));
+    auto isX = IndexSet(i);
+    auto tN = ITensor(isX,Dense<double>(std::move(cpx)));
     
-//     ITensor cmbX;
-//     std::pair<int,int> s1,s2;
-//     if (dir=="HORIZONTAL") {
-//         cmbX = combiner(prime(cd.I_U),prime(cd.I_XH),prime(cd.I_D));
-//         s1 = getNextSite(ev.cls, s0, 2);
-//         s2 = getNextSite(ev.cls, s1, 2);
-//     } 
-//     else if (dir=="VERTICAL") {
-//         cmbX = combiner(prime(cd.I_L),prime(cd.I_XV),prime(cd.I_R));
-//         s1 = getNextSite(ev.cls, s0, 1);
-//         s2 = getNextSite(ev.cls, s1, 1);
-//     }
-//     else {
-//         std::cout<<"[TransferOpVecProd] Unsupported option: "<< dir << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
+    ITensor cmbX;
+    if (dir==DIRECTION::RIGHT) {
+        cmbX = combiner(
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::UP,v_ref,DIRECTION::LEFT),
+            ev.p_cluster->AIc(v_ref,DIRECTION::LEFT),
+            prime(ev.p_cluster->AIc(v_ref,DIRECTION::LEFT),ev.p_cluster->BRAKET_OFFSET),
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::DOWN,v_ref,DIRECTION::LEFT));
+    } 
+    else if (dir==DIRECTION::DOWN) {
+        cmbX = combiner(
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::LEFT,v_ref,DIRECTION::UP),
+            ev.p_cluster->AIc(v_ref,DIRECTION::UP),
+            prime(ev.p_cluster->AIc(v_ref,DIRECTION::UP),ev.p_cluster->BRAKET_OFFSET),
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::RIGHT,v_ref,DIRECTION::UP));
+    }
+    else {
+        std::cout<<"[TransferOpVecProd] Unsupported option: "<< dir << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-//     X *= delta(combinedIndex(cmbX),i);
-//     X *= cmbX;
+    // TODO check if dimension of combindedIndex and i is the same
+    tN *= delta(combinedIndex(cmbX),i);
+    tN *= cmbX;
 
-//     if (dir=="HORIZONTAL") {
-//         X *= cd.T_U[cd.cToS.at(s1)];
-//         X *= cd.sites[cd.cToS.at(s1)];
-//         X *= cd.T_D[cd.cToS.at(s1)];
-//     } 
-//     else if (dir=="VERTICAL") {
-//         X *= cd.T_L[cd.cToS.at(s1)];
-//         X *= cd.sites[cd.cToS.at(s1)];
-//         X *= cd.T_R[cd.cToS.at(s1)];
-//     }
+    // Apply lY columns or lX rows depending on chosen direction
+    auto v = v_ref;
+    if (dir==DIRECTION::RIGHT) {
+        for ( int col=0; col < ev.p_cluster->lY; col++ ) {
+            v = v_ref + col*Shift(1,0);
+            
+            if(DBG) std::cout<<"T_U["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-//     X.prime();
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::UP, DIRECTION::RIGHT);
+            tN *= ev.p_ctmEnv->T_U.at(vToId(v));
+            
+            if(DBG) Print(tN);
+            if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-//     if (dir=="HORIZONTAL") {
-//         X *= cd.T_U[cd.cToS.at(s2)];
-//         X *= cd.sites[cd.cToS.at(s2)];
-//         X *= cd.T_D[cd.cToS.at(s2)];
-//     } 
-//     else if (dir=="VERTICAL") {
-//         X *= cd.T_L[cd.cToS.at(s2)];
-//         X *= cd.sites[cd.cToS.at(s2)];
-//         X *= cd.T_R[cd.cToS.at(s2)];
-//     }
+            Index tmp_down, tmp_right;
+            
+            tmp_down = ev.p_cluster->AIc(v,DIRECTION::UP);
+            if (col>0) {
+            //     applyDeltaSite(tN,v,DIRECTION::LEFT)
+                tmp_right = ev.p_cluster->AIc(v+Shift(-1,0),DIRECTION::RIGHT);
+            } else {
+                tmp_right = ev.p_cluster->AIc(v,DIRECTION::LEFT);
+            };
+            
+            auto tmp_cmb0 = combiner(
+                tmp_down,
+                prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
+                tmp_right,
+                prime(tmp_right, ev.p_cluster->BRAKET_OFFSET)
+            );
+            auto tmp_cmb1 = combiner(
+                ev.p_cluster->AIc(v,DIRECTION::UP),
+                prime(ev.p_cluster->AIc(v,DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
+                ev.p_cluster->AIc(v,DIRECTION::LEFT),
+                prime(ev.p_cluster->AIc(v,DIRECTION::LEFT), ev.p_cluster->BRAKET_OFFSET)
+            );
 
-//     cmbX.noprime();
-//     X *= cmbX;
-//     X *= delta(combinedIndex(cmbX),i);
+            tN *= tmp_cmb0;
+            // TODO use delta instead of reindex
+            tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+            tN *= getSiteBraKet(v) * tmp_cmb1;
+            
+            if(DBG) std::cout <<"T_D["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-//     X.scaleTo(1.0);
+            if (col>0) applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
+            tN *= ev.p_ctmEnv->T_D.at(vToId(v));
 
-//     auto extractReal = [](Dense<Real> const& d) {
-//         return d.store;
-//     };
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        }
+    }
+    else if (dir==DIRECTION::DOWN) {
+        for ( int row=0; row < ev.p_cluster->lX; row++ ) {
+            v = v_ref + row*Shift(0,1);
+            
+            if(DBG) std::cout<<"T_L["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-//     auto xData = applyFunc(extractReal,X.store());
-//     std::copy(xData.data(), xData.data()+N, y);
-// }
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::LEFT, DIRECTION::DOWN);
+            tN *= ev.p_ctmEnv->T_L.at(vToId(v));
+            
+            if(DBG) Print(tN);
+            if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            Index tmp_down, tmp_right;
+
+            if (row > 0) { 
+            //     applyDeltaSite(tN,v,DIRECTION::UP)
+                tmp_down = ev.p_cluster->AIc(v+Shift(0,-1),DIRECTION::DOWN);
+            } else {
+                tmp_down = ev.p_cluster->AIc(v,DIRECTION::UP);
+            }
+            tmp_right = ev.p_cluster->AIc(v,DIRECTION::LEFT);
+
+            auto tmp_cmb0 = combiner(
+                tmp_down,
+                prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
+                tmp_right,
+                prime(tmp_right, ev.p_cluster->BRAKET_OFFSET)
+                );
+            auto tmp_cmb1 = combiner(
+                ev.p_cluster->AIc(v,DIRECTION::UP),
+                prime(ev.p_cluster->AIc(v,DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
+                ev.p_cluster->AIc(v,DIRECTION::LEFT),
+                prime(ev.p_cluster->AIc(v,DIRECTION::LEFT), ev.p_cluster->BRAKET_OFFSET)
+                );
+
+            tN *= tmp_cmb0;
+            // TODO use delta instead of reindex
+            tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+            tN *= getSiteBraKet(v)* tmp_cmb1;
+            
+            if(DBG) std::cout <<"T_R["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            if (row>0) applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
+            tN *= ev.p_ctmEnv->T_R.at(vToId(v));
+
+            if(DBG) std::cout << ">>>>> Appended row X= "<< row <<" <<<<<"<< std::endl;
+            if(DBG) Print(tN);
+        }
+    }
+
+    if (dir==DIRECTION::RIGHT) {
+        cmbX = combiner(
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::UP,v,DIRECTION::RIGHT),
+            ev.p_cluster->AIc(v,DIRECTION::RIGHT),
+            prime(ev.p_cluster->AIc(v,DIRECTION::RIGHT),ev.p_cluster->BRAKET_OFFSET),
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::DOWN,v,DIRECTION::RIGHT));
+    } 
+    else if (dir==DIRECTION::DOWN) {
+        cmbX = combiner(
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::LEFT,v,DIRECTION::DOWN),
+            ev.p_cluster->AIc(v,DIRECTION::DOWN),
+            prime(ev.p_cluster->AIc(v,DIRECTION::DOWN),ev.p_cluster->BRAKET_OFFSET),
+            ev.p_ctmEnv->tauxByVertex(DIRECTION::RIGHT,v,DIRECTION::DOWN));
+    }
+
+    tN *= cmbX;
+    tN *= delta(combinedIndex(cmbX),i);
+
+    // TODO possibly redundant
+    tN.scaleTo(1.0);
+
+    auto extractReal = [](Dense<Real> const& d) {
+        return d.store;
+    };
+
+    auto xData = applyFunc(extractReal,tN.store());
+    std::copy(xData.data(), xData.data()+N, y);
+}
 
 EVBuilder::EVBuilder (std::string in_name, Cluster const& cls, 
     CtmEnv const& env) 
@@ -1435,89 +1581,89 @@ double EVBuilder::contract2Smpo(std::pair<ITensor,ITensor> const& Op,
 //     return ccVal;
 // }
 
-// void EVBuilder::analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
-//     std::string alg_type) 
-// {
-//     if(alg_type=="ARPACK") {
-//         TransferOpVecProd tvp( (*this), this->cd_f, s0, dir);
+void EVBuilder::analyzeTransferMatrix(Vertex const& v, CtmEnv::DIRECTION dir, 
+    std::string alg_type) 
+{
+    if(alg_type=="ARPACK") {
+        TransferOpVecProd tvp( (*this), v, dir);
 
-//         int N = cd_f.auxDimSite * cd_f.auxDimEnv * cd_f.auxDimEnv;
-//         ARDNS<TransferOpVecProd> ardns(tvp);
-//         ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
-//     } 
-//     else if (alg_type=="rsvd") {
-//         std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
-//         auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-//         auto cmbI = combinedIndex(cmbX);
-//         //cmbX.prime(cmbI);
+        int N = std::pow(p_cluster->AIc(v,dir).m(),2) * std::pow(p_ctmEnv->x,2);
+        ARDNS<TransferOpVecProd> ardns(tvp);
+        ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
+    } 
+    // else if (alg_type=="rsvd") {
+    //     std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
+    //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+    //     auto cmbI = combinedIndex(cmbX);
+    //     //cmbX.prime(cmbI);
 
-//         auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-//         X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-//         X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+    //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-//         X *= cmbX;
-//         X.prime();
-//         Print(X);
-//         {
-//             auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-//             X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-//             X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-//             X *= X2;
-//         }
-//         Print(X);
-//         X *= noprime(cmbX);
+    //     X *= cmbX;
+    //     X.prime();
+    //     Print(X);
+    //     {
+    //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X *= X2;
+    //     }
+    //     Print(X);
+    //     X *= noprime(cmbX);
 
-//         auto argsSVDRRt = Args(
-//             "Cutoff",-1.0,
-//             "Maxm",3,
-//             "SVDThreshold",1E-2,
-//             "SVD_METHOD","rsvd",
-//             "rsvd_power",2,
-//             "rsvd_reortho",1
-//         );
-//         ITensor U(cmbI), S, V;
-//         svd(X, U, S, V, argsSVDRRt);
+    //     auto argsSVDRRt = Args(
+    //         "Cutoff",-1.0,
+    //         "Maxm",3,
+    //         "SVDThreshold",1E-2,
+    //         "SVD_METHOD","rsvd",
+    //         "rsvd_power",2,
+    //         "rsvd_reortho",1
+    //     );
+    //     ITensor U(cmbI), S, V;
+    //     svd(X, U, S, V, argsSVDRRt);
     
-//         PrintData(S);
-//     }
-//     else if (alg_type=="gesdd") {
-//         std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
-//         auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-//         auto cmbI = combinedIndex(cmbX);
-//         //cmbX.prime(cmbI);
+    //     PrintData(S);
+    // }
+    // else if (alg_type=="gesdd") {
+    //     std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
+    //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+    //     auto cmbI = combinedIndex(cmbX);
+    //     //cmbX.prime(cmbI);
 
-//         auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-//         X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-//         X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+    //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-//         X *= cmbX;
-//         X.prime();
-//         Print(X);
-//         {
-//             auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-//             X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-//             X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-//             X *= X2;
-//         }
-//         Print(X);
-//         X *= noprime(cmbX);
+    //     X *= cmbX;
+    //     X.prime();
+    //     Print(X);
+    //     {
+    //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X *= X2;
+    //     }
+    //     Print(X);
+    //     X *= noprime(cmbX);
 
-//         auto argsSVDRRt = Args(
-//             "Cutoff",-1.0,
-//             "Maxm",3,
-//             "SVDThreshold",1E-2,
-//             "SVD_METHOD","gesdd"
-//         );
-//         ITensor U(cmbI), S, V;
-//         svd(X, U, S, V, argsSVDRRt);
+    //     auto argsSVDRRt = Args(
+    //         "Cutoff",-1.0,
+    //         "Maxm",3,
+    //         "SVDThreshold",1E-2,
+    //         "SVD_METHOD","gesdd"
+    //     );
+    //     ITensor U(cmbI), S, V;
+    //     svd(X, U, S, V, argsSVDRRt);
     
-//         PrintData(S);
-//     }
-//     else {
-//         std::cout<<"[EVBuilder::analyseTransferMatrix] Unsupported option: "
-//             << alg_type <<std::endl;
-//     }
-// }
+    //     PrintData(S);
+    // }
+    else {
+        std::cout<<"[EVBuilder::analyzeTransferMatrix] Unsupported option: "
+            << alg_type <<std::endl;
+    }
+}
 
 // Diagonal s1, s1+[1,1]
 double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, 

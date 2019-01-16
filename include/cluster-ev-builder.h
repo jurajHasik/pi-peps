@@ -134,20 +134,20 @@ class EVBuilder {
     // std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1, 
     //     MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
 
-    // struct TransferOpVecProd {
-    //     std::string dir;
-    //     std::pair<int,int> s0;
-    //     EVBuilder const& ev;
-    //     CtmData_Full const& cd;
+    struct TransferOpVecProd {
+        CtmEnv::DIRECTION dir;
+        Vertex v_ref;
+        EVBuilder const& ev;
 
-    //     TransferOpVecProd(EVBuilder const& eev, CtmData_Full const& ccd, 
-    //         std::pair<int,int> ss0, std::string ddir="HORIZONTAL");
+        TransferOpVecProd(EVBuilder const& ev, Vertex const& v, 
+            CtmEnv::DIRECTION dir);
 
-    //     void operator() (double const* const x, double* const y); 
-    // };
+        void operator() (double const* const x, double* const y, bool DBG = false); 
+    };
 
-    // void analyseTransferMatrix(std::pair<int,int> const& s0, std::string dir, 
-    //     std::string alg_type = "ARPACK");
+    void analyzeTransferMatrix(Vertex const& v, 
+        CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT, 
+        std::string alg_type = "ARPACK");
 
     /*
      * Evaluate 2 site operator along diagonal using corner construction 
