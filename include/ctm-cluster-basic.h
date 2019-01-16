@@ -20,7 +20,7 @@ namespace itensor {
  */
 struct Cluster_1x1_A : Cluster {
 
-	Cluster_1x1_A() : Cluster(1,1) {}
+	Cluster_1x1_A() : Cluster(1,1) { cluster_type = "1x1_A"; }
 
 	std::string virtual vertexToId(Vertex const& v) const override { 
 		auto elemV = Vertex(0,0);
@@ -39,11 +39,13 @@ struct Cluster_1x1_A : Cluster {
  */
 struct Cluster_2x2_ABBA : Cluster {
 
-	Cluster_2x2_ABBA() : Cluster(2,1) {}
+	Cluster_2x2_ABBA() : Cluster(2,1) { cluster_type = "2x2_ABBA"; }
 
 	std::string virtual vertexToId(Vertex const& v) const override { 
-		auto elemV = Vertex((v.r[0]+v.r[1]) % 2, 0);
-		return vToId.at(elemV);
+		int vx = (v.r[0] + std::abs(v.r[0])*lX) % lX;
+        int vy = std::abs(v.r[1]);   
+        auto elemV = Vertex((vx + vy) % 2, 0);
+        return vToId.at(elemV);
     }
 
 };
@@ -57,7 +59,7 @@ struct Cluster_2x2_ABBA : Cluster {
  */
 struct Cluster_2x2_ABCD : Cluster {
 
-	Cluster_2x2_ABCD() : Cluster(2,2) {}
+	Cluster_2x2_ABCD() : Cluster(2,2) { cluster_type = "2x2_ABCD"; }
 
 	Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
     	siteIds = { "A", "B", "C", "D" };

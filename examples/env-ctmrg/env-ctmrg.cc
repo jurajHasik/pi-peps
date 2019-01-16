@@ -68,16 +68,19 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE CTMRG ALGORITHM DONE **************************
 
 	// ***** INITIALIZE CLUSTER ***********************************************
-    Cluster cls;
-    
+    // Cluster cls;
+    std::unique_ptr<Cluster> p_cls;
+
     // choose initial wavefunction
     if (sitesInit == "FILE") {
-        cls = readCluster(inClusterFile);
+        // cls = readCluster(inClusterFile);
+        p_cls = p_readCluster(inClusterFile);
         // initClusterSites(cls);
         // initClusterWeights(cls);
         // setOnSiteTensorsFromFile(cls, inClusterFile);
     }
-    std::cout << cls;
+    // std::cout << cls;
+    std::cout << *p_cls;
     // ***** INITIALIZE CLUSTER DONE ******************************************
 
     // ***** INITIALIZE MODEL *************************************************
@@ -128,7 +131,8 @@ int main( int argc, char *argv[] ) {
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     }
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
+    // CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
@@ -140,7 +144,9 @@ int main( int argc, char *argv[] ) {
     ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
-    EVBuilder ev(arg_ioEnvTag, cls, ctmEnv);
+    // EVBuilder ev(arg_ioEnvTag, cls, ctmEnv);
+    EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
+    std::cout << ev;
     
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;

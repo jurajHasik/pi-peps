@@ -402,6 +402,7 @@ double EVBuilder::get2SOPTN(bool DBG,
     int sXdiff = std::abs(v2.r[0] - v1.r[0]);
     int sYdiff = std::abs(v2.r[1] - v1.r[1]);
     
+    // Analyse which branch sequence of contraction to perform
     if ( sXdiff < sYdiff ) { 
         wBEh = false;
         if(DBG) std::cout <<"TN Width < Height => contracting row by row"<< std::endl;
@@ -409,12 +410,8 @@ double EVBuilder::get2SOPTN(bool DBG,
     if ( v1.r[1] > v2.r[1] ) {
         s1bs2  = false;
         v_init = v1 + sYdiff*Shift(0,-1);    
-    } 
-
-    if ( !(sXdiff >= sYdiff) ) {
-        
-        wBEh = false;
     }
+    if ( !(sXdiff >= sYdiff) ) wBEh = false;
 
     Vertex v = v_init;
     ITensor tN;
@@ -454,13 +451,13 @@ double EVBuilder::get2SOPTN(bool DBG,
                 int tmp_pl1 = row * tmp_prime_offset;
                 Index tmp_down, tmp_right;
                 if (row > 0) { 
-                //     applyDeltaSite(tN,v,DIRECTION::UP,tmp_pl)
+                //     applyDeltaSite(tN,v,DIRECTION::UP)
                     tmp_down = prime(p_cluster->AIc(v+Shift(0,-1),DIRECTION::DOWN), tmp_pl0);
                 } else {
                     tmp_down = p_cluster->AIc(v,DIRECTION::UP);
                 }
                 if (col>0) {
-                //     applyDeltaSite(tN,v,DIRECTION::LEFT,tmp_pl)
+                //     applyDeltaSite(tN,v,DIRECTION::LEFT)
                     tmp_right = prime(p_cluster->AIc(v+Shift(-1,0),DIRECTION::RIGHT), tmp_pl1);
                 } else {
                     tmp_right = prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1);
@@ -480,6 +477,7 @@ double EVBuilder::get2SOPTN(bool DBG,
                     );
 
                 tN *= tmp_cmb0;
+                // TODO use delta instead of reindex
                 tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
                 if (v == v1) { 
                     tN *= prime(Op.first, AUXLINK, tmp_pl1) * tmp_cmb1; 
@@ -527,7 +525,7 @@ double EVBuilder::get2SOPTN(bool DBG,
             if(DBG) std::cout<<"T_U["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
             
             if (col>0) applyDeltaEdge(tN, v, DIRECTION::UP, DIRECTION::RIGHT);
-            tN *= p_ctmEnv->T_U.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_U.at(vToId(v)), AUXLINK, tmp_prime_offset * col);
         }
         if(DBG) std::cout<<"C_RU["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
         tN *= p_ctmEnv->C_RU.at(vToId(v));
@@ -549,18 +547,55 @@ double EVBuilder::get2SOPTN(bool DBG,
 
                 if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
-                if (row>0) applyDeltaSite(tN,v,DIRECTION::UP);
-                if (col>0) applyDeltaSite(tN,v,DIRECTION::LEFT);
-                
-                if (v == v1) { tN *= Op.first; }
-                else if (v == v2) { tN *= Op.second; } 
-                else { tN *= getSiteBraKet(v); }
+                int tmp_pl0 = std::min(0,col-1) * tmp_prime_offset;
+                int tmp_pl1 = col * tmp_prime_offset;
+                Index tmp_down, tmp_right;
+
+                if (row > 0) { 
+                //     applyDeltaSite(tN,v,DIRECTION::UP)
+                    tmp_down = prime(p_cluster->AIc(v+Shift(0,-1),DIRECTION::DOWN), tmp_pl1);
+                } else {
+                    tmp_down = prime(p_cluster->AIc(v,DIRECTION::UP), tmp_pl1);
+                }
+                if (col>0) {
+                //     applyDeltaSite(tN,v,DIRECTION::LEFT)
+                    tmp_right = prime(p_cluster->AIc(v+Shift(-1,0),DIRECTION::RIGHT), tmp_pl1);
+                } else {
+                    tmp_right = p_cluster->AIc(v,DIRECTION::LEFT);
+                };
+
+                auto tmp_cmb0 = combiner(
+                    tmp_down,
+                    prime(tmp_down, p_cluster->BRAKET_OFFSET),
+                    tmp_right,
+                    prime(tmp_right, p_cluster->BRAKET_OFFSET)
+                    );
+                auto tmp_cmb1 = combiner(
+                    prime(p_cluster->AIc(v,DIRECTION::UP), tmp_pl1),
+                    prime(p_cluster->AIc(v,DIRECTION::UP), tmp_pl1 + p_cluster->BRAKET_OFFSET),
+                    prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1),
+                    prime(p_cluster->AIc(v,DIRECTION::LEFT), tmp_pl1 + p_cluster->BRAKET_OFFSET)
+                    );
+
+                tN *= tmp_cmb0;
+                // TODO use delta instead of reindex
+                tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+                if (v == v1) { 
+                    tN *= prime(Op.first, AUXLINK, tmp_pl1) * tmp_cmb1; 
+                }
+                else if (v == v2) { 
+                    tN *= prime(Op.second, AUXLINK, tmp_pl1) * tmp_cmb1; 
+                } 
+                else { 
+                    // tN *= getSiteBraKet(v);
+                    tN *= prime(getSiteBraKet(v), AUXLINK, tmp_pl1) * tmp_cmb1;
+                }
             }
             
             if(DBG) std::cout <<"T_R["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
 
             if (row>0) applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
-            tN *= p_ctmEnv->T_R.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_R.at(vToId(v)), AUXLINK, sXdiff * tmp_prime_offset);
 
             if(DBG) std::cout << ">>>>> Appended row X= "<< row <<" <<<<<"<< std::endl;
             if(DBG) Print(tN);
@@ -574,7 +609,7 @@ double EVBuilder::get2SOPTN(bool DBG,
             if(DBG) std::cout<<"T_D["<< v <<" =>"<< vToId(v) <<"]"<<std::endl;
 
             if (col>0) applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
-            tN *= p_ctmEnv->T_D.at(vToId(v));
+            tN *= prime(p_ctmEnv->T_D.at(vToId(v)), AUXLINK, col * tmp_prime_offset);
         }
         if(DBG) std::cout <<"C_RD["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
         tN *= p_ctmEnv->C_RD.at(vToId(v));
@@ -2630,7 +2665,9 @@ ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s, bool DBG) {
 }
 
 std::ostream& EVBuilder::print(std::ostream& s) const {
-    s << "ExpValBuilder("<< name <<")";
+    s << "ExpValBuilder("<<std::endl; 
+    s << "name: "<< name << std::endl << "cluster_type: "<< p_cluster->cluster_type
+        << std::endl <<")"<< std::endl;
     return s;
 }
 

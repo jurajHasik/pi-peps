@@ -68,6 +68,9 @@ struct Shift {
 
 Shift operator * (int x, Shift const& s);
 
+std::ostream& 
+operator<<(std::ostream& os, Shift const& s);
+
 /*
  * A vertex of a square lattice. One can obtain new vertices
  * by applying displacement: Vertex <- Vertex [+,-,+=,-=] Shift 
@@ -110,11 +113,17 @@ struct Vertex {
     }
 };
 
+std::ostream& 
+operator<<(std::ostream& os, Vertex const& v);
+
 struct LinkWeight {
     std::vector< std::string > sId; // Ids of sites connected by weight
     std::vector<int> dirs;          // auxlinks of sites connected by weight
     std::string wId;                // weight Id
 };
+
+std::ostream& 
+operator<<(std::ostream& s, LinkWeight const& lw);
 
 /*
  * Struct holding the supercell data. Non-equivalent tensors, 
@@ -123,6 +132,8 @@ struct LinkWeight {
  */
 struct Cluster {
     static const int BRAKET_OFFSET;
+
+    std::string cluster_type;
 
     // meta information about the origin of cluster
     std::string metaInfo;
@@ -206,7 +217,7 @@ struct Cluster {
     //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
-        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("default") {}
 
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC
@@ -214,6 +225,7 @@ struct Cluster {
         auto elemV = Vertex(
             (v.r[0] + std::abs(v.r[0])*lX ) % lX, 
             (v.r[1] + std::abs(v.r[1])*lY ) % lY );
+        std::cout << "[Cluster::vertexToId] "<< elemV << std::endl;
         return vToId.at(elemV);
     }
 
@@ -256,17 +268,7 @@ void mvSite(Cluster const& c, std::pair<int,int> &s, std::pair<int,int> const& d
 
 std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, int dir);
 
-
-std::ostream& 
-operator<<(std::ostream& os, Shift const& s);
-
-std::ostream& 
-operator<<(std::ostream& os, Vertex const& v);
-
 std::ostream& 
 operator<<(std::ostream& s, Cluster const& c);
-
-std::ostream& 
-operator<<(std::ostream& s, LinkWeight const& lw);
 
 #endif

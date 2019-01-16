@@ -28,7 +28,8 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
     auto lX = jsonCls["sizeM"].get<int>();
     auto lY = jsonCls["sizeN"].get<int>();
     
-    Cluster c = Cluster(lX, lY);
+    //Cluster c = Cluster(lX, lY);
+    itensor::Cluster_2x2_ABBA c = itensor::Cluster_2x2_ABBA();
 
     c.physDim    = jsonCls["physDim"].get<int>();
     c.auxBondDim = jsonCls["auxBondDim"].get<int>();
@@ -70,6 +71,86 @@ Cluster readCluster(nlohmann::json const& jsonCls) {
     }
 
     return c;
+}
+
+std::unique_ptr<Cluster> p_readCluster(string const& filename) {
+    ifstream infile;
+    infile.open(filename, ios::in);
+
+    nlohmann::json jsonCls;
+    infile >> jsonCls;
+
+    return p_readCluster(jsonCls);
+}
+
+// TODO build register-enable factory
+std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
+    // get cluster type
+    auto cluster_type = jsonCls.value("type","DEFAULT");
+
+    // Create corresponding cluster struct
+    auto lX = jsonCls["sizeM"].get<int>();
+    auto lY = jsonCls["sizeN"].get<int>();
+    
+    //Cluster c = Cluster(lX, lY);
+    std::unique_ptr<Cluster> p_cls;
+    if (cluster_type == "2x2_ABBA") {
+        p_cls = std::unique_ptr<itensor::Cluster_2x2_ABBA>(
+            new itensor::Cluster_2x2_ABBA());
+    } else if (cluster_type == "2x2_ABCD") {
+        p_cls = std::unique_ptr<itensor::Cluster_2x2_ABCD>(
+            new itensor::Cluster_2x2_ABCD());
+    }
+    else if (cluster_type == "DEFAULT") {
+        std::cout<<"[p_readCluster] using DEFAULT cluster_type for "
+            << lX <<" x "<< lY <<" cluster"<< std::endl;
+        p_cls = std::unique_ptr<Cluster>(
+            new Cluster(lX,lY));
+    }
+    else {
+        throw std::runtime_error("[p_readCluster] invalid cluster_type");
+    }
+
+    p_cls->physDim    = jsonCls["physDim"].get<int>();
+    p_cls->auxBondDim = jsonCls["auxBondDim"].get<int>();
+
+    for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
+    {
+        p_cls->cToS[ make_pair(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]=
+            mapEntry["siteId"].get<string>();
+        p_cls->vToId[ Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]=
+            mapEntry["siteId"].get<string>();
+        p_cls->idToV[ mapEntry["siteId"].get<string>() ]=
+            Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>());
+    }   
+
+    for( const auto& siteIdEntry : jsonCls["siteIds"].get< vector<string> >() )
+    {
+        p_cls->siteIds.push_back(siteIdEntry);
+        p_cls->SI[siteIdEntry] = p_cls->siteIds.size() - 1;
+    }
+
+    // initClusterSites(c);
+    // setOnSiteTensorsFromJSON(c, jsonCls);
+    for( const auto& siteEntry : jsonCls["sites"] )
+    {
+        auto id  = siteEntry["siteId"].get<string>();
+        auto tmp = readIndsAndTfromJSON(siteEntry);
+
+        p_cls->mphys[id] = tmp.first[0];
+        p_cls->caux[id]  = std::vector<itensor::Index>(tmp.first.size()-1);
+        for(int i=1; i<tmp.first.size(); i++) p_cls->caux[id][i-1] = tmp.first[i];
+        // std::copy( tmp.first.begin()+1, tmp.first.end(), c.caux[id] );
+        p_cls->sites[id] = tmp.second; // tensor
+    }
+
+    // construction of weights on links within c
+    if (jsonCls.value("linkWeightsUsed",false)) {
+        readClusterWeights(*p_cls, jsonCls); // reads the link-weights data
+        initClusterWeights(*p_cls); // creates the link-weight tensors
+    }
+
+    return p_cls;
 }
 
 void readClusterWeights(Cluster & cls, nlohmann::json const& jsonCls) {

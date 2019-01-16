@@ -11,6 +11,7 @@
 #include <limits>
 #include "json.hpp"
 #include "ctm-cluster.h"
+#include "ctm-cluster-basic.h"
 #include "ctm-cluster-global.h"
 #include "itensor/all.h"
 
@@ -33,6 +34,10 @@ struct IO_site {
 Cluster readCluster(std::string const& filename);
 
 Cluster readCluster(nlohmann::json const& jsonCls);
+
+std::unique_ptr<Cluster> p_readCluster(std::string const& filename);
+
+std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls);
 
 void readClusterWeights(Cluster & cls, nlohmann::json const& jsonCls);
 
