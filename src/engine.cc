@@ -859,21 +859,15 @@ std::unique_ptr<Engine> buildEngine_J1J2(nlohmann::json & json_model) {
 
         pe->td.gates = {
             {"B", "A", "C", "D"},
-
             {"C", "D", "B", "A"},
-
             {"A", "B", "D", "C"},
-
             {"D", "C", "A", "B"}
         };
 
         pe->td.gate_auxInds = {
             {3,0, 2,3, 1,2, 0,1},
-
             {3,0, 2,3, 1,2, 0,1},
-
             {3,0, 2,3, 1,2, 0,1},
-
             {3,0, 2,3, 1,2, 0,1}
         };
 
@@ -1210,71 +1204,71 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model,
     return pE;
 }
 
-template<class T>
-Args TrotterEngine<T>::performSimpleUpdate(Cluster & cls, Args const& args) 
-{
+// template<class T>
+// Args TrotterEngine<T>::performSimpleUpdate(Cluster & cls, Args const& args) 
+// {
+//     auto gi = td.nextCyclicIndex();
+
+//     return simpleUpdate(*td.ptr_gateMPO[gi], cls, td.gates[gi], td.gate_auxInds[gi], args);
+// }
+
+template<> Args TrotterEngine<MPO_2site>::performSimpleUpdate(
+    Cluster & cls, Args const& args) {
+
     auto gi = td.nextCyclicIndex();
 
     return simpleUpdate(*td.ptr_gateMPO[gi], cls, td.gates[gi], td.gate_auxInds[gi], args);
 }
 
-// template<> Args TrotterEngine<MPO_2site>::performSimpleUpdate(
-//     Cluster & cls, Args const& args) {
-
-//     auto gi = td.nextCyclicIndex();
-
-//     return simpleUpdate(*td.ptr_gateMPO[gi], cls, td.gates[gi], td.gate_auxInds[gi], args);
-// }
-
-// template<> Args TrotterEngine<MPO_3site>::performSimpleUpdate(
-//     Cluster & cls, Args const& args) {
-
-//     auto gi = td.nextCyclicIndex();
-
-//     return simpleUpdate(*td.ptr_gateMPO[gi], cls, td.gates[gi], td.gate_auxInds[gi], args);
-// }
-
-// template<> Args TrotterEngine<OpNS>::performSimpleUpdate(
-//     Cluster & cls, Args const& args) {
-
-//     auto gi = td.nextCyclicIndex();
-
-//     return Args::global();
-// }
-
-
-template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
-    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+template<> Args TrotterEngine<MPO_3site>::performSimpleUpdate(
+    Cluster & cls, Args const& args) {
 
     auto gi = td.nextCyclicIndex();
 
-    return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+    return simpleUpdate(*td.ptr_gateMPO[gi], cls, td.gates[gi], td.gate_auxInds[gi], args);
 }
 
-template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
-    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+template<> Args TrotterEngine<OpNS>::performSimpleUpdate(
+    Cluster & cls, Args const& args) {
 
     auto gi = td.nextCyclicIndex();
-    std::cout<<"Current index: "<< gi << std::endl;
 
-    return fullUpdate_ALS3S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+    return Args::global();
 }
 
-template<> Args TrotterEngine<OpNS>::performFullUpdate(
-    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-    auto gi = td.nextCyclicIndex();
-    std::cout<<"Current index: "<< gi << std::endl;
+// template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
+//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-    if ( td.ptr_gateMPO[gi]->nSite != 4 ) {
-        std::cout<<"Unsupported OpNS: nSite = "<< td.ptr_gateMPO[gi]->nSite << std::endl;
-        exit(EXIT_FAILURE);
-    }
+//     auto gi = td.nextCyclicIndex();
 
-    // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-    //     td.gates[gi], td.gate_auxInds[gi], args);
-    return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
-        td.gates[gi], td.gate_auxInds[gi], args);
-}
+//     return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+//         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+// }
+
+// template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
+//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+
+//     auto gi = td.nextCyclicIndex();
+//     std::cout<<"Current index: "<< gi << std::endl;
+
+//     return fullUpdate_ALS3S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+//         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+// }
+
+// template<> Args TrotterEngine<OpNS>::performFullUpdate(
+//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+
+//     auto gi = td.nextCyclicIndex();
+//     std::cout<<"Current index: "<< gi << std::endl;
+
+//     if ( td.ptr_gateMPO[gi]->nSite != 4 ) {
+//         std::cout<<"Unsupported OpNS: nSite = "<< td.ptr_gateMPO[gi]->nSite << std::endl;
+//         exit(EXIT_FAILURE);
+//     }
+
+//     // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+//     //     td.gates[gi], td.gate_auxInds[gi], args);
+//     return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+//         td.gates[gi], td.gate_auxInds[gi], args);
+// }

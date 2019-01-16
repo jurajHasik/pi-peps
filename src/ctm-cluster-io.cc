@@ -183,6 +183,7 @@ void writeCluster(string const& filename, Cluster const& cls) {
     outf.open(filename, ios::out);
 
     nlohmann::json jCls;
+    jCls["type"]       = cls.cluster_type;
     jCls["meta"]       = cls.metaInfo;
     jCls["simParam"]   = cls.simParam;
     jCls["physDim"]    = cls.physDim;

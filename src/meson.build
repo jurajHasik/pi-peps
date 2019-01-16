@@ -1,11 +1,11 @@
 source_files += files([
 		       'cluster-ev-builder.cc', 
-                       #'engine.cc',           
+                       'engine.cc',           
                        #'full-update-TEST.cc', 
                        #'fu-3site.cc',
                        #'fu-4site.cc',
                        #'full-update.cc', 
-                       #'simple-update_v2.cc', 
+                       'simple-update_v2.cc', 
                        'models.cc',
                        'ctm-cluster-env_v2.cc', 
                        'ctmrg.cc',

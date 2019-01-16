@@ -1679,6 +1679,21 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
 
     auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
 
+    auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
+        return p_cluster->sites.at(vToId(v)) * 
+            dag(p_cluster->sites.at(vToId(v))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    };
+
+    auto get2dirSiteCombiner = [this] (ITensor & cmb, Vertex const& v, DIRECTION dir0,
+        DIRECTION dir1) { 
+        cmb = combiner(
+            p_cluster->AIc(v,dir0),
+            prime(p_cluster->AIc(v,dir0), p_cluster->BRAKET_OFFSET),
+            p_cluster->AIc(v,dir1),
+            prime(p_cluster->AIc(v,dir1), p_cluster->BRAKET_OFFSET)
+        );
+    };
+
     auto readyToContract = [this](ITensor & t, DIRECTION direction, 
         Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
         // relabel env auxiliary indices
@@ -1690,6 +1705,20 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
         t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
     };
 
+    auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1, DIRECTION direction, 
+        Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+        cmb_v0 = combiner(
+            p_ctmEnv->tauxByVertex(direction,v0,dir0),
+            p_cluster->AIc(v0,dir0),
+            prime(p_cluster->AIc(v0,dir0), p_cluster->BRAKET_OFFSET)
+        );
+        cmb_v1 = combiner(
+            p_ctmEnv->tauxByVertex(direction,v1,dir1),
+            p_cluster->AIc(v1,dir1),
+            prime(p_cluster->AIc(v1,dir1), p_cluster->BRAKET_OFFSET)
+        );
+    };
+
     if(DBG) std::cout <<"===== EVBuilder::expVal2x2Diag11 called ====="
         << std::string(34,'=') << std::endl;
 
@@ -1698,6 +1727,9 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
     auto vX = v1 + Shift(1,0);
     auto vY = v1 + Shift(0,1);
     auto v2 = v1 + Shift(1,1);
+
+    // combiners
+    ITensor cmb0, cmb1, cmb2, cmb3;
 
     // find the index of site given its elem position within cluster
     auto pI1 = p_cluster->mphys.at(vToId(v1));
@@ -1711,7 +1743,9 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
 
     // get operator on site s1
     auto mpo1s = getTOT(op.first, vToId(v1), 0, DBG);
-    tN = tN * mpo1s.mpo[0];
+    get2dirSiteCombiner(cmb0,v1,DIRECTION::LEFT,DIRECTION::UP);
+    tN = (tN * cmb0) * (mpo1s.mpo[0] * cmb0);
+
     if(DBG) { 
         std::cout <<">>>>> 1) Upper Left corner done <<<<<"<< std::endl;
         Print(tN);
@@ -1720,12 +1754,19 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
     // build right upper corner
     auto tmp = p_ctmEnv->C_RU.at(vToId(vX)) * p_ctmEnv->T_U.at(vToId(vX));
     tmp *= p_ctmEnv->T_R.at(vToId(vX));
-    tmp *= p_cluster->sites.at(vToId(vX))*
-        dag(p_cluster->sites.at(vToId(vX))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    
+    get2dirSiteCombiner(cmb0,vX,DIRECTION::UP,DIRECTION::RIGHT);
+    tmp = (tmp * cmb0) * (getSiteBraKet(vX) * cmb0);
+
     if(DBG) Print(tmp);
 
-    readyToContract(tN,DIRECTION::UP,v1,DIRECTION::RIGHT,v2,DIRECTION::LEFT);
-    tN *= tmp;
+    // TODO use deltas instead of reindex
+    // readyToContract(tN,DIRECTION::UP,v1,DIRECTION::RIGHT,v2,DIRECTION::LEFT);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::UP,v1,DIRECTION::RIGHT,vX,DIRECTION::LEFT);
+    tN *= cmb0;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1));
+    tN *= (tmp * cmb1);
+
     if(DBG) { 
         std::cout <<">>>>> 2) Upper Right corner done <<<<<"<< std::endl;
         Print(tN); 
@@ -1737,10 +1778,15 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
 
     // get operator on site s1
     mpo1s = getTOT(op.second, vToId(v2), 0, DBG);
-    tmp = tmp * mpo1s.mpo[0];
+    get2dirSiteCombiner(cmb0,v2,DIRECTION::RIGHT,DIRECTION::DOWN);
+    tmp = (tmp*cmb0) * (mpo1s.mpo[0]*cmb0);
 
-    readyToContract(tN,DIRECTION::RIGHT,vX,DIRECTION::DOWN,v2,DIRECTION::UP);
-    tN *= tmp;
+    // readyToContract(tN,DIRECTION::RIGHT,vX,DIRECTION::DOWN,v2,DIRECTION::UP);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::RIGHT,vX,DIRECTION::DOWN,v2,DIRECTION::UP);
+    tN *= cmb0;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1));
+    tN *= (tmp * cmb1);
+
     if(DBG) { 
         std::cout <<">>>>> 3) Down Right corner done <<<<<"<< std::endl;
         Print(tN); 
@@ -1748,13 +1794,21 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s, Vertex const& v1,
 
     tmp = p_ctmEnv->C_LD.at(vToId(vY)) * p_ctmEnv->T_D.at(vToId(vY));
     tmp *= p_ctmEnv->T_L.at(vToId(vY));
-    tmp *= p_cluster->sites.at(vToId(vY))*
-        dag(p_cluster->sites.at(vToId(vY))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+
+    get2dirSiteCombiner(cmb0,vY,DIRECTION::DOWN,DIRECTION::LEFT);
+    tmp = (tmp * cmb0) * (getSiteBraKet(vY) * cmb0);
+
     if(DBG) Print(tmp);
 
-    readyToContract(tN,DIRECTION::LEFT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
-    readyToContract(tN,DIRECTION::DOWN,v2,DIRECTION::LEFT,vY,DIRECTION::RIGHT);
-    tN *= tmp;
+    // readyToContract(tN,DIRECTION::LEFT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    // readyToContract(tN,DIRECTION::DOWN,v2,DIRECTION::LEFT,vY,DIRECTION::RIGHT);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::LEFT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    getEdgeCombiners(cmb2,cmb3,DIRECTION::DOWN,v2,DIRECTION::LEFT,vY,DIRECTION::RIGHT);
+
+    tN = (tN * cmb0) * cmb2;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1),
+        combinedIndex(cmb2), combinedIndex(cmb3));
+    tN *= (tmp * cmb1) * cmb3;
     if(DBG) std::cout <<">>>>> 4) Down Left corner done <<<<<"<< std::endl;
 
     if(tN.r() > 0) {
@@ -1875,6 +1929,11 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
 
     auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
 
+    auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
+        return p_cluster->sites.at(vToId(v)) * 
+            dag(p_cluster->sites.at(vToId(v))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    };
+
     auto readyToContract = [this](ITensor & t, DIRECTION direction, 
         Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
         // relabel env auxiliary indices
@@ -1886,6 +1945,30 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
         t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
     };
 
+    auto get2dirSiteCombiner = [this] (ITensor & cmb, Vertex const& v, DIRECTION dir0,
+        DIRECTION dir1) { 
+        cmb = combiner(
+            p_cluster->AIc(v,dir0),
+            prime(p_cluster->AIc(v,dir0), p_cluster->BRAKET_OFFSET),
+            p_cluster->AIc(v,dir1),
+            prime(p_cluster->AIc(v,dir1), p_cluster->BRAKET_OFFSET)
+        );
+    };
+
+    auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1, DIRECTION direction, 
+        Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+        cmb_v0 = combiner(
+            p_ctmEnv->tauxByVertex(direction,v0,dir0),
+            p_cluster->AIc(v0,dir0),
+            prime(p_cluster->AIc(v0,dir0), p_cluster->BRAKET_OFFSET)
+        );
+        cmb_v1 = combiner(
+            p_ctmEnv->tauxByVertex(direction,v1,dir1),
+            p_cluster->AIc(v1,dir1),
+            prime(p_cluster->AIc(v1,dir1), p_cluster->BRAKET_OFFSET)
+        );
+    };
+
     if(DBG) std::cout <<"===== EVBuilder::expVal2x2DiagN11 called ====="
         << std::string(34,'=') << std::endl;
 
@@ -1894,6 +1977,8 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
     auto vX = v1 + Shift(-1,0);
     auto vY = v1 + Shift(0,1);
     auto v2 = v1 + Shift(-1,1);
+
+    ITensor cmb0, cmb1, cmb2, cmb3;
 
     // find the index of site given its elem position within cluster
     auto pI1 = p_cluster->mphys.at(vToId(v1));
@@ -1907,7 +1992,9 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
 
     // get operator on site s1
     auto mpo1s = getTOT(op.first, vToId(v1), 0, DBG);
-    tN = tN * mpo1s.mpo[0];
+    get2dirSiteCombiner(cmb0,v1,DIRECTION::UP,DIRECTION::RIGHT);
+    tN = (tN * cmb0) * (mpo1s.mpo[0] * cmb0);
+    
     if(DBG) { 
         std::cout <<">>>>> 1) right upper corner done <<<<<"<< std::endl;
         Print(tN);
@@ -1916,12 +2003,16 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
     // build right down corner
     auto tmp = p_ctmEnv->C_RD.at(vToId(vY)) * p_ctmEnv->T_R.at(vToId(vY));
     tmp *= p_ctmEnv->T_D.at(vToId(vY));
-    tmp *= p_cluster->sites.at(vToId(vY))*
-        dag(p_cluster->sites.at(vToId(vY))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    
+    get2dirSiteCombiner(cmb0,vY,DIRECTION::RIGHT,DIRECTION::DOWN);
+    tmp = (tmp * cmb0) * (getSiteBraKet(vY) * cmb0);
     if(DBG) Print(tmp);
 
-    readyToContract(tN,DIRECTION::RIGHT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
-    tN *= tmp;
+    // readyToContract(tN,DIRECTION::RIGHT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::RIGHT,v1,DIRECTION::DOWN,vY,DIRECTION::UP);
+    tN *= cmb0;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1));
+    tN *= (tmp * cmb1);
     if(DBG) { 
         std::cout <<">>>>> 2) right down corner done <<<<<"<< std::endl;
         Print(tN); 
@@ -1933,10 +2024,14 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
 
     // get operator on site s1
     mpo1s = getTOT(op.second, vToId(v2), 0, DBG);
-    tmp = tmp * mpo1s.mpo[0];
+    get2dirSiteCombiner(cmb0,v2,DIRECTION::LEFT,DIRECTION::DOWN);
+    tmp = (tmp * cmb0) * (mpo1s.mpo[0] * cmb0);
 
-    readyToContract(tN,DIRECTION::DOWN,vY,DIRECTION::LEFT,v2,DIRECTION::RIGHT);
-    tN *= tmp;
+    // readyToContract(tN,DIRECTION::DOWN,vY,DIRECTION::LEFT,v2,DIRECTION::RIGHT);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::DOWN,vY,DIRECTION::LEFT,v2,DIRECTION::RIGHT);
+    tN *= cmb0;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1));
+    tN *= (tmp * cmb1);
     if(DBG) { 
         std::cout <<">>>>> 3) left down corner done <<<<<"<< std::endl;
         Print(tN); 
@@ -1944,13 +2039,22 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
 
     tmp = p_ctmEnv->C_LU.at(vToId(vX)) * p_ctmEnv->T_L.at(vToId(vX));
     tmp *= p_ctmEnv->T_U.at(vToId(vX));
-    tmp *= p_cluster->sites.at(vToId(vX))*
-        dag(p_cluster->sites.at(vToId(vX))).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    
+    get2dirSiteCombiner(cmb0,vX,DIRECTION::LEFT,DIRECTION::UP);
+    tmp = (tmp * cmb0) * (getSiteBraKet(vX) * cmb0) ;
+    
     if(DBG) Print(tmp);
 
-    readyToContract(tN,DIRECTION::UP,v1,DIRECTION::LEFT,vX,DIRECTION::RIGHT);
-    readyToContract(tN,DIRECTION::LEFT,v2,DIRECTION::UP,vX,DIRECTION::DOWN);
-    tN *= tmp;
+    // readyToContract(tN,DIRECTION::UP,v1,DIRECTION::LEFT,vX,DIRECTION::RIGHT);
+    // readyToContract(tN,DIRECTION::LEFT,v2,DIRECTION::UP,vX,DIRECTION::DOWN);
+    getEdgeCombiners(cmb0,cmb1,DIRECTION::UP,v1,DIRECTION::LEFT,vX,DIRECTION::RIGHT);
+    getEdgeCombiners(cmb2,cmb3,DIRECTION::LEFT,v2,DIRECTION::UP,vX,DIRECTION::DOWN);
+
+    tN = (tN * cmb0) * cmb2;
+    tN = reindex(tN, combinedIndex(cmb0), combinedIndex(cmb1),
+        combinedIndex(cmb2), combinedIndex(cmb3));
+    tN *= (tmp * cmb1) * cmb3;
+    
     if(DBG) std::cout <<">>>>> 4) left upper corner done <<<<<"<< std::endl;
 
     if(tN.r() > 0) {

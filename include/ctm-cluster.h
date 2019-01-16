@@ -217,7 +217,7 @@ struct Cluster {
     //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
-        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("default") {}
+        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("DEFAULT") {}
 
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC
@@ -240,7 +240,9 @@ struct Cluster {
     itensor::ITensor getSite(Vertex const& v) const {
         itensor::ITensor t = sites.at(vertexToId(v));
         return t;
-    }  
+    }
+
+    void absorbWeightsToSites(bool dbg = false);
 };
 
 void initClusterSites(Cluster & c, bool dbg = false);
@@ -258,8 +260,6 @@ void setSites(Cluster & c, std::string option, bool dbg = false);
 // itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
 
 // itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
-
-void absorbWeightsToSites(Cluster & cls, bool dbg = false);
 
 void mvSite(Cluster const& c, std::pair<int,int> &s, int dir);
 

@@ -122,17 +122,17 @@ class IsingModel : public Model {
             std::ofstream & output, itensor::Args & metaInf);
 };
 
-class Ising3BodyModel : public Model {
-    public:
-        double J1, J2, h;
+// class Ising3BodyModel : public Model {
+//     public:
+//         double J1, J2, h;
 
-        Ising3BodyModel(double arg_J1, double arg_J2, double arg_h);
+//         Ising3BodyModel(double arg_J1, double arg_J2, double arg_h);
 
-        void setObservablesHeader(std::ofstream & output);
+//         void setObservablesHeader(std::ofstream & output);
 
-        void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args & metaInf);
-};
+//         void computeAndWriteObservables(EVBuilder const& ev, 
+//             std::ofstream & output, itensor::Args & metaInf);
+// };
 // ----- END Definition of model class --------------------------------
 
 
@@ -164,7 +164,7 @@ std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model);
 //     std::vector< std::vector<std::string> > & gates,
 //     std::vector< std::vector<int> > & gate_auxInds);
 
-std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model);
+// std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model);
 
 // void getModel_3site(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,

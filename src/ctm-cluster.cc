@@ -320,27 +320,27 @@ void setSites(Cluster & c, std::string option, bool dbg) {
 //     return initPlaq;
 // }
 
-void absorbWeightsToSites(Cluster & c, bool dbg) {
+void Cluster::absorbWeightsToSites(bool dbg) {
 
     auto sqrtT = [](double r) { return std::sqrt(r); };
     auto quadT = [](double r) { return r*r; };
 
     // apply sqrtT to all wight tensors
-    for ( auto & w : c.weights) w.second.apply(sqrtT);
+    for ( auto & w : weights) w.second.apply(sqrtT);
 
-    for ( auto & siteEntry : c.sites ) {
+    for ( auto & siteEntry : sites ) {
         auto sId = siteEntry.first;
         // contract each on-site tensor with its weights
         // and set back the original index
-        for ( auto const& stw : c.siteToWeights.at(sId) ) {
-            siteEntry.second *= c.weights.at(stw.wId);
-            siteEntry.second *= delta(c.weights.at(stw.wId).inds());
+        for ( auto const& stw : siteToWeights.at(sId) ) {
+            siteEntry.second *= weights.at(stw.wId);
+            siteEntry.second *= delta(weights.at(stw.wId).inds());
             // siteEntry.second *= c.DContract(stw.sId[0],stw.dirs[0],stw.sId[1],stw.dirs[1]);
         }
     }
 
     // apply quadT to all weight tensors to recover original ones
-    for ( auto & w : c.weights) w.second.apply(quadT);
+    for ( auto & w : weights) w.second.apply(quadT);
 }
 
 void mvSite(Cluster const& c, std::pair<int,int> &s, int dir) {

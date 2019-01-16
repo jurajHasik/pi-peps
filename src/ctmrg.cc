@@ -711,6 +711,10 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
     	t_iso_begin = std::chrono::high_resolution_clock::now();
     	ITensor U, S, V, R, Rt;
     	build_halves_V2(direction, v, R, Rt);
+    	auto cmb_p_inner  = combiner(edgeIndices(direction,v,dir0));
+		auto cmb_pt_inner = combiner(edgeIndices(direction,v_shift,dir1));
+		R *= cmb_p_inner;
+		Rt *= cmb_pt_inner;
     	t_iso_end = std::chrono::high_resolution_clock::now();
     	accT[4] += get_mS(t_iso_begin,t_iso_end);
 
@@ -718,7 +722,10 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
     	// truncated SVD
     	t_iso_begin = std::chrono::high_resolution_clock::now();
     	U = ITensor(edgeIndices(opposite_direction,v_shift_oi,dir0));
-    	readyToContract(R,direction,v,dir0,v_shift,dir1);
+    	// readyToContract(R,direction,v,dir0,v_shift,dir1);
+    	// TODO use delta instead of reindex
+	    R = reindex(R,combinedIndex(cmb_p_inner), combinedIndex(cmb_pt_inner));
+
 	    svd( R * Rt, U, S, V, solver, argsSVDRRt);
 	    if( S.real(S.inds().front()(1),S.inds().back()(1)) > isoMaxElemWarning ||
 	        S.real(S.inds().front()(1),S.inds().back()(1)) < isoMinElemWarning ) {
@@ -726,6 +733,8 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
 	    		<<" Max Sing. val.: "<< S.real(S.inds().front()(1),S.inds().back()(1))
 	            << std::endl;
 	    }
+
+	    R = reindex(R,combinedIndex(cmb_pt_inner), combinedIndex(cmb_p_inner));
 	    t_iso_end = std::chrono::high_resolution_clock::now();
     	accT[6] += get_mS(t_iso_begin,t_iso_end);
 
@@ -741,18 +750,39 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
     	// TODO expose debug setting here
     	// if ( dbg && (not default_pinv_cutoff) && (est_tol > arg_tol) )  std::cout<<
     		// "[compute_IsometriesT4] WARNING: est_tol > loc_psdInvCutoff*max_sv"<< std::endl;
-    	double const tol = (default_pinv_cutoff) ? est_tol : arg_tol;
-    	auto oneOverSqrtT = [&tol](Real r) 
-        	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
-    	S.apply(oneOverSqrtT);
+    	double tol = (default_pinv_cutoff) ? est_tol : arg_tol;
+    	// auto oneOverSqrtT = [&tol](Real r) 
+     //    	{ return (r > tol) ? 1.0/sqrt(r) : 0.0; };
+    	// S.apply(oneOverSqrtT);
+    	
+    	std::vector<double> invS_diag(rank,0.0);
+    	for (int is=1; is<=rank; is++) {
+    		auto elem = S.real(S.inds().front()(is),S.inds().back()(is));
+    		if ( elem > tol ) {
+    			invS_diag[is-1] = 1.0/std::sqrt(elem);
+    		}
+    		else {
+    			break; 
+    		}
+    	}
+    	S = diagTensor(invS_diag,sIU,sIV);
 
     	// set innner indices back to original state
-    	readyToContract(R,direction,v,dir0,v_shift,dir1);
+    	// readyToContract(R,direction,v,dir0,v_shift,dir1);
 
     	ip[ id] = Index("P_"+id,tauxByVertex(direction,v,dir0).m());
     	ipt[id] = Index("Pt_"+id,tauxByVertex(direction,v,dir1).m());
-	    P[ id] = (R* U.dag())*S*delta(sIV, ip[id] );
-	   	Pt[id] = (Rt*V.dag())*S*delta(sIU, ipt[id]);
+
+    	// TODO use delta instead of reindex
+	    // P[ id] = ((R* U.dag())*S)*delta(sIV, ip[id] );
+	   	// Pt[id] = ((Rt*V.dag())*S)*delta(sIU, ipt[id]);
+		P[ id] = (R* U.dag())*S;
+	   	Pt[id] = (Rt*V.dag())*S;
+	   	P[ id] = reindex(P[id],  sIV, ip[id] );
+	   	Pt[id] = reindex(Pt[id], sIU, ipt[id]);
+
+    	P[id]  *= cmb_p_inner;
+	   	Pt[id] *= cmb_pt_inner;
 
 	   	t_iso_end = std::chrono::high_resolution_clock::now();
     	accT[7] += get_mS(t_iso_begin,t_iso_end);
@@ -832,6 +862,7 @@ ITensor CtmEnv::build_corner_V2(CORNER cornerType, Vertex const& v) const
     return ct;
 }
 
+// TODO how to handle a case of 1site invariant wavefunction
 void CtmEnv::build_halves_V2(DIRECTION direction, Vertex const& v, 
 	ITensor & H, ITensor & Ht) const 
 {
@@ -844,18 +875,40 @@ void CtmEnv::build_halves_V2(DIRECTION direction, Vertex const& v,
     	t *= prime(p_cluster->DContract(v0,dir0,v1,dir1), p_cluster->BRAKET_OFFSET);
     };
 
+    auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1, DIRECTION direction, 
+    	Vertex const& v0, int dir0, Vertex const& v1, int dir1) {
+    	cmb_v0 = combiner(
+    		tauxByVertex(direction,v0,dir0),
+    		p_cluster->AIc(v0,dir0),
+    		prime(p_cluster->AIc(v0,dir0), p_cluster->BRAKET_OFFSET)
+    	);
+    	cmb_v1 = combiner(
+    		tauxByVertex(direction,v1,dir1),
+    		p_cluster->AIc(v1,dir1),
+    		prime(p_cluster->AIc(v1,dir1), p_cluster->BRAKET_OFFSET)
+    	);
+    };
+
+    // TODO use delta instead of reindex for relabeling combined indices
+    ITensor cmb0, cmb1;
     switch (direction) {
         case DIRECTION::LEFT: { // left
         	std::vector<Vertex> vs({v, v+Shift(1,0), v+Shift(0,1), v+Shift(1,1) });
             
             // build upper half
             H =  build_corner_V2(CORNER::LU, vs[0]); // LU
-            readyToContract(H,DIRECTION::UP,vs[0],2,vs[1],0);
-            H *= build_corner_V2(CORNER::RU, vs[1]); // RU
+            // readyToContract(H,DIRECTION::UP,vs[0],2,vs[1],0);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::UP,vs[0],2,vs[1],0);
+            H *= cmb0;
+            H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
+            H *= build_corner_V2(CORNER::RU, vs[1]) * cmb1; // RU
             // build lower half
             Ht  = build_corner_V2(CORNER::LD, vs[2]); // LD
-            readyToContract(Ht,DIRECTION::DOWN,vs[2],2,vs[3],0);
-            Ht *= build_corner_V2(CORNER::RD, vs[3]); // RD
+            // readyToContract(Ht,DIRECTION::DOWN,vs[2],2,vs[3],0);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::DOWN,vs[2],2,vs[3],0);
+            Ht *= cmb0;
+            Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
+            Ht *= build_corner_V2(CORNER::RD, vs[3]) * cmb1; // RD
             break;
         }
         case DIRECTION::UP: { // up
@@ -863,12 +916,18 @@ void CtmEnv::build_halves_V2(DIRECTION direction, Vertex const& v,
 
             // build right half
             H  = build_corner_V2(CORNER::RU, vs[0]); // RU
-            readyToContract(H,DIRECTION::RIGHT,vs[0],3,vs[1],1);
-            H *= build_corner_V2(CORNER::RD, vs[1]); // RD
+            // readyToContract(H,DIRECTION::RIGHT,vs[0],3,vs[1],1);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::RIGHT,vs[0],3,vs[1],1);
+            H *= cmb0;
+            H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
+            H *= build_corner_V2(CORNER::RD, vs[1]) * cmb1; // RD
             // build left half (upper_h)
             Ht  = build_corner_V2(CORNER::LU, vs[2]); // LU
-			readyToContract(Ht,DIRECTION::LEFT,vs[2],3,vs[3],1);
-            Ht *= build_corner_V2(CORNER::LD, vs[3]); // LD
+			// readyToContract(Ht,DIRECTION::LEFT,vs[2],3,vs[3],1);
+			getEdgeCombiners(cmb0,cmb1,DIRECTION::LEFT,vs[2],3,vs[3],1);
+            Ht *= cmb0;
+            Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
+            Ht *= build_corner_V2(CORNER::LD, vs[3]) * cmb1; // LD
             break;
         }
         case DIRECTION::RIGHT: { // right
@@ -876,12 +935,18 @@ void CtmEnv::build_halves_V2(DIRECTION direction, Vertex const& v,
 
             // build lower half
             H  = build_corner_V2(CORNER::RD, vs[0]); // RD
-            readyToContract(H,DIRECTION::DOWN,vs[0],0,vs[1],2);
-            H *= build_corner_V2(CORNER::LD, vs[1]); // LD
+            // readyToContract(H,DIRECTION::DOWN,vs[0],0,vs[1],2);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::DOWN,vs[0],0,vs[1],2);
+            H *= cmb0;
+            H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
+            H *= build_corner_V2(CORNER::LD, vs[1]) * cmb1; // LD
             // build upper half
             Ht  = build_corner_V2(CORNER::RU, vs[2]); // RU
-            readyToContract(Ht,DIRECTION::UP,vs[2],0,vs[3],2);
-            Ht *= build_corner_V2(CORNER::LU, vs[3]); // LU
+            // readyToContract(Ht,DIRECTION::UP,vs[2],0,vs[3],2);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::UP,vs[2],0,vs[3],2);
+            Ht *= cmb0;
+            Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
+            Ht *= build_corner_V2(CORNER::LU, vs[3]) * cmb1; // LU
             break;
         }
         case DIRECTION::DOWN: { // down
@@ -889,12 +954,18 @@ void CtmEnv::build_halves_V2(DIRECTION direction, Vertex const& v,
 
             // build left half
             H  = build_corner_V2(CORNER::LD, vs[0]); // LD
-            readyToContract(H,DIRECTION::LEFT,vs[0],1,vs[1],3);
-            H *= build_corner_V2(CORNER::LU, vs[1]); // LU
+            // readyToContract(H,DIRECTION::LEFT,vs[0],1,vs[1],3);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::LEFT,vs[0],1,vs[1],3);
+            H *= cmb0;
+            H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
+            H *= build_corner_V2(CORNER::LU, vs[1]) * cmb1; // LU
             // build right half
             Ht  = build_corner_V2(CORNER::RD, vs[2]); // RD
-            readyToContract(Ht,DIRECTION::RIGHT,vs[2],1,vs[3],3);
-            Ht *= build_corner_V2(CORNER::RU, vs[3]); // RU
+            // readyToContract(Ht,DIRECTION::RIGHT,vs[2],1,vs[3],3);
+            getEdgeCombiners(cmb0,cmb1,DIRECTION::RIGHT,vs[2],1,vs[3],3);
+            Ht *= cmb0;
+            Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
+            Ht *= build_corner_V2(CORNER::RU, vs[3]) * cmb1; // RU
             break;
         }
     }
