@@ -1,7 +1,8 @@
 source_files += files([
 		       'cluster-ev-builder.cc', 
                        'engine.cc',           
-                       #'full-update-TEST.cc', 
+                       #'full-update-TEST.cc',
+                       'fu-2site.cc',
                        #'fu-3site.cc',
                        #'fu-4site.cc',
                        #'full-update.cc', 

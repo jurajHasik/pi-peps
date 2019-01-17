@@ -35,6 +35,7 @@ int main( int argc, char *argv[] ) {
     
 	int physDim, auxBondDim;
 	std::string inClusterFile;
+    // TODO if no file input cluster is supplied, construct from one of the templates
 	inClusterFile = jsonCls["inClusterFile"].get<std::string>();
     physDim       = jsonCls["physDim"].get<int>();
 	auxBondDim    = jsonCls["auxBondDim"].get<int>();
@@ -86,7 +87,7 @@ int main( int argc, char *argv[] ) {
     
     // choose initial wavefunction
     if (initBy == "FILE") {
-        ifstream infile(inClusterFile, ios::in);
+        std::ifstream infile(inClusterFile, std::ios::in);
         nlohmann::json jsonCls = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster

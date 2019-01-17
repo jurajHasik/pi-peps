@@ -2,7 +2,6 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
-
 #include "json.hpp"
 #include "ctm-cluster-basic.h"
 #include "ctm-cluster-io.h"
@@ -21,10 +20,10 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE FULL UPDATE ALGORITHM *********************************
 	std::string arg_initFile = std::string(argv[1]);
-	std::ifstream infile(arg_initFile, std::ios::in);
+	std::ifstream simfile(arg_initFile, std::ios::in);
 
 	nlohmann::json jsonCls;
-	infile >> jsonCls;
+	simfile >> jsonCls;
 
     // write simulation parameters to log file
     std::cout << jsonCls.dump(4) << std::endl;
@@ -37,15 +36,14 @@ int main( int argc, char *argv[] ) {
 	std::string inClusterFile;
 	if (initBy=="FILE") inClusterFile = jsonCls["inClusterFile"].get<std::string>();
 	double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
-    physDim = jsonCls["physDim"].get<int>();
+    physDim    = jsonCls["physDim"].get<int>();
 	auxBondDim = jsonCls["auxBondDim"].get<int>();
 
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
 
 	// read Hamiltonian and Trotter decomposition
-    auto json_model_params(jsonCls["model"]);
-    std::string arg_modelType = json_model_params.value("modelType","UNSUPPORTED"); 
+    auto json_model_params(jsonCls["model"]); 
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 
@@ -122,72 +120,44 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE FULL UPDATE ALGORITHM DONE ****************************
 
 	// ----- INITIALIZE CLUSTER -----------------------------------------------
-	Cluster cls;
+	std::unique_ptr<Cluster> p_cls;
+
 	if (initBy=="FILE") {
-		Index aIA, aIB, pIA, pIB, aIC, aID, pIC, pID;
-		ITensor A, B, C, D;
+		std::ifstream infile(inClusterFile, std::ios::in);
+        nlohmann::json jsonCls = nlohmann::json::parse(infile);
 
-		cls = readCluster(inClusterFile);
-		if (cls.auxBondDim > auxBondDim) std::cout <<"Warning: auxBondDim of the"
-			<<" input cluster is higher then the desired one!" << std::endl;
-		cls.auxBondDim = auxBondDim;
-		if (cls.physDim != physDim) std::cout <<"Warning: physDim of the"
-			<<" input cluster and simulation parameters are not in agreement!"
-			<< std::endl;
+        // preprocess parameters of input cluster
+        jsonCls["auxBondDim"] = auxBondDim;
+        for(auto & site : jsonCls["sites"]) {
+            site["auxDim"] = auxBondDim;
+        }
 
-		A = cls.sites[cls.cToS.at(std::make_pair(0,0))];
-        B = cls.sites[cls.cToS.at(std::make_pair(1,0))];
-        C = cls.sites[cls.cToS.at(std::make_pair(0,1))];
-        D = cls.sites[cls.cToS.at(std::make_pair(1,1))];
-
-        pIA = noprime(findtype(A, PHYS));
-        pIB = noprime(findtype(B, PHYS));
-        pIC = noprime(findtype(C, PHYS));
-        pID = noprime(findtype(D, PHYS));
-        aIA = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aIB = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aIC = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        aID = Index(TAG_I_AUX, cls.auxBondDim, AUXLINK);
-        
-        // relabel original indices to take up desired bond dimensions
-        auto taIA = noprime(findtype(A, AUXLINK));
-        auto taIB = noprime(findtype(B, AUXLINK));
-        auto taIC = noprime(findtype(C, AUXLINK));
-        auto taID = noprime(findtype(D, AUXLINK));
-        
-        auto D_I = delta(taIA,aIA);
-        A = A*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
-        D_I = delta(taIB,aIB);
-        B = B*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
-        D_I = delta(taIC,aIC);
-        C = C*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
-        D_I = delta(taID,aID);
-        D = D*D_I*prime(D_I,1)*prime(D_I,2)*prime(D_I,3);
-
-        
-        cls.aux   = {aIA, aIB, aIC, aID};
-        cls.phys  = {pIA, pIB, pIC, pID};
-        cls.maux  = {{"A",aIA},{"B",aIB},{"C",aIC},{"D",aID}};
-        cls.mphys = {{"A",pIA},{"B",pIB},{"C",pIC},{"D",pID}};
-
-        cls.sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
+        p_cls = p_readCluster(jsonCls);
+        // initClusterSites(cls);
+        // initClusterWeights(cls);
+        // setWeights(*p_cls, suWeightsInit);
+        // setOnSiteTensorsFromFile(cls, inClusterFile);
     } else {
-        cls = Cluster_2x2_ABCD(initBy, auxBondDim, physDim);
+        // cls = Cluster_2x2_ABCD(initBy, auxBondDim, physDim);
     }
+    std::cout << *p_cls;
 
+    // add random noise to initial state
     {
         ITensor temp; 
         double eps = initStateNoise;
         auto setMeanTo0 = [](Real r) { return (r-0.5); };
 
-        for(auto& st : cls.sites) {
+        for(auto& st : p_cls->sites) {
             temp = st.second;
             randomize(temp);
             temp.apply(setMeanTo0);
             st.second += eps*temp;
         }
     }
-    cls.simParam = jsonCls;
+
+    // write simulations params into cluster
+    p_cls->simParam = jsonCls;
     // ----- END DEFINE CLUSTER -----------------------------------------------
 
     // ***** Select SVD solver to use *****************************************
@@ -231,18 +201,20 @@ int main( int argc, char *argv[] ) {
         else if (val.is_number_float()) env_args.add(key,(double) val); 
     }
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver, env_args);
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver, env_args);
     ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
-    EVBuilder ev(arg_ioEnvTag, cls, ctmEnv.getCtmData_DBG());
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
+    std::cout << ev;
 
     // hold ctm observables used in the convergence criterion
     std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
 
-    std::vector<double> accT(8,0.0); // holds timings for CTM moves
-    std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+    using time_point = std::chrono::steady_clock::time_point;
+    time_point t_begin_int, t_end_int;
+    auto get_s = [](time_point ti, time_point tf) { return std::chrono::duration_cast
+            <std::chrono::microseconds>(tf - ti).count()/1.0e+06; };
 
     // ##################################################################
     // # SETUP OPTIMIZATION LOOP                                        #
@@ -272,12 +244,6 @@ int main( int argc, char *argv[] ) {
         }
     }
     
-    // STORE ISOMETRIES
-    // std::vector< std::vector< ITensor > > iso_store(
-        // ptr_model->gates.size(), {ITensor(), ITensor(), ITensor(), ITensor()} );
-     std::vector< std::vector< ITensor > > iso_store(
-        1, {ITensor(), ITensor(), ITensor(), ITensor()} );
-
     Args fuArgs = {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,
         "fuTrialInit",arg_fuTrialInit,
@@ -312,6 +278,7 @@ int main( int argc, char *argv[] ) {
     std::vector< Args > diagData_fu;
     std::vector<double> diag_minCornerSV(1, 0.);
     double best_energy = 1.0e+16;
+    std::vector<double> accT(12,0.0); // holds timings for CTM moves
     Args diag_fu;
 
     std::string outClusterBestFile = outClusterFile+".best";
@@ -330,46 +297,25 @@ int main( int argc, char *argv[] ) {
 
         t_begin_int = std::chrono::steady_clock::now();
 
-        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
         t_end_int = std::chrono::steady_clock::now();
-        std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
-                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] ";
+        std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] ";
 
         if ( envI % 1 == 0 ) {
             t_begin_int = std::chrono::steady_clock::now();
-
-            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
             
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
 
-            // e_curr[0]=ev.evalSS(std::make_pair(0,0), std::make_pair(1,0));
-            // e_curr[1]=ev.evalSS(std::make_pair(0,0), std::make_pair(0,1));
-            // e_curr[2]=ev.evalSS(std::make_pair(1,0), std::make_pair(1,1));
-            // e_curr[3]=ev.evalSS(std::make_pair(0,1), std::make_pair(1,1));  
-
-            // e_curr[0]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-            // e_curr[1]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-            // e_curr[2]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            // e_curr[3]=ev.eval2Smpo_redDenMat2x1(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1)); 
-
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout <<"|| T: "<< std::chrono::duration_cast
-                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                << e_curr[3] << std::endl;
-
-            // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
-            // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
-            // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
-            // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
+           t_end_int = std::chrono::steady_clock::now();
+            std::cout <<"|| T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
+                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
 
             if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
                 (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
@@ -389,44 +335,47 @@ int main( int argc, char *argv[] ) {
 
             if (expValEnvConv) {
                 diag_ctmIter.push_back(envI);
-            
-                // diagnose spectra
+
                 std::ostringstream oss;
                 oss << std::scientific;
 
-                // diagnose spectra
+                // Compute spectra of Corner matrices
                 std::cout << std::endl;
                 double tmpVal;
                 double minCornerSV = 1.0e+16;
                 Args args_dbg_cornerSVD = {"Truncate",false};
                 std::cout << "Spectra: " << std::endl;
 
-                ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR, args_dbg_cornerSVD);
+                ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
+                auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
                 minCornerSV = std::min(minCornerSV, tmpVal);
                 oss << tmpVal;
 
-                tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                spec = svd(ctmEnv.C_RU[0],tL,sv,tR, args_dbg_cornerSVD);
+                tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
                 minCornerSV = std::min(minCornerSV, tmpVal);
                 oss <<" "<< tmpVal;
 
-                tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                spec = svd(ctmEnv.C_RD[0],tL,sv,tR, args_dbg_cornerSVD);
+                tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
                 minCornerSV = std::min(minCornerSV, tmpVal);
                 oss <<" "<< tmpVal;
 
-                tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                spec = svd(ctmEnv.C_LD[0],tL,sv,tR, args_dbg_cornerSVD);
+                tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
                 tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                     sv.inds().back()(auxEnvDim));
                 PrintData(sv);
@@ -435,14 +384,23 @@ int main( int argc, char *argv[] ) {
 
                 diag_minCornerSV.push_back(minCornerSV);
                 std::cout << "MinVals: "<< oss.str() << std::endl;
-            
+
                 break;
             }
         }
     }
+
+    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
+    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+        <<" "<< accT[3] << std::endl;
+    std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
+    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+        <<" "<< accT[7] << std::endl;
+    std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+    std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+        <<" "<< accT[11] << std::endl;
     // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
 
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
     // Compute initial properties
     ptr_model->setObservablesHeader(out_file_energy);
     auto obs_metaInf = Args("lineNo",0);
@@ -454,7 +412,7 @@ int main( int argc, char *argv[] ) {
     	std::cout <<"Full Update - STEP "<< fuI << std::endl;
 
         // ctmEnv.symmetrizeEnv();
-        diag_fu = ptr_engine->performFullUpdate(cls, ctmEnv, fuArgs);
+        diag_fu = ptr_engine->performFullUpdate(*p_cls, ctmEnv, fuArgs);
 
         diagData_fu.push_back(diag_fu);
 
@@ -489,24 +447,24 @@ int main( int argc, char *argv[] ) {
             auto num_eps = std::numeric_limits<double>::epsilon();
             t_begin_int = std::chrono::steady_clock::now();
 
-            auto const tol = (true) ? arg_suTol : num_eps*cls.auxBondDim*cls.weights.size();
+            auto const tol = (true) ? arg_suTol : num_eps*p_cls->auxBondDim*p_cls->weights.size();
 
             // Assuming the weights have been initialized
-            initClusterWeights(cls);
-            setWeights(cls, arg_suWeightsInit);
+            initClusterWeights(*p_cls);
+            setWeights(*p_cls, arg_suWeightsInit);
 
             Args gfArgs = {"suDbg",arg_gf_dbg,"suDbgLevel",arg_gf_dbgLvl};
             Args gf_diag_fu;
-            saveWeights(cls);
+            saveWeights(*p_cls);
             for (int suI = 1; suI <= arg_suIter; suI++) {
                 //std::cout <<"Simple Update - STEP "<< suI << std::endl;
 
                 // PERFORM SIMPLE UPDATE
-                gf_diag_fu = ptr_gfe->performSimpleUpdate(cls, gfArgs);
+                gf_diag_fu = ptr_gfe->performSimpleUpdate(*p_cls, gfArgs);
                 
                 //check convergence
                 if (suI % 8 == 0) {
-                    auto weight_distance = weightDist(cls);
+                    auto weight_distance = weightDist(*p_cls);
                     if ( weight_distance < tol ) {
                         std::cout<<"GF iter: "<< suI <<" dist: "<< weight_distance 
                             <<" CONVERGED"<< std::endl;
@@ -514,23 +472,18 @@ int main( int argc, char *argv[] ) {
                     } else {
                         std::cout<<"GF iter: "<< suI <<" dist: "<< weight_distance << std::endl;
                     }
-                    saveWeights(cls);
+                    saveWeights(*p_cls);
                 }
             }
 
-            absorbWeightsToSites(cls);
+            p_cls->absorbWeightsToSites();
         
             t_end_int = std::chrono::steady_clock::now();
-            std::cout << "GUAGE FIX DONE" << " T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "; 
+            std::cout << "GUAGE FIX DONE" << " T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
         }
 
-        ctmEnv.updateCluster(cls);
-        ev.setCluster(cls);
-
         // SETUP ENVIRONMENT LOOP
-        accT = std::vector<double>(8,0.0);
+        accT = std::vector<double>(12,0.0);
         // reset environment
         if (arg_reinitEnv || ((fuI % arg_obsFreq == 0) && arg_reinitObsEnv) ) 
             ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
@@ -541,37 +494,26 @@ int main( int argc, char *argv[] ) {
         for (int envI=1; envI<=currentMaxEnvIter; envI++ ) {
             t_begin_int = std::chrono::steady_clock::now();
 
-	        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-            ctmEnv.move_unidirectional(2, iso_type, cls, accT);
-            ctmEnv.move_unidirectional(1, iso_type, cls, accT);
-            ctmEnv.move_unidirectional(3, iso_type, cls, accT);
+	        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
             t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "; 
+            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
 
 	        if ( (currentMaxEnvIter > 1) && (envI % 1 == 0) ) {
                 t_begin_int = std::chrono::steady_clock::now();
-	            
-                ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
 
-                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
-
-                // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(1,0));
-                // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,0), std::make_pair(0,1));
-                // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(1,0), std::make_pair(1,1));
-                // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SZSZ, std::make_pair(0,1), std::make_pair(1,1));
+                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
+                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
+                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
+                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
 
                 t_end_int = std::chrono::steady_clock::now();
 
-	            std::cout<<" || E in T: "<< std::chrono::duration_cast
-	            	<std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-	                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                    << e_curr[3]; 
+	            std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
+                    << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
 
                 // if the difference between energies along NN links is lower then arg_envEps
                 // consider the environment converged
@@ -597,50 +539,46 @@ int main( int argc, char *argv[] ) {
                     std::ostringstream oss;
                     oss << std::scientific;
 
-                    // diagnose spectra
+                    // Compute spectra of Corner matrices
                     std::cout << std::endl;
-                    Args args_dbg_cornerSVD = {"Truncate",false};
                     double tmpVal;
                     double minCornerSV = 1.0e+16;
+                    Args args_dbg_cornerSVD = {"Truncate",false};
                     std::cout << "Spectra: " << std::endl;
 
-                    ITensor tL(ctmEnv.C_LU[0].inds().front()),sv,tR;
-                    auto spec = svd(ctmEnv.C_LU[0],tL,sv,tR,args_dbg_cornerSVD);
+                    ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
+                    auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    Print(sv);
-                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
-                        sv.inds().back()(i)) << std::endl;
+                    PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss << tmpVal;
 
-                    tL = ITensor(ctmEnv.C_RU[0].inds().front());
-                    spec = svd(ctmEnv.C_RU[0],tL,sv,tR,args_dbg_cornerSVD);
+                    tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    Print(sv);
-                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
-                        sv.inds().back()(i)) << std::endl;
+                    PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
-                    tL = ITensor(ctmEnv.C_RD[0].inds().front());
-                    spec = svd(ctmEnv.C_RD[0],tL,sv,tR,args_dbg_cornerSVD);
+                    tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    Print(sv);
-                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
-                        sv.inds().back()(i)) << std::endl;
+                    PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
-                    tL = ITensor(ctmEnv.C_LD[0].inds().front());
-                    spec = svd(ctmEnv.C_LD[0],tL,sv,tR,args_dbg_cornerSVD);
+                    tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    Print(sv);
-                    for(int i=1; i<=auxEnvDim; i++) std::cout<< i <<" "<< sv.real(sv.inds().front()(i),
-                        sv.inds().back()(i)) << std::endl;
+                    PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -654,14 +592,17 @@ int main( int argc, char *argv[] ) {
             std::cout << std::endl;
 	    }
 
-	    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-        	<<" "<< accT[3] << std::endl;
-    	std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-        	<<" "<< accT[7] << std::endl;
+	    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
+        std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+            <<" "<< accT[3] << std::endl;
+        std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
+        std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+            <<" "<< accT[7] << std::endl;
+        std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+        std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+            <<" "<< accT[11] << std::endl;
 
         if (fuI % arg_obsFreq == 0) {
-            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
-
             t_begin_int = std::chrono::steady_clock::now();
 
             // ctmEnv.symmetrizeEnv();
@@ -672,15 +613,14 @@ int main( int argc, char *argv[] ) {
             auto current_energy = metaInf.getReal("energy");
             if( best_energy > current_energy ) {
                 best_energy = current_energy;
-                cls.metaInfo = "BestEnergy(FUStep=" + std::to_string(fuI) + ")";
-                writeCluster(outClusterBestFile, cls);
+                p_cls->metaInfo = "BestEnergy(FUStep=" + std::to_string(fuI) + ")";
+                writeCluster(outClusterBestFile, *p_cls);
             }
 
             t_end_int = std::chrono::steady_clock::now();
 
-            std::cout << "Observables computed in T: "<< std::chrono::duration_cast
-                    <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                    <<" [sec] "<< std::endl;
+            std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
+                <<" [sec] "<< std::endl;
 
             // t_begin_int = std::chrono::steady_clock::now();
             // t_end_int = std::chrono::steady_clock::now();
@@ -700,38 +640,36 @@ int main( int argc, char *argv[] ) {
             //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
             //         <<" [sec] "<< std::endl;
         
-            writeCluster(outClusterFile, cls);
+            writeCluster(outClusterFile, *p_cls);
         }
     }
 
     // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
     std::cout <<"FULL UPDATE DONE - COMPUTING FINAL ENVIRONMENT "<< std::endl;
     // t_begin_int = std::chrono::steady_clock::now();
-    
+    accT = std::vector<double>(12,0.0);
+
     // reset environment
     if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
 
     // ENTER ENVIRONMENT LOOP
     for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
 
-        ctmEnv.move_unidirectional(0, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(1, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(2, iso_type, cls, accT);
-        ctmEnv.move_unidirectional(3, iso_type, cls, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
         if ( envI % 1 == 0 ) {
-            ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
         
             t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< std::chrono::duration_cast
-                <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-                <<" [sec] E: "<< e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "
-                << e_curr[3] << std::endl;
+            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
+                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
             
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,0), std::make_pair(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(1,0), std::make_pair(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, std::make_pair(0,1), std::make_pair(1,1));
+            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
+            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
+            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
+            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
 
             if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
                 (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
@@ -747,20 +685,23 @@ int main( int argc, char *argv[] ) {
         }
     }
 
+    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
     std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
         <<" "<< accT[3] << std::endl;
+    std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
     std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
         <<" "<< accT[7] << std::endl;
-
-    ev.setCtmData_Full(ctmEnv.getCtmData_Full_DBG());
+    std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+    std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+        <<" "<< accT[11] << std::endl;
 
     obs_metaInf = Args("lineNo",arg_fuIter+1);
 	ptr_model->computeAndWriteObservables(ev,out_file_energy,obs_metaInf);
 
     // COMPUTE CORRELATION FUNCTIONS
     int dist = 40;
-    auto site0 = make_pair(0,0);
-    auto site1 = make_pair(1,0);
+    auto site0 = Vertex(0,0);
+    auto site1 = Vertex(1,0);
 
     double sz0 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, site0);
     double sp0 = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, site0);
@@ -774,55 +715,39 @@ int main( int argc, char *argv[] ) {
     auto S0S1 = sz0*sz1 + 0.5*(sp0*sm1 + sm0*sp1 );
     std::cout << "S_1 = ( "<< sz1 <<", "<< sp1 <<", "<< sm1 <<")"<< std::endl;
 
-    std::vector<double> SS_disconnected = {S0S0,S0S1};
+    // std::vector<double> SS_disconnected = {S0S0,S0S1};
 
-    auto szsz = ev.expVal_1sO1sO_H( 
-        EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z,
-        site0, dist);
+    // auto szsz = ev.expVal_1sO1sO_H( 
+    //     EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z,
+    //     site0, dist);
 
-    auto spsm = ev.expVal_1sO1sO_H( 
-        EVBuilder::MPO_S_P, EVBuilder::MPO_S_M,
-        site0, dist);
+    // auto spsm = ev.expVal_1sO1sO_H( 
+    //     EVBuilder::MPO_S_P, EVBuilder::MPO_S_M,
+    //     site0, dist);
 
     // auto smsp = ev.expVal_1sO1sO_H( 
     //     MPO_S_M, MPO_S_P,
     //     make_pair(0,0), 20);
 
-    out_file_energy << std::endl << "CORRELATION FUNCTIONS" << std::endl;
-    out_file_energy << "r "<< "szsz "<< "spsm "<< "SS=szsz+0.5(spsm+smsp) "
-        <<"abs(SS) "<< "abs(SS_conn)" << std::endl;
-    out_file_energy << std::endl;
+    // out_file_energy << std::endl << "CORRELATION FUNCTIONS" << std::endl;
+    // out_file_energy << "r "<< "szsz "<< "spsm "<< "SS=szsz+0.5(spsm+smsp) "
+    //     <<"abs(SS) "<< "abs(SS_conn)" << std::endl;
+    // out_file_energy << std::endl;
 
-    for (int i=0; i<dist; i++) {
-        out_file_energy << (i+1) <<" "<< szsz[i].real() <<" "<< spsm[i].real()<<" "
-            << (szsz[i].real() + spsm[i].real()) <<" "
-            << std::abs(szsz[i].real() + spsm[i].real())<<" "
-            << std::abs(szsz[i].real() + spsm[i].real() - SS_disconnected[(i+1) % 2]) <<" "
-            << std::endl;
-    }
-
-    ev.analyseTransferMatrix(std::make_pair(0,0), "HORIZONTAL");
-    ev.analyseTransferMatrix(std::make_pair(0,0), "VERTICAL");
-    ev.analyseTransferMatrix(std::make_pair(1,1), "HORIZONTAL");
-    ev.analyseTransferMatrix(std::make_pair(1,1), "VERTICAL");
-    //ev.analyseTransferMatrix("rsvd");
-    //ev.analyseTransferMatrix("gesdd");
-
-    // Store final new cluster
-    writeCluster(outClusterFile, cls);
-
-    // write out diagnostic data of full-update
-    // for (int i=0; i<arg_fuIter; i++) {
-    //     std::cout<< i <<" "<< diag_ctmIter[i] <<" "<< diagData_fu[i].getInt("alsSweep",0)
-    //         <<" "<< diagData_fu[i].getString("siteMaxElem")
-    //         <<" "<< diagData_fu[i].getReal("finalDist0",0.0)
-    //         <<" "<< diagData_fu[i].getReal("finalDist1",0.0);
-    //     if (arg_fuDbg && (arg_fuDbgLevel >=1))
-    //         std::cout<<" "<< diagData_fu[i].getReal("ratioNonSymLE",0.0)
-    //         <<" "<< diagData_fu[i].getReal("ratioNonSymFN",0.0);
-    //     std::cout<<std::endl;
+    // for (int i=0; i<dist; i++) {
+    //     out_file_energy << (i+1) <<" "<< szsz[i].real() <<" "<< spsm[i].real()<<" "
+    //         << (szsz[i].real() + spsm[i].real()) <<" "
+    //         << std::abs(szsz[i].real() + spsm[i].real())<<" "
+    //         << std::abs(szsz[i].real() + spsm[i].real() - SS_disconnected[(i+1) % 2]) <<" "
+    //         << std::endl;
     // }
 
-    ctmEnv.computeSVDspec();
-    ctmEnv.printSVDspec();
+    ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+    ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+
+    // Store final new cluster
+    writeCluster(outClusterFile, *p_cls);
+
+    // ctmEnv.computeSVDspec();
+    // ctmEnv.printSVDspec();
 }

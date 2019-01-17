@@ -11,7 +11,7 @@
 #include "models.h"
 #include "simple-update_v2.h"
 #include "full-update.h"
-#include "full-update-TEST.h"
+//#include "full-update-TEST.h"
 #include "itensor-linsys-solvers.h"
 
 template<class T>
@@ -37,8 +37,8 @@ class Engine {
         virtual itensor::Args performSimpleUpdate(
         	Cluster & cls, itensor::Args const& args) = 0;
 
-        // virtual itensor::Args performFullUpdate(
-        // 	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args) = 0;
+        virtual itensor::Args performFullUpdate(
+        	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args) = 0;
 };
 
 template <class T>
@@ -48,7 +48,7 @@ class TrotterEngine : public Engine {
 
 		itensor::Args performSimpleUpdate(Cluster & cls, itensor::Args const& args);
 
-		// itensor::Args performFullUpdate(Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
+		itensor::Args performFullUpdate(Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
 };
 
 
@@ -72,8 +72,9 @@ template<> itensor::Args TrotterEngine<MPO_2site>::performSimpleUpdate(
 template<> itensor::Args TrotterEngine<MPO_3site>::performSimpleUpdate(
 	Cluster & cls, itensor::Args const& args);
 
-// template<> itensor::Args TrotterEngine<MPO_2site>::performFullUpdate(
-// 	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
+
+template<> itensor::Args TrotterEngine<MPO_2site>::performFullUpdate(
+	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
 // template<> itensor::Args TrotterEngine<MPO_3site>::performFullUpdate(
 // 	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
 // template<> itensor::Args TrotterEngine<OpNS>::performFullUpdate(

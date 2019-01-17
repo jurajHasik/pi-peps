@@ -1237,14 +1237,21 @@ template<> Args TrotterEngine<OpNS>::performSimpleUpdate(
 }
 
 
-// template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
-//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-//     auto gi = td.nextCyclicIndex();
+template<class T> Args TrotterEngine<T>::performFullUpdate(
+    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-//     return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-//         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
-// }
+    return Args::global();
+}
+
+template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
+    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+
+    auto gi = td.nextCyclicIndex();
+
+    return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+}
 
 // template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
 //     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
