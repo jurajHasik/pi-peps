@@ -106,7 +106,7 @@ std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
             << lX <<" x "<< lY <<" cluster"<< std::endl;
         p_cls = std::unique_ptr<Cluster>(
             new Cluster(lX,lY));
-        p_cls->type = "DEFAULT";
+        p_cls->cluster_type = "DEFAULT";
     }
     else {
         throw std::runtime_error("[p_readCluster] invalid cluster_type");
