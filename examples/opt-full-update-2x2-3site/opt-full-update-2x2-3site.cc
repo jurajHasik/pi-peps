@@ -138,6 +138,8 @@ int main( int argc, char *argv[] ) {
         // setWeights(*p_cls, suWeightsInit);
         // setOnSiteTensorsFromFile(cls, inClusterFile);
     } else {
+        p_cls = std::unique_ptr<Cluster_2x2_ABCD>( 
+            new Cluster_2x2_ABCD(initBy, auxBondDim, physDim));
         // cls = Cluster_2x2_ABCD(initBy, auxBondDim, physDim);
     }
     std::cout << *p_cls;
