@@ -57,6 +57,12 @@ RsvdSolver::solve(
 	int s    = rsvd_reortho; // re-rotho for power scheme
 	int vnum = 1; // scheme to use
 
+	// we never ask for computing more singular values than the rank of the matrix
+	if ( std::min(Mr,Mc) <= k+p ) {
+		k = std::min(Mr,Mc);
+		p = 0;
+	}
+
 	auto ncM = const_cast<double*>(M.data()); 
 	auto pM  = reinterpret_cast<double*>(ncM);
 
