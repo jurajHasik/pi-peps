@@ -1428,6 +1428,17 @@ std::ostream& operator<<(std::ostream& s, CtmEnv const& c) {
  * TODO Perhaps(?) move to ctm-cluster-io
  *
  */
+CtmEnv::DIRECTION toDIRECTION(int i_dir) {
+    switch(i_dir) {
+        case 0: return CtmEnv::DIRECTION::LEFT;
+        case 1: return CtmEnv::DIRECTION::UP;
+        case 2: return CtmEnv::DIRECTION::RIGHT;
+        case 3: return CtmEnv::DIRECTION::DOWN;
+        default: throw 
+            std::runtime_error("[toDIRECTION] invalid integer for direction");
+    }
+}
+
 CtmEnv::INIT_ENV toINIT_ENV(std::string const& iE) {
     if( iE=="INIT_ENV_const1") return CtmEnv::INIT_ENV_const1;
     if( iE=="INIT_ENV_rnd"   ) return CtmEnv::INIT_ENV_rnd;

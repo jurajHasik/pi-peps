@@ -371,6 +371,8 @@ operator<<(std::ostream& s, CtmEnv const& c);
 // std::ostream&
 // operator<<(std::ostream& s, CtmEnv::CtmSpec const& spec);
 
+// int to enum conversion
+CtmEnv::DIRECTION toDIRECTION(int i_dir);
 // string to enum conversion
 CtmEnv::INIT_ENV toINIT_ENV(std::string const& inEnv);
 

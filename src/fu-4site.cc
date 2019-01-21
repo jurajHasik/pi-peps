@@ -1,4 +1,4 @@
-#include "full-update-TEST.h"
+#include "full-update.h"
 #include "include/LBFGS.h"
 
 using namespace itensor;
@@ -45,11 +45,11 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	};
 
 	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux;
-	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
+	// std::array<Index, 4> aux;
+	// for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
 
 	std::array<Index, 4> phys;
-	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
+	for (int i=0; i<4; i++) phys[i] = cls.mphys.at( tn[i] );
 	
 	std::array<Index, 4> opPI({
 		noprime(uJ1J2.pi[0]),
@@ -61,7 +61,8 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	if (dbg) {
 		std::cout << "On-site indices:" << std::endl;
 		for (int i=0; i<4; i++) {
-			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+			// std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+			std::cout << tn[i] <<" : " << phys[i] << std::endl;
 		}
 	}
 
@@ -70,48 +71,26 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	{
 		t_begin_int = std::chrono::steady_clock::now();
 
-		// find integer identifier of on-site tensors within CtmEnv
-		std::vector<int> si;
-		for (int i=0; i<=3; i++) {
-			si.push_back(std::distance(ctmEnv.siteIds.begin(),
-					std::find(std::begin(ctmEnv.siteIds), 
-						std::end(ctmEnv.siteIds), tn[i])));
-		}
-		if(dbg) {
-			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-		}
-
 		// prepare map from on-site tensor aux-indices to half row/column T
 		// environment tensors
-		std::array<const std::vector<ITensor> * const, 4> iToT(
+		std::array<const std::map<std::string, ITensor> * const, 4> iToT(
 			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
 
 		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
 		// environment tensors
-		const std::map<int, const std::vector<ITensor> * const > iToC(
+		const std::map<int, const std::map<std::string, ITensor> * const > iToC(
 			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
 			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
 			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
 			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
 
-		// for every on-site tensor point from primeLevel(index) to ENV index
-		// eg. I_XH or I_XV (with appropriate prime level). 
-		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
-
-		// Find for site 0 through 3 which are connected to ENV
-		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
-
 		// precompute 4 (proto)corners of 2x2 environment
 		for (int s=0; s<=3; s++) {
 			// aux-indices connected to sites
+			//                         incoming   outgoing 
 			std::vector<int> connected({pl[s*2], pl[s*2+1]});
-			// set_difference gives aux-indices connected to ENV
-			std::sort(connected.begin(), connected.end());
-			std::vector<int> tmp_iToE;
-			std::set_difference(plOfSite.begin(), plOfSite.end(), 
-				connected.begin(), connected.end(), 
-	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
+			//                           current-edge         previous-edge
+			std::vector<int> tmp_iToE({ (pl[s*2] + 2) % 4, (pl[s*2 + 1] + 2) % 4 });
 			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
 			if(dbg) { 
 				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
@@ -119,36 +98,9 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
 			}
 
-			// Assign indices by which site is connected to ENV
-			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-			} else {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
-			}
-
-			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
-				(*iToT.at(tmp_iToE[1]))[si[s]];
+			pc[s] = (*iToT.at(tmp_iToE[0])).at(tn[s])*(*iToC.at(tmp_iToE[2])).at(tn[s])*
+				(*iToT.at(tmp_iToE[1])).at(tn[s]);
 			if(dbg) Print(pc[s]);
-			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
-			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
-		
-			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
-			// define combiner
-			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
-			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
-			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
-
-			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
-				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
-		}
-		if(dbg) {
-			for(int i=0; i<=3; i++) {
-				std::cout <<"Site: "<< tn[i] <<" ";
-				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
-				std::cout << std::endl;
-			}
 		}
 
 		t_end_int = std::chrono::steady_clock::now();
@@ -162,11 +114,12 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 	std::vector<ITensor> qX;
 	std::vector<Index> iQX;
 	{
-		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+		// TODO mask ?
+		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 1.0; };
 		auto cutoffS = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? r : 0; };
 
 		for (int i=0; i<4; i++) {
-			ITensor X(prime(aux[i],pl[2*i]),prime(aux[i],pl[2*i+1]),phys[i]),Q,SV;
+			ITensor X(cls.AIc(tn[i],pl[2*i]),cls.AIc(tn[i],pl[2*i+1]),phys[i]),Q,SV;
 
 			svd(cls.sites.at(tn[i]),X,SV,Q,{"Truncate",false});
 
@@ -203,7 +156,7 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 
 	t_begin_int = std::chrono::steady_clock::now();
 	
-	FU4SiteGradMin g4s(pc, aux, tn, pl, op4s, rX, iQX, args);
+	FU4SiteGradMin g4s(ctmEnv, pc, tn, pl, op4s, rX, iQX, args);
 	// g4s.minimize();
 	
 	// prepare init guess by vectorizing vector<ITensor> rX into Vec
@@ -335,8 +288,8 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2, Cluster & cls, CtmEnv const& ctmEnv
 }
 
 FU4SiteGradMin::FU4SiteGradMin(
-		std::vector< ITensor > const& ppc, // protocorners 
-		std::array< Index, 4 > const& aaux,  // aux indices
+		CtmEnv const& cctmEnv,
+		std::vector< ITensor > const& ppc, // protocorners
 		std::vector< std::string > const& ttn,      // site IDs
 		std::vector< int > const& ppl,              // primelevels of aux indices          
 		ITensor const& oop4s,              // four-site operator
@@ -344,9 +297,56 @@ FU4SiteGradMin::FU4SiteGradMin(
 		std::vector< Index > const& iiQX,
 		Args const& aargs) : 
 
-		pc(ppc), aux(aaux), tn(ttn), pl(ppl), op4s(oop4s), rX(rrX), iQX(iiQX), args(aargs),
-		g(4), xi(4), h(4) 
+		ctmEnv(cctmEnv), pc(ppc), tn(ttn), pl(ppl), op4s(oop4s), rX(rrX), 
+		iQX(iiQX), args(aargs), g(4), xi(4), h(4)
 {
+	using DIRECTION = CtmEnv::DIRECTION;
+
+	auto l_AIc = [this](std::string id, int dir) { return ctmEnv.p_cluster->AIc(id,dir); };
+
+	auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1,
+		DIRECTION direction, Vertex const& v0, int dir0, Vertex const& v1, int dir1, 
+		std::string edge) {
+    	if(edge == "FULL") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0),
+    			prime(ctmEnv.p_cluster->AIc(v0,dir0), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1),
+    			prime(ctmEnv.p_cluster->AIc(v1,dir1), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    	}
+    	else if (edge == "KET") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1)
+    		);
+    	} else {
+    		cmb_v0 = combiner(ctmEnv.tauxByVertex(direction,v0,dir0));
+    		cmb_v1 = combiner(ctmEnv.tauxByVertex(direction,v1,dir1));
+    	}
+    };
+
+    auto getEdgeCombiners_fromTnAndPl = [this, &getEdgeCombiners](
+    	ITensor & cmb_v0, ITensor & cmb_v1, int s0, int s1, std::string edge){
+    	Vertex v0 = ctmEnv.p_cluster->idToV.at(tn[s0]);
+    	Vertex v1 = ctmEnv.p_cluster->idToV.at(tn[s1]);
+
+    	DIRECTION dir_outgoing_s0 = toDIRECTION(pl[2*s0+1]);
+    	DIRECTION dir_ingoing_s1  = toDIRECTION(pl[2*s1]);
+
+    	DIRECTION edge_dir        = toDIRECTION((pl[2*s0]+2)%4); 
+
+    	getEdgeCombiners(cmb_v0, cmb_v1, 
+    		edge_dir, v0, dir_outgoing_s0, v1, dir_ingoing_s1, edge);
+    };
 
 	auto dbg = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
@@ -356,20 +356,30 @@ FU4SiteGradMin::FU4SiteGradMin(
 	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
 	t_begin_int = std::chrono::steady_clock::now();
 
-	// 	// Variant ONE - precompute U|psi> surrounded in environment
+	// Variant ONE - precompute U|psi> surrounded in environment
 	{ 
-		ITensor temp;
+		ITensor temp, cmb0, cmb1, cmb2, cmb3;
 		// Variant ONE - precompute U|psi> surrounded in environment
 		protoK = pc[0] * rX[0];
-		protoK *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-		protoK *= ( pc[1] * rX[1] );
-		protoK *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-		protoK *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
+		getEdgeCombiners_fromTnAndPl(cmb0,cmb1,0,1,"KET");
+		protoK *= cmb0;
+		protoK = reindex(protoK, combinedIndex(cmb0), combinedIndex(cmb1));
+		protoK *= (( pc[1] * rX[1] ) * cmb1);
 		
 		temp = pc[2] * rX[2];
-		temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-		temp *= ( pc[3] * rX[3] );
+		getEdgeCombiners_fromTnAndPl(cmb0,cmb1,2,3,"KET");
+		temp *= cmb0;
+		temp = reindex(temp, combinedIndex(cmb0), combinedIndex(cmb1));
+		temp *= (( pc[3] * rX[3] ) * cmb1);
 	
+		getEdgeCombiners_fromTnAndPl(cmb1,cmb2,1,2,"KET");
+		getEdgeCombiners_fromTnAndPl(cmb3,cmb0,3,0,"KET");
+
+		protoK = (protoK * cmb0) * cmb1;
+		temp   = (temp * cmb2) * cmb3;
+		protoK = reindex(protoK, combinedIndex(cmb0), combinedIndex(cmb3),
+			combinedIndex(cmb1), combinedIndex(cmb2));
+
 		protoK *= temp;
 	}
 	
@@ -388,12 +398,12 @@ FU4SiteGradMin::FU4SiteGradMin(
 	auto NORMUPSI = protoK * dag(op4s);
 	NORMUPSI.noprime(PHYS);
 	NORMUPSI *= prime(dag(rX[0]), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4));
+	NORMUPSI *= prime(delta(l_AIc(tn[0],pl[1]),l_AIc(tn[1],pl[2])),4);
 	NORMUPSI *= prime(dag(rX[1]), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
+	NORMUPSI *= prime(delta(l_AIc(tn[1],pl[3]),l_AIc(tn[2],pl[4])),4);
 	NORMUPSI *= prime(dag(rX[2]), AUXLINK, 4);
-	NORMUPSI *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-	NORMUPSI *= delta(prime(aux[0],pl[0]+4),prime(aux[3],pl[7]+4));
+	NORMUPSI *= prime(delta(l_AIc(tn[2],pl[5]),l_AIc(tn[3],pl[6])),4);
+	NORMUPSI *= prime(delta(l_AIc(tn[0],pl[0]),l_AIc(tn[3],pl[7])),4);
 	NORMUPSI *= prime(dag(rX[3]), AUXLINK, 4);
 
 	if (NORMUPSI.r() > 0) std::cout<<"NORMUPSI rank > 0"<<std::endl;
@@ -448,38 +458,93 @@ Real FU4SiteGradMin::operator()(Vec<Real> const& x, Vec<Real> & grad) {
 }
 
 std::vector<double> FU4SiteGradMin::func() const {
+	using DIRECTION = CtmEnv::DIRECTION;
+	
+	auto l_AIc = [this](std::string id, int dir) { return ctmEnv.p_cluster->AIc(id,dir); };
+
+	auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1, 
+		DIRECTION direction, Vertex const& v0, int dir0, Vertex const& v1, int dir1, 
+		std::string edge) {
+    	if(edge == "FULL") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0),
+    			prime(ctmEnv.p_cluster->AIc(v0,dir0), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1),
+    			prime(ctmEnv.p_cluster->AIc(v1,dir1), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    	}
+    	else if (edge == "KET") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1)
+    		);
+    	} else {
+    		cmb_v0 = combiner(ctmEnv.tauxByVertex(direction,v0,dir0));
+    		cmb_v1 = combiner(ctmEnv.tauxByVertex(direction,v1,dir1));
+    	}
+    };
+
+    auto getEdgeCombiners_fromTnAndPl = [this,&getEdgeCombiners](
+    	ITensor & cmb_v0, ITensor & cmb_v1, int s0, int s1, std::string edge){
+    	Vertex v0 = ctmEnv.p_cluster->idToV.at(tn[s0]);
+    	Vertex v1 = ctmEnv.p_cluster->idToV.at(tn[s1]);
+
+    	DIRECTION dir_outgoing_s0 = toDIRECTION(pl[2*s0+1]);
+    	DIRECTION dir_ingoing_s1  = toDIRECTION(pl[2*s1]);
+
+    	DIRECTION edge_dir        = toDIRECTION((pl[2*s0]+2)%4); 
+
+    	getEdgeCombiners(cmb_v0, cmb_v1, 
+    		edge_dir, v0, dir_outgoing_s0, v1, dir_ingoing_s1, edge);
+    };
+
 	ITensor NORMPSI, OVERLAP;
+	ITensor cmb0, cmb1, cmb2, cmb3;
 
 	{
 		ITensor temp;
 
 		NORMPSI = (pc[1] * rX[1]) * prime(dag(rX[1]), AUXLINK,4);
-		NORMPSI *= delta(prime(aux[1],pl[3]),  prime(aux[2],pl[4]));
-		NORMPSI *= delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4));
-		NORMPSI = ((NORMPSI * pc[2]) * rX[2]) * prime(dag(rX[2]), AUXLINK,4);
-		NORMPSI *= delta(prime(aux[2],pl[5]),  prime(aux[3],pl[6]));
-		NORMPSI *= delta(prime(aux[2],pl[5]+4),prime(aux[3],pl[6]+4));
-		NORMPSI *= delta(prime(aux[1],pl[2]),  prime(aux[0],pl[1]));
-		NORMPSI *= delta(prime(aux[1],pl[2]+4),prime(aux[0],pl[1]+4));
+		getEdgeCombiners_fromTnAndPl(cmb0,cmb1,1,2,"FULL");
+		NORMPSI *= cmb0;
+		NORMPSI = reindex(NORMPSI, combinedIndex(cmb0), combinedIndex(cmb1));
+		NORMPSI *= (((pc[2] * rX[2]) * prime(dag(rX[2]), AUXLINK,4)) * cmb1);
 
 		temp = (pc[3] * rX[3]) * prime(dag(rX[3]), AUXLINK,4);
-		temp *= delta(prime(aux[3],pl[7]),  prime(aux[0],pl[0]));
-		temp *= delta(prime(aux[3],pl[7]+4),prime(aux[0],pl[0]+4));
-		temp *= (pc[0] * rX[0]) * prime(dag(rX[0]), AUXLINK,4);
+		getEdgeCombiners_fromTnAndPl(cmb0,cmb1,3,0,"FULL");
+		temp *= cmb0;
+		temp = reindex(temp, combinedIndex(cmb0), combinedIndex(cmb1));
+		temp *= (((pc[0] * rX[0]) * prime(dag(rX[0]), AUXLINK,4)) * cmb1 );
+
+		getEdgeCombiners_fromTnAndPl(cmb2,cmb3,2,3,"FULL");
+		getEdgeCombiners_fromTnAndPl(cmb0,cmb1,0,1,"FULL");
+
+		NORMPSI = (NORMPSI * cmb1) * cmb2;
+		temp   = (temp * cmb0) * cmb3;
+		NORMPSI = reindex(NORMPSI, combinedIndex(cmb1), combinedIndex(cmb0),
+			combinedIndex(cmb2), combinedIndex(cmb3));
 
 		NORMPSI *= temp;
 	}
 
 	OVERLAP = prime(dag(rX[1]), AUXLINK,4);
-	OVERLAP *= delta( prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+	OVERLAP *= prime(delta( l_AIc(tn[1],pl[3]), l_AIc(tn[2],pl[4])),4);
 	OVERLAP *= prime(dag(rX[2]), AUXLINK,4);
-	OVERLAP *= delta( prime(aux[2],pl[5]+4), prime(aux[3],pl[6]+4) );
+	OVERLAP *= prime(delta( l_AIc(tn[2],pl[5]), l_AIc(tn[3],pl[6])),4);
 	
 	OVERLAP *= protoK;
 
 	OVERLAP *= prime(dag(rX[3]), AUXLINK,4);
-	OVERLAP *= delta(	prime(aux[3],pl[7]+4), prime(aux[0],pl[0]+4) );
-	OVERLAP *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+	OVERLAP *= prime(delta(	l_AIc(tn[3],pl[7]), l_AIc(tn[0],pl[0])),4);
+	OVERLAP *= prime(delta(	l_AIc(tn[1],pl[2]), l_AIc(tn[0],pl[1])),4);
 	OVERLAP *= prime(dag(rX[0]), AUXLINK,4);
 
 	if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;	
@@ -493,25 +558,84 @@ std::vector<double> FU4SiteGradMin::func() const {
 }
 
 void FU4SiteGradMin::gradient(std::vector<ITensor> &grad) {
+	using DIRECTION = CtmEnv::DIRECTION;
+
+	// TODO is this under control ?
 	// Force the indetical order of indices on both grad and rX tensors
 	for (int i=0; i<4; i++) { grad[i] = 0.0 * prime(rX[i],AUXLINK,4); }
+
+	auto l_AIc = [this](std::string id, int dir) { return ctmEnv.p_cluster->AIc(id,dir); };
+
+	auto getEdgeCombiners = [this](ITensor & cmb_v0, ITensor & cmb_v1, 
+		DIRECTION direction, Vertex const& v0, int dir0, Vertex const& v1, int dir1, 
+		std::string edge) {
+    	if(edge == "FULL") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0),
+    			prime(ctmEnv.p_cluster->AIc(v0,dir0), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1),
+    			prime(ctmEnv.p_cluster->AIc(v1,dir1), ctmEnv.p_cluster->BRAKET_OFFSET)
+    		);
+    	}
+    	else if (edge == "KET") {
+    		cmb_v0 = combiner(
+    			ctmEnv.tauxByVertex(direction,v0,dir0),
+    			ctmEnv.p_cluster->AIc(v0,dir0)
+    		);
+    		cmb_v1 = combiner(
+    			ctmEnv.tauxByVertex(direction,v1,dir1),
+    			ctmEnv.p_cluster->AIc(v1,dir1)
+    		);
+    	} else {
+    		cmb_v0 = combiner(ctmEnv.tauxByVertex(direction,v0,dir0));
+    		cmb_v1 = combiner(ctmEnv.tauxByVertex(direction,v1,dir1));
+    	}
+    };
+
+    auto getEdgeCombiners_fromTnAndPl = [this,&getEdgeCombiners](
+    	ITensor & cmb_v0, ITensor & cmb_v1, int s0, int s1, std::string edge){
+    	Vertex v0 = ctmEnv.p_cluster->idToV.at(tn[s0]);
+    	Vertex v1 = ctmEnv.p_cluster->idToV.at(tn[s1]);
+
+    	DIRECTION dir_outgoing_s0 = toDIRECTION(pl[2*s0+1]);
+    	DIRECTION dir_ingoing_s1  = toDIRECTION(pl[2*s1]);
+
+    	DIRECTION edge_dir        = toDIRECTION((pl[2*s0]+2)%4); 
+
+    	getEdgeCombiners(cmb_v0, cmb_v1,
+    		edge_dir, v0, dir_outgoing_s0, v1, dir_ingoing_s1, edge);
+    };
 
 	// compute d<psi'|psi'> contributions
 	{
 		ITensor M;
 		{
-			ITensor temp;
+			ITensor temp, cmb0, cmb1, cmb2, cmb3;
 			// Variant ONE - precompute |psi'> surrounded in environment
 			M = pc[0] * rX[0];
-			M *= delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])); 
-			M *= ( pc[1] * rX[1] );
-			M *= delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])); 
-			M *= delta(prime(aux[0],pl[0]), prime(aux[3],pl[7])); 
+			getEdgeCombiners_fromTnAndPl(cmb0,cmb1,0,1,"KET");
+			M *= cmb0;
+			M = reindex(M, combinedIndex(cmb0), combinedIndex(cmb1));
+			M *= (( pc[1] * rX[1] ) * cmb1);
 			
 			temp = pc[2] * rX[2];
-			temp *= delta(prime(aux[2],pl[5]), prime(aux[3],pl[6]));
-			temp *= ( pc[3] * rX[3] );
+			getEdgeCombiners_fromTnAndPl(cmb0,cmb1,2,3,"KET");
+			temp *= cmb0;
+			temp = reindex(temp, combinedIndex(cmb0), combinedIndex(cmb1));
+			temp *= (( pc[3] * rX[3] ) * cmb1);
 		
+			getEdgeCombiners_fromTnAndPl(cmb1,cmb2,1,2,"KET");
+			getEdgeCombiners_fromTnAndPl(cmb3,cmb0,3,0,"KET");
+
+			M = (M * cmb0) * cmb1;
+			temp   = (temp * cmb2) * cmb3;
+			M = reindex(M, combinedIndex(cmb0), combinedIndex(cmb3),
+			combinedIndex(cmb1), combinedIndex(cmb2));
+
 			M *= temp;
 		}
 	
@@ -521,20 +645,20 @@ void FU4SiteGradMin::gradient(std::vector<ITensor> &grad) {
 			int j = (i + 1) % 4;
 			int k = (j + 1) % 4;
 			temp = prime(dag(rX[j]), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j]), prime(aux[i],pl[2*i+1])), 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
+			temp *= prime(delta(l_AIc(tn[j],pl[2*j]), l_AIc(tn[i],pl[2*i+1])), 4);
+			temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);
 			
 			j = (j + 1) % 4;
 			k = (j + 1) % 4;
 			temp *= prime(dag(rX[j]), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
+			temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);
 
 			temp *= M;
 		
 			j = (j + 1) % 4;
 			k = (j + 1) % 4;
 			temp *= prime(dag(rX[j]), AUXLINK, 4);
-			temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);			
+			temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);			
 		
 			grad[i] += temp; //* (1.0 + 2.0 * (1.0 - std::abs(inst_normPsi)));
 			// grad[i] = temp * (0.5 * inst_overlap / (std::sqrt(normUPsi * inst_normPsi) * std::abs(inst_normPsi)) );
@@ -548,20 +672,20 @@ void FU4SiteGradMin::gradient(std::vector<ITensor> &grad) {
 		int j = (i + 1) % 4;
 		int k = (j + 1) % 4;
 		temp = prime(dag(rX[j]), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j]), prime(aux[i],pl[2*i+1])), 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
+		temp *= prime(delta(l_AIc(tn[j],pl[2*j]), l_AIc(tn[i],pl[2*i+1])), 4);
+		temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);
 		
 		j = (j + 1) % 4;
 		k = (j + 1) % 4;
 		temp *= prime(dag(rX[j]), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);
+		temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);
 
 		temp *= protoK;
 	
 		j = (j + 1) % 4;
 		k = (j + 1) % 4;
 		temp *= prime(dag(rX[j]), AUXLINK, 4);
-		temp *= prime(delta(prime(aux[j],pl[2*j+1]), prime(aux[k],pl[2*k])), 4);			
+		temp *= prime(delta(l_AIc(tn[j],pl[2*j+1]), l_AIc(tn[k],pl[2*k])), 4);			
 	
 		grad[i] += -temp;
 		// grad[i] += -temp / std::sqrt(inst_normPsi * normUPsi);

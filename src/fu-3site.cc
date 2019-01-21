@@ -1,4 +1,5 @@
-#include "full-update-TEST.h"
+// #include "full-update-TEST.h"
+#include "full-update.h"
 
 using namespace itensor;
 
@@ -7,6 +8,8 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	LinSysSolver const& ls,
 	Args const& args) {
  
+	using DIRECTION = CtmEnv::DIRECTION;
+
 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
     auto dbg    = args.getBool("fuDbg",false);
     auto dbgLvl = args.getInt("fuDbgLevel",0);
@@ -49,11 +52,11 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	};
 
 	// read off auxiliary and physical indices of the cluster sites
-	std::array<Index, 4> aux;
-	for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
+	// std::array<Index, 4> aux;
+	// for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
 
 	std::array<Index, 4> phys;
-	for (int i=0; i<4; i++) phys[i] = cls.phys[ cls.SI.at(tn[i]) ];
+	for (int i=0; i<4; i++) phys[i] = cls.mphys.at( tn[i] );
 	
 	std::array<Index, 3> opPI({
 		noprime(findtype(uJ1J2.H1, PHYS)),
@@ -63,14 +66,15 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	if (dbg) {
 		std::cout << "On-site indices:" << std::endl;
 		for (int i=0; i<4; i++) {
-			std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+			// std::cout << tn[i] <<" : "<< aux[i] << " " << phys[i] << std::endl;
+			std::cout << tn[i] <<" : " << phys[i] << std::endl;
 		}
 	}
 
 	Index iQA, iQD, iQB;
-	ITensor QA, eA(prime(aux[0],pl[1]), phys[0]);
-	ITensor QD, eD(prime(aux[2],pl[4]), phys[2]);
-	ITensor QB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+	ITensor QA, eA(cls.AIc(tn[0],pl[1]), phys[0]);
+	ITensor QD, eD(cls.AIc(tn[2],pl[4]), phys[2]);
+	ITensor QB, eB(cls.AIc(tn[1],pl[2]), cls.AIc(tn[1],pl[3]), phys[1]);
 	
 	ITensor eRE;
 	ITensor deltaBra, deltaKet;
@@ -78,49 +82,71 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	{
 		t_begin_int = std::chrono::steady_clock::now();
 
-		// find integer identifier of on-site tensors within CtmEnv
-		std::vector<int> si;
-		for (int i=0; i<=3; i++) {
-			si.push_back(std::distance(ctmEnv.siteIds.begin(),
-					std::find(std::begin(ctmEnv.siteIds), 
-						std::end(ctmEnv.siteIds), tn[i])));
-		}
-		if(dbg) {
-			std::cout << "siteId -> CtmEnv.sites Index" << std::endl;
-			for (int i = 0; i <=3; ++i) { std::cout << tn[i] <<" -> "<< si[i] << std::endl; }
-		}
+		auto getEdgeCombiners = [](ITensor & cmb_v0, ITensor & cmb_v1, CtmEnv const& ctmEnv, 
+			DIRECTION direction, Vertex const& v0, int dir0, Vertex const& v1, int dir1, bool full) {
+	    	if(full) {
+	    		cmb_v0 = combiner(
+	    			ctmEnv.tauxByVertex(direction,v0,dir0),
+	    			ctmEnv.p_cluster->AIc(v0,dir0),
+	    			prime(ctmEnv.p_cluster->AIc(v0,dir0), ctmEnv.p_cluster->BRAKET_OFFSET)
+	    		);
+	    		cmb_v1 = combiner(
+	    			ctmEnv.tauxByVertex(direction,v1,dir1),
+	    			ctmEnv.p_cluster->AIc(v1,dir1),
+	    			prime(ctmEnv.p_cluster->AIc(v1,dir1), ctmEnv.p_cluster->BRAKET_OFFSET)
+	    		);
+	    	} else {
+	    		cmb_v0 = combiner(ctmEnv.tauxByVertex(direction,v0,dir0));
+	    		cmb_v1 = combiner(ctmEnv.tauxByVertex(direction,v1,dir1));
+	    	}
+	    };
+
+	    auto getEdgeCombiners_fromTnAndPl = [&getEdgeCombiners,&tn,&pl](
+	    	ITensor & cmb_v0, ITensor & cmb_v1, CtmEnv const& ctmEnv, int s0, int s1, bool full){
+	    	Vertex v0 = ctmEnv.p_cluster->idToV.at(tn[s0]);
+	    	Vertex v1 = ctmEnv.p_cluster->idToV.at(tn[s1]);
+
+	    	DIRECTION dir_outgoing_s0 = toDIRECTION(pl[2*s0+1]);
+	    	DIRECTION dir_ingoing_s1  = toDIRECTION(pl[2*s1]);
+
+	    	DIRECTION edge_dir        = toDIRECTION((pl[2*s0]+2)%4); 
+
+	    	getEdgeCombiners(cmb_v0, cmb_v1, ctmEnv, 
+	    		edge_dir, v0, dir_outgoing_s0, v1, dir_ingoing_s1, full);
+	    };
 
 		// prepare map from on-site tensor aux-indices to half row/column T
 		// environment tensors
-		std::array<const std::vector<ITensor> * const, 4> iToT(
+		std::array<const std::map<std::string, ITensor> * const, 4> iToT(
 			{&ctmEnv.T_L, &ctmEnv.T_U, &ctmEnv.T_R ,&ctmEnv.T_D});
 
 		// prepare map from on-site tensor aux-indices pair to half corner T-C-T
 		// environment tensors
-		const std::map<int, const std::vector<ITensor> * const > iToC(
+		const std::map<int, const std::map<std::string, ITensor> * const > iToC(
 			{{23, &ctmEnv.C_LU}, {32, &ctmEnv.C_LU},
 			{21, &ctmEnv.C_LD}, {12, &ctmEnv.C_LD},
 			{3, &ctmEnv.C_RU}, {30, &ctmEnv.C_RU},
 			{1, &ctmEnv.C_RD}, {10, &ctmEnv.C_RD}});
 
-		// for every on-site tensor point from primeLevel(index) to ENV index
-		// eg. I_XH or I_XV (with appropriate prime level). 
-		std::array< std::array<Index, 4>, 4> iToE; // indexToENVIndex => iToE
-
-		// Find for site 0 through 3 which are connected to ENV
-		std::vector<int> plOfSite({0,1,2,3}); // aux-indices (primeLevels) of on-site tensor 
-
 		// precompute 4 (proto)corners of 2x2 environment
 		std::vector<ITensor> pc(4);
 		for (int s=0; s<=3; s++) {
+			// taking opposite directions gives previous and current edge direction
+			//                                 
+			//                                   current edge                 previous edge 
+			// >pl[2s]->-tn[s]->-pl[2s+1]> ==> (pl[2s] + 2) % 4 -- tn[s] -- (pl[2s+1] + 2) % 4
+			//
+            // Ex.         ((3+2)%4=1) current edge
+            //              |
+            // ((2+2)%4=0)--tn[s]=A--pl[2s+1]=2  
+            //  prev. edge  |
+            //              pl[2s]=3
+
 			// aux-indices connected to sites
+			//                         incoming   outgoing  
 			std::vector<int> connected({pl[s*2], pl[s*2+1]});
-			// set_difference gives aux-indices connected to ENV
-			std::sort(connected.begin(), connected.end());
-			std::vector<int> tmp_iToE;
-			std::set_difference(plOfSite.begin(), plOfSite.end(), 
-				connected.begin(), connected.end(), 
-	            std::inserter(tmp_iToE, tmp_iToE.begin())); 
+			//                           current-edge         previous-edge  
+			std::vector<int> tmp_iToE({ (pl[s*2] + 2) % 4, (pl[s*2 + 1] + 2) % 4 });
 			tmp_iToE.push_back(pl[s*2]*10+pl[s*2+1]); // identifier for C ENV tensor
 			if(dbg) { 
 				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
@@ -128,38 +154,10 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] << std::endl;
 			}
 
-			// Assign indices by which site is connected to ENV
-			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-			} else {
-				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK );
-				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
-			}
-
-			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
-				(*iToT.at(tmp_iToE[1]))[si[s]];
+			pc[s] = (*iToT.at(tmp_iToE[0])).at(tn[s])*(*iToC.at(tmp_iToE[2])).at(tn[s])*
+				(*iToT.at(tmp_iToE[1])).at(tn[s]);
 			if(dbg) Print(pc[s]);
-			// set primeLevel of ENV indices between T's to 0 to be ready for contraction
-			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
-		
-			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding tensors
-			// define combiner
-			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]), prime(aux[s],tmp_iToE[0]+4));
-			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4));
-			if(dbg && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
-
-			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) * cmb0) 
-				* delta(combinedIndex(cmb1), iToE[s][tmp_iToE[1]]) * cmb1;
 		}
-		if(dbg) {
-			for(int i=0; i<=3; i++) {
-				std::cout <<"Site: "<< tn[i] <<" ";
-				for (auto const& ind : iToE[i]) if(ind) std::cout<< ind <<" ";
-				std::cout << std::endl;
-			}
-		}
-
 		
 		t_end_int = std::chrono::steady_clock::now();
 		std::cout<<"Constructed proto Corners (without on-site tensors): "<< 
@@ -169,17 +167,18 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
 		t_begin_int = std::chrono::steady_clock::now();
 
-		// C  D
-		//    |
-		// A--B
+		// tn[3](C)  tn[2](D)
+		//           |
+		// tn[0](A)--tn[1](B)
 		// ITensor eRE;
-		// ITensor deltaBra, deltaKet;
+		ITensor cmb0, cmb1, cmb2, cmb3;
 
-		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+		// TODO mask ?
+		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 1.0; };
 		auto cutoffS = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? r : 0; };
 			
 		// Decompose A tensor on which the gate is applied
-		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
+		//ITensor QA, tempSA, eA(cls.AIc(tn[0],pl[1]), phys[0]);
 		ITensor tempSA;
 		svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
 		
@@ -203,10 +202,12 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		deltaKet = delta(prime(aux[0],pl[0]), prime(aux[3],pl[7]));
-		deltaBra = prime(deltaKet,4);
-		tempC = (tempC * deltaBra) * deltaKet;
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+		// deltaKet = delta(cls.AIc(tn[0],pl[0]), cls.AIc(tn[3],pl[7]));
+		// deltaBra = prime(deltaKet,4);
+		
+		
+		// tempC = (tempC * deltaBra) * deltaKet;
+		// if(dbg && (dbgLvl >=3)) Print(tempC);
 
 		eRE = tempC;
 
@@ -216,15 +217,24 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		tempC *= prime(conj(cls.sites.at(tn[3])), AUXLINK, 4);
 		if(dbg && (dbgLvl >=3)) Print(tempC);
 		
-		deltaKet = delta(prime(aux[3],pl[6]), prime(aux[2],pl[5]));
-		deltaBra = prime(deltaKet,4);
-		tempC = (tempC * deltaBra) * deltaKet;
-		if(dbg && (dbgLvl >=3)) Print(tempC);
+		// deltaKet = delta(cls.AIc(tn[3],pl[6]), cls.AIc(tn[2],pl[5]));
+		// deltaBra = prime(deltaKet,4);
+		// tempC = (tempC * deltaBra) * deltaKet;
+		// if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+		// TODO use delta instead of reindex
+		getEdgeCombiners_fromTnAndPl(cmb1, cmb0, ctmEnv, 3,0, true);
+		eRE *= cmb0;
+		eRE = reindex(eRE, combinedIndex(cmb0), combinedIndex(cmb1));
+		eRE *= (tempC * cmb1);
+		if(dbg && (dbgLvl >=3)) { 
+			Print(cmb0);
+			Print(cmb1);
+			Print(eRE);
+		}
 
 		// Decompose D tensor on which the gate is applied
-		//ITensor QD, tempSD, eD(prime(aux[2],pl[4]), phys[2]);
+		//ITensor QD, tempSD, eD(cls.AIc(tn[2],pl[4]), phys[2]);
 		ITensor tempSD;
 		svd(cls.sites.at(tn[2]), eD, tempSD, QD, {"Truncate",false});
 		
@@ -247,10 +257,18 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		tempC *= prime(conj(QD), AUXLINK, 4);
 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+		getEdgeCombiners_fromTnAndPl(cmb1, cmb0, ctmEnv, 2,3, true);
+		eRE *= cmb0;
+		eRE = reindex(eRE, combinedIndex(cmb0), combinedIndex(cmb1));
+		eRE *= (tempC * cmb1);
+		if(dbg && (dbgLvl >=3)) { 
+			Print(cmb0);
+			Print(cmb1);
+			Print(eRE);
+		}
 
 		// Decompose B tensor on which the gate is applied
-		//ITensor QB, tempSB, eB(prime(aux[1],pl[2]), prime(aux[1],pl[3]), phys[1]);
+		//ITensor QB, tempSB, eB(cls.AIc(tn[1],pl[2]), cls.AIc(tn[1],pl[3]), phys[1]);
 		ITensor tempSB;
 		svd(cls.sites.at(tn[1]), eB, tempSB, QB, {"Truncate",false});
 		
@@ -272,7 +290,12 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		tempC *= prime(conj(QB), AUXLINK, 4);
 		if(dbg && (dbgLvl >=3)) Print(tempC);
 
-		eRE *= tempC;
+		getEdgeCombiners_fromTnAndPl(cmb3, cmb2, ctmEnv, 1,2, false);
+		getEdgeCombiners_fromTnAndPl(cmb0, cmb1, ctmEnv, 0,1, false);
+		eRE = (eRE * cmb2) * cmb0;
+		eRE = reindex(eRE, combinedIndex(cmb2), combinedIndex(cmb3),
+			combinedIndex(cmb0), combinedIndex(cmb1));
+		eRE *= (tempC * cmb3) * cmb1;
 
 		t_end_int = std::chrono::steady_clock::now();
 		std::cout<<"Constructed reduced Env - T: "<< 
@@ -454,8 +477,8 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	// ***** FORM "PROTO" ENVIRONMENTS FOR M and K ***************************** 
 	t_begin_int = std::chrono::steady_clock::now();
 
-	ITensor protoK = eRE * (eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2])) );
-	protoK *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) );
+	ITensor protoK = eRE * (eA * delta(cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2])) );
+	protoK *= (eB * delta(cls.AIc(tn[1],pl[3]), cls.AIc(tn[2],pl[4])) );
 	protoK *= eD;
 	if(dbg && (dbgLvl >=2)) Print(protoK);
 
@@ -480,16 +503,17 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 	NORMUPSI = (( NORMUPSI * delta(opPI[1],phys[1]) ) * conj(uJ1J2.H2)) * prime(delta(opPI[1],phys[1]));
 	NORMUPSI = (( NORMUPSI * delta(opPI[2],phys[2]) ) * conj(uJ1J2.H3)) * prime(delta(opPI[2],phys[2]));
 	NORMUPSI.prime(PHYS,-1);
-	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(aux[0],pl[1]+4),prime(aux[1],pl[2]+4)) );
-	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(aux[1],pl[3]+4),prime(aux[2],pl[4]+4)) );
+	NORMUPSI *= (prime(conj(eA), AUXLINK, 4) * delta(prime(cls.AIc(tn[0],pl[1]),4),prime(cls.AIc(tn[1],pl[2]),4)) );
+	NORMUPSI *= (prime(conj(eB), AUXLINK, 4) * delta(prime(cls.AIc(tn[1],pl[3]),4),prime(cls.AIc(tn[2],pl[4]),4)) );
 	NORMUPSI *= prime(conj(eD), AUXLINK, 4);
 
 	if (NORMUPSI.r() > 0) std::cout<<"NORMPSI or OVERLAP rank > 0"<<std::endl;
 	double normUPsi = sumels(NORMUPSI);
 
 	// trial initialization
+	// TODO mask ?
 	if (fuTrialInit) {
-		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 0.0; };
+		auto maskS   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? 1.0 : 1.0; };
 		auto cutoffS = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? r : 0; };
 		auto SqrtT   = [&machine_eps](Real r) { return (r > std::sqrt(10.0*machine_eps)) ? std::sqrt(r) : 0; };
 		auto printS  = [](Real r) { std::cout << std::scientific << r << std::endl; };
@@ -530,10 +554,10 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		auto tED = (eD * (delta(opPI[2],phys[2]) * uJ1J2.H3)) * delta(prime(opPI[2]),phys[2]);
 		
 		// combine enlarged indices
-		auto cA  = combiner(uJ1J2.a12,prime(aux[0],pl[1]));
-		auto cAB = combiner(uJ1J2.a12,prime(aux[1],pl[2]));
-		auto cBD = combiner(uJ1J2.a23,prime(aux[1],pl[3]));
-		auto cD  = combiner(uJ1J2.a23,prime(aux[2],pl[4]));
+		auto cA  = combiner(uJ1J2.a12,cls.AIc(tn[0],pl[1]));
+		auto cAB = combiner(uJ1J2.a12,cls.AIc(tn[1],pl[2]));
+		auto cBD = combiner(uJ1J2.a23,cls.AIc(tn[1],pl[3]));
+		auto cD  = combiner(uJ1J2.a23,cls.AIc(tn[2],pl[4]));
 		auto iA  = combinedIndex(cA);
 		auto iAB = combinedIndex(cAB);
 		auto iBD = combinedIndex(cBD);
@@ -589,11 +613,11 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		lAB.apply(SqrtT);
 		lBD.apply(SqrtT);
 
-		eA = (tEA*lAB)*delta(commonIndex(lAB,tEB),prime(aux[0],pl[1]));
-		eB = (tEB*lAB)*delta(commonIndex(lAB,tEA),prime(aux[1],pl[2]));
+		eA = (tEA*lAB)*delta(commonIndex(lAB,tEB),cls.AIc(tn[0],pl[1]));
+		eB = (tEB*lAB)*delta(commonIndex(lAB,tEA),cls.AIc(tn[1],pl[2]));
 		eB *= lBD;
-		eB *= delta(commonIndex(lBD,tED),prime(aux[1],pl[3]));
-		eD = (tED*lBD)*delta(commonIndex(lBD,tEB),prime(aux[2],pl[4]));
+		eB *= delta(commonIndex(lBD,tED),cls.AIc(tn[1],pl[3]));
+		eD = (tED*lBD)*delta(commonIndex(lBD,tEB),cls.AIc(tn[2],pl[4]));
 	}
 
 	auto cmbX1 = combiner(eA.inds()[0], eA.inds()[1], eA.inds()[2]); 
@@ -618,23 +642,23 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		// BRA
 		M = eRE * prime(conj(eD), AUXLINK,4);
-		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		M *= delta(	prime(cls.AIc(tn[2],pl[4]),4), prime(cls.AIc(tn[1],pl[3]),4) );
 		M *= prime(conj(eB), AUXLINK,4);
-		M *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+		M *= delta(	prime(cls.AIc(tn[1],pl[2]),4), prime(cls.AIc(tn[0],pl[1]),4) );
 		if(dbg && (dbgLvl >= 3)) Print(M);
 
 		// KET
 		M *= eD;
-		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+		M *= delta( cls.AIc(tn[2],pl[4]), cls.AIc(tn[1],pl[3]) );
 		M *= eB;
-		M *= delta( prime(aux[1],pl[2]), prime(aux[0],pl[1]) );
+		M *= delta( cls.AIc(tn[1],pl[2]), cls.AIc(tn[0],pl[1]) );
 		if(dbg && (dbgLvl >= 2)) Print(M);
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = eA^dag * K
 		K = protoK * prime(conj(eD), AUXLINK,4);
-		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		K *= delta( prime(cls.AIc(tn[2],pl[4]),4), prime(cls.AIc(tn[1],pl[3]),4) );
 		K *= prime(conj(eB), AUXLINK,4);
-		K *= delta(	prime(aux[1],pl[2]+4), prime(aux[0],pl[1]+4) );
+		K *= delta(	prime(cls.AIc(tn[1],pl[2]),4), prime(cls.AIc(tn[0],pl[1]),4) );
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
 		// <psi'|psi'>
@@ -657,7 +681,7 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
 		auto temp = eA;
-		FUlinSys fulscg(M,K,eA,cmbX1, combiner(iQA, prime(aux[0],pl[1])), args );
+		FUlinSys fulscg(M,K,eA,cmbX1, combiner(iQA, cls.AIc(tn[0],pl[1])), args );
 		fulscg.solve(K, eA, fiter, ferr, ls, args);
 		
 		NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
@@ -681,23 +705,23 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		// BRA
 		M = eRE * prime(conj(eD), AUXLINK,4);
-		M *= delta(	prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		M *= prime(delta(	cls.AIc(tn[2],pl[4]), cls.AIc(tn[1],pl[3]) ),4);
 		M *= prime(conj(eA), AUXLINK,4);
-		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		M *= prime(delta(	cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) ),4);
 		if(dbg && (dbgLvl >= 3)) Print(M);
 
 		// KET
 		M *= eD;
-		M *= delta( prime(aux[2],pl[4]), prime(aux[1],pl[3]) );
+		M *= delta( cls.AIc(tn[2],pl[4]), cls.AIc(tn[1],pl[3]) );
 		M *= eA;
-		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+		M *= delta( cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) );
 		if(dbg && (dbgLvl >= 2)) Print(M);
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = eB^dag * K
 		K = protoK * prime(conj(eD), AUXLINK,4);
-		K *= delta( prime(aux[2],pl[4]+4), prime(aux[1],pl[3]+4) );
+		K *= prime(delta( cls.AIc(tn[2],pl[4]), cls.AIc(tn[1],pl[3]) ),4);
 		K *= prime(conj(eA), AUXLINK,4);
-		K *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		K *= prime(delta( cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) ),4);
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
 		// <psi'|psi'>
@@ -720,7 +744,7 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
 		temp = eB;
-		FUlinSys fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]), prime(aux[1],pl[3])), args );
+		FUlinSys fulscgEB(M,K,eB,cmbX2, combiner(iQB, cls.AIc(tn[1],pl[2]), cls.AIc(tn[1],pl[3])), args );
 		fulscgEB.solve(K, eB, fiter, ferr, ls, args);
 		
 		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
@@ -744,23 +768,23 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 
 		// BRA
 		M = eRE * prime(conj(eA), AUXLINK,4);
-		M *= delta(	prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		M *= prime(delta(	cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) ),4);
 		M *= prime(conj(eB), AUXLINK,4);
-		M *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+		M *= prime(delta(	cls.AIc(tn[1],pl[3]), cls.AIc(tn[2],pl[4]) ),4);
 		if(dbg && (dbgLvl >= 3)) Print(M);
 
 		// KET
 		M *= eA;
-		M *= delta( prime(aux[0],pl[1]), prime(aux[1],pl[2]) );
+		M *= delta( cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) );
 		M *= eB;
-		M *= delta( prime(aux[1],pl[3]), prime(aux[2],pl[4]) );
+		M *= delta( cls.AIc(tn[1],pl[3]), cls.AIc(tn[2],pl[4]) );
 		if(dbg && (dbgLvl >= 2)) Print(M);
 
 		// 2) construct vector K, which is defined as <psi~|psi'> = eD^dag * K
 		K = protoK * prime(conj(eA), AUXLINK,4);
-		K *= delta( prime(aux[0],pl[1]+4), prime(aux[1],pl[2]+4) );
+		K *= prime(delta( cls.AIc(tn[0],pl[1]), cls.AIc(tn[1],pl[2]) ),4);
 		K *= prime(conj(eB), AUXLINK,4);
-		K *= delta(	prime(aux[1],pl[3]+4), prime(aux[2],pl[4]+4) );
+		K *= prime(delta( cls.AIc(tn[1],pl[3]), cls.AIc(tn[2],pl[4]) ),4);
 		if(dbg && (dbgLvl >= 2)) Print(K);
 
 		// <psi'|psi'>
@@ -784,7 +808,7 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
 		temp = eD;
 
-		FUlinSys fulscgED(M,K,eD,cmbX3, combiner(iQD, prime(aux[2],pl[4])), args );
+		FUlinSys fulscgED(M,K,eD,cmbX3, combiner(iQD, cls.AIc(tn[2],pl[4])), args );
 		fulscgED.solve(K, eD, fiter, ferr, ls, args);
 
 		NORMPSI = (prime(conj(eD), AUXLINK,4) * M) * eD; 
@@ -976,7 +1000,8 @@ FUlinSys::FUlinSys(ITensor & MM, ITensor & BB, ITensor & AA,
 	std::cout<<"RES: "<< res <<" N_RES: "<< nres <<" ";
 }
 
-void FUlinSys::solve(itensor::ITensor const& b, itensor::ITensor & x, Int &iter, Doub &err, 
+void FUlinSys::solve(itensor::ITensor const& b, itensor::ITensor & x, 
+	int &iter, double &err, 
 	LinSysSolver const& ls, Args const& args) {
 
 	std::vector<Index> iket;

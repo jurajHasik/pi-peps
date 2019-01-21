@@ -1237,7 +1237,6 @@ template<> Args TrotterEngine<OpNS>::performSimpleUpdate(
 }
 
 
-
 template<class T> Args TrotterEngine<T>::performFullUpdate(
     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
@@ -1253,29 +1252,29 @@ template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
 }
 
-// template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
-//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+template<> Args TrotterEngine<MPO_3site>::performFullUpdate(
+    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-//     auto gi = td.nextCyclicIndex();
-//     std::cout<<"Current index: "<< gi << std::endl;
+    auto gi = td.nextCyclicIndex();
+    std::cout<<"Current index: "<< gi << std::endl;
 
-//     return fullUpdate_ALS3S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-//         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
-// }
+    return fullUpdate_ALS3S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+        td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+}
 
-// template<> Args TrotterEngine<OpNS>::performFullUpdate(
-//     Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
+template<> Args TrotterEngine<OpNS>::performFullUpdate(
+    Cluster & cls, CtmEnv const& ctmEnv, Args const& args) {
 
-//     auto gi = td.nextCyclicIndex();
-//     std::cout<<"Current index: "<< gi << std::endl;
+    auto gi = td.nextCyclicIndex();
+    std::cout<<"Current index: "<< gi << std::endl;
 
-//     if ( td.ptr_gateMPO[gi]->nSite != 4 ) {
-//         std::cout<<"Unsupported OpNS: nSite = "<< td.ptr_gateMPO[gi]->nSite << std::endl;
-//         exit(EXIT_FAILURE);
-//     }
+    if ( td.ptr_gateMPO[gi]->nSite != 4 ) {
+        std::cout<<"Unsupported OpNS: nSite = "<< td.ptr_gateMPO[gi]->nSite << std::endl;
+        exit(EXIT_FAILURE);
+    }
 
-//     // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
-//     //     td.gates[gi], td.gate_auxInds[gi], args);
-//     return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
-//         td.gates[gi], td.gate_auxInds[gi], args);
-// }
+    // return fullUpdate_ALS4S_LSCG_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    //     td.gates[gi], td.gate_auxInds[gi], args);
+    return fullUpdate_CG_full4S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+        td.gates[gi], td.gate_auxInds[gi], args);
+}
