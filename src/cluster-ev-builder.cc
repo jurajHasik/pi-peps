@@ -2068,7 +2068,8 @@ double EVBuilder::contract2x2DiagN11(OP_2S op2s, Vertex const& v1,
     return sumels(tN);
 }
 
-
+double EVBuilder::eval2x2op4s(OP_4S op4s, Vertex const& v1, 
+    bool DBG) const { return 0.0; }
 
 // ITensor EVBuilder::getT(ITensor const& s, std::array<Index, 4> const& plToEnv, 
 //     bool dbg) const

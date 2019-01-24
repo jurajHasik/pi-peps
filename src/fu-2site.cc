@@ -58,7 +58,8 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
     auto posDefProtoEnv = args.getBool("positiveDefiniteProtoEnv",true);
     auto fuTrialInit    = args.getBool("fuTrialInit",false);
     auto epsdistf    = args.getReal("epsdistf",1.0e-8);
-	auto svd_cutoff = args.getReal("pseudoInvCutoff",1.0e-15);
+    auto epsregularisation = args.getReal("epsregularisation",0.0);
+	auto svd_cutoff  = args.getReal("pseudoInvCutoff",1.0e-15);
 	auto svd_maxLogGap = args.getReal("pseudoInvMaxLogGap",0.0);
     auto otNormType = args.getString("otNormType");
 
@@ -512,6 +513,9 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 			auto cmb0 = combiner(iQA, cls.AIc(tn[0],pl[0]), phys[0] );
 			auto cmb1 = combiner(prime(iQA,4), prime(cls.AIc(tn[0],pl[0]),4), prime(phys[0],4) );
 			M = (cmb0 * M) * cmb1;
+			// regularize Hessian
+			// std::vector<double> eps_reg(combinedIndex(cmb0, epsregularisation));
+			// M += diagTensor(eps_reg, combinedIndex(cmb0), combinedIndex(cmb1));
 			K *= cmb1;
 			eA *= cmb0;
 

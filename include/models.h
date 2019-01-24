@@ -49,7 +49,11 @@ MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
 // ----- Trotter gates (4site, ...) MPOs ------------------------------
 OpNS getOP4s_J1J2(double tau, double J1, double J2);
 
+OpNS getOP4s_NNH(double tau, double J1, double h, double del);
+
 OpNS getOP4s_Uladder(double tau, double J1, double Jp);
+
+OpNS getOP4s_J1Q(double tau, double J1, double Q);
 // ----- END Trotter gates (4site, ...) MPOs --------------------------
 
 
@@ -67,6 +71,18 @@ class J1J2Model : public Model {
         double J1, J2;
 
         J1J2Model(double arg_J1, double arg_J2);
+
+        void setObservablesHeader(std::ofstream & output);
+        
+        void computeAndWriteObservables(EVBuilder const& ev, 
+            std::ofstream & output, itensor::Args & metaInf);
+};
+
+class J1QModel : public Model {
+    public:
+        double J1, Q;
+
+        J1QModel(double arg_J1, double arg_Q);
 
         void setObservablesHeader(std::ofstream & output);
         
@@ -138,6 +154,8 @@ class IsingModel : public Model {
 
 // ----- Model Definitions --------------------------------------------
 std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model);
+
+std::unique_ptr<Model> getModel_J1Q(nlohmann::json & json_model);
 
 // void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,

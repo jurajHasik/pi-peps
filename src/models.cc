@@ -499,6 +499,49 @@ OpNS getOP4s_J1J2(double tau, double J1, double J2) {
     return op4s;
 }
 
+OpNS getOP4s_NNH(double tau, double J1, double h, double del) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s4 = Index("S4", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+    Index s4p = prime(s4);
+
+    ITensor h4 = ITensor(s1,s2,s3,s4,s1p,s2p,s3p,s4p);
+   
+    ITensor nnS1S2 = (0.5*J1)*( del * SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    h4 += nnS1S2 * delta(s3,s3p) * delta(s4,s4p);                                       // S1S2id3id4
+    h4 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);     // id1S2S3id4
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);     // S1id2id3S4
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
+        delta(s1,s1p) * delta(s2,s2p);                                                  // id1id2S3S4
+
+    h4 += 0.25*h*SU2_getSpinOp(SU2_S_Z, s1)*delta(s2,s2p)*delta(s3,s3p)*delta(s4,s4p); 
+    h4 += 0.25*h*delta(s1,s1p)*SU2_getSpinOp(SU2_S_Z, s2)*delta(s3,s3p)*delta(s4,s4p);
+    h4 += 0.25*h*delta(s1,s1p)*delta(s2,s2p)*SU2_getSpinOp(SU2_S_Z, s3)*delta(s4,s4p);
+    h4 += 0.25*h*delta(s1,s1p)*delta(s2,s2p)*delta(s3,s3p)*SU2_getSpinOp(SU2_S_Z, s4);
+
+    auto cmbI = combiner(s1,s2,s3,s4);
+    h4 = (cmbI * h4 ) * prime(cmbI);
+    ITensor u4 = expHermitian(h4, {-tau, 0.0});
+    u4 = (cmbI * u4 ) * prime(cmbI);
+
+    auto op4s = OpNS(4);
+
+    op4s.op = u4;
+    op4s.pi = {s1,s2,s3,s4};
+
+    return op4s;
+}
+
 // s1--s2
 // |   |
 // s4--s3
@@ -526,6 +569,46 @@ OpNS getOP4s_Uladder(double tau, double J1, double Jp) {
     h4 += Jp * (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);     // S1id2id3S4
     h4 += J1 * (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
         delta(s1,s1p) * delta(s2,s2p);                                                  // id1id2S3S4
+
+    auto cmbI = combiner(s1,s2,s3,s4);
+    h4 = (cmbI * h4 ) * prime(cmbI);
+    ITensor u4 = expHermitian(h4, {-tau, 0.0});
+    u4 = (cmbI * u4 ) * prime(cmbI);
+
+    auto op4s = OpNS(4);
+
+    op4s.op = u4;
+    op4s.pi = {s1,s2,s3,s4};
+
+    return op4s;
+}
+
+OpNS getOP4s_J1Q(double tau, double J1, double Q) {
+    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s4 = Index("S4", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+    Index s4p = prime(s4);
+
+    ITensor h4 = ITensor(s1,s2,s3,s4,s1p,s2p,s3p,s4p);
+   
+    ITensor nnS1S2 = J1*(SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ) );
+
+    h4 += nnS1S2 * delta(s3,s3p) * delta(s4,s4p);                                       // S1S2id3id4
+    h4 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p) * delta(s4,s4p);     // id1S2S3id4
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p)) * delta(s2,s2p) * delta(s3,s3p);     // S1id2id3S4
+    h4 += (nnS1S2 * delta(s2,s4) * delta(s2p,s4p) * delta(s1,s3) * delta(s1p,s3p)) *
+        delta(s1,s1p) * delta(s2,s2p);                                                  // id1id2S3S4
+
+    // TODO Q-part of the Hamiltonian
 
     auto cmbI = combiner(s1,s2,s3,s4);
     h4 = (cmbI * h4 ) * prime(cmbI);
@@ -656,6 +739,111 @@ void J1J2Model::computeAndWriteObservables(EVBuilder const& ev,
 
     output << std::endl;
 }
+
+
+J1QModel::J1QModel(double arg_J1, double arg_Q)
+    : J1(arg_J1), Q(arg_Q) {}
+
+void J1QModel::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SS AB (0,0)(1,0), "<<"SS AC (0,0)(0,1), "
+        <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
+        <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
+        <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
+        <<"Avg SS_NN, "<<"Avg SSSS, "
+        <<"Avg mag=|S|, "<<"Energy"
+        <<std::endl;
+}
+
+void J1QModel::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args & metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector<double> evSSSS;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
+
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,0), Vertex(1,0)) ); //AB
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,0), Vertex(0,1)) ); //AC
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,0), Vertex(1,1)) ); //BD
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,1), Vertex(1,1)) ); //CD
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,0), Vertex(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,1), Vertex(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,1), Vertex(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,1), Vertex(2,1))); //DC
+
+    // compute energies of plaquettes
+    evSSSS.push_back( ev.eval2x2op4s(EVBuilder::OP4S_Q, Vertex(0,0)) );
+    evSSSS.push_back( ev.eval2x2op4s(EVBuilder::OP4S_Q, Vertex(1,0)) );
+    evSSSS.push_back( ev.eval2x2op4s(EVBuilder::OP4S_Q, Vertex(0,1)) );
+    evSSSS.push_back( ev.eval2x2op4s(EVBuilder::OP4S_Q, Vertex(1,1)) );
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
+
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
+
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
+
+    
+    output << lineNo <<" "; 
+    // write individual NN SS terms and average over all non-eq links
+    double avgSS_NN = 0.;
+    for ( unsigned int j=0; j<evNN.size(); j++ ) {
+        output<<" "<< evNN[j];
+        avgSS_NN += evNN[j];
+    }
+    avgSS_NN = avgSS_NN / 8.0; 
+    output <<" "<< avgSS_NN;
+    
+    // write average NNN SS term over all non-eq NNN
+    double avgSSSS = 0.;
+    for ( unsigned int j=0; j<evSSSS.size(); j++ ) avgSSSS += evSSSS[j];
+    avgSSSS = avgSSSS / 4.0;   
+    output <<" "<< avgSSSS;
+
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.25*(
+        sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
+        + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
+        + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )
+        + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )
+    );
+    output <<" "<< evMag_avg;
+
+    // TODO write Energy
+    double energy = 2.0 * avgSS_NN * J1 + 2.0 * avgSSSS * Q; 
+    output <<" "<< energy;
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
+    output << std::endl;
+}
+
 
 NNHLadderModel::NNHLadderModel(double arg_J1, double arg_alpha)
     : J1(arg_J1), alpha(arg_alpha) {}
@@ -1144,6 +1332,13 @@ std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model) {
     double arg_J2 = json_model["J2"].get<double>();
     
     return std::unique_ptr<Model>(new J1J2Model(arg_J1, arg_J2));
+}
+
+std::unique_ptr<Model> getModel_J1Q(nlohmann::json & json_model) {
+    double arg_J1 = json_model["J1"].get<double>();
+    double arg_Q = json_model["Q"].get<double>();
+    
+    return std::unique_ptr<Model>(new J1QModel(arg_J1, arg_Q));
 }
 
 std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model) {
@@ -1703,6 +1898,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
 
     if(arg_modelType == "J1J2") {
         return getModel_J1J2(json_model);
+    } else if(arg_modelType == "J1Q") {
+        return getModel_J1Q(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
         return getModel_NNH_2x2Cell_Ladder(json_model);
     // } else if (arg_modelType == "Ising") {

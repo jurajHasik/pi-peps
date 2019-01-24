@@ -604,6 +604,30 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_ABCD(nlohmann::json & json_model
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe ); 
     }
+    else if (arg_fuGateSeq == "4SITE") {
+        TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
+
+        pe->td.gateMPO.push_back( getOP4s_NNH(arg_tau, arg_J1, arg_h, arg_del) );
+        pe->td.ptr_gateMPO = std::vector< OpNS * >(4, &pe->td.gateMPO[0] );
+
+        pe->td.gates = {
+            {"B", "A", "C", "D"},
+            {"C", "D", "B", "A"},
+            {"A", "B", "D", "C"},
+            {"D", "C", "A", "B"}
+        };
+
+        pe->td.gate_auxInds = {
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1},
+            {3,0, 2,3, 1,2, 0,1}
+        };
+
+        std::cout<<"NNH 4SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
     else {
         std::cout<<"Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);

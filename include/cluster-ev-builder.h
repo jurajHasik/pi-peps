@@ -74,6 +74,11 @@ class EVBuilder {
         OP2S_SZSZ
     };
 
+    enum OP_4S {
+        OP4S_ID,
+        OP4S_Q
+    };
+
     // Compute expectation value of 2-site operator O given
     // by its decomposition into MPOs OA * OB = O placed on siteA and siteB 
     // within the cluster surrounded by environment
@@ -196,6 +201,8 @@ class EVBuilder {
     double contract2x2DiagN11(OP_2S op2s, Vertex const& v1, 
         bool DBG = false) const;
 
+    double eval2x2op4s(OP_4S op4s, Vertex const& v1, 
+    bool DBG = false) const;
 
     // itensor::ITensor getT(itensor::ITensor const& s, 
     //     std::array< itensor::Index, 4> const& plToEnv, bool dbg) const; 
