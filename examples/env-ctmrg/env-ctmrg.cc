@@ -273,9 +273,23 @@ int main( int argc, char *argv[] ) {
     std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
         <<" [sec] "<< std::endl;
     
+    // compute spin directions
+    std::vector<double> svec(3,0.0);
+    std::cout<<"siteId sz sp sm"<<std::endl;
+    for (auto const& id : p_cls->siteIds) {
+        svec[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, p_cls->idToV.at(id));
+        svec[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, p_cls->idToV.at(id));
+        svec[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, p_cls->idToV.at(id));
+        
+        std::cout<< id <<" "<< svec[0] <<" "<< svec[1]<<" "<< svec[2] << std::endl;
+    }
+
     // Analyze transfer matrix
     ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
     ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+
+    ev.analyzeTransferMatrix(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+    ev.analyzeTransferMatrix(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
 
     // FINISHED
     std::cout <<"FINISHED"<< std::endl;

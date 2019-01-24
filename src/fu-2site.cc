@@ -238,10 +238,10 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 		// A--B
 		// Decompose A tensor on which the gate is applied
 		{
-			// TODO mask ?
+			// TODO mask ? cutoff ?
 			// Internally ITensor takes sqrt of singular values
 			auto maskS   = [&machine_eps](Real r) { return (r > 10.0*machine_eps ) ? 1.0 : 1.0; };
-			auto cutoffS = [&machine_eps](Real r) { return (r > 10.0*machine_eps ) ? r : 0; };
+			auto cutoffS = [&machine_eps](Real r) { return (r > 10.0*machine_eps ) ? r : r; };
 
 			ITensor tempSA;
 			svd(cls.sites.at(tn[0]), eA, tempSA, QA, {"Truncate",false});
