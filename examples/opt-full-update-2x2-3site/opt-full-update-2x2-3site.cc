@@ -507,15 +507,26 @@ int main( int argc, char *argv[] ) {
 	        if ( (currentMaxEnvIter > 1) && (envI % 1 == 0) ) {
                 t_begin_int = std::chrono::steady_clock::now();
 
-                e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
-                e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
-                e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
-                e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
+                // e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
+                // e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
+                // e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
+                // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
+                // e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(0,2));
 
                 t_end_int = std::chrono::steady_clock::now();
 
 	            std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                    << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
+                    << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl; 
+
+                t_begin_int = std::chrono::steady_clock::now();
+
+                e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+                e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+                e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+                e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
+
+                t_end_int = std::chrono::steady_clock::now();
+                std::cout<<"Var(boundary) T: "<< get_s(t_begin_int,t_end_int) << std::endl;
 
                 // if the difference between energies along NN links is lower then arg_envEps
                 // consider the environment converged

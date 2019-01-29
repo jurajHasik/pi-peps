@@ -66,6 +66,9 @@ class EVBuilder {
     double eV_1sO_1sENV(MpoNS const& op, Vertex const& v,
         bool DBG = false) const;
 
+    std::vector<double> eeCorner_1s(Vertex const& v, 
+        bool DBG = false) const;
+
     // Supported types of 2-site operators
     enum OP_2S {
         OP2S_Id,        // Identity
@@ -149,6 +152,20 @@ class EVBuilder {
 
         void operator() (double const* const x, double* const y, bool DBG = false); 
     };
+
+    struct TransferOpVecProd_itensor {
+        CtmEnv::DIRECTION dir;
+        Vertex v_ref;
+        EVBuilder const& ev;
+
+        TransferOpVecProd_itensor(EVBuilder const& ev, Vertex const& v, 
+            CtmEnv::DIRECTION dir);
+
+        void operator() (itensor::ITensor & bT, bool DBG = false); 
+    };
+
+    double analyzeBoundaryVariance(Vertex const& v, 
+        CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT);
 
     void analyzeTransferMatrix(Vertex const& v, 
         CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT, 

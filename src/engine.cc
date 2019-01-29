@@ -164,6 +164,35 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
     }
+    else if (arg_fuGateSeq == "2SITE-ALT") {
+        TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
+
+        pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_J1, 0.0) );
+        pe->td.gateMPO.push_back( getMPO2s_NNH_2site(arg_tau, arg_alpha*arg_J1, 0.0) );
+        pe->td.gateMPO[0].uuid = "STRONG";
+        pe->td.gateMPO[1].uuid = "WEAK";
+        
+        pe->td.gates = {
+            {"A", "B"}, {"C", "D"}, 
+            {"B", "A"}, {"D", "C"},
+            {"A", "C"}, {"B", "D"},
+            {"C", "A"}, {"D", "B"}
+        };
+
+        pe->td.gate_auxInds = {
+            {2, 0}, {2, 0},
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1},
+            {3, 1}, {3, 1}
+        };
+        
+        for (int i=0; i<6; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
+        for (int i=0; i<2; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[1]) );
+
+        std::cout<<"NNH_2x2Cell_Ladder 2SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
     else if (arg_fuGateSeq == "4SITE") {
          TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
 
@@ -1274,6 +1303,8 @@ template<> Args TrotterEngine<MPO_2site>::performFullUpdate(
 
     return fullUpdate_ALS2S_IT(*td.ptr_gateMPO[gi], cls, ctmEnv,
         td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
+    // return fullUpdate_2S(*td.ptr_gateMPO[gi], cls, ctmEnv,
+    //     td.gates[gi], td.gate_auxInds[gi], *(this->pSolver), args);
 }
 
 template<> Args TrotterEngine<MPO_3site>::performFullUpdate(

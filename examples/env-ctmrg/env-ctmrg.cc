@@ -155,8 +155,9 @@ int main( int argc, char *argv[] ) {
         t_begin_int = std::chrono::steady_clock::now();
 
         ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+        // ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
         ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
         ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
         t_end_int = std::chrono::steady_clock::now();
@@ -172,9 +173,18 @@ int main( int argc, char *argv[] ) {
             e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
 
             t_end_int = std::chrono::steady_clock::now();
-
             std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
+                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
+
+            t_begin_int = std::chrono::steady_clock::now();
+
+            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+
+            t_end_int = std::chrono::steady_clock::now();
+            std::cout<<"Var(boundary) T: "<< get_s(t_begin_int,t_end_int) << std::endl;
+
+             
 
             // if the difference between energies along NN links is lower then arg_envEps
             // consider the environment converged
@@ -283,6 +293,24 @@ int main( int argc, char *argv[] ) {
         
         std::cout<< id <<" "<< svec[0] <<" "<< svec[1]<<" "<< svec[2] << std::endl;
     }
+
+    // analyze corner entanglement entropy (ee)
+    auto eec_A = ev.eeCorner_1s(Vertex(0,0));
+    auto eec_B = ev.eeCorner_1s(Vertex(1,0));
+    auto eec_C = ev.eeCorner_1s(Vertex(0,1));
+    auto eec_D = ev.eeCorner_1s(Vertex(1,1));
+    
+    auto printEEC = [](std::vector<double> const& eec) { 
+        std::cout<<"eec_A";
+        for (int i=0; i<4; i++) std::cout<<" "<< eec[i];
+        std::cout<<std::endl;
+    };
+
+    printEEC(eec_A);
+    printEEC(eec_B);
+    printEEC(eec_C);
+    printEEC(eec_D);
+
 
     // Analyze transfer matrix
     ev.analyzeTransferMatrix(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);

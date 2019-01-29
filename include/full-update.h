@@ -18,11 +18,20 @@
 itensor::ITensor pseudoInverse(itensor::ITensor const& M,
 	itensor::Args const& args = itensor::Args::global());
 
+
 itensor::Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls,
 	CtmEnv const& ctmEnv,
 	std::vector<std::string> const& tn, std::vector<int> pl,
 	itensor::LinSysSolver const& ls,
 	itensor::Args const& args = itensor::Args::global());
+
+
+itensor::Args fullUpdate_2S(MPO_2site const& mpo, Cluster & cls,
+	CtmEnv const& ctmEnv,
+	std::vector<std::string> const& tn, std::vector<int> pl,
+	itensor::LinSysSolver const& ls,
+	itensor::Args const& args = itensor::Args::global());
+
 
 itensor::Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, 
 	CtmEnv const& ctmEnv,

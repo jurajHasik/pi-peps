@@ -225,6 +225,273 @@ void EVBuilder::TransferOpVecProd::operator() (
     std::copy(xData.data(), xData.data()+N, y);
 }
 
+EVBuilder::TransferOpVecProd_itensor::TransferOpVecProd_itensor(EVBuilder const& ev_, 
+    Vertex const& v_, CtmEnv::DIRECTION dir_) 
+    : ev(ev_), v_ref(v_), dir(dir_) {}
+
+void EVBuilder::TransferOpVecProd_itensor::operator() (
+    ITensor & bT, 
+    bool DBG) 
+{
+    using DIRECTION = CtmEnv::DIRECTION;
+
+    auto vToId = [this] (Vertex const& v) { return ev.p_cluster->vertexToId(v); };
+
+    auto getSiteBraKet = [this, &vToId] (Vertex const& v) {
+        return ev.p_cluster->sites.at(vToId(v)) * 
+            dag(ev.p_cluster->sites.at(vToId(v))).prime(AUXLINK,ev.p_cluster->BRAKET_OFFSET);
+    };
+
+    auto applyDeltaEdge = [this] (ITensor & t, Vertex const& v, 
+        DIRECTION edge, DIRECTION dir) { 
+
+        // (edge = LEFT or RIGHT => dir = UP or DOWN) or 
+        // (edge = UP or DOWN => dir = LEFT or RIGHT)
+        if ( (edge == dir) || ((edge + 2)%4 == dir) ) {
+            std::cout<<"[TransferOpVecProd::operator()] Invalid input: edge= "<< edge 
+                <<" dir: "<< dir << std::endl;
+            throw std::runtime_error("[get2SOPTN::applyDeltaEdge] Invalid input");
+        }
+
+        Shift s;
+        switch (dir) {
+            case DIRECTION::LEFT: {
+                s = Shift(1,0);
+                break;
+            }
+            case DIRECTION::UP: {
+                s = Shift(0,1);
+                break;
+            }
+            case DIRECTION::RIGHT: {
+                s = Shift(-1,0);
+                break;
+            }
+            case DIRECTION::DOWN: {
+                s = Shift(0,-1);
+                break;
+            }
+        }
+
+        t *= delta(
+            ev.p_ctmEnv->tauxByVertex(edge, v + s, dir), 
+            ev.p_ctmEnv->tauxByVertex(edge, v, (dir+2)%4) );
+    };
+    
+    // TODO assume(check?) the bT has the correct indices of the boundary C-T-C
+
+    // Apply lY columns or lX rows depending on chosen direction
+    auto v = v_ref;
+    if (dir==DIRECTION::RIGHT) {
+        for ( int col=0; col < ev.p_cluster->lY; col++ ) {
+            v = v_ref + col*Shift(1,0);
+            
+            if(DBG) std::cout<<"T_U["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            if (col>0) applyDeltaEdge(bT, v, DIRECTION::UP, DIRECTION::RIGHT);
+            bT *= ev.p_ctmEnv->T_U.at(vToId(v));
+            
+            if(DBG) Print(bT);
+            if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            Index tmp_down, tmp_right;
+            
+            tmp_down = ev.p_cluster->AIc(v,DIRECTION::UP);
+            if (col>0) {
+            //     applyDeltaSite(tN,v,DIRECTION::LEFT)
+                tmp_right = ev.p_cluster->AIc(v+Shift(-1,0),DIRECTION::RIGHT);
+            } else {
+                tmp_right = ev.p_cluster->AIc(v,DIRECTION::LEFT);
+            };
+            
+            auto tmp_cmb0 = combiner(
+                tmp_down,
+                prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
+                tmp_right,
+                prime(tmp_right, ev.p_cluster->BRAKET_OFFSET)
+            );
+            auto tmp_cmb1 = combiner(
+                ev.p_cluster->AIc(v,DIRECTION::UP),
+                prime(ev.p_cluster->AIc(v,DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
+                ev.p_cluster->AIc(v,DIRECTION::LEFT),
+                prime(ev.p_cluster->AIc(v,DIRECTION::LEFT), ev.p_cluster->BRAKET_OFFSET)
+            );
+
+            bT *= tmp_cmb0;
+            // TODO use delta instead of reindex
+            bT = reindex(bT, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+            bT *= (getSiteBraKet(v) * tmp_cmb1);
+            
+            if(DBG) std::cout <<"T_D["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            if (col>0) applyDeltaEdge(bT, v, DIRECTION::DOWN, DIRECTION::RIGHT);
+            bT *= ev.p_ctmEnv->T_D.at(vToId(v));
+
+            if(DBG) std::cout << ">>>>> Appended col X= "<< col <<" <<<<<"<< std::endl;
+            if(DBG) Print(bT);
+        }
+    }
+    else if (dir==DIRECTION::DOWN) {
+        for ( int row=0; row < ev.p_cluster->lX; row++ ) {
+            v = v_ref + row*Shift(0,1);
+            
+            if(DBG) std::cout<<"T_L["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            if (row>0) applyDeltaEdge(bT, v, DIRECTION::LEFT, DIRECTION::DOWN);
+            bT *= ev.p_ctmEnv->T_L.at(vToId(v));
+            
+            if(DBG) Print(bT);
+            if(DBG) std::cout<<"["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            Index tmp_down, tmp_right;
+
+            if (row > 0) { 
+            //     applyDeltaSite(bT,v,DIRECTION::UP)
+                tmp_down = ev.p_cluster->AIc(v+Shift(0,-1),DIRECTION::DOWN);
+            } else {
+                tmp_down = ev.p_cluster->AIc(v,DIRECTION::UP);
+            }
+            tmp_right = ev.p_cluster->AIc(v,DIRECTION::LEFT);
+
+            auto tmp_cmb0 = combiner(
+                tmp_down,
+                prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
+                tmp_right,
+                prime(tmp_right, ev.p_cluster->BRAKET_OFFSET)
+                );
+            auto tmp_cmb1 = combiner(
+                ev.p_cluster->AIc(v,DIRECTION::UP),
+                prime(ev.p_cluster->AIc(v,DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
+                ev.p_cluster->AIc(v,DIRECTION::LEFT),
+                prime(ev.p_cluster->AIc(v,DIRECTION::LEFT), ev.p_cluster->BRAKET_OFFSET)
+                );
+
+            bT *= tmp_cmb0;
+            // TODO use delta instead of reindex
+            bT = reindex(bT, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
+            bT *= getSiteBraKet(v)* tmp_cmb1;
+            
+            if(DBG) std::cout <<"T_R["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
+
+            if (row>0) applyDeltaEdge(bT, v, DIRECTION::RIGHT, DIRECTION::DOWN);
+            bT *= ev.p_ctmEnv->T_R.at(vToId(v));
+
+            if(DBG) std::cout << ">>>>> Appended row X= "<< row <<" <<<<<"<< std::endl;
+            if(DBG) Print(bT);
+        }
+    }
+
+    // reset indices back to originals to reflect new bT
+    if (dir==DIRECTION::RIGHT) {
+        applyDeltaEdge(bT, v_ref, DIRECTION::UP,   DIRECTION::RIGHT);
+        applyDeltaEdge(bT, v_ref, DIRECTION::DOWN, DIRECTION::RIGHT);
+        auto tmp_del = delta(
+            ev.p_cluster->AIc(v_ref+Shift(-1,0),DIRECTION::RIGHT),
+            ev.p_cluster->AIc(v_ref,DIRECTION::LEFT));
+        bT *= tmp_del;
+        bT *= prime(tmp_del,ev.p_cluster->BRAKET_OFFSET);
+    } 
+    else if (dir==DIRECTION::DOWN) {
+        applyDeltaEdge(bT, v_ref, DIRECTION::LEFT,  DIRECTION::DOWN);
+        applyDeltaEdge(bT, v_ref, DIRECTION::RIGHT, DIRECTION::DOWN);
+        auto tmp_del = delta(
+            ev.p_cluster->AIc(v_ref+Shift(0,-1),DIRECTION::DOWN),
+            ev.p_cluster->AIc(v_ref,DIRECTION::UP));
+        bT *= tmp_del;
+        bT *= prime(tmp_del,ev.p_cluster->BRAKET_OFFSET);
+    }
+}
+
+double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir) {
+
+    using DIRECTION = CtmEnv::DIRECTION;
+
+    auto vToId = [this] (Vertex const& v) { return p_cluster->vertexToId(v); };
+
+    auto siteId = vToId(v);
+    Vertex v_other;
+    std::string siteId_other;
+    TransferOpVecProd_itensor tvp( (*this), v, dir);
+    ITensor bT, bTother;
+
+    // construct boundaries
+    if (dir == DIRECTION::RIGHT) {
+        bT = p_ctmEnv->C_LU.at(siteId);
+        bT *= p_ctmEnv->T_L.at(siteId);
+        bT *= p_ctmEnv->C_LD.at(siteId);
+
+        v_other = v + Shift(-1,0);
+        siteId_other = vToId(v_other);
+        bTother = p_ctmEnv->C_RU.at(siteId_other);
+        bTother *= p_ctmEnv->T_R.at(siteId_other);
+        bTother *= p_ctmEnv->C_RD.at(siteId_other);
+
+        bTother *= delta(
+            p_ctmEnv->tauxByVertex(DIRECTION::UP,v_other,DIRECTION::RIGHT),
+            p_ctmEnv->tauxByVertex(DIRECTION::UP,v,DIRECTION::LEFT));
+        auto tmp_del = delta(
+            p_cluster->AIc(v_other,DIRECTION::RIGHT),
+            p_cluster->AIc(v,DIRECTION::LEFT));
+        bTother *= tmp_del;
+        bTother *= prime(tmp_del,p_cluster->BRAKET_OFFSET);
+        bTother *= delta(
+            p_ctmEnv->tauxByVertex(DIRECTION::DOWN,v_other,DIRECTION::RIGHT),
+            p_ctmEnv->tauxByVertex(DIRECTION::DOWN,v,DIRECTION::LEFT));
+    }
+    else if(dir == DIRECTION::DOWN) {
+        bT = p_ctmEnv->C_LU.at(siteId);
+        bT *= p_ctmEnv->T_U.at(siteId);
+        bT *= p_ctmEnv->C_RU.at(siteId);
+
+        v_other = v + Shift(0,-1);
+        siteId_other = vToId(v_other);
+        bTother = p_ctmEnv->C_LD.at(siteId_other);
+        bTother *= p_ctmEnv->T_D.at(siteId_other);
+        bTother *= p_ctmEnv->C_RD.at(siteId_other);
+
+        bTother *= delta(
+            p_ctmEnv->tauxByVertex(DIRECTION::LEFT,v_other,DIRECTION::DOWN),
+            p_ctmEnv->tauxByVertex(DIRECTION::LEFT,v,DIRECTION::UP));
+        auto tmp_del = delta(
+            p_cluster->AIc(v_other,DIRECTION::DOWN),
+            p_cluster->AIc(v,DIRECTION::UP));
+        bTother *= tmp_del;
+        bTother *= prime(tmp_del,p_cluster->BRAKET_OFFSET);
+        bTother *= delta(
+            p_ctmEnv->tauxByVertex(DIRECTION::RIGHT,v_other,DIRECTION::DOWN),
+            p_ctmEnv->tauxByVertex(DIRECTION::RIGHT,v,DIRECTION::UP));
+    }
+
+    auto bb = bT * bTother;
+    if (bb.r() > 0) throw 
+        std::runtime_error("[analyzeBoundaryVariance] bTb rank > 0");
+
+    // apply transfer operator once
+    tvp(bT);
+
+    // compute <boundary|T|boundary>
+    auto bTb = bT * bTother;
+    if (bTb.r() > 0) throw 
+        std::runtime_error("[analyzeBoundaryVariance] bTb rank > 0");
+
+    // apply transfer operator second time
+    tvp(bT);
+
+    // compute <boundary|T^2|boundary>
+    auto bTTb = bT * bTother;
+    if (bTTb.r() > 0) throw 
+        std::runtime_error("[analyzeBoundaryVariance] bTTb rank > 0");
+
+    double bndr_var = sumels(bTTb)/sumels(bb) - 
+        (sumels(bTb)/sumels(bb))*(sumels(bTb)/sumels(bb));
+
+    std::cout<<"bTTb: "<< sumels(bTTb) <<" bTb: "<< sumels(bTb) << " bb: "
+        << sumels(bb) <<" bTTb/bb-(bTb/bb)^2: "
+        << bndr_var << std::endl;
+
+    return bndr_var;
+}
+
 EVBuilder::EVBuilder (std::string in_name, Cluster const& cls, 
     CtmEnv const& env) 
     : name(in_name), p_cluster(&cls), p_ctmEnv(&env) {
@@ -403,6 +670,117 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
 
     return sumels(ev)/getNorm_Rectangle(DBG, v, v);
 }
+
+// entanglement of the corner
+std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const 
+{
+    auto getSiteBraKet = [this] (std::string const& id) {
+        return p_cluster->sites.at(id) * 
+            dag(p_cluster->sites.at(id)).prime(AUXLINK,p_cluster->BRAKET_OFFSET);
+    };
+
+    auto computeEE = [](ITensor const& t) {
+        // Check hermicity
+        auto i1 = t.inds()[0];
+        auto i2 = t.inds()[1];
+        auto i1T = Index("i1T",i1.m());
+        auto i2T = Index("i2T",i2.m()); 
+
+        auto t_sym  = 0.5 * ( (t * delta(i1,i1T)) * delta(i2,i2T) 
+            + (dag(t) * delta(i1,i2T)) * delta(i2,i1T) );
+        auto t_asym = 0.5 * ( (t * delta(i1,i1T)) * delta(i2,i2T) 
+            - (dag(t) * delta(i1,i2T)) * delta(i2,i1T) );
+        //
+        std::cout<<"norm(t_sym): "<< norm(t_sym) <<" norm(t_asym): "<< norm(t_asym) << std::endl;
+
+        // diagonalize
+        t_sym *= delta(i2T,prime(i1T));
+        ITensor U,D;
+        diagHermitian(t_sym, U, D, {"Truncate",false});
+
+
+        // compute normalization const
+        auto i1d = D.inds()[0];
+        auto i2d = D.inds()[1];
+        std::vector<double> elemD(i1d.m(),0.0);
+        double trD = 0.0;
+        for (int i=1; i<=i1d.m(); i++) { 
+            elemD[i] = ( D.real(i1d(i),i2d(i)) > 0.0 ) ? D.real(i1d(i),i2d(i)) : 1.0e-16;
+            trD += elemD[i];
+        }
+
+        // EE = -Tr ( rho log (rho) ) = - 1/(sum_i D_i) sum_j (D_j log( D_j / (sum_k D_k)) )
+        //                            = - 1/(sum_i D_i) sum_j (D_j (log D_j - log (sum_k D_k)) )  
+        double ee = 0.0;
+        for (int j=1; j<=i1d.m(); j++) ee += -(1.0/trD) * elemD[j] 
+            * (std::log( elemD[j] ) - std::log(trD) );
+    
+        return ee;
+    };
+
+    auto siteId = p_cluster->vertexToId(v);
+
+    std::vector<double> eecorner;
+    ITensor ev;
+
+    // upper-left corner
+    ev = p_ctmEnv->C_RU.at(siteId);
+    ev *= p_ctmEnv->T_R.at(siteId);
+    ev *= p_ctmEnv->C_RD.at(siteId);
+    
+    ev *= p_ctmEnv->T_D.at(siteId);
+    ev *= getSiteBraKet(siteId);
+    ev *= p_ctmEnv->T_U.at(siteId);
+
+    ev *= p_ctmEnv->C_LD.at(siteId);
+    ev *= p_ctmEnv->T_L.at(siteId);
+
+    eecorner.push_back( computeEE(ev) );
+
+    // upper-right corner
+    ev = p_ctmEnv->C_LU.at(siteId);
+    ev *= p_ctmEnv->T_L.at(siteId);
+    ev *= p_ctmEnv->C_LD.at(siteId);
+    
+    ev *= p_ctmEnv->T_D.at(siteId);
+    ev *= getSiteBraKet(siteId);
+    ev *= p_ctmEnv->T_U.at(siteId);
+
+    ev *= p_ctmEnv->C_RD.at(siteId);
+    ev *= p_ctmEnv->T_R.at(siteId);
+    
+    eecorner.push_back( computeEE(ev) );
+
+    // lower-right corner
+    ev = p_ctmEnv->C_LU.at(siteId);
+    ev *= p_ctmEnv->T_L.at(siteId);
+    ev *= p_ctmEnv->C_LD.at(siteId);
+    
+    ev *= p_ctmEnv->T_D.at(siteId);
+    ev *= getSiteBraKet(siteId);
+    ev *= p_ctmEnv->T_U.at(siteId);
+
+    ev *= p_ctmEnv->C_RU.at(siteId);
+    ev *= p_ctmEnv->T_R.at(siteId);
+    
+    eecorner.push_back( computeEE(ev) );
+
+    // lower-left corner
+    ev = p_ctmEnv->C_RU.at(siteId);
+    ev *= p_ctmEnv->T_R.at(siteId);
+    ev *= p_ctmEnv->C_RD.at(siteId);
+    
+    ev *= p_ctmEnv->T_D.at(siteId);
+    ev *= getSiteBraKet(siteId);
+    ev *= p_ctmEnv->T_U.at(siteId);
+
+    ev *= p_ctmEnv->C_LU.at(siteId);
+    ev *= p_ctmEnv->T_L.at(siteId);
+
+    eecorner.push_back( computeEE(ev) );
+
+    return eecorner;
+} 
 
 /* 
  * TODO implement evaluation on arbitrary large cluster
