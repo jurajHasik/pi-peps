@@ -283,6 +283,41 @@ int main( int argc, char *argv[] ) {
     std::vector<double> accT(12,0.0); // holds timings for CTM moves
     Args diag_fu;
 
+    auto printBondSpectra = [&p_cls] {
+        auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+        // loop over link weights and perform svd uniquely
+        std::vector< std::string > lwIds;
+        for (auto const& stw : p_cls->siteToWeights )
+            for (auto const& lw : stw.second)
+                if ( std::find(lwIds.begin(), lwIds.end(), lw.wId) == lwIds.end() ) {
+                    nlohmann::json jentry;
+                    jentry["sites"] = lw.sId;
+                    jentry["directions"] = lw.dirs;
+                    jentry["weightId"] = lw.wId;
+                    
+                    std::cout<< lw.sId[0] <<"-"<< lw.dirs[0] <<"--"<< lw.dirs[1] <<"-"
+                        << lw.sId[1] <<" ";
+
+                    std::vector<Index> indsL;
+                    for (int i=0;i<4;i++) if(i != lw.dirs[0]) indsL.push_back(
+                        p_cls->AIc(lw.sId[0],i));
+                    indsL.push_back(p_cls->mphys.at(lw.sId[0]));
+                    ITensor tmpL(indsL), S, tmpR;
+
+                    auto tmpT = p_cls->sites.at(lw.sId[0]) * delta( p_cls->AIc(lw.sId[0],lw.dirs[0]),
+                        p_cls->AIc(lw.sId[1],lw.dirs[1]) ) * p_cls->sites.at(lw.sId[1]);
+
+                    svd(tmpT,tmpL,S,tmpR,{"Minm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m(),
+                        "Maxm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m()});
+                    S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+                    S.visit(printS);
+                    std::cout<<std::endl;
+                
+                    lwIds.push_back(lw.wId);
+                }
+    };
+
     std::string outClusterBestFile = outClusterFile+".best";
     std::ofstream out_file_energy(outClusterFile+".energy.dat", std::ios::out);
     std::ofstream out_file_diag(outClusterFile+".diag.dat", std::ios::out);
@@ -442,10 +477,14 @@ int main( int argc, char *argv[] ) {
             <<" "<< diag_fu.getReal("minEvKept",0.0);
         out_file_diag  <<std::endl;
 
-        
+
+
         // fix gauge by simple-update at dt=0 - identity operators
         if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
             std::cout << "GAUGE FIXING" << std::endl;
+            
+            printBondSpectra();
+
             auto num_eps = std::numeric_limits<double>::epsilon();
             t_begin_int = std::chrono::steady_clock::now();
 
@@ -502,7 +541,7 @@ int main( int argc, char *argv[] ) {
             ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
             t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
+            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] ";
 
 	        if ( (currentMaxEnvIter > 1) && (envI % 1 == 0) ) {
                 t_begin_int = std::chrono::steady_clock::now();
@@ -540,7 +579,7 @@ int main( int argc, char *argv[] ) {
                 }
 
                 // if max number of iterations has been reached
-                if ( envI==currentMaxEnvIter )  {
+                if ( envI==currentMaxEnvIter ) {
                     std::cout<< " MAX ENV iterations REACHED ";
                     expValEnvConv = true;
                 }
@@ -564,7 +603,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    // PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss << tmpVal;
 
@@ -573,7 +612,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    // PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -582,7 +621,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    // PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -591,7 +630,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(auxEnvDim),
                         sv.inds().back()(auxEnvDim));
-                    PrintData(sv);
+                    // PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -605,15 +644,17 @@ int main( int argc, char *argv[] ) {
             std::cout << std::endl;
 	    }
 
-	    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
-        std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-            <<" "<< accT[3] << std::endl;
-        std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
-        std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-            <<" "<< accT[7] << std::endl;
-        std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
-        std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
-            <<" "<< accT[11] << std::endl;
+        if( arg_envDbg && (arg_envDbgLvl > 1) ) {
+    	    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
+            std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+                <<" "<< accT[3] << std::endl;
+            std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
+            std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+                <<" "<< accT[7] << std::endl;
+            std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+            std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+                <<" "<< accT[11] << std::endl;
+        }
 
         if (fuI % arg_obsFreq == 0) {
             t_begin_int = std::chrono::steady_clock::now();
@@ -635,24 +676,35 @@ int main( int argc, char *argv[] ) {
             std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
                 <<" [sec] "<< std::endl;
 
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "NN <S.S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
+            // Compute spectra of Corner matrices
+            if (arg_envDbg) {
+                std::cout << std::endl;
+                Args args_dbg_cornerSVD = {"Truncate",false};
+                std::cout << "Spectra: " << std::endl;
 
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "NNN <S.S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
+                ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
+                auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                PrintData(sv);
 
-            // t_begin_int = std::chrono::steady_clock::now();
-            // t_end_int = std::chrono::steady_clock::now();
-            // std::cout << "<S> computed in T: "<< std::chrono::duration_cast
-            //         <std::chrono::microseconds>(t_end_int - t_begin_int).count()/1000000.0 
-            //         <<" [sec] "<< std::endl;
+                tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                PrintData(sv);
+
+                tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                PrintData(sv);
+
+                tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
+                    tL,sv,tR,args_dbg_cornerSVD);
+                PrintData(sv);
+            }
         
+            printBondSpectra();
+
             writeCluster(outClusterFile, *p_cls);
         }
     }

@@ -448,6 +448,37 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	bool converged = false;
 	std::vector<double> fdist, fdistN, vec_normPsi;
 
+	// check bond before update
+	{
+		auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+		// reduced tensors
+		auto tmpT = eA * delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])) * eB;
+
+		ITensor tmpEA(iQA,phys[0]), S, tmpEB;
+		svd(tmpT,tmpEA,S,tmpEB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+		std::cout<<"RED_SPEC: ";
+		S.visit(printS);
+		std::cout<<std::endl;
+	
+		// full tensors
+		tmpT = QA * tmpT * QB;
+
+		std::vector<Index> indsA;
+		for (int i=0; i<4; i++) if(i != pl[0]) indsA.push_back(cls.AIc(tn[0],i));
+		indsA.push_back(phys[0]);
+
+		ITensor tmpA(indsA), S2, tmpB;
+		svd(tmpT,tmpA,S2,tmpB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
+		std::cout<<"FULL_SPEC: ";
+		S2.visit(printS);
+		std::cout<<std::endl;
+	}
+
 	// trial initialization
 	if (fuTrialInit) {
 		auto SqrtT = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
@@ -576,6 +607,37 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	for (int i=0; i < fdist.size(); i++) std::cout<< i <<" "<< fdist[i] <<" "
 		<< fdistN[i]<<" "<< vec_normPsi[i]<<" "<< normUPsi << std::endl;
 
+	// spectrum post-analysis after update
+	{
+		auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+		// reduced tensors
+		auto tmpT = eA * delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])) * eB;
+
+		ITensor tmpEA(iQA,phys[0]), S, tmpEB;
+		svd(tmpT,tmpEA,S,tmpEB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+		std::cout<<"RED_SPEC: ";
+		S.visit(printS);
+		std::cout<<std::endl;
+	
+		// full tensors
+		tmpT = QA * tmpT * QB;
+
+		std::vector<Index> indsA;
+		for (int i=0; i<4; i++) if(i != pl[0]) indsA.push_back(cls.AIc(tn[0],i));
+		indsA.push_back(phys[0]);
+
+		ITensor tmpA(indsA), S2, tmpB;
+		svd(tmpT,tmpA,S2,tmpB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
+		std::cout<<"FULL_SPEC: ";
+		S2.visit(printS);
+		std::cout<<std::endl;
+	}
+
 	// BALANCE tensors
 	double iso_tot_mag = 1.0;
    	m = 0.;
@@ -650,7 +712,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",altlstsquares_iter);
 
-	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem";
 	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
 	
@@ -1221,7 +1283,7 @@ Args fullUpdate_2S(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
 	// prepare and return diagnostic data
 	diag_data.add("alsSweep",0);
 
-	std::string siteMaxElem_descriptor = "site max_elem site max_elem site max_elem site max_elem";
+	std::string siteMaxElem_descriptor = "site max_elem site max_elem";
 	diag_data.add("siteMaxElem_descriptor",siteMaxElem_descriptor);
 	diag_data.add("siteMaxElem",diag_maxElem);
 	
