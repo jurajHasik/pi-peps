@@ -17,6 +17,8 @@ MPO_2site getMPO2s_Id(int physDim);
 
 MPO_2site getMPO2s_NNH_2site(double tau, double J, double h);
 
+MPO_2site getMPO2s_AKLT(double tau);
+
 MPO_2site getMPO2s_Ising_2site(double tau, double J, double h);
 // ----- END Trotter gates (2site, ...) MPOs --------------------------
 
@@ -126,6 +128,17 @@ class NNHLadderModel : public Model {
             std::ofstream & output, itensor::Args & metaInf);
 };
 
+class AKLTModel : public Model {
+    public:
+
+        AKLTModel();
+
+        void setObservablesHeader(std::ofstream & output);
+
+        void computeAndWriteObservables(EVBuilder const& ev, 
+            std::ofstream & output, itensor::Args & metaInf);
+};
+
 class IsingModel : public Model {
     public:
         double J1, h;
@@ -156,6 +169,8 @@ class IsingModel : public Model {
 std::unique_ptr<Model> getModel_J1J2(nlohmann::json & json_model);
 
 std::unique_ptr<Model> getModel_J1Q(nlohmann::json & json_model);
+
+std::unique_ptr<Model> getModel_AKLT(nlohmann::json & json_model);
 
 // void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,

@@ -70,6 +70,67 @@ MPO_2site getMPO2s_Ising_2site(double tau, double J, double h) {
 
     return symmMPO2Sdecomp(u12, s1, s2);
 }
+
+MPO_2site getMPO2s_AKLT(double tau) {
+    int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    auto h12 = ITensor(s1, s2, s1p, s2p);
+
+    // Loop over <bra| indices
+    int rS = physDim-1; // Label of SU(2) irrep in Dyknin notation
+    int mbA, mbB, mkA, mkB;
+    double hVal;
+    for(int bA=1;bA<=physDim;bA++) {
+    for(int bB=1;bB<=physDim;bB++) {
+        // Loop over |ket> indices
+        for(int kA=1;kA<=physDim;kA++) {
+        for(int kB=1;kB<=physDim;kB++) {
+            // Use Dynkin notation to specify irreps
+            mbA = -(rS) + 2*(bA-1);
+            mbB = -(rS) + 2*(bB-1);
+            mkA = -(rS) + 2*(kA-1);
+            mkB = -(rS) + 2*(kB-1);
+            // Loop over possible values of m given by tensor product
+            // of 2 spin (physDim-1) irreps (In Dynkin notation)
+            hVal = 0.0;
+            for(int m=-2*(rS);m<=2*(rS);m=m+2) {
+                if ((mbA+mbB == m) && (mkA+mkB == m)) {
+                    
+                //DEBUG
+                // if(dbg) std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
+                //     <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
+                //     <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
+                //     <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
+                //     << std::endl;
+
+                hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
+                    *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
+                }
+            }
+            if((bA == kA) && (bB == kB)) {
+                // add 2*Id(bA,kA;bB,kB) == 
+                //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
+                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal+sqrt(2.0));
+            } else {
+                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
+            }
+        }}
+    }}
+
+    auto cmbI = combiner(s1,s2);
+    h12 = (cmbI * h12 ) * prime(cmbI);
+    ITensor u12 = expHermitian(h12, {-tau, 0.0});
+    u12 = (cmbI * u12 ) * prime(cmbI);
+    // definition of U_12 done
+
+    return symmMPO2Sdecomp(u12, s1, s2);
+}
 // ----- END Trotter gates (2site, ...) MPOs --------------------------
 
 
@@ -933,6 +994,89 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
+AKLTModel::AKLTModel() {}
+
+void AKLTModel::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SS AB (0,0)(1,0), "<<"SS AC (0,0)(0,1), "
+        <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
+        <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
+        <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
+        <<"Avg mag=|S|, "<<"Energy"<<std::endl;
+}
+
+void AKLTModel::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args & metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+    std::vector<double> ev_sC(3,0.0);
+    std::vector<double> ev_sD(3,0.0);
+
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(0,0), Vertex(1,0)) ); //AB
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(0,0), Vertex(0,1)) ); //AC
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(1,0), Vertex(1,1)) ); //BD
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(0,1), Vertex(1,1)) ); //CD
+
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(1,0), Vertex(2,0))); //BA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(0,1), Vertex(0,2))); //CA
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(1,1), Vertex(1,2))); //DB
+    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
+        Vertex(1,1), Vertex(2,1))); //DC
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
+
+    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
+    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
+    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
+
+    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
+    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
+    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
+
+    // write energy
+    output << lineNo; 
+    for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
+        output<<" "<< evNN[j];
+    }
+    
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.25*(
+        sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
+        + sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
+        + sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )
+        + sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )
+    );
+    output <<" "<< evMag_avg;
+
+    // write Energy
+    double energy = (evNN[0]+evNN[1]+evNN[2]+evNN[3]+evNN[4]+evNN[7]
+         +evNN[5]+evNN[6]); 
+    output <<" "<< energy;
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
+    output << std::endl;
+}
+
 IsingModel::IsingModel(double arg_J1, double arg_h)
     : J1(arg_J1), h(arg_h) {}
 
@@ -1339,6 +1483,10 @@ std::unique_ptr<Model> getModel_J1Q(nlohmann::json & json_model) {
     double arg_Q = json_model["Q"].get<double>();
     
     return std::unique_ptr<Model>(new J1QModel(arg_J1, arg_Q));
+}
+
+std::unique_ptr<Model> getModel_AKLT(nlohmann::json & json_model) {
+    return std::unique_ptr<Model>(new AKLTModel());
 }
 
 std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model) {
@@ -1902,6 +2050,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
         return getModel_J1Q(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
         return getModel_NNH_2x2Cell_Ladder(json_model);
+    } else if (arg_modelType == "AKLT") {
+        return getModel_AKLT(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
     // } else if (arg_modelType == "Ising3Body") {

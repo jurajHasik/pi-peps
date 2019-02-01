@@ -177,6 +177,30 @@ int main( int argc, char *argv[] ) {
     EVBuilder ev(arg_ioEnvTag, evCls, ctmEnv);
     std::cout << ev;
 
+    auto printBondSpectra = [&p_cls] {
+        auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+        std::cout<<"BOND SPECTRA - START"<< std::endl;
+        // loop over link weights and perform svd uniquely
+        std::vector< std::string > lwIds;
+        for (auto const& stw : p_cls->siteToWeights )
+            for (auto const& lw : stw.second)
+                if ( std::find(lwIds.begin(), lwIds.end(), lw.wId) == lwIds.end() ) {
+                    nlohmann::json jentry;
+                    jentry["sites"] = lw.sId;
+                    jentry["directions"] = lw.dirs;
+                    jentry["weightId"] = lw.wId;
+                    
+                    std::cout<< lw.sId[0] <<"-"<< lw.dirs[0] <<"--"<< lw.dirs[1] <<"-"
+                        << lw.sId[1] <<" ";
+                    p_cls->weights.at(lw.wId).visit(printS);
+                    std::cout<<std::endl;
+                
+                    lwIds.push_back(lw.wId);
+                }
+        std::cout<<"BOND SPECTRA - END"<< std::endl;
+    };
+
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
     // COMPUTE INITIAL OBSERVABLES
@@ -320,6 +344,7 @@ int main( int argc, char *argv[] ) {
         diagData_fu.push_back(diag_fu);
 
         if (suI % arg_obsFreq == 0) {
+            printBondSpectra();
             evCls = *p_cls;
             evCls.absorbWeightsToSites();
             

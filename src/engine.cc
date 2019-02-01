@@ -228,6 +228,49 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_mod
     return nullptr;
 }
 
+std::unique_ptr<Engine> buildEngine_AKLT(nlohmann::json & json_model) {
+
+    double arg_tau = json_model["tau"].get<double>();
+
+    // gate sequence
+    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+    // symmetrize Trotter Sequence
+    bool arg_symmTrotter = json_model.value("symmTrotter",false);
+
+    if (arg_fuGateSeq == "2SITE") {
+        TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
+
+        pe->td.gateMPO.push_back( getMPO2s_AKLT(arg_tau) );
+        
+        pe->td.gates = {
+            {"A", "B"}, {"B", "A"}, 
+            {"C", "D"}, {"D", "C"},
+            {"A", "C"}, {"B", "D"},
+            {"C", "A"}, {"D", "B"}
+        };
+
+        pe->td.gate_auxInds = {
+            {2, 0}, {2, 0},
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1},
+            {3, 1}, {3, 1}
+        };
+        
+        for (int i=0; i<8; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
+
+        std::cout<<"AKLT 2SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
+    else {
+        std::cout<<"Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return nullptr;
+}
+
 // void getModel_NNH_2x2Cell_AB(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,
 //     std::vector< MPO_2site > & gateMPO,
@@ -1206,6 +1249,8 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model) {
         return buildEngine_J1J2(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
         return buildEngine_NNH_2x2Cell_Ladder(json_model);
+    } else if (arg_modelType == "AKLT") {
+        return buildEngine_AKLT(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {
@@ -1236,6 +1281,8 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model,
         pE = buildEngine_J1J2(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
         pE = buildEngine_NNH_2x2Cell_Ladder(json_model);
+    } else if (arg_modelType == "AKLT") {
+        pE = buildEngine_AKLT(json_model);
     // } else if (arg_modelType == "Ising") {
     //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {

@@ -402,7 +402,8 @@ void EVBuilder::TransferOpVecProd_itensor::operator() (
     }
 }
 
-double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir) {
+double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir, 
+    bool dbg) {
 
     using DIRECTION = CtmEnv::DIRECTION;
 
@@ -485,7 +486,7 @@ double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir
     double bndr_var = sumels(bTTb)/sumels(bb) - 
         (sumels(bTb)/sumels(bb))*(sumels(bTb)/sumels(bb));
 
-    std::cout<<"bTTb: "<< sumels(bTTb) <<" bTb: "<< sumels(bTb) << " bb: "
+    if(dbg) std::cout<<"bTTb: "<< sumels(bTTb) <<" bTb: "<< sumels(bTb) << " bb: "
         << sumels(bb) <<" bTTb/bb-(bTb/bb)^2: "
         << bndr_var << std::endl;
 

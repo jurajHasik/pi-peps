@@ -165,7 +165,7 @@ class EVBuilder {
     };
 
     double analyzeBoundaryVariance(Vertex const& v, 
-        CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT);
+        CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT, bool dbg = false);
 
     void analyzeTransferMatrix(Vertex const& v, 
         CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT, 
