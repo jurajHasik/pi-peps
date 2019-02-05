@@ -593,6 +593,8 @@ Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const& ct
 			tED = ITensor(iQD,phys[2]);
 			ITensor sBD;
 			svd(T,tED,sBD,tEB,{"Truncate",false});
+			Print(T);
+			Print(sBD);
 			sBD *= 1.0/sBD.real(sBD.inds()[0](1),sBD.inds()[1](1));
 			dist += sumSquares(sBD,lBD);
 			lBD = diagCopyAndIndex(sBD,iD,iBD);

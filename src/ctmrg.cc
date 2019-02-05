@@ -86,6 +86,7 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
     }
 	t_iso_end = std::chrono::high_resolution_clock::now();
     accT[0] += get_mS(t_iso_begin, t_iso_end);
+    
 
 	Shift shift, p_shift;
 	int dir0, dir1;
@@ -211,17 +212,18 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 	time_point t0_inner, t1_inner, t00, t11;
 	t_iso_begin = std::chrono::high_resolution_clock::now();
 	for (auto const& v_id : p_cluster->vToId) {
-		Vertex const& v    = v_id.first;
-		Vertex v_shifted   = v + shift;   // Shift of site
-		Vertex v_p_shifted = v + p_shift; // Shift of projector
+		Vertex const& v   = v_id.first;
+		Vertex v_shifted  = v + shift;   // Shift of site
+		Vertex v_shift_f  = v + p_shift; // Shift of projector forward
+		Vertex v_shift_b  = v - p_shift; // Shift of projector backward 
 		std::string id           = v_id.second;
 		std::string id_shift     = vToId(v_shifted);
-		std::string id_p_shifted = vToId(v_p_shifted);
+		std::string id_shift_f = vToId(v_shift_f);
+		std::string id_shift_b = vToId(v_shift_b);
 
-		
 		// ===== Absorb and reduce C ==========================================
 		t0_inner = std::chrono::high_resolution_clock::now();
-		nC[id_shift] = (Taux.at(id) * C[id]) * Pt[id_p_shifted];
+		nC[id_shift] = (Taux.at(id) * C[id]) * Pt[id_shift_b];
 		t1_inner = std::chrono::high_resolution_clock::now();
 		accT[8] += get_mS(t0_inner, t1_inner);
 
@@ -229,14 +231,14 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 		t0_inner = std::chrono::high_resolution_clock::now();
 		// CAUTION delta must be applied to P first, otherwise in the case of 1site inv
 		// PEPS T would be contracted down to rank 1 tensor
-		auto tmp_T = (deltaEdgeT(direction,v,dir0,v_p_shifted,dir1) * P[id_p_shifted])
+		auto tmp_T = (deltaEdgeT(direction,v,dir0,v_shift_b,dir1) * P[id_shift_b])
 			* T[id];
 		// t11 = std::chrono::high_resolution_clock::now();
 		// std::cout<< get_mS(t0_inner, t11) << std::endl;
 
 		// Combine on-site AUXLINK indices of tmp_T = T * P 
 		// AND combine on-site AUXLINK indices  tmp_site = sites(id) * sites(id)^dag 
-		auto ai_pair_tmp0 = p_cluster->AIBraKetPair(v_p_shifted,dir1);
+		auto ai_pair_tmp0 = p_cluster->AIBraKetPair(v_shift_b,dir1);
 		auto ai_pair_tmp1 = p_cluster->AIBraKetPair(v,direction); 
 		auto ai_pair_tmp2 = p_cluster->AIBraKetPair(v,dir0);
 		auto cmb_tmp0 = combiner(ai_pair_tmp0[0],ai_pair_tmp0[1],ai_pair_tmp1[0],ai_pair_tmp1[1]);
@@ -262,9 +264,9 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 		// tmp_T *= deltaEdgeT(direction,v,dir1,v_p_shifted,dir0);
 		// reindexSiteToSite(tmp_T,v,dir1,v_p_shifted,dir0);
 		ai_pair_tmp0 = p_cluster->AIBraKetPair(v,dir1);
-		ai_pair_tmp1 = p_cluster->AIBraKetPair(v_p_shifted,dir0);
+		ai_pair_tmp1 = p_cluster->AIBraKetPair(v_shift_f,dir0);
 		cmb_tmp0 = combiner(tauxByVertex(direction,v,dir1),ai_pair_tmp0[0],ai_pair_tmp0[1]);
-		cmb_tmp1 = combiner(tauxByVertex(direction,v_p_shifted,dir0),ai_pair_tmp1[0],ai_pair_tmp1[1]);
+		cmb_tmp1 = combiner(tauxByVertex(direction,v_shift_f,dir0),ai_pair_tmp1[0],ai_pair_tmp1[1]);
 		// t11 = std::chrono::high_resolution_clock::now();
 		// std::cout<< get_mS(t00, t11) << std::endl;
 
@@ -295,21 +297,23 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 	for (auto const& v_id : p_cluster->vToId) {
 		Vertex const& v    = v_id.first;
 		Vertex v_shifted   = v + shift;   // Shift of site
-		Vertex v_p_shifted = v + p_shift; // Shift of projector
+		Vertex v_shift_f  = v + p_shift; // Shift of projector forward
+		Vertex v_shift_b  = v - p_shift; // Shift of projector backward 
 		std::string id           = v_id.second;
 		std::string id_shift     = vToId(v_shifted);
-		std::string id_p_shifted = vToId(v_p_shifted);
+		std::string id_shift_f = vToId(v_shift_f);
+		std::string id_shift_b = vToId(v_shift_b);
 
 		nC[id_shift] *= delta(
 			tauxByVertex(dir0,v,opposite_direction),
 			tauxByVertex(dir0,v_shifted,direction));
-		nC[id_shift] *= delta(ipt.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir0));
+		nC[id_shift] *= delta(ipt.at(id_shift_b), tauxByVertex(direction,v_shifted,dir0));
 		
 
 		nT[id_shift] *= p_cluster->DContract(id,opposite_direction,id_shift,direction);
 		nT[id_shift] *= prime(p_cluster->DContract(id,opposite_direction,id_shift,direction),
 			p_cluster->BRAKET_OFFSET);
-		nT[id_shift] *= delta(ip.at(id_p_shifted), tauxByVertex(direction,v_shifted,dir0));
+		nT[id_shift] *= delta(ip.at(id_shift_b), tauxByVertex(direction,v_shifted,dir0));
 		nT[id_shift] *= delta(ipt.at(id), tauxByVertex(direction,v_shifted,dir1));
 
 
@@ -500,6 +504,8 @@ void CtmEnv::compute_IsometriesT3(DIRECTION direction,
     	Vertex const& v = v_id.first;
     	Vertex v_shift  = v + shift;
 
+    	// std::cout<<"Computing 2x2 corner for: C"<< corner_i <<" : "<< v <<"="<< vToId(v);
+    	// std::cout<<"Computing 2x2 corner for: C"<< corner_it <<" : "<< v+shift <<"="<< vToId(v+shift);
     	// Compute two halfs of 2x2 density matrix
     	t_iso_begin = std::chrono::high_resolution_clock::now();
     	ITensor U, S, V, R, Rt;

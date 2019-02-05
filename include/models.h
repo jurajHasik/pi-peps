@@ -40,6 +40,8 @@ MPO_3site getMPO3s_Uladder_v2(double tau, double J, double Jp);
 
 MPO_3site getMPO3s_NNHLadder_2site(double tau, double J, double alpha);
 
+MPO_3site getMPO3s_AKLT(double tau);
+
 MPO_3site getMPO3s_Ising_v2(double tau, double J, double h);
 
 MPO_3site getMPO3s_Ising_2site(double tau, double J, double h);
@@ -128,6 +130,18 @@ class NNHLadderModel : public Model {
             std::ofstream & output, itensor::Args & metaInf);
 };
 
+class NNHLadderModel_4x2 : public Model {
+    public:
+        double J1, alpha;
+
+        NNHLadderModel_4x2(double arg_J1, double arg_alpha);
+
+        void setObservablesHeader(std::ofstream & output);
+
+        void computeAndWriteObservables(EVBuilder const& ev, 
+            std::ofstream & output, itensor::Args & metaInf);
+};
+
 class AKLTModel : public Model {
     public:
 
@@ -182,6 +196,8 @@ std::unique_ptr<Model> getModel_AKLT(nlohmann::json & json_model);
 std::unique_ptr<Model> getModel_NNH_2x2Cell_ABCD(nlohmann::json & json_model);
 
 std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model);
+
+std::unique_ptr<Model> getModel_NNH_4x2Cell_Ladder(nlohmann::json & json_model);
 
 // void getModel_Ising(nlohmann::json & json_model,
 //     std::unique_ptr<Model> & ptr_model,

@@ -345,6 +345,8 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 				// find the lowest eigenvalue in magnitude
 				if (std::abs(dM_elems.back()) < nval) nval = std::abs(dM_elems.back());
 			}
+			for (int i=0; i<dM_elems.size(); i++) std::cout<< dM_elems[i] <<" ";
+			std::cout<<std::endl;
 			if (msign < 0.0) for (auto & elem : dM_elems) elem = elem*(-1.0);
 
 			// Drop negative EV's and count negative EVs, EVs lower than cutoff
@@ -361,9 +363,9 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 					elem = 0.0;
 					// elem = 1.25e-4;
 					countNEG += 1;
-				} else if (elem < svd_cutoff) {
-					countCTF += 1;
-					if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
+				// } else if (elem < svd_cutoff) {
+				// 	countCTF += 1;
+				// 	if(dbg && (dbgLvl >= 2)) std::cout<< elem << std::endl;
 				}
 			}
 
@@ -1137,6 +1139,36 @@ Args fullUpdate_2S(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
 		normUPsi = sumels(NORMUPSI);
 	}
 
+	{
+		auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+		// reduced tensors
+		auto tmpT = eA * delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])) * eB;
+
+		ITensor tmpEA(iQA,phys[0]), S, tmpEB;
+		svd(tmpT,tmpEA,S,tmpEB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+		std::cout<<"RED_SPEC: ";
+		S.visit(printS);
+		std::cout<<std::endl;
+	
+		// full tensors
+		tmpT = QA * tmpT * QB;
+
+		std::vector<Index> indsA;
+		for (int i=0; i<4; i++) if(i != pl[0]) indsA.push_back(cls.AIc(tn[0],i));
+		indsA.push_back(phys[0]);
+
+		ITensor tmpA(indsA), S2, tmpB;
+		svd(tmpT,tmpA,S2,tmpB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
+		std::cout<<"FULL_SPEC: ";
+		S2.visit(printS);
+		std::cout<<std::endl;
+	}
+
 	std::vector<double> fdist, fdistN, vec_normPsi;
 
 	// compute intitial norm, fdist, normalized fdist
@@ -1182,6 +1214,108 @@ Args fullUpdate_2S(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
 	eA = tmp_eA * delta(cmnI, cls.AIc(tn[0],pl[0]));
 	eB = tmp_eB * delta(cmnI, cls.AIc(tn[1],pl[1]));
 	
+	std::cout << "ENTERING ALS LOOP" << std::endl;
+  	int altlstsquares_iter = 0;
+	bool converged = false;
+  	t_begin_int = std::chrono::steady_clock::now();
+	while (not converged) {
+		// Optimizing eA
+		// 1) construct matrix M, which is defined as <psi~|psi~> = eA^dag * M * eA
+		{
+			ITensor M = (eRE * eB) * delta(cls.AIc(tn[1],pl[1]),cls.AIc(tn[0],pl[0]));
+			M *= (prime(conj(eB), AUXLINK, 4) * prime(delta(cls.AIc(tn[1],pl[1]),cls.AIc(tn[0],pl[0])), 4) );
+
+			ITensor K = protoK * prime(conj(eB), AUXLINK, 4);
+			K *= prime(delta(cls.AIc(tn[1],pl[1]),cls.AIc(tn[0],pl[0])), 4);
+		
+			// <psi'|psi'>
+			auto NORMPSI = (prime(conj(eA), AUXLINK,4) * M) * eA; 
+			// <psi'|U|psi>
+			auto OVERLAP = prime(conj(eA), AUXLINK,4) * K;
+		
+			if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"ERROR: NORMPSI or OVERLAP rank > 0"<<std::endl;	
+			double t_fdist  = sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
+			double t_fdistN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(sumels(NORMPSI)*normUPsi) + 1.0;
+
+			fdist.push_back(t_fdist);
+			fdistN.push_back(t_fdistN);
+			vec_normPsi.push_back(sumels(NORMPSI));
+
+			// condition for stopping ALS procedure
+			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
+			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < epsdistf ) { 
+			converged = true; break; }
+
+			auto RES = M * eA - K;
+			std::cout<<"Norm(RES_A)= "<< norm(RES) << std::endl;
+
+			// eA: aux, aux, phys
+			// K : aux^offset, aux^offset, phys^offset
+			M *= delta(phys[0], prime(phys[0],4));
+			K.prime(PHYS,4);
+			
+			auto cmb0 = combiner(iQA, cls.AIc(tn[0],pl[0]), phys[0] );
+			auto cmb1 = combiner(prime(iQA,4), prime(cls.AIc(tn[0],pl[0]),4), prime(phys[0],4) );
+			M = (cmb0 * M) * cmb1;
+			// regularize Hessian
+			// std::vector<double> eps_reg(combinedIndex(cmb0, epsregularisation));
+			// M += diagTensor(eps_reg, combinedIndex(cmb0), combinedIndex(cmb1));
+			K *= cmb1;
+			eA *= cmb0;
+
+			linsystem(M,K,eA,ls,args);
+
+			eA *= cmb0;
+		}
+
+		// Optimizing eB
+		// 1) construct matrix M, which is defined as <psi~|psi~> = eB^dag * M * eB
+		{
+			ITensor M = (eRE * eA) * delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1]));
+			M *= (prime(conj(eA), AUXLINK, 4) * prime(delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])), 4) );
+
+			ITensor K = protoK * prime(conj(eA), AUXLINK, 4);
+			K *= prime(delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])), 4);
+		
+			// <psi'|psi'>
+			auto NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB; 
+			// <psi'|U|psi>
+			auto OVERLAP = prime(conj(eB), AUXLINK,4) * K;
+		
+			if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"ERROR: NORMPSI or OVERLAP rank > 0"<<std::endl;	
+			double t_fdist = sumels(NORMPSI) - 2.0 * sumels(OVERLAP) + normUPsi;
+			double t_fdistN = 1.0 - 2.0 * sumels(OVERLAP)/std::sqrt(sumels(NORMPSI)*normUPsi) + 1.0;
+
+			fdist.push_back(t_fdist);
+			fdistN.push_back(t_fdistN);
+			vec_normPsi.push_back(sumels(NORMPSI));
+
+			// condition for stopping ALS procedure
+			if ( fdist.back() < 1.0e-08 ) { converged = true; break; }
+			if ( (fdist.size() > 1) && std::abs(fdist.back() - fdist[fdist.size()-2])/fdist[0] < epsdistf ) { 
+			converged = true; break; }
+			auto RES = M * eB - K;
+			std::cout<<"Norm(RES_B)= "<< norm(RES) << std::endl;
+
+			M *= delta(phys[1], prime(phys[1],4));
+			K.prime(PHYS,4);
+
+			auto cmb0 = combiner(iQB, cls.AIc(tn[1],pl[1]), phys[1] );
+			auto cmb1 = combiner(prime(iQB,4), prime(cls.AIc(tn[1],pl[1]),4), prime(phys[1],4) );
+			M = (cmb0 * M) * cmb1;
+			K *= cmb1;
+			eB *= cmb0;
+
+			linsystem(M,K,eB,ls,args);
+
+			eB *= cmb0;
+		}
+
+		altlstsquares_iter++;
+		if (altlstsquares_iter >= maxAltLstSqrIter) converged = true;
+	}
+	t_end_int = std::chrono::steady_clock::now();
+
 	Print(eA);
 	Print(eB);
 
@@ -1205,6 +1339,36 @@ Args fullUpdate_2S(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmEnv,
 	std::cout<<"STEP f=||psi'>-|psi>|^2 normalized(f) norm(psi') norm(psi)"<< std::endl;
 	for (int i=0; i < fdist.size(); i++) std::cout<< i <<" "<< fdist[i] <<" "
 		<< fdistN[i]<<" "<< vec_normPsi[i]<<" "<< normUPsi << std::endl;
+
+	{
+		auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+		// reduced tensors
+		auto tmpT = eA * delta(cls.AIc(tn[0],pl[0]),cls.AIc(tn[1],pl[1])) * eB;
+
+		ITensor tmpEA(iQA,phys[0]), S, tmpEB;
+		svd(tmpT,tmpEA,S,tmpEB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+		std::cout<<"RED_SPEC: ";
+		S.visit(printS);
+		std::cout<<std::endl;
+	
+		// full tensors
+		tmpT = QA * tmpT * QB;
+
+		std::vector<Index> indsA;
+		for (int i=0; i<4; i++) if(i != pl[0]) indsA.push_back(cls.AIc(tn[0],i));
+		indsA.push_back(phys[0]);
+
+		ITensor tmpA(indsA), S2, tmpB;
+		svd(tmpT,tmpA,S2,tmpB,{"Minm",cls.AIc(tn[0],pl[0]).m(),"Maxm",cls.AIc(tn[0],pl[0]).m()});
+
+		S2 *= 1.0/S2.real(S2.inds()[0](1),S2.inds()[1](1));
+		std::cout<<"FULL_SPEC: ";
+		S2.visit(printS);
+		std::cout<<std::endl;
+	}
 
 	// BALANCE tensors
 	double iso_tot_mag = 1.0;

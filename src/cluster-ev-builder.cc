@@ -95,10 +95,10 @@ void EVBuilder::TransferOpVecProd::operator() (
     tN *= delta(combinedIndex(cmbX),i);
     tN *= cmbX;
 
-    // Apply lY columns or lX rows depending on chosen direction
+    // Apply lY rows or lX columns depending on chosen direction
     auto v = v_ref;
     if (dir==DIRECTION::RIGHT) {
-        for ( int col=0; col < ev.p_cluster->lY; col++ ) {
+        for ( int col=0; col < ev.p_cluster->lX; col++ ) {
             v = v_ref + col*Shift(1,0);
             
             if(DBG) std::cout<<"T_U["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
@@ -147,7 +147,7 @@ void EVBuilder::TransferOpVecProd::operator() (
         }
     }
     else if (dir==DIRECTION::DOWN) {
-        for ( int row=0; row < ev.p_cluster->lX; row++ ) {
+        for ( int row=0; row < ev.p_cluster->lY; row++ ) {
             v = v_ref + row*Shift(0,1);
             
             if(DBG) std::cout<<"T_L["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
@@ -280,10 +280,10 @@ void EVBuilder::TransferOpVecProd_itensor::operator() (
     
     // TODO assume(check?) the bT has the correct indices of the boundary C-T-C
 
-    // Apply lY columns or lX rows depending on chosen direction
+    // Apply lY rows or lX columns depending on chosen direction
     auto v = v_ref;
     if (dir==DIRECTION::RIGHT) {
-        for ( int col=0; col < ev.p_cluster->lY; col++ ) {
+        for ( int col=0; col < ev.p_cluster->lX; col++ ) {
             v = v_ref + col*Shift(1,0);
             
             if(DBG) std::cout<<"T_U["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
@@ -332,7 +332,7 @@ void EVBuilder::TransferOpVecProd_itensor::operator() (
         }
     }
     else if (dir==DIRECTION::DOWN) {
-        for ( int row=0; row < ev.p_cluster->lX; row++ ) {
+        for ( int row=0; row < ev.p_cluster->lY; row++ ) {
             v = v_ref + row*Shift(0,1);
             
             if(DBG) std::cout<<"T_L["<< v <<" => "<< vToId(v) <<"]"<<std::endl;
@@ -468,7 +468,7 @@ double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir
         std::runtime_error("[analyzeBoundaryVariance] bTb rank > 0");
 
     // apply transfer operator once
-    tvp(bT);
+    tvp(bT,dbg);
 
     // compute <boundary|T|boundary>
     auto bTb = bT * bTother;
@@ -476,7 +476,7 @@ double EVBuilder::analyzeBoundaryVariance(Vertex const& v, CtmEnv::DIRECTION dir
         std::runtime_error("[analyzeBoundaryVariance] bTb rank > 0");
 
     // apply transfer operator second time
-    tvp(bT);
+    tvp(bT,dbg);
 
     // compute <boundary|T^2|boundary>
     auto bTTb = bT * bTother;
@@ -1141,9 +1141,10 @@ double EVBuilder::get2SOPTN(bool DBG,
         // 3) ##### Construct RIGHT edge DONE ##################################################
     }
 
+
     if ( tN.r() > 0 ) {
-        std::cout <<"Unexpected rank r="<< tN.r() << std::endl;
-        exit(EXIT_FAILURE);
+        std::string error_msg = "Unexpected rank r=" + tN.r();
+        throw std::runtime_error(error_msg);
     }
     if(DBG) std::cout <<"===== EVBuilder::get2SOPTN done ====="
         << std::string(36,'=') << std::endl;

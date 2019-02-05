@@ -60,6 +60,8 @@ std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_ABCD(nlohmann::json & json_model
 
 std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_model);
 
+std::unique_ptr<Engine> buildEngine_NNH_4x2Cell_Ladder(nlohmann::json & json_model);
+
 std::unique_ptr<Engine> buildEngine_AKLT(nlohmann::json & json_model);
 
 std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model);

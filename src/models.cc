@@ -404,6 +404,73 @@ MPO_3site getMPO3s_NNHLadder_2site(double tau, double J, double alpha) {
     return ltorMPO2StoMPO3Sdecomp(u123, s1, s2);
 }
 
+MPO_3site getMPO3s_AKLT(double tau) {
+    int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
+    std::cout.precision(10);
+
+    Index s1 = Index("S1", physDim, PHYS);
+    Index s2 = Index("S2", physDim, PHYS);
+    Index s3 = Index("S3", physDim, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+    Index s3p = prime(s3);
+
+    auto h12 = ITensor(s1, s2, s1p, s2p);
+
+    // Loop over <bra| indices
+    int rS = physDim-1; // Label of SU(2) irrep in Dyknin notation
+    int mbA, mbB, mkA, mkB;
+    double hVal;
+    for(int bA=1;bA<=physDim;bA++) {
+    for(int bB=1;bB<=physDim;bB++) {
+        // Loop over |ket> indices
+        for(int kA=1;kA<=physDim;kA++) {
+        for(int kB=1;kB<=physDim;kB++) {
+            // Use Dynkin notation to specify irreps
+            mbA = -(rS) + 2*(bA-1);
+            mbB = -(rS) + 2*(bB-1);
+            mkA = -(rS) + 2*(kA-1);
+            mkB = -(rS) + 2*(kB-1);
+            // Loop over possible values of m given by tensor product
+            // of 2 spin (physDim-1) irreps (In Dynkin notation)
+            hVal = 0.0;
+            for(int m=-2*(rS);m<=2*(rS);m=m+2) {
+                if ((mbA+mbB == m) && (mkA+mkB == m)) {
+                    
+                //DEBUG
+                // if(dbg) std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
+                //     <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
+                //     <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
+                //     <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
+                //     << std::endl;
+
+                hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
+                    *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
+                }
+            }
+            if((bA == kA) && (bB == kB)) {
+                // add 2*Id(bA,kA;bB,kB) == 
+                //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
+                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal+sqrt(2.0));
+            } else {
+                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
+            }
+        }}
+    }}
+
+    auto h123 = ITensor(s1, s2, s3, s1p, s2p, s3p);
+
+    h123 = h12 * delta(s3,s3p);
+    h123 += (h12 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p);
+
+    auto cmbI = combiner(s1,s2,s3);
+    h123 = (cmbI * h123 ) * prime(cmbI);
+    ITensor u123 = expHermitian(h123, {-tau, 0.0});
+    u123 = (cmbI * u123 ) * prime(cmbI);
+
+    return symmMPO3Sdecomp(u123, s1, s2, s3);
+}
+
 MPO_3site getMPO3s_Ising_v2(double tau, double J, double h) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
     std::cout.precision(10);
@@ -994,6 +1061,102 @@ void NNHLadderModel::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
+
+NNHLadderModel_4x2::NNHLadderModel_4x2(double arg_J1, double arg_alpha)
+    : J1(arg_J1), alpha(arg_alpha) {}
+
+void NNHLadderModel_4x2::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SS A1A2 (0,0)(1,0), "<<"SS A2A3 (1,0)(2,0), "
+        <<"SS A3A4 (2,0)(3,0), "<<"SS A4A1 (3,0)(0,0), "
+        <<"SS B1B2 (0,1)(1,1), "<<"SS B2B3 (1,1)(2,1), "
+        <<"SS B3B4 (2,1)(3,1), "<<"SS B4B1 (3,1)(0,1), "
+        <<"SS A1B1 (0,0)(0,1), "<<"SS A2B2 (1,0)(1,1), "
+        <<"SS A3B3 (2,0)(2,1), "<<"SS A3B3 (3,0)(3,1), "
+        <<"SS B1A1 (0,1)(0,2), "<<"SS B2A2 (1,1)(1,2), "
+        <<"SS B3A3 (2,1)(2,2), "<<"SS B3A3 (3,1)(3,2), "
+        <<"Avg mag=|S|, "<<"Energy"
+        <<std::endl;
+}
+
+void NNHLadderModel_4x2::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args & metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector< std::vector<double> > szspsm(8,{0.0,0.0,0.0});
+
+    // horizontal
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,0), Vertex(1,0)) ); //A1A2
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,0), Vertex(2,0)) ); //A2A3
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(2,0), Vertex(3,0)) ); //A3A4
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(3,0), Vertex(4,0), true) ); //A4A1
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,1), Vertex(1,1)) ); //B1B2
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,1), Vertex(2,1)) ); //B2B3
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(2,1), Vertex(3,1)) ); //B3B4
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(3,1), Vertex(4,1)) ); //B4B1
+
+    // vertical
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,0), Vertex(0,1)) ); //A1B1
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,0), Vertex(1,1)) ); //A2B2
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(2,0), Vertex(2,1)) ); //A3B3
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(3,0), Vertex(3,1)) ); //A4B4
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(0,1), Vertex(0,2)) ); //B1A1
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(1,1), Vertex(1,2)) ); //B2A2
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(2,1), Vertex(2,2)) ); //B3A3
+    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SS,
+        Vertex(3,1), Vertex(3,2)) ); //B4A4
+    
+    // magnetization
+    for(int y=0; y<2; y++) {
+        for(int x=0; x<4; x++) {
+            auto v = Vertex(x,y);
+            szspsm[x+y*4][0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, v);
+            szspsm[x+y*4][1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, v);
+            szspsm[x+y*4][2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, v);
+        }
+    }
+
+    // write energy
+    output << lineNo; 
+    for ( unsigned int j=0; j<evNN.size(); j++ ) {
+        output<<" "<< evNN[j];
+    }
+    
+    // write magnetization
+    double evMag_avg = 0.;
+    for (int j = 0; j<8; j++) evMag_avg += (1.0/8.0) * sqrt(
+        szspsm[j][0]*szspsm[j][0] + szspsm[j][1]*szspsm[j][1]);
+    output <<" "<< evMag_avg;
+
+    // write Energy
+    double energy = 0.0;
+    for (int j = 0; j<12; j++) energy += (1.0/8.0) * evNN[j] * J1;
+    for (int j = 12; j<16; j++) energy += (1.0/8.0) * evNN[j] * (J1 * alpha);
+    output <<" "<< energy;
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
+    output << std::endl;
+}
+
 AKLTModel::AKLTModel() {}
 
 void AKLTModel::setObservablesHeader(std::ofstream & output) {
@@ -1495,6 +1658,14 @@ std::unique_ptr<Model> getModel_NNH_2x2Cell_Ladder(nlohmann::json & json_model) 
     double arg_alpha = json_model["alpha"].get<double>();
 
     return std::unique_ptr<Model>(new NNHLadderModel(arg_J1, arg_alpha));
+}
+
+std::unique_ptr<Model> getModel_NNH_4x2Cell_Ladder(nlohmann::json & json_model) {
+
+    double arg_J1    = json_model["J1"].get<double>();
+    double arg_alpha = json_model["alpha"].get<double>();
+
+    return std::unique_ptr<Model>(new NNHLadderModel_4x2(arg_J1, arg_alpha));
 }
 //     std::unique_ptr<Model> & ptr_model,
 // 	std::vector< MPO_3site > & gateMPO,
@@ -2050,6 +2221,8 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
         return getModel_J1Q(json_model);
     } else if (arg_modelType == "NNH_2x2Cell_Ladder") {
         return getModel_NNH_2x2Cell_Ladder(json_model);
+    } else if (arg_modelType == "NNH_4x2Cell_Ladder") {
+        return getModel_NNH_4x2Cell_Ladder(json_model);
     } else if (arg_modelType == "AKLT") {
         return getModel_AKLT(json_model);
     // } else if (arg_modelType == "Ising") {

@@ -178,8 +178,8 @@ int main( int argc, char *argv[] ) {
 
             t_begin_int = std::chrono::steady_clock::now();
 
-            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
-            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT, true);
+            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN, true);
 
             t_end_int = std::chrono::steady_clock::now();
             std::cout<<"Var(boundary) T: "<< get_s(t_begin_int,t_end_int) << std::endl;

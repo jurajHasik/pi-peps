@@ -278,7 +278,7 @@ pair< vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(nlohmann::j
     auto id = j["siteId"].get<string>();
     
     vector<itensor::Index> ti(5,itensor::Index());
-    ti[0] = itensor::Index(TAG_I_PHYS, j["physDim"].get<int>(), PHYS);
+    ti[0] = itensor::Index(id+"-"+TAG_I_PHYS, j["physDim"].get<int>(), PHYS);
 
     // check if tensor has custom set of auxiliary indices provided
     auto p_json_inds_array =  j.find("auxInds");
@@ -286,7 +286,7 @@ pair< vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(nlohmann::j
         std::cout<<"[readOnSiteT] "<< id <<" : auxInds array not found. "
             << " Assuming identical auxiliary indices on all bonds." << std::endl;
     
-        ti[1] = itensor::Index(TAG_I_AUX, j["auxDim"].get<int>(), AUXLINK);
+        ti[1] = itensor::Index(id+"-"+TAG_I_AUX, j["auxDim"].get<int>(), AUXLINK);
         for (int i=2; i<ti.size(); i++) ti[i] = prime(ti[1],i-1);
     } else {
         if ( j["auxInds"].size() != 4 ) { 
