@@ -33,12 +33,11 @@ int main( int argc, char *argv[] ) {
 	//options FILE, RND, RND_AB, AFM, RVB, ...
 	std::string initBy(jsonCls["initBy"].get<std::string>());
     
-	int physDim, auxBondDim;
-	std::string inClusterFile;
-    // TODO if no file input cluster is supplied, construct from one of the templates
-	inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-    physDim       = jsonCls["physDim"].get<int>();
-	auxBondDim    = jsonCls["auxBondDim"].get<int>();
+	// TODO if no file input cluster is supplied, construct from one of the templates
+	std::string inClusterFile = jsonCls["inClusterFile"].get<std::string>();
+    int physDim       = jsonCls["physDim"].get<int>();
+	int auxBondDim    = jsonCls["auxBondDim"].get<int>();
+    double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
     
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
@@ -103,7 +102,26 @@ int main( int argc, char *argv[] ) {
         // setOnSiteTensorsFromFile(cls, inClusterFile);
     } else {
         // one of the defined initialization procedures
+        p_cls = std::unique_ptr<Cluster_2x2_ABCD>( 
+            new Cluster_2x2_ABCD(initBy, auxBondDim, physDim));
+        initClusterWeights(*p_cls);
+        setWeights(*p_cls, suWeightsInit);
     }
+
+    // add random noise to initial state
+    {
+        ITensor temp; 
+        double eps = initStateNoise;
+        auto setMeanTo0 = [](Real r) { return (r-0.5); };
+
+        for(auto& st : p_cls->sites) {
+            temp = st.second;
+            randomize(temp);
+            temp.apply(setMeanTo0);
+            st.second += eps*temp;
+        }
+    }
+
     std::cout << *p_cls;
     // ***** INITIALIZE CLUSTER DONE ******************************************
 
@@ -218,10 +236,10 @@ int main( int argc, char *argv[] ) {
         if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
             t_begin_int = std::chrono::steady_clock::now();
 
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
+            e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+            e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+            e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+            e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
 
             t_end_int = std::chrono::steady_clock::now();
 
@@ -368,10 +386,10 @@ int main( int argc, char *argv[] ) {
                 if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
                     t_begin_int = std::chrono::steady_clock::now();
 
-                    e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
-                    e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
-                    e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
-                    e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
+                    e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+                    e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+                    e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+                    e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
                     
                     t_end_int = std::chrono::steady_clock::now();
 
