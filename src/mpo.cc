@@ -377,6 +377,16 @@ MPO_3site ltorMPO2StoMPO3Sdecomp(ITensor const& u123,
 // ----- END MPOs construction ----------------------------------------
 
 std::ostream& 
+operator<<(std::ostream& s, MPO_2site const& mpo2s) {
+    s <<"----- BEGIN MPO_2site "<< std::string(50,'-') << std::endl;
+    s << mpo2s.Is1 <<" "<< mpo2s.Is2 << std::endl;
+    s <<"H1 "<< mpo2s.H1 << std::endl;
+    s <<"H2 "<< mpo2s.H2;
+    s <<"----- END MPO_2site "<< std::string(52,'-') << std::endl;
+    return s; 
+}
+
+std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s) {
     s <<"----- BEGIN MPO_3site "<< std::string(50,'-') << std::endl;
     s << mpo3s.Is1 <<" "<< mpo3s.Is2 <<" "<< mpo3s.Is3 << std::endl;
@@ -386,3 +396,4 @@ operator<<(std::ostream& s, MPO_3site const& mpo3s) {
     s <<"----- END MPO_3site "<< std::string(52,'-') << std::endl;
     return s;
 }
+

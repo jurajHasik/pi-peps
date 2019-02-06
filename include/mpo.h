@@ -119,6 +119,9 @@ MPO_3site ltorMPO2StoMPO3Sdecomp(itensor::ITensor const& u123,
 // ----- END MPOs construction ----------------------------------------
 
 std::ostream& 
+operator<<(std::ostream& s, MPO_2site const& mpo2s);
+
+std::ostream& 
 operator<<(std::ostream& s, MPO_3site const& mpo3s);
 
 #endif

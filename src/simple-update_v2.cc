@@ -236,161 +236,110 @@ void applyH_T1_L_T2_v2(MPO_2site const& mpo2s,
 	}
 }
 
+void applyH_T1_L_T2_v2_notReduceTensors(MPO_2site const& mpo2s, 
+	ITensor & T1, ITensor & T2, ITensor & L, bool dbg) {
+	if(dbg) {
+		std::cout <<">>>>> applyH_12_T1_L_T2 called <<<<<"<< std::endl;
+		PrintData(mpo2s.H1);
+    	PrintData(mpo2s.H2);
+    }
+
+    /*
+	 * Applying 2-site MPO leads to a new tensor network of the form
+	 * 
+	 *    \ |    __               
+	 *   --|1|~~|H1|~~s1           
+	 *      |     |               s1       s2
+	 *      L     |               |_       |_ 
+	 *    \ |     |       ==   --|  |-----|  |--
+	 *   --|2|~~|H2|~~s2  ==   --|1~|     |2~|--  
+	 *      |             ==   --|__|--L--|__|--
+     *
+	 * Indices s1,s2 are relabeled back to physical indices of 
+	 * original sites 1 and 2 after applying MPO.
+	 *
+	 */
+
+	if(dbg) {
+		std::cout <<"----- Initial |12> -----"<< std::endl;
+		Print(T1);
+		Print(L);
+		Print(T2);
+	}
+	auto ipT1 = findtype(T1, PHYS);
+	auto ipT2 = findtype(T2, PHYS);  
+	auto iT1_L = commonIndex(T1, L);
+	auto iL_T2 = commonIndex(L, T2);
+
+	// find indices not cont
+	std::vector<Index> outer;
+	for (auto const& ind : T1.inds()) if (ind != iT1_L) outer.emplace_back(ind);
+	
+	// D^2 x s x auxD_mpo3s
+	auto kd_phys1 = delta(ipT1, mpo2s.Is1);
+	T1 = (T1 * kd_phys1) * mpo2s.H1;
+	T1 = (T1 * kd_phys1.prime()).prime(PHYS,-1);
+	// D^2 x s x auxD_mpo3s^2
+	auto kd_phys2 = delta(ipT2, mpo2s.Is2);
+	T2 = (T2 * kd_phys2 ) * mpo2s.H2;
+	T2 = (T2 * kd_phys2.prime()).prime(PHYS,-1);
+
+	if(dbg) {
+		std::cout <<"----- Appyling H1-H2 to |1R--2R> -----"<< std::endl;
+		Print(T1);
+    	Print(T2);
+    }
+
+	/*
+	 * Perform SVD of new on-site tensors |1R~| and |2R~| by contrating them
+	 * along diagonal matrix with weights
+	 *
+	 *       _______               s1                       s2
+	 *  s1~~|       |~~s2          _|_                      _|_
+	 *    --| 1~ 2~ |--    ==>  --|   |                    |   |--
+	 *    --|       |--    ==>  --|1~~|++a1++|SV_L12|++a2++|2~~|--
+	 *    --|_______|--         --|___|                    |___|-- 
+	 *     
+	 * where 1~~ and 2~~ are now holding singular vectors wrt
+	 * to SVD and SV_L12 holds a new weights
+	 * We keep only auxBondDim largest singular values
+	 *
+	 */
+
+	if(dbg) std::cout <<"----- Perform SVD along link12 -----"<< std::endl;
+	auto tmp = T1*L*T2;
+	ITensor T1R(outer), T2R, SV_L12;
+	auto spec = svd(T1*L*T2, T1R, SV_L12, T2R, 
+		{"Maxm", iT1_L.m(), "Minm", iT1_L.m()});
+	if(dbg) {
+		Print(T1R);
+		Print(spec);
+		Print(T2R);
+	}
+
+	// Set proper indices to resulting tensors from SVD routine
+	Index iT1_SV_L12 = commonIndex(T1R, SV_L12);
+	Index iSV_L12_T2 = commonIndex(SV_L12, T2R);
+
+	T1 = T1R * delta(iT1_SV_L12, iT1_L);
+	
+	std::vector< double > elemsL(iT1_L.m());
+	for (int i=1; i<=iT1_L.m(); i++) {
+		elemsL[i-1] = SV_L12.real(iT1_SV_L12(i),iSV_L12_T2(i));
+	}
+	L = diagTensor(elemsL, iT1_L, iL_T2);
+	L = L / norm(L);
+
+	T2 = T2R * delta(iSV_L12_T2, iL_T2);
+
+	if(dbg) {
+		Print(T1);
+		PrintData(L);
+		Print(T2);
+	}
+}
+
 // 3 SITE OPS #########################################################
-
-Args simpleUpdate(MPO_3site const& u123, Cluster & cls,
-	std::vector<std::string> tn, std::vector<int> pl,
-	Args const& args) {
- 
-    auto dbg = args.getBool("suDbg",false);
-    auto dbgLvl = args.getInt("suDbgLevel",0);
-
-    double machine_eps = std::numeric_limits<double>::epsilon();
-	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
-
-	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
-
-    // prepare to hold diagnostic data
-    Args diag_data = Args::global();
-
-	std::cout<<"GATE: ";
-	for(int i=0; i<=3; i++) {
-		std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
-	}
-	std::cout<< std::endl;
-
-	if(dbg && (dbgLvl >= 2)) {
-		std::cout << u123;
-		PrintData(u123.H1);
-		PrintData(u123.H2);
-		PrintData(u123.H3);
-	}
-	if(dbg && (dbgLvl >= 2)) {
-		Print(cls.sites.at(tn[0]));
-		Print(cls.sites.at(tn[1]));
-		Print(cls.sites.at(tn[2]));	
-	}
-
-
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
-
-	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
-	t_begin_int = std::chrono::steady_clock::now();
-
-	std::vector< ITensor > tmpT;
-	ITensor l12, l23;
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] == pl[1]) l12 = cls.weights.at(lw.wId);
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if (lw.dirs[0] == pl[3]) l23 = cls.weights.at(lw.wId);
-
-	tmpT.push_back(cls.sites.at(tn[0]));
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] != pl[1]) tmpT.back() *= cls.weights.at(lw.wId);
-	
-	tmpT.push_back(cls.sites.at(tn[1]));
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if ( (lw.dirs[0] != pl[2]) && (lw.dirs[0] != pl[3]) ) 
-			tmpT.back() *= cls.weights.at(lw.wId);
-	
-	tmpT.push_back(cls.sites.at(tn[2]));
-	for ( const auto& lw : cls.siteToWeights.at(tn[2]) )
-		if (lw.dirs[0] != pl[4]) tmpT.back() *= cls.weights.at(lw.wId);
-
-	applyH_123_v2(u123, tmpT[0], tmpT[1], tmpT[2], l12, l23, args);
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] != pl[1]) tmpT[0] *= getInvDiagT(cls.weights.at(lw.wId));
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if ( (lw.dirs[0] != pl[2]) && (lw.dirs[0] != pl[3]) ) 
-			tmpT[1] *= getInvDiagT(cls.weights.at(lw.wId));
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[2]) )
-		if (lw.dirs[0] != pl[4]) tmpT[2] *= getInvDiagT(cls.weights.at(lw.wId));
-
-	for (int i=0; i<3; i++) cls.sites[tn[i]] = tmpT[i];
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] == pl[1]) cls.weights[lw.wId] = l12;
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if (lw.dirs[0] == pl[3]) cls.weights[lw.wId] = l23;
-
-	return diag_data;
-}
-
-Args simpleUpdate(MPO_2site const& u12, Cluster & cls,
-	std::vector<std::string> tn, std::vector<int> pl,
-	Args const& args) {
- 
-    auto dbg = args.getBool("suDbg",false);
-    auto dbgLvl = args.getInt("suDbgLevel",0);
-
-    double machine_eps = std::numeric_limits<double>::epsilon();
-	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
-
-	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
-
-    // prepare to hold diagnostic data
-    Args diag_data = Args::global();
-
-	if(dbg && dbgLvl >=2 ) {
-		std::cout<<"GATE: ";
-		std::cout<< tn[0] <<" >- "<<pl[0]<<" -> "<<pl[1]<<" >- "<<tn[1]<< std::endl; 
-
-		PrintData(u12.H1);
-		PrintData(u12.H2);
-	
-		Print(cls.sites.at(tn[0]));
-		Print(cls.sites.at(tn[1]));
-	}
-
-
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
-	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
-
-	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
-	t_begin_int = std::chrono::steady_clock::now();
-
-	std::vector< ITensor > tmpT;
-	ITensor l12;
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] == pl[0]) l12 = cls.weights.at(lw.wId);
-
-	tmpT.push_back(cls.sites.at(tn[0]));
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] != pl[0]) tmpT.back() *= cls.weights.at(lw.wId);
-	
-	tmpT.push_back(cls.sites.at(tn[1]));
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if ( lw.dirs[0] != pl[1] ) tmpT.back() *= cls.weights.at(lw.wId);
-
-	applyH_T1_L_T2_v2(u12, tmpT[0], tmpT[1], l12, dbg && (dbgLvl>=3) );
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] != pl[0]) tmpT[0] *= getInvDiagT(cls.weights.at(lw.wId));
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
-		if ( lw.dirs[0] != pl[1] ) tmpT[1] *= getInvDiagT(cls.weights.at(lw.wId));
-
-	for (int i=0; i<2; i++) cls.sites[tn[i]] = tmpT[i];
-
-	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
-		if (lw.dirs[0] == pl[0]) cls.weights[lw.wId] = l12;
-
-	return diag_data;
-}
-
-Args simpleUpdate(OpNS const& u12, Cluster & cls,
-	std::vector<std::string> tn, std::vector<int> pl,
-	Args const& args) {
- 
-	return Args::global();
-}
-
 
 void applyH_123_v1(MPO_3site const& mpo3s, 
 	ITensor & T1, ITensor & T2, ITensor & T3, ITensor & l12, ITensor & l23,
@@ -951,6 +900,162 @@ void applyH_123_v3(MPO_3site const& mpo3s,
 		Print(l23); }
 }
 
+
+// main functions #####################################################
+
+Args simpleUpdate(MPO_2site const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+    auto dbg = args.getBool("suDbg",false);
+    auto dbgLvl = args.getInt("suDbgLevel",0);
+
+    double machine_eps = std::numeric_limits<double>::epsilon();
+	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
+
+	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+
+    // prepare to hold diagnostic data
+    Args diag_data = Args::global();
+
+	if(dbg && dbgLvl >=2 ) {
+		std::cout<<"GATE: ";
+		std::cout<< tn[0] <<" >- "<<pl[0]<<" -> "<<pl[1]<<" >- "<<tn[1]<< std::endl; 
+
+		PrintData(u12.H1);
+		PrintData(u12.H2);
+	
+		Print(cls.sites.at(tn[0]));
+		Print(cls.sites.at(tn[1]));
+	}
+
+
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+	t_begin_int = std::chrono::steady_clock::now();
+
+	std::vector< ITensor > tmpT;
+	ITensor l12;
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[0]) l12 = cls.weights.at(lw.wId);
+
+	tmpT.push_back(cls.sites.at(tn[0]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[0]) tmpT.back() *= cls.weights.at(lw.wId);
+	
+	tmpT.push_back(cls.sites.at(tn[1]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( lw.dirs[0] != pl[1] ) tmpT.back() *= cls.weights.at(lw.wId);
+
+	applyH_T1_L_T2_v2(u12, tmpT[0], tmpT[1], l12, dbg && (dbgLvl>=3) );
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[0]) tmpT[0] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( lw.dirs[0] != pl[1] ) tmpT[1] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for (int i=0; i<2; i++) cls.sites[tn[i]] = tmpT[i];
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[0]) cls.weights[lw.wId] = l12;
+
+	return diag_data;
+}
+
+Args simpleUpdate(MPO_3site const& u123, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+    auto dbg = args.getBool("suDbg",false);
+    auto dbgLvl = args.getInt("suDbgLevel",0);
+
+    double machine_eps = std::numeric_limits<double>::epsilon();
+	if(dbg && (dbgLvl >= 1)) std::cout<< "M EPS: " << machine_eps << std::endl;
+
+	std::chrono::steady_clock::time_point t_begin_int, t_end_int;
+
+    // prepare to hold diagnostic data
+    Args diag_data = Args::global();
+
+	std::cout<<"GATE: ";
+	for(int i=0; i<=3; i++) {
+		std::cout<<">-"<<pl[2*i]<<"-> "<<tn[i]<<" >-"<<pl[2*i+1]<<"->"; 
+	}
+	std::cout<< std::endl;
+
+	if(dbg && (dbgLvl >= 2)) {
+		std::cout << u123;
+		PrintData(u123.H1);
+		PrintData(u123.H2);
+		PrintData(u123.H3);
+	}
+	if(dbg && (dbgLvl >= 2)) {
+		Print(cls.sites.at(tn[0]));
+		Print(cls.sites.at(tn[1]));
+		Print(cls.sites.at(tn[2]));	
+	}
+
+
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS ************************
+	// ***** SET UP NECESSARY MAPS AND CONSTANT TENSORS DONE ******************* 
+
+	// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT ***************************
+	t_begin_int = std::chrono::steady_clock::now();
+
+	std::vector< ITensor > tmpT;
+	ITensor l12, l23;
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[1]) l12 = cls.weights.at(lw.wId);
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if (lw.dirs[0] == pl[3]) l23 = cls.weights.at(lw.wId);
+
+	tmpT.push_back(cls.sites.at(tn[0]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[1]) tmpT.back() *= cls.weights.at(lw.wId);
+	
+	tmpT.push_back(cls.sites.at(tn[1]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( (lw.dirs[0] != pl[2]) && (lw.dirs[0] != pl[3]) ) 
+			tmpT.back() *= cls.weights.at(lw.wId);
+	
+	tmpT.push_back(cls.sites.at(tn[2]));
+	for ( const auto& lw : cls.siteToWeights.at(tn[2]) )
+		if (lw.dirs[0] != pl[4]) tmpT.back() *= cls.weights.at(lw.wId);
+
+	applyH_123_v2(u123, tmpT[0], tmpT[1], tmpT[2], l12, l23, args);
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] != pl[1]) tmpT[0] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if ( (lw.dirs[0] != pl[2]) && (lw.dirs[0] != pl[3]) ) 
+			tmpT[1] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[2]) )
+		if (lw.dirs[0] != pl[4]) tmpT[2] *= getInvDiagT(cls.weights.at(lw.wId));
+
+	for (int i=0; i<3; i++) cls.sites[tn[i]] = tmpT[i];
+
+	for ( const auto& lw : cls.siteToWeights.at(tn[0]) )
+		if (lw.dirs[0] == pl[1]) cls.weights[lw.wId] = l12;
+	for ( const auto& lw : cls.siteToWeights.at(tn[1]) )
+		if (lw.dirs[0] == pl[3]) cls.weights[lw.wId] = l23;
+
+	return diag_data;
+}
+
+Args simpleUpdate(OpNS const& u12, Cluster & cls,
+	std::vector<std::string> tn, std::vector<int> pl,
+	Args const& args) {
+ 
+	return Args::global();
+}
+
 ITensor getInvDiagT(ITensor const& t) {
 	double machine_eps = std::numeric_limits<double>::epsilon();
 
@@ -961,22 +1066,13 @@ ITensor getInvDiagT(ITensor const& t) {
 	double elem;
 	for(int i=1; i<=t.inds()[0].m(); i++) {
 		elem = t.real(t.inds()[0](i),t.inds()[1](i));
-		if ( std::abs(elem) > tol ) 
+		if ( std::abs(elem) > tol ) {
 			tmpD.push_back( 1.0 / elem );
+		}
 		else
 			tmpD.push_back(0.0);
 
 	}
 
 	return diagTensor(tmpD, t.inds()[0], t.inds()[1]);
-}
-
-std::ostream& 
-operator<<(std::ostream& s, MPO_2site const& mpo2s) {
-	s <<"----- BEGIN MPO_2site "<< std::string(50,'-') << std::endl;
-	s << mpo2s.Is1 <<" "<< mpo2s.Is2 << std::endl;
-	s <<"H1 "<< mpo2s.H1 << std::endl;
-	s <<"H2 "<< mpo2s.H2;
-	s <<"----- END MPO_2site "<< std::string(52,'-') << std::endl;
-	return s; 
 }
