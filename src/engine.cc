@@ -1359,8 +1359,6 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model) {
         return buildEngine_NNH_4x2Cell_Ladder(json_model);
     } else if (arg_modelType == "AKLT") {
         return buildEngine_AKLT(json_model);
-    // } else if (arg_modelType == "Ising") {
-    //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {
         return buildEngine_ISING3BODY(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {
@@ -1393,8 +1391,6 @@ std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model,
         pE = buildEngine_NNH_4x2Cell_Ladder(json_model);
     } else if (arg_modelType == "AKLT") {
         pE = buildEngine_AKLT(json_model);
-    // } else if (arg_modelType == "Ising") {
-    //     return getModel_Ising(json_model);
     } else if (arg_modelType == "Ising3Body") {
         pE = buildEngine_ISING3BODY(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {

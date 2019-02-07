@@ -11,7 +11,6 @@
 #include "models.h"
 #include "simple-update_v2.h"
 #include "full-update.h"
-//#include "full-update-TEST.h"
 #include "itensor-linsys-solvers.h"
 
 template<class T>

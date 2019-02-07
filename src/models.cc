@@ -47,30 +47,6 @@ MPO_2site getMPO2s_NNH_2site(double tau, double J, double h) {
     return symmMPO2Sdecomp(u12, s1, s2);
 }
 
-MPO_2site getMPO2s_Ising_2site(double tau, double J, double h) {
-    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
-    std::cout.precision(10);
-
-    Index s1 = Index("S1", physDim, PHYS);
-    Index s2 = Index("S2", physDim, PHYS);
-    Index s1p = prime(s1);
-    Index s2p = prime(s2);
-
-    // STEP1 define exact U_123 = exp(-J(Sz_1.Sz_2 + Sz_2.Sz_3) - h(Sx_1+Sx_2+Sx_3))
-    ITensor h12 = ITensor(s1,s2,s1p,s2p);
-    h12 += -J*( 2*SU2_getSpinOp(SU2_S_Z, s1) * 2*SU2_getSpinOp(SU2_S_Z, s2) );
-    h12 += -h*( (SU2_getSpinOp(SU2_S_P, s1) + SU2_getSpinOp(SU2_S_M, s1))*delta(s2,s2p)
-        + delta(s1,s1p)*(SU2_getSpinOp(SU2_S_P, s2)+SU2_getSpinOp(SU2_S_M, s2)) );
-
-    auto cmbI = combiner(s1,s2);
-    h12 = (cmbI * h12 ) * prime(cmbI);
-    ITensor u12 = expHermitian(h12, {-tau, 0.0});
-    u12 = (cmbI * u12 ) * prime(cmbI);
-    // definition of U_123 done
-
-    return symmMPO2Sdecomp(u12, s1, s2);
-}
-
 MPO_2site getMPO2s_AKLT(double tau) {
     int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
     std::cout.precision(10);
@@ -469,58 +445,6 @@ MPO_3site getMPO3s_AKLT(double tau) {
     u123 = (cmbI * u123 ) * prime(cmbI);
 
     return symmMPO3Sdecomp(u123, s1, s2, s3);
-}
-
-MPO_3site getMPO3s_Ising_v2(double tau, double J, double h) {
-    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
-    std::cout.precision(10);
-
-    Index s1 = Index("S1", physDim, PHYS);
-    Index s2 = Index("S2", physDim, PHYS);
-    Index s3 = Index("S3", physDim, PHYS);
-    Index s1p = prime(s1);
-    Index s2p = prime(s2);
-    Index s3p = prime(s3);
-
-    // STEP1 define exact U_123 = exp(-J(Sz_1.Sz_2 + Sz_2.Sz_3) - h(Sx_1+Sx_2+Sx_3))
-    ITensor h123 = ITensor(s1,s2,s3,s1p,s2p,s3p);
-    h123 += -J*( 2*SU2_getSpinOp(SU2_S_Z, s1) * 2*SU2_getSpinOp(SU2_S_Z, s2))* delta(s3,s3p);
-    h123 += -J*delta(s1,s1p)*( 2*SU2_getSpinOp(SU2_S_Z, s2) * 2*SU2_getSpinOp(SU2_S_Z, s3) );
-    h123 += -h*( ((SU2_getSpinOp(SU2_S_P, s1) + SU2_getSpinOp(SU2_S_M, s1))*delta(s2,s2p))*delta(s3,s3p)
-        + (delta(s1,s1p)*(SU2_getSpinOp(SU2_S_P, s2)+SU2_getSpinOp(SU2_S_M, s2)))*delta(s3,s3p)
-        + delta(s1,s1p)*(delta(s2,s2p)*(SU2_getSpinOp(SU2_S_P, s3)+SU2_getSpinOp(SU2_S_M, s3))) );
-
-    auto cmbI = combiner(s1,s2,s3);
-    h123 = (cmbI * h123 ) * prime(cmbI); 
-    ITensor u123 = expHermitian(h123, {-tau, 0.0});
-    u123 = (cmbI * u123 ) * prime(cmbI);
-    // definition of U_123 done
-
-    return symmMPO3Sdecomp(u123, s1, s2, s3);
-}
-
-MPO_3site getMPO3s_Ising_2site(double tau, double J, double h) {
-    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
-    std::cout.precision(10);
-
-    Index s1 = Index("S1", physDim, PHYS);
-    Index s2 = Index("S2", physDim, PHYS);
-    Index s1p = prime(s1);
-    Index s2p = prime(s2);
-
-    // STEP1 define exact U_123 = exp(-J(Sz_1.Sz_2 + Sz_2.Sz_3) - h(Sx_1+Sx_2+Sx_3))
-    ITensor h123 = ITensor(s1,s2,s1p,s2p);
-    h123 += -J*( 2*SU2_getSpinOp(SU2_S_Z, s1) * 2*SU2_getSpinOp(SU2_S_Z, s2) );
-    h123 += -h*( (SU2_getSpinOp(SU2_S_P, s1) + SU2_getSpinOp(SU2_S_M, s1))*delta(s2,s2p)
-        + delta(s1,s1p)*(SU2_getSpinOp(SU2_S_P, s2)+SU2_getSpinOp(SU2_S_M, s2)) );
-
-    auto cmbI = combiner(s1,s2);
-    h123 = (cmbI * h123 ) * prime(cmbI);
-    ITensor u123 = expHermitian(h123, {-tau, 0.0});
-    u123 = (cmbI * u123 ) * prime(cmbI);
-    // definition of U_123 done
-
-    return ltorMPO2StoMPO3Sdecomp(u123, s1, s2);
 }
 
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h) {
@@ -1236,90 +1160,6 @@ void AKLTModel::computeAndWriteObservables(EVBuilder const& ev,
 
     // return energy in metaInf
     metaInf.add("energy",energy);
-
-    output << std::endl;
-}
-
-IsingModel::IsingModel(double arg_J1, double arg_h)
-    : J1(arg_J1), h(arg_h) {}
-
-void IsingModel::setObservablesHeader(std::ofstream & output) {
-    output <<"STEP, " 
-        <<"SzSz AB (0,0)(1,0), "<<"SzSz AC (0,0)(0,1), "
-        <<"SzSz BD (1,0)(1,1), "<<"SzSz CD (0,1)(1,1), "
-        <<"SzSz BA (1,0)(2,0), "<<"SzSz CA (0,1)(0,2), "
-        <<"SzSz DB (1,1)(1,2), "<<"SzSz DC (1,1)(2,1), "
-        <<"Avg SzSz, "<<"Avg Sz, "<<"Avg Sx, "<<"Energy"
-        <<std::endl;
-}
-
-void IsingModel::computeAndWriteObservables(EVBuilder const& ev, 
-    std::ofstream & output, Args & metaInf) {
-
-    auto lineNo = metaInf.getInt("lineNo",0);
-
-    std::vector<double> evNN;
-    std::vector<double> ev_sA(3,0.0);
-    std::vector<double> ev_sB(3,0.0);
-    std::vector<double> ev_sC(3,0.0);
-    std::vector<double> ev_sD(3,0.0);
-
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(0,0), Vertex(1,0)) );    //AB
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(0,0), Vertex(0,1)) );    //AC
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(1,0), Vertex(1,1)) );    //BD
-    evNN.push_back( ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(0,1), Vertex(1,1)) );    //CD
-
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(1,0), Vertex(2,0))); //BA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(0,1), Vertex(0,2))); //CA
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(1,1), Vertex(1,2))); //DB
-    evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
-        Vertex(1,1), Vertex(2,1))); //DC
-
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
-
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
-
-    ev_sC[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,1));
-    ev_sC[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,1));
-    ev_sC[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,1));
-
-    ev_sD[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,1));
-    ev_sD[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,1));
-    ev_sD[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,1));
-
-    // write energy
-    double avgE_8links = 0.;
-    output << lineNo <<" "; 
-    for ( unsigned int j=evNN.size()-8; j<evNN.size(); j++ ) {
-        avgE_8links += evNN[j];
-        output<<" "<< evNN[j];
-    }
-    avgE_8links = avgE_8links/8.0;
-    output <<" "<< avgE_8links;
-    
-    // write Z magnetization
-    double evMagZ_avg = 0.;
-    double evMagX_avg = 0.;
-    evMagZ_avg = 0.25*(ev_sA[0] + ev_sB[0] + ev_sC[0] + ev_sD[0]);
-    output <<" "<< evMagZ_avg;
-    evMagX_avg = 0.25*(ev_sA[1] + ev_sB[1] + ev_sC[1] + ev_sD[1]);
-    output <<" "<< evMagX_avg;
-
-    // write Energy 
-    // * working with spin DoFs instead of Ising DoFs hence factor of 2
-    double energy = -4.0*(8.0*avgE_8links) * J1 - 4.0 * 2.0 * h * evMagX_avg;
-    output <<" "<< energy;
 
     output << std::endl;
 }
@@ -2225,8 +2065,6 @@ std::unique_ptr<Model> getModel(nlohmann::json & json_model) {
         return getModel_NNH_4x2Cell_Ladder(json_model);
     } else if (arg_modelType == "AKLT") {
         return getModel_AKLT(json_model);
-    // } else if (arg_modelType == "Ising") {
-    //     return getModel_Ising(json_model);
     // } else if (arg_modelType == "Ising3Body") {
     //     return getModel_Ising3Body(json_model);
     // } else if (arg_modelType == "NNH_2x2Cell_AB") {

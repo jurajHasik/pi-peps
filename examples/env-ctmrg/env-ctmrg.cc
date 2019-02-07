@@ -9,7 +9,7 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "mpo.h"
-#include "models.h"
+#include "model-factory.h"
 #include "itensor-svd-solvers.h"
 #include "lapacksvd-solver.h"
 #include "rsvd-solver.h"
@@ -85,8 +85,10 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE MODEL
-    std::unique_ptr<Model> ptr_model;
-    ptr_model = getModel(json_model_params);
+    // std::unique_ptr<Model> ptr_model;
+    // ptr_model = getModel(json_model_params);
+    ModelFactory mf = ModelFactory();
+    auto ptr_model = mf.create("ISING_2X2_ABCD",json_model_params);
     // ***** INITIALIZE MODEL DONE ********************************************
 
     // *****

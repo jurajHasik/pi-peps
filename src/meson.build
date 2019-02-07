@@ -1,6 +1,7 @@
 source_files += files([
 		       'cluster-ev-builder.cc', 
                        'engine.cc',           
+                       'engine-factory.cc',
                        #'full-update-TEST.cc',
                        'fu-2site.cc',
                        'fu-3site.cc',
@@ -8,6 +9,7 @@ source_files += files([
                        #'full-update.cc', 
                        'simple-update_v2.cc', 
                        'models.cc',
+                       'model-factory.cc',
                        'ctm-cluster-env_v2.cc', 
                        'ctmrg.cc',
 		       'ctm-cluster-io.cc',
@@ -17,3 +19,5 @@ source_files += files([
 		       'itensor-svd-solvers.cc',
 		       'itensor-linsys-solvers.cc',
                        'rsvd-solver.cc'])
+
+subdir('models')

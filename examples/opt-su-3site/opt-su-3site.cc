@@ -9,8 +9,8 @@
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
 #include "mpo.h"
-#include "models.h"
-#include "engine.h"
+#include "model-factory.h"
+#include "engine-factory.h"
 #include "itensor-svd-solvers.h"
 #include "lapacksvd-solver.h"
 #include "rsvd-solver.h"
@@ -127,11 +127,10 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE MODEL AND GATE SEQUENCE
-    std::unique_ptr<Model>  ptr_model;
-    std::unique_ptr<Engine> ptr_engine;     // simple update engine
-
-    ptr_model =  getModel(json_model_params);
-    ptr_engine = buildEngine(json_model_params);
+    ModelFactory mf = ModelFactory();
+    EngineFactory ef = EngineFactory();
+    auto ptr_model = mf.create(json_model_params);
+    auto ptr_engine = ef.build(json_model_params);
 
     // ***** INITIALIZE MODEL DONE ********************************************
 

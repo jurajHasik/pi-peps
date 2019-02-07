@@ -8,8 +8,8 @@
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include "mpo.h"
-#include "models.h"
-#include "engine.h"
+#include "model-factory.h"
+#include "engine-factory.h"
 #include "rsvd-solver.h"
 #include "lapacksvd-solver.h"
 #include "linsyssolvers-lapack.h"
@@ -222,14 +222,13 @@ int main( int argc, char *argv[] ) {
     // # SETUP OPTIMIZATION LOOP                                        #
     // ##################################################################
 
-    // DEFINE MODEL AND GATE SEQUENCE
-    std::unique_ptr<Model>  ptr_model;
-    std::unique_ptr<Engine> ptr_engine;     // full update engine
-    std::unique_ptr<Engine> ptr_gfe;        // gauge fixing engine
-
-    ptr_model =  getModel(json_model_params);
-    ptr_engine = buildEngine(json_model_params, pLinSysSolver.get() );//, *pLinSysSolver);
-    
+    // DEFINE MODEL AND GATE SEQUENCE 
+    ModelFactory mf = ModelFactory();
+    EngineFactory ef = EngineFactory();
+    auto ptr_model = mf.create(json_model_params);
+    auto ptr_engine = ef.build(json_model_params, pLinSysSolver.get()); // full update engine
+    auto ptr_gfe = ef.build(json_model_params);                         // gauge fixing engine
+   
     if (ptr_engine) { 
         std::cout<<"Valid Engine constructed"<<std::endl;
     } else {

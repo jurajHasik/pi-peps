@@ -68,6 +68,8 @@ class Model {
 
         virtual void computeAndWriteObservables(EVBuilder const& ev, 
             std::ofstream & output, itensor::Args & metaInf) = 0;
+
+        virtual ~Model() = default;
 };
 
 class J1J2Model : public Model {
