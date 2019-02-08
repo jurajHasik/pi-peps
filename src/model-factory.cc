@@ -19,7 +19,9 @@ ModelFactory::ModelFactory() {
 
 bool ModelFactory::registerModel(std::string const& name, 
     TCreateMethod funcCreate) {
-    if (auto it = s_methods.find(name); it == s_methods.end()) { 
+
+    auto it = s_methods.find(name);
+    if (it == s_methods.end()) { 
         s_methods[name] = funcCreate;
         return true;
     }
@@ -37,7 +39,9 @@ std::unique_ptr<Model> ModelFactory::create(nlohmann::json & json_model) {
 
 std::unique_ptr<Model> ModelFactory::create(std::string const& name, 
 	nlohmann::json & json_model) {
-    if (auto it = s_methods.find(name); it != s_methods.end())
+    
+    auto it = s_methods.find(name);
+    if (it != s_methods.end())
         return it->second(json_model); // call the "create" function
 
     std::string message = "[ModelFactory] Invalid model: "+ name;

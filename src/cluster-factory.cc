@@ -10,7 +10,9 @@ ClusterFactory::ClusterFactory() {
 
 bool ClusterFactory::registerCluster(std::string const& name, 
     TCreateMethod funcCreate) {
-    if (auto it = s_methods.find(name); it == s_methods.end()) { 
+
+    auto it = s_methods.find(name);
+    if (it == s_methods.end()) { 
         s_methods[name] = funcCreate;
         return true;
     }
@@ -21,7 +23,8 @@ std::unique_ptr<Cluster> ClusterFactory::create(nlohmann::json & json_cluster) {
     
     std::string cluster_type = json_cluster.value("type","NOT_FOUND");
 
-    if (auto it = s_methods.find(cluster_type); it != s_methods.end())
+    auto it = s_methods.find(cluster_type);
+    if (it != s_methods.end())
         return it->second(json_cluster); // call the "create" function
 
     std::string message = "[ClusterFactory] Invalid model: "+ cluster_type;
