@@ -8,6 +8,7 @@
 #include "cluster-ev-builder.h"
 #include "ctm-cluster-io.h"
 #include "ctm-cluster.h"
+#include "cluster-factory.h"
 #include "mpo.h"
 #include "model-factory.h"
 #include "engine-factory.h"
@@ -31,12 +32,14 @@ int main( int argc, char *argv[] ) {
     
 	//read cluster infile OR initialize by one of the predefined
 	//options FILE, RND, RND_AB, AFM, RVB, ...
-	std::string initBy(jsonCls["initBy"].get<std::string>());
+	auto json_cluster(jsonCls["cluster"]);
+    std::string initBy(json_cluster["initBy"].get<std::string>());
     
 	// TODO if no file input cluster is supplied, construct from one of the templates
-	std::string inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-    int physDim       = jsonCls["physDim"].get<int>();
-	int auxBondDim    = jsonCls["auxBondDim"].get<int>();
+	std::string inClusterFile = json_cluster.value("inClusterFile","DEFAULT");
+   
+    int physDim       = json_cluster["physDim"].get<int>();
+	int auxBondDim    = json_cluster["auxBondDim"].get<int>();
     double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
     
 	// read cluster outfile
@@ -85,25 +88,27 @@ int main( int argc, char *argv[] ) {
     // cls.auxBondDim = auxBondDim;
     
     // choose initial wavefunction
-    if (initBy == "FILE") {
+    if (initBy == "FILE" and inClusterFile != "DEFAULT") {
         std::ifstream infile(inClusterFile, std::ios::in);
-        nlohmann::json jsonCls = nlohmann::json::parse(infile);
+        nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster
-        jsonCls["auxBondDim"] = auxBondDim;
-        for(auto & site : jsonCls["sites"]) {
+        json_cluster_file["auxBondDim"] = auxBondDim;
+        for(auto & site : json_cluster_file["sites"]) {
             site["auxDim"] = auxBondDim;
         }
 
-        p_cls = p_readCluster(jsonCls);
+        p_cls = p_readCluster(json_cluster_file);
         // initClusterSites(cls);
         // initClusterWeights(cls);
         setWeights(*p_cls, suWeightsInit);
         // setOnSiteTensorsFromFile(cls, inClusterFile);
+    } else if (initBy == "FILE" and inClusterFile == "DEFAULT") {
+        throw std::runtime_error("No cluster input file  given for inClusterFile");
     } else {
         // one of the defined initialization procedures
-        p_cls = std::unique_ptr<Cluster_2x2_ABCD>( 
-            new Cluster_2x2_ABCD(initBy, auxBondDim, physDim));
+        ClusterFactory cf = ClusterFactory();
+        p_cls = cf.create(json_cluster);
         initClusterWeights(*p_cls);
         setWeights(*p_cls, suWeightsInit);
     }
@@ -123,6 +128,13 @@ int main( int argc, char *argv[] ) {
     }
 
     std::cout << *p_cls;
+
+    for (int y=0; y<4; y++) {
+        for (int x=0; x<4; x++) {
+            std::cout<<"["<<x<<","<<y<<"]="<<p_cls->vertexToId(Vertex(x,y))<<" ";
+        }
+        std::cout<<std::endl;
+    }
     // ***** INITIALIZE CLUSTER DONE ******************************************
 
     // ***** INITIALIZE MODEL *************************************************
@@ -155,11 +167,8 @@ int main( int argc, char *argv[] ) {
 
     std::vector<double> accT(12,0.0); // holds timings for CTM moves
     time_point t_begin_int, t_end_int;
-    // *****
 
     // ***** INITIALIZE ENVIRONMENT *******************************************
-    Cluster evCls = *p_cls;
-    evCls.absorbWeightsToSites();
 
     // ***** Select SVD solver to use *****************************************
     std::unique_ptr<SvdSolver> pSvdSolver;
@@ -179,7 +188,7 @@ int main( int argc, char *argv[] ) {
         pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
     }
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, evCls, *pSvdSolver,
+    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
@@ -191,8 +200,15 @@ int main( int argc, char *argv[] ) {
     ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
-    EVBuilder ev(arg_ioEnvTag, evCls, ctmEnv);
+    EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
     std::cout << ev;
+
+    for (int y=0; y<4; y++) {
+        for (int x=0; x<4; x++) {
+            std::cout<<"["<<x<<","<<y<<"]="<<ev.p_cluster->vertexToId(Vertex(x,y))<<" ";
+        }
+        std::cout<<std::endl;
+    }
 
     auto printBondSpectra = [&p_cls] {
         auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
@@ -221,6 +237,7 @@ int main( int argc, char *argv[] ) {
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
     // COMPUTE INITIAL OBSERVABLES
+    p_cls->absorbWeightsToSites();
     for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
         t_begin_int = std::chrono::steady_clock::now();
 
@@ -236,7 +253,7 @@ int main( int argc, char *argv[] ) {
             t_begin_int = std::chrono::steady_clock::now();
 
             e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
-            e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+            e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN, true);
             e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
             e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
 
@@ -340,6 +357,7 @@ int main( int argc, char *argv[] ) {
     t_end_int = std::chrono::steady_clock::now();
     std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
         <<" [sec] "<< std::endl;
+    p_cls->absorbWeightsToLinks();
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
     // ########################################################################
@@ -362,9 +380,9 @@ int main( int argc, char *argv[] ) {
 
         if (suI % arg_obsFreq == 0) {
             printBondSpectra();
-            evCls = *p_cls;
-            evCls.absorbWeightsToSites();
             
+            
+            p_cls->absorbWeightsToSites();
             // reset environment
             if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
                 
@@ -501,7 +519,8 @@ int main( int argc, char *argv[] ) {
             std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
                 <<" [sec] "<< std::endl;
 
-            writeCluster(outClusterFile, evCls);
+            writeCluster(outClusterFile, *p_cls);
+            p_cls->absorbWeightsToLinks();
             
             // TODO current energy is higher than energy at previous step STOP
             // if (arg_stopEnergyInc && *energyDiff*) {

@@ -1,0 +1,51 @@
+{
+	"cluster": {
+		"type": "2X2_ABCD",
+		"initBy": "ZPRST",
+		"physDim": 2,
+		"auxBondDim": 3,
+		"inClusterFile": "ZPRST"
+	},
+	"initStateNoise": 1.0e-16,
+        "outClusterFile": "output_ISING-2x2-ABCD.in",
+
+ 	"sitesInit": "RND_1S",
+	"suWeightsInit": "DELTA",
+	
+	"suIter": 5120,
+	"obsFreq": 128,
+	"stopEnergyInc": false,
+	"suDbg": false,
+	"suDbgLevel": 0,
+
+	"model": {	
+		"type": "ISING_2X2_ABCD",	
+		"tau": 0.1,
+		"J1": 1.0,
+		"J2": 0.0,
+		"alpha": 0.0,
+		"del": 0.0,
+		"h": 3.0,
+		"LAMBDA": 0.0,
+		"fuGateSeq": "2SITE",
+		"symmTrotter": true,
+                "randomizeSeq": false
+	},
+
+	"ctmrg": {
+		"auxEnvDim": 36,
+		"ioEnvTag": "test-env-2x2",
+		"initEnvType": "INIT_ENV_ctmrg",
+		"envIsComplex": false,
+		"isoType": "ISOMETRY_T3",
+		"env_SVD_METHOD": "rsvd",
+		"rsvd_oversampling": 20,
+		"isoPseudoInvCutoff": 1.0e-14,
+		"normType": "NORM_BLE",
+		"maxEnvIter": 50,
+		"envEpsilon": 1.0e-10,
+		"reinitEnv": true,
+		"dbg": false,
+		"dbgLvl": 0
+	}
+}

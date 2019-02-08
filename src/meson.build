@@ -14,6 +14,8 @@ source_files += files([
                        'ctmrg.cc',
 		       'ctm-cluster-io.cc',
                        'ctm-cluster.cc',
+                       'ctm-cluster-basic.cc',
+                       'cluster-factory.cc',
                        'mpo.cc',
                        'su2.cc',
 		       'itensor-svd-solvers.cc',

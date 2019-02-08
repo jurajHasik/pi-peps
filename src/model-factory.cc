@@ -1,8 +1,20 @@
 #include "model-factory.h"
 #include "ising-2x2-ABCD.h"
+#include "hb-2x2-ABCD.h"
+#include "aklt-2x2-ABCD.h"
+#include "j1j2-2x2-ABCD.h"
+#include "ladders-2x2-ABCD.h"
 
 ModelFactory::ModelFactory() {
 	registerModel("ISING_2X2_ABCD", &itensor::IsingModel_2x2_ABCD::create);
+    registerModel("ISING_2X2_AB", &itensor::IsingModel_2x2_AB::create);
+    registerModel("HB_2X2_ABCD", &itensor::HeisenbergModel_2x2_ABCD::create);
+    registerModel("HB_2X2_AB", &itensor::HeisenbergModel_2x2_AB::create);
+    registerModel("AKLT_2X2_ABCD", &itensor::AKLTModel_2x2_ABCD::create);
+    registerModel("AKLT_2X2_AB", &itensor::AKLTModel_2x2_AB::create);
+    registerModel("J1J2_2X2_ABCD", &itensor::J1J2Model_2x2_ABCD::create);
+    registerModel("LADDERS_2X2_ABCD", &itensor::LaddersModel_2x2_ABCD::create);
+    registerModel("LADDERS_4X2_ABCD", &itensor::LaddersModel_2x2_ABCD::create);
 }
 
 bool ModelFactory::registerModel(std::string const& name, 

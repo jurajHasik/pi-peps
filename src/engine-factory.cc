@@ -1,8 +1,20 @@
 #include "engine-factory.h"
 #include "ising-2x2-ABCD.h"
+#include "hb-2x2-ABCD.h"
+#include "aklt-2x2-ABCD.h"
+#include "j1j2-2x2-ABCD.h"
+#include "ladders-2x2-ABCD.h"
 
 EngineFactory::EngineFactory() {
 	registerEngine("ISING_2X2_ABCD", &itensor::IsingModel_2x2_ABCD::buildEngine);
+    registerEngine("ISING_2X2_AB", &itensor::IsingModel_2x2_AB::buildEngine);
+    registerEngine("HB_2X2_ABCD", &itensor::HeisenbergModel_2x2_ABCD::buildEngine);
+    registerEngine("HB_2X2_AB", &itensor::HeisenbergModel_2x2_AB::buildEngine);
+    registerEngine("AKLT_2X2_ABCD", &itensor::AKLTModel_2x2_ABCD::buildEngine);
+    registerEngine("AKLT_2X2_AB", &itensor::AKLTModel_2x2_AB::buildEngine);
+    registerEngine("J1J2_2X2_ABCD", &itensor::J1J2Model_2x2_ABCD::buildEngine);
+    registerEngine("LADDERS_2X2_ABCD", &itensor::LaddersModel_2x2_ABCD::buildEngine);
+    registerEngine("LADDERS_4X2_ABCD", &itensor::LaddersModel_4x2_ABCD::buildEngine);
 }
 
 bool EngineFactory::registerEngine(std::string const& name, 

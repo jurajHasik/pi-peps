@@ -143,10 +143,6 @@ void IsingModel_2x2_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     output << std::endl;
 }
 
-// ----- END Definition of model class --------------------------------
-
-// ----- Model Definitions --------------------------------------------
-
 std::unique_ptr<Model> IsingModel_2x2_ABCD::create(nlohmann::json & json_model) {
 
     double arg_J1    = json_model["J1"].get<double>();
@@ -168,7 +164,7 @@ std::unique_ptr<Engine> IsingModel_2x2_ABCD::buildEngine(nlohmann::json & json_m
     bool arg_symmTrotter = json_model.value("symmTrotter",false);
 
     if (arg_fuGateSeq == "2SITE") {
-    	TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
+        TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
         pe->td.gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
 
@@ -195,8 +191,8 @@ std::unique_ptr<Engine> IsingModel_2x2_ABCD::buildEngine(nlohmann::json & json_m
     else if (arg_fuGateSeq == "SYM3") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-		// complete sequence of gates acts 4 times on each NN link J->J/4.0
-    	// complete sequence of gates acts applies Sx term 12 times on each site h->h/12.0 
+        // complete sequence of gates acts 4 times on each NN link J->J/4.0
+        // complete sequence of gates acts applies Sx term 12 times on each site h->h/12.0 
 
         pe->td.gateMPO.push_back( getMPO3s_Ising_3site(arg_tau, arg_J1/4.0, arg_h/12.0) );
         
@@ -250,12 +246,128 @@ std::unique_ptr<Engine> IsingModel_2x2_ABCD::buildEngine(nlohmann::json & json_m
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
     } 
-	else {
+    else {
         std::cout<<"[IsingModel_2x2_ABCD] Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
     }
 
     return nullptr;
 }
+// ----- END Definition of model class --------------------------------
+
+// ----- Model Definitions --------------------------------------------
+IsingModel_2x2_AB::IsingModel_2x2_AB(double arg_J1, double arg_h)
+    : J1(arg_J1), h(arg_h) {}
+
+void IsingModel_2x2_AB::setObservablesHeader(std::ofstream & output) {
+    output <<"STEP, " 
+        <<"SzSz AB (0,0)(1,0), "<<"SzSz BA (1,0)(2,0), "
+        <<"SzSz AB (0,0)(0,1), "<<"SzSz BA (1,0)(1,1), "
+        <<"Avg SzSz, "<<"Avg Sz, "<<"Avg Sx, "<<"Energy"
+        <<std::endl;
+}
+
+void IsingModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev, 
+    std::ofstream & output, Args & metaInf) {
+
+    auto lineNo = metaInf.getInt("lineNo",0);
+
+    std::vector<double> evNN;
+    std::vector<double> ev_sA(3,0.0);
+    std::vector<double> ev_sB(3,0.0);
+
+    evNN.push_back( 4.0*ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        Vertex(0,0), Vertex(1,0)) );    //A-2--0-B
+    evNN.push_back( 4.0*ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        Vertex(1,0), Vertex(2,0)) );    //B-2--0-A
+    evNN.push_back( 4.0*ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        Vertex(0,0), Vertex(0,1)) );    //A-3--1-B
+    evNN.push_back( 4.0*ev.eval2Smpo(EVBuilder::OP2S_SZSZ,
+        Vertex(1,0), Vertex(1,1)) );    //B-3--1-A
+
+    ev_sA[0] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
+
+    ev_sB[0] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = 2.0*ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
+
+    // write energy
+    double avgE_4links = 0.;
+    output << lineNo <<" "; 
+    for ( unsigned int j=0; j<evNN.size(); j++ ) {
+        avgE_4links += evNN[j];
+        output<<" "<< evNN[j];
+    }
+    avgE_4links = avgE_4links/4.0;
+    output <<" "<< avgE_4links;
+    
+    // write Z magnetization
+    double evMagZ_avg = 0.5*(ev_sA[0] + ev_sB[0]);
+    double evMagX_avg = 0.5*(ev_sA[1] + ev_sB[1]);
+    output <<" "<< evMagZ_avg;
+    output <<" "<< evMagX_avg;
+
+    // write Energy per site
+    // * working with spin DoFs instead of Ising DoFs hence factor of 2
+    double energy = -J1*(2.0*avgE_4links) - h * evMagX_avg;
+    output <<" "<< energy;
+
+    // return energy in metaInf
+    metaInf.add("energy",energy);
+
+    output << std::endl;
+}
+
+std::unique_ptr<Model> IsingModel_2x2_AB::create(nlohmann::json & json_model) {
+
+    double arg_J1    = json_model["J1"].get<double>();
+    double arg_h = json_model["h"].get<double>();
+
+    return std::unique_ptr<Model>(new IsingModel_2x2_AB(arg_J1, arg_h));
+}
+
+std::unique_ptr<Engine> IsingModel_2x2_AB::buildEngine(nlohmann::json & json_model) {
+
+    double arg_J1     = json_model["J1"].get<double>();
+    double arg_h      = json_model["h"].get<double>();
+    double arg_tau    = json_model["tau"].get<double>();
+    
+    // gate sequence
+    std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
+
+    // symmetrize Trotter Sequence
+    bool arg_symmTrotter = json_model.value("symmTrotter",false);
+
+    if (arg_fuGateSeq == "2SITE") {
+        TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
+
+        pe->td.gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
+
+        pe->td.gates = {
+            {"A", "B"}, {"B", "A"}, 
+            {"A", "B"}, {"B", "A"},
+        };
+
+        pe->td.gate_auxInds = {
+            {2, 0}, {2, 0},
+            {3, 1}, {3, 1}
+        };
+
+        for (int i=0; i<4; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
+
+        std::cout<<"IsingModel_2x2_AB 2SITE ENGINE constructed"<<std::endl;
+        if (arg_symmTrotter) pe->td.symmetrize();
+        return std::unique_ptr<Engine>( pe );
+    }
+    else {
+        std::cout<<"[IsingModel_2x2_AB] Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    return nullptr;
+}
+// ----- END Definition of model class --------------------------------
 
 } //namespace itensor

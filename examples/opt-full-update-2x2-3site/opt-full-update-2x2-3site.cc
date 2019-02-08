@@ -5,6 +5,7 @@
 #include "json.hpp"
 #include "ctm-cluster-basic.h"
 #include "ctm-cluster-io.h"
+#include "cluster-factory.h"
 #include "ctm-cluster-env_v2.h"
 #include "cluster-ev-builder.h"
 #include "mpo.h"
@@ -30,14 +31,13 @@ int main( int argc, char *argv[] ) {
 
 	//read cluster infile OR initialize by one of the predefined
 	//options FILE, RND, RND_AB, AFM, RVB, ...
-	std::string initBy(jsonCls["initBy"].get<std::string>());
+	auto json_cluster(jsonCls["cluster"]);
+    std::string initBy(json_cluster["initBy"].get<std::string>());
+	std::string inClusterFile = json_cluster.value("inClusterFile","DEFAULT");
+    int physDim    = json_cluster["physDim"].get<int>();
+	int auxBondDim = json_cluster["auxBondDim"].get<int>();
 
-	int physDim, auxBondDim;
-	std::string inClusterFile;
-	if (initBy=="FILE") inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-	double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
-    physDim    = jsonCls["physDim"].get<int>();
-	auxBondDim = jsonCls["auxBondDim"].get<int>();
+    double initStateNoise = jsonCls.value("initStateNoise",1.0e-16);
 
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
@@ -122,25 +122,26 @@ int main( int argc, char *argv[] ) {
 	// ----- INITIALIZE CLUSTER -----------------------------------------------
 	std::unique_ptr<Cluster> p_cls;
 
-	if (initBy=="FILE") {
+	 if (initBy == "FILE" and inClusterFile != "DEFAULT") {
 		std::ifstream infile(inClusterFile, std::ios::in);
-        nlohmann::json jsonCls = nlohmann::json::parse(infile);
+        nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster
-        jsonCls["auxBondDim"] = auxBondDim;
-        for(auto & site : jsonCls["sites"]) {
+        json_cluster_file["auxBondDim"] = auxBondDim;
+        for(auto & site : json_cluster_file["sites"]) {
             site["auxDim"] = auxBondDim;
         }
 
-        p_cls = p_readCluster(jsonCls);
+        p_cls = p_readCluster(json_cluster_file);
         // initClusterSites(cls);
         // initClusterWeights(cls);
         // setWeights(*p_cls, suWeightsInit);
         // setOnSiteTensorsFromFile(cls, inClusterFile);
+    } else if (initBy == "FILE" and inClusterFile == "DEFAULT") {
+        throw std::runtime_error("No cluster input file  given for inClusterFile");
     } else {
-        p_cls = std::unique_ptr<Cluster_2x2_ABCD>( 
-            new Cluster_2x2_ABCD(initBy, auxBondDim, physDim));
-        // cls = Cluster_2x2_ABCD(initBy, auxBondDim, physDim);
+        ClusterFactory cf = ClusterFactory();
+        p_cls = cf.create(json_cluster);
     }
     std::cout << *p_cls;
 
@@ -517,7 +518,8 @@ int main( int argc, char *argv[] ) {
             }
 
             p_cls->absorbWeightsToSites();
-        
+            p_cls->weights_absorbed = false;
+
             t_end_int = std::chrono::steady_clock::now();
             std::cout << "GUAGE FIX DONE" << " T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
         }

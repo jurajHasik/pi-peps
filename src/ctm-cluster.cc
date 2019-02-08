@@ -8,6 +8,16 @@ Shift operator * (int x, Shift const& s) {
   return s * x;
 }
 
+std::unique_ptr<Cluster> Cluster::create(nlohmann::json & json_cluster) {
+    
+    int lX = json_cluster["lX"].get<int>();
+    int lY = json_cluster["lY"].get<int>();    
+    int ad = json_cluster["physDim"].get<int>();
+    int pd = json_cluster["auxBondDim"].get<int>();
+
+    return std::unique_ptr<Cluster>(new Cluster(lX,lY,ad,pd));
+}
+
 void initClusterSites(Cluster & c, bool dbg) {
     // reset
     c.aux.clear();
@@ -322,62 +332,46 @@ void setSites(Cluster & c, std::string option, bool dbg) {
 
 void Cluster::absorbWeightsToSites(bool dbg) {
 
-    auto sqrtT = [](double r) { return std::sqrt(r); };
-    auto quadT = [](double r) { return r*r; };
+    if (not weights_absorbed) {
+        auto sqrtT = [](double r) { return std::sqrt(r); };
 
-    // apply sqrtT to all wight tensors
-    for ( auto & w : weights) w.second.apply(sqrtT);
-
-    for ( auto & siteEntry : sites ) {
-        auto sId = siteEntry.first;
-        // contract each on-site tensor with its weights
-        // and set back the original index
-        for ( auto const& stw : siteToWeights.at(sId) ) {
-            siteEntry.second *= weights.at(stw.wId);
-            siteEntry.second *= delta(weights.at(stw.wId).inds());
-            // siteEntry.second *= c.DContract(stw.sId[0],stw.dirs[0],stw.sId[1],stw.dirs[1]);
+        for ( auto & siteEntry : sites ) {
+            auto sId = siteEntry.first;
+            // contract each on-site tensor with its weights
+            // and set back the original index
+            for ( auto const& stw : siteToWeights.at(sId) ) {
+                auto tmp_weight = weights.at(stw.wId);
+                tmp_weight.apply(sqrtT);
+                siteEntry.second *= tmp_weight;
+                siteEntry.second *= delta(tmp_weight.inds());
+            }
         }
-    }
-
-    // apply quadT to all weight tensors to recover original ones
-    for ( auto & w : weights) w.second.apply(quadT);
-}
-
-void mvSite(Cluster const& c, std::pair<int,int> &s, int dir) {
-    dir = dir % 4;
-    switch(dir){
-        case 0: {
-            mvSite(c, s, std::make_pair(-1,0));
-            break;
-        }
-        case 1: {
-            mvSite(c, s, std::make_pair(0,-1));
-            break;
-        }
-        case 2: {
-            mvSite(c, s, std::make_pair(1,0));
-            break;
-        }
-        case 3: {
-            mvSite(c, s, std::make_pair(0,1));
-            break;
-        }
+        weights_absorbed = true;
+    } else {
+        std::cout<<"[absorbWeightsToSites] Weights already absorbed"<<std::endl;
     }
 }
 
-void mvSite(Cluster const& c, std::pair<int,int> &s, std::pair<int,int> const& disp) {
-    s.first  += disp.first;
-    s.second += disp.second;
+void Cluster::absorbWeightsToLinks(bool dbg) {
 
-    // apply BC
-    s.first = ((s.first % c.sizeM) + c.sizeM) % c.sizeM;
-    s.second = ((s.second % c.sizeN) + c.sizeN) % c.sizeN;
-}
+    if (weights_absorbed) {
+        auto invSqrtT = [](double r) { return 1.0/std::sqrt(r); };
 
-std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, int dir) {
-    std::pair<int,int> res(s);
-    mvSite(c, res, dir);
-    return res;
+        for ( auto & siteEntry : sites ) {
+            auto sId = siteEntry.first;
+            // contract each on-site tensor with its weights
+            // and set back the original index
+            for ( auto const& stw : siteToWeights.at(sId) ) {
+                auto tmp_weight = weights.at(stw.wId);
+                tmp_weight.apply(invSqrtT);
+                siteEntry.second *= tmp_weight;
+                siteEntry.second *= delta(tmp_weight.inds());
+            }
+        }
+        weights_absorbed = false;
+    } else {
+        std::cout<<"[absorbWeightsToSites] Weights are not absorbed to sites"<<std::endl;
+    }
 }
 
 std::ostream& operator<<(std::ostream& os, Shift const& s) {

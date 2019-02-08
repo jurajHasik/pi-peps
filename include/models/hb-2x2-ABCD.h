@@ -1,5 +1,5 @@
-#ifndef __ISING_2X2_ABCD_
-#define __ISING_2X2_ABCD_
+#ifndef __HB_2X2_ABCD_
+#define __HB_2X2_ABCD_
 
 #include "models.h"
 #include "engine.h"
@@ -7,39 +7,43 @@
 namespace itensor {
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
-MPO_2site getMPO2s_Ising_2site(double tau, double J, double h);
+MPO_2site getMPO2s_HB(double tau, double J, double h, double del);
 
-MPO_3site getMPO3s_Ising_3site(double tau, double J, double h);
+MPO_3site getMPO3s_HB(double tau, double J, double h, double del);
+
+OpNS getOP4s_HB(double tau, double J, double h, double del);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 
 // ----- Definition of model base class and its particular instances --
-class IsingModel_2x2_ABCD : public Model {
+class HeisenbergModel_2x2_ABCD : public Model {
     public:
-        double J1, h;
+        double J, h, del;
 
-        IsingModel_2x2_ABCD(double arg_J1, double arg_h);
+        HeisenbergModel_2x2_ABCD(double arg_J, double arg_h, double arg_del);
 
         void setObservablesHeader(std::ofstream & output) override;
 
         void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            itensor::Args & metaInf) override;
+            Args & metaInf) override;
 
         static std::unique_ptr<Model> create(nlohmann::json & json_model);
 
         static std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
 };
+// ----- END Definition of model class --------------------------------
 
-class IsingModel_2x2_AB : public Model {
+// ----- Definition of model base class and its particular instances --
+class HeisenbergModel_2x2_AB : public Model {
     public:
-        double J1, h;
+        double J, h, del;
 
-        IsingModel_2x2_AB(double arg_J1, double arg_h);
+        HeisenbergModel_2x2_AB(double arg_J, double arg_h, double arg_del);
 
         void setObservablesHeader(std::ofstream & output) override;
 
         void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            itensor::Args & metaInf) override;
+            Args & metaInf) override;
 
         static std::unique_ptr<Model> create(nlohmann::json & json_model);
 

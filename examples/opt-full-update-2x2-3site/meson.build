@@ -8,11 +8,17 @@ executable(_exe_name,
            build_by_default: get_option('build-examples'))
 
 # copy the files in the build dir
-_files = ['RVB_2x2_ABCD.in',
+_files = [
 'simulation-2site-cholesky.json',
 'simulation-2site-pseudoinv.json',
-'simulation-svd-itensor.json',
-'simulation-svd-rsvd.json',]
+'simulation-AKLT_2x2_ABCD.json',
+'simulation-AKLT_2x2_AB.json',
+'simulation-HB_2x2_ABCD.json',
+'simulation-HB_2x2_AB.json',
+'simulation-ISING_2x2_ABCD.json',
+'simulation-ISING_2x2_AB.json',
+'simulation-J1J2_2x2_ABCD.json',
+'simulation-LADDERS_2x2_ABCD.json']
 
 foreach _f : _files
     if(meson.version() >= '0.47')

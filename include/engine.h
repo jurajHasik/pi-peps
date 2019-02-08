@@ -24,9 +24,26 @@ class TrotterDecomposition {
 		bool symmetrized    = false;
 		int currentPosition = -1;
 
-		void symmetrize();
+		void symmetrize() {
+		    // For symmetric Trotter decomposition
+		    if ( !symmetrized ) {
+		        int init_gate_size = gates.size();
+		        for (int i=0; i<init_gate_size; i++) {
+		            ptr_gateMPO.push_back(ptr_gateMPO[init_gate_size-1-i]);
+		            gates.push_back(gates[init_gate_size-1-i]);
+		            gate_auxInds.push_back(gate_auxInds[init_gate_size-1-i]);
+		        }
+		    }
+		    // can't symmetrize twice
+		    symmetrized = true;
 
-		int nextCyclicIndex();
+		    std::cout<<"TrotterDecomposition symmetrized"<<std::endl;
+		}
+
+		int nextCyclicIndex() {
+		    currentPosition = (currentPosition + 1) % gates.size();
+		    return currentPosition;
+		}
 };
 
 class Engine {
@@ -50,18 +67,7 @@ class TrotterEngine : public Engine {
 		itensor::Args performFullUpdate(Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args);
 };
 
-
-std::unique_ptr<Engine> buildEngine_J1J2(nlohmann::json & json_model);
-
 // std::unique_ptr<Engine> buildEngine_ISING3BODY(nlohmann::json & json_model);
-
-std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_ABCD(nlohmann::json & json_model);
-
-std::unique_ptr<Engine> buildEngine_NNH_2x2Cell_Ladder(nlohmann::json & json_model);
-
-std::unique_ptr<Engine> buildEngine_NNH_4x2Cell_Ladder(nlohmann::json & json_model);
-
-std::unique_ptr<Engine> buildEngine_AKLT(nlohmann::json & json_model);
 
 std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model);
 

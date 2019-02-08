@@ -209,6 +209,8 @@ struct Cluster {
     // weights wrt to old_weights
     std::map< std::string, itensor::ITensor > old_weights;
 
+    bool weights_absorbed = false;
+
     Cluster() {}
 
     Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
@@ -218,6 +220,8 @@ struct Cluster {
 
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
         lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("DEFAULT") {}
+
+    static std::unique_ptr<Cluster> create(nlohmann::json & json_cluster);
 
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC
@@ -243,6 +247,8 @@ struct Cluster {
     }
 
     void absorbWeightsToSites(bool dbg = false);
+
+    void absorbWeightsToLinks(bool dbg = false);
 };
 
 void initClusterSites(Cluster & c, bool dbg = false);
@@ -260,12 +266,6 @@ void setSites(Cluster & c, std::string option, bool dbg = false);
 // itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
 
 // itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
-
-void mvSite(Cluster const& c, std::pair<int,int> &s, int dir);
-
-void mvSite(Cluster const& c, std::pair<int,int> &s, std::pair<int,int> const& disp);
-
-std::pair<int,int> getNextSite(Cluster const& c, std::pair<int,int> const& s, int dir);
 
 std::ostream& 
 operator<<(std::ostream& s, Cluster const& c);
