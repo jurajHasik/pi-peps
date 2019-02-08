@@ -138,7 +138,7 @@ Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd)
         init_RANDOM();
     } else if (init_type == "AFM") {
         init_AFM();
-    } else if (init_type == "ALIGNX") {
+    } else if (init_type == "XPRST") {
         init_ALIGNX();
     } else if (init_type == "ZPRST") {
         init_ALIGNZ();
@@ -331,7 +331,7 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd)
         init_RANDOM();
     } else if (init_type == "AFM") {
         init_AFM();
-    } else if (init_type == "ALIGNX") {
+    } else if (init_type == "XPRST") {
         init_ALIGNX();
     } else if (init_type == "ZPRST") {
         init_ALIGNZ();
