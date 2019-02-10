@@ -30,8 +30,6 @@ MPO_3site getMPO3s_J1J2(double tau, double J1, double J2, double del) {
 
     h3 += nnnS1S3 * delta(s2,s2p);
 
-    PrintData(h3);
-
     auto cmbI = combiner(s1,s2,s3);
     h3 = (cmbI * h3 ) * prime(cmbI);
     ITensor u3 = expHermitian(h3, {-tau, 0.0});

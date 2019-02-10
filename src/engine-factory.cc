@@ -1,4 +1,5 @@
 #include "engine-factory.h"
+#include "id-2x2-ABCD.h"
 #include "ising-2x2-ABCD.h"
 #include "hb-2x2-ABCD.h"
 #include "aklt-2x2-ABCD.h"
@@ -6,6 +7,8 @@
 #include "ladders-2x2-ABCD.h"
 
 EngineFactory::EngineFactory() {
+    registerEngine("ID_2X2_ABCD", &itensor::IdentityModel_2x2_ABCD::buildEngine);
+    registerEngine("ID_2X2_AB", &itensor::IdentityModel_2x2_AB::buildEngine);
 	registerEngine("ISING_2X2_ABCD", &itensor::IsingModel_2x2_ABCD::buildEngine);
     registerEngine("ISING_2X2_AB", &itensor::IsingModel_2x2_AB::buildEngine);
     registerEngine("HB_2X2_ABCD", &itensor::HeisenbergModel_2x2_ABCD::buildEngine);

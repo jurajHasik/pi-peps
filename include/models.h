@@ -12,16 +12,7 @@
 #include "mpo.h"
 #include "itensor/all.h"
 
-// ----- Trotter gates (2site, ...) MPOs ------------------------------
-MPO_2site getMPO2s_Id(int physDim);
-// ----- END Trotter gates (2site, ...) MPOs --------------------------
-
-
 // ----- Trotter gates (3site, ...) MPOs ------------------------------
-MPO_3site getMPO3s_Id(int physDim);
-
-MPO_3site getMPO3s_Id_v2(int physDim, bool dbg = false);
-
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 

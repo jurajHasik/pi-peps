@@ -69,8 +69,6 @@ class TrotterEngine : public Engine {
 
 // std::unique_ptr<Engine> buildEngine_ISING3BODY(nlohmann::json & json_model);
 
-std::unique_ptr<Engine> buildEngine_IDENTITY(nlohmann::json & json_model);
-
 std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model, 
 	itensor::LinSysSolver * solver);
 

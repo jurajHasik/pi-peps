@@ -145,7 +145,8 @@ Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd)
     } else if (init_type == "VBS") {
         init_VBS();
     } else {
-        std::cout <<"Unsupported cluster initialization: "<< init_type << std::endl;
+        std::string message = "[Cluster_2x2_ABBA] Unsupported cluster initialization: "+ init_type;
+        throw std::runtime_error(message);
     }
 }
 
@@ -338,7 +339,8 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd)
     } else if (init_type == "VBS") {
         init_VBS();
     } else {
-        std::cout <<"Unsupported cluster initialization: "<< init_type << std::endl;
+        std::string message = "[Cluster_2x2_ABCD] Unsupported cluster initialization: "+ init_type;
+        throw std::runtime_error(message);
     }
 }
 

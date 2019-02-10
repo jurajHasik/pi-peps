@@ -1,0 +1,84 @@
+{
+	"cluster": {
+		"type": "2X2_ABBA",
+		"initBy": "AFM",
+		"physDim": 2,
+		"auxBondDim": 3,
+		"inClusterFile": "AFM"
+	},
+	"initStateNoise": 1.0e-16,
+	"outClusterFile": "output_HB_2X2_AB.in",
+
+	"fuIter": 512,
+	"obsFreq": 8,
+	"fuIsoInit": "LINKSVD",
+	"fuIsoInitNoiseLevel": 0.0,
+	"maxAltLstSqrIter": 50,
+	"symmetrizeProtoEnv": true,
+	"positiveDefiniteProtoEnv": true,
+	"isoEpsilon": 1.0e-8,
+	"epsdistf": 1.0e-4,
+	"als": {
+		"solver": "pseudoinverse",
+		"dbg": false,
+		"epsregularisation": 1.0e-7,
+
+		"cg_convergence_check": 1,	
+		"cg_gradientNorm_eps": 1.0e-7,
+		"cg_max_iter": 512,
+
+		"method": "CHOLESKY",
+
+		"pseudoInvCutoff": 1.0e-8,
+		"pseudoInvCutoffInsert": 0.0,
+	
+		"dynamicEps": false
+	},
+	"otNormType": "BALANCE",
+	"fuDbg": false,
+	"fuDbgLevel": 0,
+
+	"suGaugeFix": false,
+	"suGaugeFixFreq": 0,
+	"gaugeFix": {
+		"type": "IDENTITY",
+		"gateSeq": "2SITE",
+		"suWeightsInit": "DELTA",
+		"suIter": 640,
+		"suDbg": false,
+		"suDbgLevel": 0
+	},
+
+	"model": {
+		"type": "HB_2X2_AB",
+		"tau": 0.1,
+		"J1": 1.0,
+		"alpha": 0.0,
+		"del": 0.0,
+		"J2": 0.0,
+		"h": 0.0,
+		"LAMBDA": 0.0,
+		"fuGateSeq": "2SITE",
+		"symmTrotter": true,
+		"randomizeSeq": false
+	},
+
+	"ctmrg": {
+		"auxEnvDim": 36,
+		"ioEnvTag": "test-env-2x2",
+		"initEnvType": "INIT_ENV_ctmrg",
+		"envIsComplex": false,
+		"isoType": "ISOMETRY_T3",
+		"env_SVD_METHOD": "rsvd",
+		"isoPseudoInvCutoff": 1.0e-8,
+		"normType": "NORM_BLE",
+		"maxEnvIter": 1,
+		"maxObsIter": 50,
+		"initMaxEnvIter": 50,
+		"envEpsilon": 1.0e-10,
+		"reinitEnv": false,
+		"reinitObsEnv": false,
+		"dbg": false,
+		"dbgLvl": 0
+	}
+}
