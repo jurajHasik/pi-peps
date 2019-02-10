@@ -557,10 +557,12 @@ int main( int argc, char *argv[] ) {
                 // decrease time-step
                 auto current_dt = json_model_params["tau"].get<double>();
                 json_model_params["tau"] = current_dt / 2.0;
+                jsonCls["model"] = json_model_params;
                 oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt / 2.0;
                 // regenerate model with new lower timestep
                 ptr_engine = ef.build(json_model_params, pLinSysSolver.get());
                 // update simulation parameters on cluster
+                p_cls->simParam = jsonCls;
                 diag_log.push_back(oss.str());
             }
             past_energy.push_back(current_energy);
