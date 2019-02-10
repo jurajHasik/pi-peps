@@ -30,6 +30,8 @@ MPO_3site getMPO3s_J1J2(double tau, double J1, double J2, double del) {
 
     h3 += nnnS1S3 * delta(s2,s2p);
 
+    PrintData(h3);
+
     auto cmbI = combiner(s1,s2,s3);
     h3 = (cmbI * h3 ) * prime(cmbI);
     ITensor u3 = expHermitian(h3, {-tau, 0.0});
@@ -225,7 +227,7 @@ std::unique_ptr<Engine> J1J2Model_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     if (arg_fuGateSeq == "SYM1") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1, arg_J2, arg_del) );
+        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
         pe->td.ptr_gateMPO = std::vector< MPO_3site* >(16, &pe->td.gateMPO[0] );
 
         pe->td.gates = {
@@ -263,7 +265,7 @@ std::unique_ptr<Engine> J1J2Model_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     else if (arg_fuGateSeq == "SYM2") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1, arg_J2, arg_del) );
+        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
         pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
 
         pe->td.gates = {
@@ -301,7 +303,7 @@ std::unique_ptr<Engine> J1J2Model_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     else if (arg_fuGateSeq == "SYM3") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1, arg_J2, arg_del) );
+        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
         pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
 
         pe->td.gates = {
@@ -355,7 +357,7 @@ std::unique_ptr<Engine> J1J2Model_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     else if (arg_fuGateSeq == "4SITE") {
         TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
 
-        pe->td.gateMPO.push_back( getOP4s_J1J2(arg_tau, arg_J1, arg_J2, arg_del) );
+        pe->td.gateMPO.push_back( getOP4s_J1J2(arg_tau, arg_J1/2.0, arg_J2, arg_del) );
         pe->td.ptr_gateMPO = std::vector< OpNS * >(4, &pe->td.gateMPO[0] );
 
         pe->td.gates = {

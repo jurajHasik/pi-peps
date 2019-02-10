@@ -55,6 +55,8 @@ MPO_3site getMPO3s_HB(double tau, double J, double h, double del) {
     h123 += nnS1S2 * delta(s3,s3p);
     h123 += (nnS1S2 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p);
 
+    PrintData(h123);
+
     auto cmbI = combiner(s1,s2,s3);
     h123 = (cmbI * h123 ) * prime(cmbI);
     ITensor u123 = expHermitian(h123, {-tau, 0.0});
