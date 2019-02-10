@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <algorithm>
 #include "json.hpp"
 #include "ctm-cluster-basic.h"
 #include "ctm-cluster-io.h"
@@ -261,9 +262,8 @@ int main( int argc, char *argv[] ) {
     };
     // Diagnostic data
     std::vector<std::string> diag_log;
-    std::vector<int> diag_ctmIter;
-    std::vector<double> diag_minCornerSV(1, 0.);
     
+    Args diagData_ctm;
     std::vector< Args > diagData_fu;
 
     double best_energy = 1.0e+16;
@@ -316,12 +316,14 @@ int main( int argc, char *argv[] ) {
 
     auto computeEnvironment = [&ctmEnv, &ev, 
         &iso_type, &arg_envEps, &arg_initEnvType, &envIsComplex, &arg_envDbg, &arg_envDbgLvl, 
-        &get_s, &diag_minCornerSV, &diag_ctmIter](int maxIter, bool reinitEnv) {
+        &get_s](int maxIter, bool reinitEnv) {
 
         time_point t_begin_int, t_end_int;
         std::vector<double> accT(12,0.0);
         std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
         bool expValEnvConv = false;
+
+        Args diagData_ctm =  Args::global();
 
         if (reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
 
@@ -364,7 +366,9 @@ int main( int argc, char *argv[] ) {
                 e_prev = e_curr;
             
                 if (expValEnvConv) {
-                    diag_ctmIter.push_back(envI);
+                    // maximal value of transfer-op variance
+                    std::vector<double>::iterator result = std::max_element(std::begin(e_curr), std::end(e_curr));
+                    auto max_boundaryVar = *result;
 
                     std::ostringstream oss;
                     oss << std::scientific;
@@ -412,8 +416,10 @@ int main( int argc, char *argv[] ) {
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
-                    diag_minCornerSV.push_back(minCornerSV);
                     std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                    // record diagnostic data
+                    diagData_ctm = Args("ctmI",envI,"minCornerSV",minCornerSV,"maxBoundaryVariance",max_boundaryVar);
 
                     break;
                 }
@@ -431,11 +437,13 @@ int main( int argc, char *argv[] ) {
             std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
                 <<" "<< accT[11] << std::endl;
         }
+
+        return diagData_ctm;
     };
 
     // ***** COMPUTING INITIAL ENVIRONMENT ************************************
     std::cout <<"COMPUTING INITIAL ENVIRONMENT "<< std::endl;
-    computeEnvironment(arg_maxInitEnvIter, true);
+    diagData_ctm = computeEnvironment(arg_maxInitEnvIter, true);
     // ***** COMPUTING INITIAL ENVIRONMENT DONE *******************************
 
     // Compute initial properties
@@ -461,22 +469,24 @@ int main( int argc, char *argv[] ) {
                 out_file_diag << diag_fu.getString("locMinDiag_descriptor") << " ";
             if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
                 out_file_diag << diag_fu.getString("diag_protoEnv_descriptor") << " ";
-            out_file_diag << "MinCornerSV" << " ";
-            out_file_diag << std::endl;
+            out_file_diag << "MinCornerSV" << " "
+                << "MaxBoundaryVar" << " "
+                << std::endl;
         }
 
-        out_file_diag << fuI <<" "<< diag_ctmIter.back() <<" "<< diag_fu.getInt("alsSweep",0)
+        out_file_diag << fuI <<" "<< diagData_ctm.getInt("ctmI",-1) <<" "<< diag_fu.getInt("alsSweep",0)
             <<" "<< diag_fu.getString("siteMaxElem");
         if ( diag_fu.getString("locMinDiag","").length() > 0 )     
             out_file_diag <<" "<< diag_fu.getString("locMinDiag","");
         if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
             out_file_diag << " " << diag_fu.getString("diag_protoEnv","");
-        out_file_diag <<" "<< diag_minCornerSV.back();
-        out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
-            <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
-        out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
-            <<" "<< diag_fu.getReal("minEvKept",0.0);
-        out_file_diag  <<std::endl;
+        out_file_diag <<" "<< diagData_ctm.getReal("minCornerSV",-1.0)
+            <<" "<< diagData_ctm.getReal("maxBoundaryVariance",-1.0)
+            <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
+            <<" "<< diag_fu.getReal("ratioNonSymFN",0.0)
+            <<" "<< diag_fu.getReal("minGapDisc",0.0)
+            <<" "<< diag_fu.getReal("minEvKept",0.0)
+            <<std::endl;
 
         // fix gauge by simple-update at dt=0 - identity operators
         if ( arg_su_gauge_fix && (fuI % arg_su_gauge_fix_freq == 0) ) {
@@ -528,7 +538,7 @@ int main( int argc, char *argv[] ) {
         bool reinitEnv = arg_reinitEnv || ((fuI % arg_obsFreq == 0) && arg_reinitObsEnv);
 		int currentMaxEnvIter = (fuI % arg_obsFreq == 0) ? arg_obsMaxIter : arg_maxEnvIter;
     	// ENTER ENVIRONMENT LOOP
-        computeEnvironment(currentMaxEnvIter, reinitEnv);      
+        diagData_ctm = computeEnvironment(currentMaxEnvIter, reinitEnv);
 
         if (fuI % arg_obsFreq == 0) {
             t_begin_int = std::chrono::steady_clock::now();
@@ -607,54 +617,7 @@ int main( int argc, char *argv[] ) {
 
     // FULL UPDATE FINISHED - COMPUTING FINAL ENVIRONMENT
     std::cout <<"FULL UPDATE DONE - COMPUTING FINAL ENVIRONMENT "<< std::endl;
-    // t_begin_int = std::chrono::steady_clock::now();
-    accT = std::vector<double>(12,0.0);
-
-    // reset environment
-    if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
-
-    // ENTER ENVIRONMENT LOOP
-    for (int envI=1; envI<=arg_maxInitEnvIter; envI++ ) {
-
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
-
-        if ( envI % 1 == 0 ) {
-        
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
-            
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
-
-            if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
-                (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
-                (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
-                (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
-
-                std::cout<< "ENV CONVERGED" << std::endl;
-                break;
-            }
-
-            e_prev = e_curr;
-            t_begin_int = std::chrono::steady_clock::now();
-        }
-    }
-
-    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
-    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-        <<" "<< accT[3] << std::endl;
-    std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
-    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-        <<" "<< accT[7] << std::endl;
-    std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
-    std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
-        <<" "<< accT[11] << std::endl;
+    diagData_ctm = computeEnvironment(arg_maxInitEnvIter, arg_reinitObsEnv);
 
     obs_metaInf = Args("lineNo",arg_fuIter+1);
 	ptr_model->computeAndWriteObservables(ev,out_file_energy,obs_metaInf);
