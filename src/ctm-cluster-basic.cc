@@ -9,9 +9,10 @@ namespace itensor {
  * 2 A A A
  *
  */
-Cluster_1x1_A::Cluster_1x1_A() : Cluster(1,1) { cluster_type = "1x1_A"; }
+Cluster_1x1_A::Cluster_1x1_A() : Cluster(1,1) { cluster_type = "1X1_A"; }
 
 Cluster_1x1_A::Cluster_1x1_A(int ad, int pd) : Cluster(1,1,ad,pd) {
+    cluster_type = "1X1_A";
     siteIds = { "A" };
     SI = { {"A",0} };
 
@@ -84,8 +85,18 @@ std::unique_ptr<Cluster> Cluster_1x1_A::create(nlohmann::json const& json_cluste
  */
 Cluster_2x2_ABBA::Cluster_2x2_ABBA() : Cluster(2,2) { cluster_type = "2X2_ABBA"; }
 
-Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) : Cluster(2,2,ad,pd) {
-    cluster_type = "2X2_ABBA";
+Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) 
+    : Cluster(2,2,ad,pd) { cluster_type = "2X2_ABBA"; }
+
+Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd) 
+    : Cluster_2x2_ABBA(ad,pd) {
+    
+    if (init_type == "FILE") {
+        // pass, the elements are initialized outside
+        return;
+    }
+
+    // Assume initialization of elements by one of the predefined functions
     siteIds = { "A", "B" };
     SI = { {"A",0}, {"B",1} };
 
@@ -130,14 +141,8 @@ Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) : Cluster(2,2,ad,pd) {
         {{"B","A"},{1,3},"L4"},
         {{"B","A"},{3,1},"L3"}
     };
-}
 
-Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd) 
-    : Cluster_2x2_ABBA(ad,pd) {
-    
-    if (init_type == "FILE") {
-        // pass, the elements are initialized outside
-    } else if(init_type == "RANDOM") {
+    if(init_type == "RANDOM") {
         init_RANDOM();
     } else if (init_type == "AFM") {
         init_AFM();
@@ -261,12 +266,22 @@ std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(nlohmann::json const& json_clu
  */
 Cluster_2x2_ABCD::Cluster_2x2_ABCD() : Cluster(2,2) { cluster_type = "2X2_ABCD"; }
 
-Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
-	cluster_type = "2X2_ABCD";
-    siteIds = { "A", "B", "C", "D" };
-	SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
+Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) 
+    { cluster_type = "2X2_ABCD"; }
 
-	cToS  = {
+Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd) 
+	: Cluster_2x2_ABCD(ad,pd) {
+	
+    if (init_type == "FILE") {
+        // pass, the elements are initialized outside
+        return;
+    } 
+
+    // Assume initialization of elements by one of the predefined functions
+    siteIds = { "A", "B", "C", "D" };
+    SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
+
+    cToS  = {
         {std::make_pair(0,0),"A"},
         {std::make_pair(1,0),"B"},
         {std::make_pair(0,1),"C"},
@@ -285,9 +300,9 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
     auto pID = Index("D", physDim, PHYS);
 
     aux  = {aIA, aIB, aIC, aID};
-	phys = {pIA, pIB, pIC, pID};
-	maux  = {{"A",aIA},{"B",aIB},{"C",aIC},{"D",aID}};
-	mphys = {{"A",pIA},{"B",pIB},{"C",pIC},{"D",pID}};
+    phys = {pIA, pIB, pIC, pID};
+    maux  = {{"A",aIA},{"B",aIB},{"C",aIC},{"D",aID}};
+    mphys = {{"A",pIA},{"B",pIB},{"C",pIC},{"D",pID}};
     for (const auto& id : siteIds) { 
         caux[id] = std::vector<Index>(4);
         for(int i=0; i<caux[id].size(); i++) caux[id][i] = prime(maux.at(id),i);
@@ -298,7 +313,7 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
     auto C = ITensor(aIC, prime(aIC,1), prime(aIC,2), prime(aIC,3), pIC);
     auto D = ITensor(aID, prime(aID,1), prime(aID,2), prime(aID,3), pID);
 
-	sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
+    sites = {{"A", A}, {"B", B}, {"C",C}, {"D",D}};
 
     // Define siteToWeights
     siteToWeights["A"] = {
@@ -325,14 +340,8 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
         {{"D","C"},{2,0},"L8"},
         {{"D","C"},{0,2},"L7"}
     };
-}
 
-Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd) 
-	: Cluster_2x2_ABCD(ad,pd) {
-	
-    if (init_type == "FILE") {
-        // pass, the elements are initialized outside
-	} else if (init_type == "RND_AB") {
+    if (init_type == "RND_AB") {
         init_RANDOM_BIPARTITE();
     } else if(init_type == "RANDOM") {
         init_RANDOM();

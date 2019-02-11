@@ -291,6 +291,7 @@ int main( int argc, char *argv[] ) {
     auto printBondSpectra = [&p_cls] {
         auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
 
+        std::cout<<"BOND SPECTRA - START"<< std::endl;
         // loop over link weights and perform svd uniquely
         std::vector< std::string > lwIds;
         for (auto const& stw : p_cls->siteToWeights )
@@ -321,6 +322,7 @@ int main( int argc, char *argv[] ) {
                 
                     lwIds.push_back(lw.wId);
                 }
+        std::cout<<"BOND SPECTRA - END"<< std::endl;
     };
 
     auto computeEnvironment = [&ctmEnv, &ev, 

@@ -483,7 +483,8 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo, Cluster & cls, CtmEnv const& ctmE
 
 	// trial initialization
 	if (fuTrialInit) {
-		auto SqrtT = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; };
+		auto SqrtT = [&machine_eps](Real r) { 
+			return (r > std::sqrt(10.0*machine_eps)) ? std::sqrt(r) : std::sqrt(r); };
 		// auto SqrtT = [&machine_eps](Real r) { return (r > 10.0*machine_eps) ? sqrt(r) : 0; };
 		auto printS = [](Real r) { std::cout << std::scientific << r << std::endl; };
 

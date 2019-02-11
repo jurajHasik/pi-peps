@@ -93,6 +93,7 @@ int main( int argc, char *argv[] ) {
         nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster
+        json_cluster_file["initBy"] = "FILE";
         json_cluster_file["auxBondDim"] = auxBondDim;
         for(auto & site : json_cluster_file["sites"]) {
             site["auxDim"] = auxBondDim;

@@ -213,7 +213,8 @@ struct Cluster {
 
     Cluster() {}
 
-    Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
+    Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_),
+        cluster_type("DEFAULT") {}
 
     // Cluster(int lX_, int lY_, int pd) : physDim(pd),
     //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}

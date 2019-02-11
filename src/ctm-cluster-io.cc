@@ -89,18 +89,6 @@ std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
     ClusterFactory cf = ClusterFactory();
     auto p_cls = cf.create(jsonCls);
 
-    // clear
-    p_cls->cToS.clear();
-    p_cls->vToId.clear();
-    p_cls->idToV.clear();
-    p_cls->siteIds.clear();
-    p_cls->SI.clear();
-    p_cls->mphys.clear();
-    p_cls->caux.clear();
-    p_cls->sites.clear();
-    p_cls->siteToWeights.clear();
-    p_cls->weights.clear();
-
     for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
     {
         p_cls->cToS[ make_pair(mapEntry["x"].get<int>(), mapEntry["y"].get<int>()) ]=
