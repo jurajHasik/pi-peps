@@ -64,7 +64,7 @@ std::string Cluster_1x1_A::vertexToId(Vertex const& v) const {
 	return vToId.at(elemV); 
 }
 
-std::unique_ptr<Cluster> Cluster_1x1_A::create(nlohmann::json & json_cluster) {
+std::unique_ptr<Cluster> Cluster_1x1_A::create(nlohmann::json const& json_cluster) {
     
     int pd = json_cluster["physDim"].get<int>();
     int ad = json_cluster["auxBondDim"].get<int>();
@@ -82,9 +82,10 @@ std::unique_ptr<Cluster> Cluster_1x1_A::create(nlohmann::json & json_cluster) {
  * 2 A B A
  *
  */
-Cluster_2x2_ABBA::Cluster_2x2_ABBA() : Cluster(2,2) { cluster_type = "2x2_ABBA"; }
+Cluster_2x2_ABBA::Cluster_2x2_ABBA() : Cluster(2,2) { cluster_type = "2X2_ABBA"; }
 
 Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) : Cluster(2,2,ad,pd) {
+    cluster_type = "2X2_ABBA";
     siteIds = { "A", "B" };
     SI = { {"A",0}, {"B",1} };
 
@@ -134,7 +135,9 @@ Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) : Cluster(2,2,ad,pd) {
 Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd) 
     : Cluster_2x2_ABBA(ad,pd) {
     
-    if(init_type == "RANDOM") {
+    if (init_type == "FILE") {
+        // pass, the elements are initialized outside
+    } else if(init_type == "RANDOM") {
         init_RANDOM();
     } else if (init_type == "AFM") {
         init_AFM();
@@ -239,7 +242,7 @@ void Cluster_2x2_ABBA::init_VBS() {
         pIB(2), -1.0);
 }
 
-std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(nlohmann::json & json_cluster) {
+std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(nlohmann::json const& json_cluster) {
     
     int pd = json_cluster["physDim"].get<int>();
     int ad = json_cluster["auxBondDim"].get<int>();
@@ -256,10 +259,11 @@ std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(nlohmann::json & json_cluster)
  * 2 A B A A
  *
  */
-Cluster_2x2_ABCD::Cluster_2x2_ABCD() : Cluster(2,2) { cluster_type = "2x2_ABCD"; }
+Cluster_2x2_ABCD::Cluster_2x2_ABCD() : Cluster(2,2) { cluster_type = "2X2_ABCD"; }
 
 Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
-	siteIds = { "A", "B", "C", "D" };
+	cluster_type = "2X2_ABCD";
+    siteIds = { "A", "B", "C", "D" };
 	SI = { {"A",0}, {"B",1}, {"C",2}, {"D",3} };
 
 	cToS  = {
@@ -326,7 +330,9 @@ Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2,2,ad,pd) {
 Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd) 
 	: Cluster_2x2_ABCD(ad,pd) {
 	
-	if (init_type == "RND_AB") {
+    if (init_type == "FILE") {
+        // pass, the elements are initialized outside
+	} else if (init_type == "RND_AB") {
         init_RANDOM_BIPARTITE();
     } else if(init_type == "RANDOM") {
         init_RANDOM();
@@ -501,7 +507,7 @@ void Cluster_2x2_ABCD::init_VBS() {
         pID(2), 1.0);
 }
 
-std::unique_ptr<Cluster> Cluster_2x2_ABCD::create(nlohmann::json & json_cluster) {
+std::unique_ptr<Cluster> Cluster_2x2_ABCD::create(nlohmann::json const& json_cluster) {
     
     int pd = json_cluster["physDim"].get<int>();
     int ad = json_cluster["auxBondDim"].get<int>();

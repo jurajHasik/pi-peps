@@ -211,12 +211,11 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 	// Id identifies tensor belonging to Vertex
 	time_point t0_inner, t1_inner, t00, t11;
 	t_iso_begin = std::chrono::high_resolution_clock::now();
-	for (auto const& v_id : p_cluster->vToId) {
-		Vertex const& v   = v_id.first;
+	for (auto const& id : p_cluster->siteIds) {
+		Vertex const& v   = p_cluster->idToV.at(id);
 		Vertex v_shifted  = v + shift;   // Shift of site
 		Vertex v_shift_f  = v + p_shift; // Shift of projector forward
 		Vertex v_shift_b  = v - p_shift; // Shift of projector backward 
-		std::string id           = v_id.second;
 		std::string id_shift     = vToId(v_shifted);
 		std::string id_shift_f = vToId(v_shift_f);
 		std::string id_shift_b = vToId(v_shift_b);
@@ -294,12 +293,11 @@ void CtmEnv::move_singleDirection(DIRECTION direction, ISOMETRY iso_type,
 	
 	
 
-	for (auto const& v_id : p_cluster->vToId) {
-		Vertex const& v    = v_id.first;
+	for (auto const& id : p_cluster->siteIds) {
+		Vertex const& v    = p_cluster->idToV.at(id);
 		Vertex v_shifted   = v + shift;   // Shift of site
 		Vertex v_shift_f  = v + p_shift; // Shift of projector forward
 		Vertex v_shift_b  = v - p_shift; // Shift of projector backward 
-		std::string id           = v_id.second;
 		std::string id_shift     = vToId(v_shifted);
 		std::string id_shift_f = vToId(v_shift_f);
 		std::string id_shift_b = vToId(v_shift_b);
@@ -499,9 +497,8 @@ void CtmEnv::compute_IsometriesT3(DIRECTION direction,
 	}
 
 	time_point t_iso_begin, t_iso_end;
-    for(auto const& v_id : p_cluster->vToId) {
-    	std::string id = v_id.second;   
-    	Vertex const& v = v_id.first;
+    for(auto const& id : p_cluster->siteIds) {
+    	Vertex const& v = p_cluster->idToV.at(id);
     	Vertex v_shift  = v + shift;
 
     	// std::cout<<"Computing 2x2 corner for: C"<< corner_i <<" : "<< v <<"="<< vToId(v);

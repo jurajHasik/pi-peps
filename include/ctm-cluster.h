@@ -221,7 +221,7 @@ struct Cluster {
     Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
         lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("DEFAULT") {}
 
-    static std::unique_ptr<Cluster> create(nlohmann::json & json_cluster);
+    static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 
     // Implements Boundary condition of cluster by derived class
     // default assumes simple PBC

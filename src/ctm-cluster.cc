@@ -8,10 +8,21 @@ Shift operator * (int x, Shift const& s) {
   return s * x;
 }
 
-std::unique_ptr<Cluster> Cluster::create(nlohmann::json & json_cluster) {
+std::unique_ptr<Cluster> Cluster::create(nlohmann::json const& json_cluster) {
     
-    int lX = json_cluster["lX"].get<int>();
-    int lY = json_cluster["lY"].get<int>();    
+    int lX = json_cluster.value("lX",-1);
+    if (lX < 0) {
+        std::cout<<"[Cluster::create] key lX not found."
+            <<"Using legacy key sizeM"<<std::endl;
+        lX = json_cluster["sizeM"].get<int>();
+    }
+    int lY = json_cluster.value("lY",-1);    
+    if (lY < 0) {
+        std::cout<<"[Cluster::create] key lX not found."
+            <<"Using legacy key sizeN"<<std::endl;
+        lY = json_cluster["sizeN"].get<int>();
+    }
+
     int ad = json_cluster["physDim"].get<int>();
     int pd = json_cluster["auxBondDim"].get<int>();
 
@@ -383,8 +394,9 @@ std::ostream& operator<<(std::ostream& os, Vertex const& v) {
 }
 
 std::ostream& operator<<(std::ostream& s, Cluster const& c) {
-    s <<"Cluster( metaInfo: "<< c.metaInfo 
-        << "sizeM: "<< c.sizeM <<", sizeN: "<< c.sizeN
+    s <<"Cluster( metaInfo: "<< c.metaInfo
+        << " type: " << c.cluster_type 
+        << ", sizeM: "<< c.sizeM <<", sizeN: "<< c.sizeN
         << " | lX: "<< c.lX <<" , lY: "<< c.lY 
         <<", auxBondDim: "<< c.auxBondDim << std::endl;
 

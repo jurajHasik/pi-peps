@@ -13,6 +13,7 @@
 #include "ctm-cluster.h"
 #include "ctm-cluster-basic.h"
 #include "ctm-cluster-global.h"
+#include "cluster-factory.h"
 #include "itensor/all.h"
 
 const std::string WS4(4,' ');

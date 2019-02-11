@@ -19,7 +19,7 @@ bool ClusterFactory::registerCluster(std::string const& name,
     return false;
 }
 
-std::unique_ptr<Cluster> ClusterFactory::create(nlohmann::json & json_cluster) {
+std::unique_ptr<Cluster> ClusterFactory::create(nlohmann::json const& json_cluster) {
     
     std::string cluster_type = json_cluster.value("type","NOT_FOUND");
 
@@ -27,7 +27,7 @@ std::unique_ptr<Cluster> ClusterFactory::create(nlohmann::json & json_cluster) {
     if (it != s_methods.end())
         return it->second(json_cluster); // call the "create" function
 
-    std::string message = "[ClusterFactory] Invalid model: "+ cluster_type;
+    std::string message = "[ClusterFactory] Invalid cluster type: "+ cluster_type;
     throw std::runtime_error(message);
 
     return nullptr;

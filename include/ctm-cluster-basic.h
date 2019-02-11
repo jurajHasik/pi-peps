@@ -28,7 +28,7 @@ struct Cluster_1x1_A : Cluster {
 
 	std::string virtual vertexToId(Vertex const& v) const override;
 
-    static std::unique_ptr<Cluster> create(nlohmann::json & json_cluster);
+    static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 };
 
 
@@ -59,7 +59,7 @@ struct Cluster_2x2_ABBA : Cluster {
 
     void init_VBS();
 
-    static std::unique_ptr<Cluster> create(nlohmann::json & json_cluster);
+    static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 };
 
 /* 
@@ -91,7 +91,7 @@ struct Cluster_2x2_ABCD : Cluster {
 
 	void init_VBS();
 
-    static std::unique_ptr<Cluster> create(nlohmann::json & json_cluster);
+    static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 };
 
 } //

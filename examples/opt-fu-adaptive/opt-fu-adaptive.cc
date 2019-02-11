@@ -123,11 +123,13 @@ int main( int argc, char *argv[] ) {
 	// ----- INITIALIZE CLUSTER -----------------------------------------------
 	std::unique_ptr<Cluster> p_cls;
 
-	 if (initBy == "FILE" and inClusterFile != "DEFAULT") {
+	if (initBy == "FILE" and inClusterFile != "DEFAULT") {
 		std::ifstream infile(inClusterFile, std::ios::in);
         nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster
+        // set initBy to FILE
+        json_cluster_file["initBy"] = "FILE";
         json_cluster_file["auxBondDim"] = auxBondDim;
         for(auto & site : json_cluster_file["sites"]) {
             site["auxDim"] = auxBondDim;
@@ -162,6 +164,13 @@ int main( int argc, char *argv[] ) {
 
     // write simulations params into cluster
     p_cls->simParam = jsonCls;
+
+    for (int y=-3; y<4; y++) {
+        for (int x=-3; x<4; x++) {
+            std::cout<<"["<<x<<","<<y<<"]="<<p_cls->vertexToId(Vertex(x,y));
+        }
+        std::cout<<std::endl;
+    }
     // ----- END DEFINE CLUSTER -----------------------------------------------
 
     // ***** Select SVD solver to use *****************************************
@@ -385,7 +394,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
-                    PrintData(sv);
+                    if (arg_envDbg) PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss << tmpVal;
 
@@ -394,7 +403,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
-                    PrintData(sv);
+                    if (arg_envDbg) PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -403,7 +412,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
-                    PrintData(sv);
+                    if (arg_envDbg) PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
@@ -412,7 +421,7 @@ int main( int argc, char *argv[] ) {
                         tL,sv,tR,args_dbg_cornerSVD);
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
-                    PrintData(sv);
+                    if (arg_envDbg) PrintData(sv);
                     minCornerSV = std::min(minCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 

@@ -85,35 +85,21 @@ std::unique_ptr<Cluster> p_readCluster(string const& filename) {
 
 // TODO build register-enable factory
 std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
-    // get cluster type
-    auto cluster_type = jsonCls.value("type","DEFAULT");
 
-    // Create corresponding cluster struct
-    auto lX = jsonCls["sizeM"].get<int>();
-    auto lY = jsonCls["sizeN"].get<int>();
-    
-    //Cluster c = Cluster(lX, lY);
-    std::unique_ptr<Cluster> p_cls;
-    if (cluster_type == "2x2_ABBA") {
-        p_cls = std::unique_ptr<itensor::Cluster_2x2_ABBA>(
-            new itensor::Cluster_2x2_ABBA());
-    } else if (cluster_type == "2x2_ABCD") {
-        p_cls = std::unique_ptr<itensor::Cluster_2x2_ABCD>(
-            new itensor::Cluster_2x2_ABCD());
-    }
-    else if (cluster_type == "DEFAULT") {
-        std::cout<<"[p_readCluster] using DEFAULT cluster_type for "
-            << lX <<" x "<< lY <<" cluster"<< std::endl;
-        p_cls = std::unique_ptr<Cluster>(
-            new Cluster(lX,lY));
-        p_cls->cluster_type = "DEFAULT";
-    }
-    else {
-        throw std::runtime_error("[p_readCluster] invalid cluster_type");
-    }
+    ClusterFactory cf = ClusterFactory();
+    auto p_cls = cf.create(jsonCls);
 
-    p_cls->physDim    = jsonCls["physDim"].get<int>();
-    p_cls->auxBondDim = jsonCls["auxBondDim"].get<int>();
+    // clear
+    p_cls->cToS.clear();
+    p_cls->vToId.clear();
+    p_cls->idToV.clear();
+    p_cls->siteIds.clear();
+    p_cls->SI.clear();
+    p_cls->mphys.clear();
+    p_cls->caux.clear();
+    p_cls->sites.clear();
+    p_cls->siteToWeights.clear();
+    p_cls->weights.clear();
 
     for( const auto& mapEntry : jsonCls["map"].get< vector<nlohmann::json> >() )
     {
