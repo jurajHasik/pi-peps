@@ -565,10 +565,10 @@ int main( int argc, char *argv[] ) {
                 past_tensors = p_cls->sites;
             }
             // check if current energy > previous energy
-            if ( current_energy > past_energy.back() ) {
+            if ( current_energy > best_energy ) {
                 std::ostringstream oss;
                 oss << std::scientific;
-                oss << fuI <<": ENERGY INCREASED: E(i)-E(i-1)="<< current_energy - past_energy.back();
+                oss << fuI <<": ENERGY INCREASED: E(i)-E(i-1)="<< current_energy - best_energy;
                 // TODO revert to previous tensors and recompute the environment
                 oss << " Reverting to previous tensors";
                 p_cls->sites = past_tensors;
@@ -583,8 +583,9 @@ int main( int argc, char *argv[] ) {
                 // update simulation parameters on cluster
                 p_cls->simParam = jsonCls;
                 diag_log.push_back(oss.str());
+                std::cout<< oss.str() << std::endl;
             }
-            past_energy.push_back(current_energy);
+            // past_energy.push_back(current_energy);
 
             t_end_int = std::chrono::steady_clock::now();
 
