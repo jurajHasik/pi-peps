@@ -168,21 +168,16 @@ std::unique_ptr<Engine> IsingModel_2x2_ABCD::buildEngine(nlohmann::json & json_m
 
         pe->td.gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
 
-        pe->td.gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"C", "D"}, {"D", "C"},
-            {"A", "C"}, {"B", "D"},
-            {"C", "A"}, {"D", "B"}
+        pe->td.tgates = {
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(0,1)}, &pe->td.gateMPO[0])
         };
-
-        pe->td.gate_auxInds = {
-            {2, 0}, {2, 0},
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-            {3, 1}, {3, 1}
-        };
-
-        for (int i=0; i<8; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
 
         std::cout<<"IsingModel_2x2_ABCD 2SITE ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
@@ -196,51 +191,24 @@ std::unique_ptr<Engine> IsingModel_2x2_ABCD::buildEngine(nlohmann::json & json_m
 
         pe->td.gateMPO.push_back( getMPO3s_Ising_3site(arg_tau, arg_J1/4.0, arg_h/12.0) );
         
-        pe->td.gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
+        pe->td.tgates = {
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
-
-        pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
-        };
-
-        for(int i=0; i<16; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
 
         std::cout<<"IsingModel_2x2_ABCD SYM3 ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
@@ -345,17 +313,12 @@ std::unique_ptr<Engine> IsingModel_2x2_AB::buildEngine(nlohmann::json & json_mod
 
         pe->td.gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
 
-        pe->td.gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"A", "B"}, {"B", "A"},
+        pe->td.tgates = {
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
-
-        pe->td.gate_auxInds = {
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1}
-        };
-
-        for (int i=0; i<4; i++) pe->td.ptr_gateMPO.push_back( &(pe->td.gateMPO[0]) );
 
         std::cout<<"IsingModel_2x2_AB 2SITE ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();

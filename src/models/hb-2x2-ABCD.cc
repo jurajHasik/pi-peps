@@ -239,20 +239,16 @@ std::unique_ptr<Engine> HeisenbergModel_2x2_ABCD::buildEngine(nlohmann::json & j
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
         pe->td.gateMPO.push_back( getMPO2s_HB(arg_tau, arg_J, arg_h/4.0, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< MPO_2site* >(8, &pe->td.gateMPO[0] );
 
-        pe->td.gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"C", "D"}, {"D", "C"},
-            {"A", "C"}, {"B", "D"},
-            {"C", "A"}, {"D", "B"}
-        };
-
-        pe->td.gate_auxInds = {
-            {2, 0}, {2, 0},
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1},
-            {3, 1}, {3, 1}
+        pe->td.tgates = {
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"HeisenbergModel_2x2_ABCD 2SITE ENGINE constructed"<<std::endl;
@@ -263,50 +259,24 @@ std::unique_ptr<Engine> HeisenbergModel_2x2_ABCD::buildEngine(nlohmann::json & j
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
         pe->td.gateMPO.push_back( getMPO3s_HB(arg_tau, arg_J/4.0, arg_h/12.0, arg_del/4.0) );
-        pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
 
-        pe->td.gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
-
-        pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
+        pe->td.tgates = {
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"HeisenbergModel_2x2_ABCD SYM3 ENGINE constructed"<<std::endl;
@@ -317,20 +287,12 @@ std::unique_ptr<Engine> HeisenbergModel_2x2_ABCD::buildEngine(nlohmann::json & j
         TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
 
         pe->td.gateMPO.push_back( getOP4s_HB(arg_tau, arg_J/2.0, arg_h/4.0, arg_del/2.0) );
-        pe->td.ptr_gateMPO = std::vector< OpNS * >(4, &pe->td.gateMPO[0] );
 
-        pe->td.gates = {
-            {"B", "A", "C", "D"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-            {"D", "C", "A", "B"}
-        };
-
-        pe->td.gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1}
+        pe->td.tgates = {
+            TrotterGate<OpNS>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"HeisenbergModel_2x2_ABCD 4SITE ENGINE constructed"<<std::endl;
@@ -451,16 +413,12 @@ std::unique_ptr<Engine> HeisenbergModel_2x2_AB::buildEngine(nlohmann::json & jso
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
         pe->td.gateMPO.push_back( getMPO2s_HB(arg_tau, arg_J, arg_h/4.0, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< MPO_2site* >(4, &pe->td.gateMPO[0] );
-
-        pe->td.gates = {
-            {"A", "B"}, {"B", "A"}, 
-            {"A", "B"}, {"B", "A"}
-        };
-
-        pe->td.gate_auxInds = {
-            {2, 0}, {2, 0},
-            {3, 1}, {3, 1}
+        
+        pe->td.tgates = {
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"HeisenbergModel_2x2_AB 2SITE ENGINE constructed"<<std::endl;

@@ -7,6 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include "lattice.h"
 #include "json.hpp"
 #include "itensor/all.h"
 
@@ -23,98 +24,6 @@ const char* const TAG_IT_PHYSSITE = "Psite";
 // types for auxiliary indices of on-Site tensors
 const auto AUXLINK = itensor::IndexType(TAG_IT_AUXLINK);
 const auto PHYS    = itensor::IndexType(TAG_IT_PHYSSITE);
-
-/*
- * Generic displacement vector on a square lattice.
- * Support +,-,-=,+=,==,!= 
- */ 
-struct Shift {
-    std::array<int, 2> d;
-
-    Shift() : d({0,0}) {}
-
-    Shift(int dx, int dy) : d({dx,dy}) {}
-
-    bool operator== (const Shift &s) const {
-        return (this->d[0] == s.d[0]) && (this->d[1] == s.d[1]);
-    }
- 
-    bool operator!= (const Shift &s) const {
-        return (this->d[0] != s.d[0]) || (this->d[1] != s.d[1]);
-    }
-
-    Shift operator*(int x) const {
-        return Shift(x * this->d[0], x * this->d[1]);
-    }
-
-    Shift operator+(Shift const& s) const {
-        return Shift(this->d[0] + s.d[0], this->d[1] + s.d[1]);
-    }
-
-    Shift operator-(Shift const& s) const {
-        return Shift(this->d[0] - s.d[0], this->d[1] - s.d[1]);
-    }
-
-    Shift& operator+=(Shift const& s) {
-        this->d[0] += s.d[0]; this->d[1] += s.d[1];
-        return *this;
-    }
-
-    Shift& operator-=(Shift const& s) {
-        this->d[0] -= s.d[0]; this->d[1] -= s.d[1];
-        return *this;
-    }
-};
-
-Shift operator * (int x, Shift const& s);
-
-std::ostream& 
-operator<<(std::ostream& os, Shift const& s);
-
-/*
- * A vertex of a square lattice. One can obtain new vertices
- * by applying displacement: Vertex <- Vertex [+,-,+=,-=] Shift 
- */ 
-struct Vertex {
-    std::array<int, 2> r;
-
-    Vertex() : r({0,0}) { /* Default Vertex */ }
-
-    Vertex(int x, int y) : r({x,y}) {}
-
-    bool operator== (const Vertex &v) const {
-        return (this->r[0] == v.r[0]) && (this->r[1] == v.r[1]);
-    }
- 
-    bool operator!= (const Vertex &v) const {
-        return (this->r[0] != v.r[0]) || (this->r[1] != v.r[1]);
-    }
-
-    bool operator> (const Vertex &v) const { return this->r > v.r; }
-
-    bool operator< (const Vertex &v) const { return this->r < v.r; }
-
-    Vertex operator+(Shift const& s) const {
-        return Vertex(this->r[0] + s.d[0], this->r[1] + s.d[1]);
-    }
-
-    Vertex operator-(Shift const& s) const {
-        return Vertex(this->r[0] - s.d[0], this->r[1] - s.d[1]);
-    }
-
-    Vertex& operator+=(Shift const& s) {
-        this->r[0] += s.d[0]; this->r[1] += s.d[1];
-        return *this;
-    }
-
-    Vertex& operator-=(Shift const& s) {
-        this->r[0] -= s.d[0]; this->r[1] -= s.d[1];
-        return *this;
-    }
-};
-
-std::ostream& 
-operator<<(std::ostream& os, Vertex const& v);
 
 struct LinkWeight {
     std::vector< std::string > sId; // Ids of sites connected by weight

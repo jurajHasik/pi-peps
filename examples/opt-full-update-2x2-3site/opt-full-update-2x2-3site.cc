@@ -127,6 +127,8 @@ int main( int argc, char *argv[] ) {
         nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
 
         // preprocess parameters of input cluster
+         // set initBy to FILE
+        json_cluster_file["initBy"] = "FILE";
         json_cluster_file["auxBondDim"] = auxBondDim;
         for(auto & site : json_cluster_file["sites"]) {
             site["auxDim"] = auxBondDim;
@@ -228,23 +230,8 @@ int main( int argc, char *argv[] ) {
     EngineFactory ef = EngineFactory();
     auto ptr_model = mf.create(json_model_params);
     auto ptr_engine = ef.build(json_model_params, pLinSysSolver.get()); // full update engine
-    auto ptr_gfe = ef.build(json_model_params);                         // gauge fixing engine
-   
-    if (ptr_engine) { 
-        std::cout<<"Valid Engine constructed"<<std::endl;
-    } else {
-        std::cout<<"Engine pointer is NULL"<<std::endl;
-        exit(EXIT_FAILURE);
-    }
-    if (arg_su_gauge_fix) {
-        ptr_gfe = buildEngine(json_gauge_fix_params);
-        if (ptr_gfe) {
-            std::cout<<"Valid GaugeFix Engine constructed"<<std::endl;
-        } else {
-            std::cout<<"GaugeFix Engine pointer is NULL"<<std::endl;
-            exit(EXIT_FAILURE);
-        }
-    }
+    std::unique_ptr<Engine> ptr_gfe = nullptr;
+    if (arg_su_gauge_fix) ptr_gfe = ef.build(json_gauge_fix_params);    // gauge fixing engine
     
     Args fuArgs = {
         "maxAltLstSqrIter",arg_maxAltLstSqrIter,

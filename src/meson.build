@@ -16,6 +16,7 @@ source_files += files([
                        'ctm-cluster.cc',
                        'ctm-cluster-basic.cc',
                        'cluster-factory.cc',
+                       'lattice.cc',
                        'mpo.cc',
                        'su2.cc',
 		       'itensor-svd-solvers.cc',

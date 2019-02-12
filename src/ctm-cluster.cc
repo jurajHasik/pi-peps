@@ -4,10 +4,6 @@ using namespace itensor;
 
 const int Cluster::BRAKET_OFFSET = 4;
 
-Shift operator * (int x, Shift const& s) {
-  return s * x;
-}
-
 std::unique_ptr<Cluster> Cluster::create(nlohmann::json const& json_cluster) {
     
     int lX = json_cluster.value("lX",-1);

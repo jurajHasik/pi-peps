@@ -222,160 +222,50 @@ std::unique_ptr<Engine> J1J2Model_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     // symmetrize Trotter Sequence
     bool arg_symmTrotter = json_model.value("symmTrotter",false);
 
-    if (arg_fuGateSeq == "SYM1") {
+    if (arg_fuGateSeq == "SYM3") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
         pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< MPO_3site* >(16, &pe->td.gateMPO[0] );
-
-        pe->td.gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (1 BC ABCD) 
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (2 AD BADC)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (2 BC BADC)
-
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, //{"B", "D", "C", "A"}, // (3 BC CDAB)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, //{"A", "C", "D", "B"}, // (4 AD DCBA)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}  //{"B", "D", "C", "A"}  // (4 BC DCBA)
-        };
-
-        pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-           
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1}
-        };
-    
-        std::cout<<"J1J2Model_2x2_ABCD SYM1 ENGINE constructed"<<std::endl;
-        if (arg_symmTrotter) pe->td.symmetrize();
-        return std::unique_ptr<Engine>( pe );
-    } 
-    else if (arg_fuGateSeq == "SYM2") {
-        TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
-
-        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
-
-        pe->td.gates = {
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (1 AD ABCD)
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (1 BC ABCD) 
-            
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (2 BC BADC)
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}, // (2 AD BADC)
-            
-            {"A", "B", "D", "C"}, {"D", "C", "A", "B"}, // (3 AD CDAB) 
-            {"B", "A", "C", "D"}, {"C", "D", "B", "A"}, // (3 BC CDAB)
-
-            {"C", "D", "B", "A"}, {"B", "A", "C", "D"}, // (4 BC DCBA)        
-            {"D", "C", "A", "B"}, {"A", "B", "D", "C"}  // (4 AD DCBA)
-        };
-
-        pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3},
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},
-
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1},
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            
-            {1,2, 0,1, 3,0, 2,3}, {3,0, 2,3, 1,2, 0,1},
-            {1,0, 2,1, 3,2, 0,3}, {3,2, 0,3, 1,0, 2,1}, 
-
-            {3,0, 2,3, 1,2, 0,1}, {1,2, 0,1, 3,0, 2,3},        
-            {3,2, 0,3, 1,0, 2,1}, {1,0, 2,1, 3,2, 0,3}
-        };
-
-        std::cout<<"J1J2Model_2x2_ABCD SYM2 ENGINE constructed"<<std::endl;
-        if (arg_symmTrotter) pe->td.symmetrize();
-        return std::unique_ptr<Engine>( pe );
-    }
-    else if (arg_fuGateSeq == "SYM3") {
-        TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
-
-        pe->td.gateMPO.push_back( getMPO3s_J1J2(arg_tau, arg_J1/4.0, arg_J2/2.0, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< MPO_3site * >(16, &pe->td.gateMPO[0] );
-
-        pe->td.gates = {
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-
-            {"D", "C", "A", "B"},
-            {"B", "A", "C", "D"},
-            {"A", "B", "D", "C"},
-            {"C", "D", "B", "A"},
-
-            {"C", "D", "B", "A"}, 
-            {"A", "B", "D", "C"},
-            {"B", "A", "C", "D"},
-            {"D", "C", "A", "B"}
-        };
-
-        pe->td.gate_auxInds = {
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-
-            {3,0, 2,3, 1,2, 0,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,2, 0,3, 1,0, 2,1},
-            {3,0, 2,3, 1,2, 0,1},
-
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3},
-            {1,2, 0,1, 3,0, 2,3}, 
-            {1,0, 2,1, 3,2, 0,3},
-
-            {1,2, 0,1, 3,0, 2,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,0, 2,1, 3,2, 0,3},
-            {1,2, 0,1, 3,0, 2,3}
+        
+        pe->td.tgates = {
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(1,0), Shift(0,-1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,0), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(0,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_3site>(Vertex(1,1), {Shift(-1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"J1J2Model_2x2_ABCD SYM3 ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
-    }
+    } 
     else if (arg_fuGateSeq == "4SITE") {
         TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
 
-        pe->td.gateMPO.push_back( getOP4s_J1J2(arg_tau, arg_J1/2.0, arg_J2, arg_del) );
-        pe->td.ptr_gateMPO = std::vector< OpNS * >(4, &pe->td.gateMPO[0] );
+        pe->td.gateMPO.push_back( getOP4s_J1J2(arg_tau, arg_J1/2.0, arg_J2, arg_del/2.0) );
 
-        pe->td.gates = {
-            {"B", "A", "C", "D"},
-            {"C", "D", "B", "A"},
-            {"A", "B", "D", "C"},
-            {"D", "C", "A", "B"}
-        };
-
-        pe->td.gate_auxInds = {
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1},
-            {3,0, 2,3, 1,2, 0,1}
+        pe->td.tgates = {
+            TrotterGate<OpNS>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<OpNS>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"J1J2Model_2x2_ABCD 4SITE ENGINE constructed"<<std::endl;
         if (arg_symmTrotter) pe->td.symmetrize();
         return std::unique_ptr<Engine>( pe );
-    }
+    } 
     else {
         std::cout<<"Unsupported gate sequence: "<< arg_fuGateSeq << std::endl;
         exit(EXIT_FAILURE);
