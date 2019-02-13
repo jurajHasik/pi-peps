@@ -704,9 +704,8 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
 	}
 
 	time_point t_iso_begin, t_iso_end;
-    for(auto const& v_id : p_cluster->vToId) {
-    	std::string id = v_id.second;   
-    	Vertex const& v = v_id.first;
+    for(auto const& id : p_cluster->siteIds) {
+    	Vertex const& v = p_cluster->idToV.at(id);
     	Vertex v_shift  = v + shift;
     	Vertex v_shift_oi = v + shift_oi;
 

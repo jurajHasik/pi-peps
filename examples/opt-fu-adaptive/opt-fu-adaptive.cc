@@ -387,7 +387,7 @@ int main( int argc, char *argv[] ) {
                     // Compute spectra of Corner matrices
                     std::cout << std::endl;
                     double tmpVal;
-                    double minCornerSV = 1.0e+16;
+                    double max_tailCornerSV = 0.0;
                     Args args_dbg_cornerSVD = {"Truncate",false};
                     std::cout << "Spectra: " << std::endl;
 
@@ -397,7 +397,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
                     oss << tmpVal;
 
                     tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
@@ -406,7 +406,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
@@ -415,7 +415,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
@@ -424,13 +424,13 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    minCornerSV = std::min(minCornerSV, tmpVal);
+                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     std::cout << "MinVals: "<< oss.str() << std::endl;
 
                     // record diagnostic data
-                    diagData_ctm = Args("ctmI",envI,"minCornerSV",minCornerSV,"maxBoundaryVariance",max_boundaryVar);
+                    diagData_ctm = Args("ctmI",envI,"max_tailCornerSV",max_tailCornerSV,"maxBoundaryVariance",max_boundaryVar);
 
                     break;
                 }

@@ -314,10 +314,10 @@ std::unique_ptr<Engine> IsingModel_2x2_AB::buildEngine(nlohmann::json & json_mod
         pe->td.gateMPO.push_back( getMPO2s_Ising_2site(arg_tau, arg_J1, arg_h/4.0) );
 
         pe->td.tgates = {
-            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
-            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
-            TrotterGate<MPO_2site>(Vertex(0,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
-            TrotterGate<MPO_2site>(Vertex(1,1), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0])
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(0,0), {Shift(0,1)}, &pe->td.gateMPO[0]),
+            TrotterGate<MPO_2site>(Vertex(1,0), {Shift(0,1)}, &pe->td.gateMPO[0])
         };
 
         std::cout<<"IsingModel_2x2_AB 2SITE ENGINE constructed"<<std::endl;
