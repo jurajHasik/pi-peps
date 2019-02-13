@@ -4,18 +4,18 @@ namespace itensor {
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
 // TODO implement more generic external field
-MPO_2site getMPO2s_AKLT(double tau) {
+ITensor Projector_S2tpS2_S1(Index & s1, Index & s2) {
     int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
-
-    Index s1 = Index("S1", physDim, PHYS);
-    Index s2 = Index("S2", physDim, PHYS);
+    
+    s1 = Index("S1", physDim, PHYS);
+    s2 = Index("S2", physDim, PHYS);
     Index s1p = prime(s1);
     Index s2p = prime(s2);
 
-    auto h12 = ITensor(s1, s2, s1p, s2p);
-
+    auto p = ITensor(s1, s2, s1p, s2p);
+    // we use Dyknin notation to label representation
     // Loop over <bra| indices
-    int rS = physDim-1; // Label of SU(2) irrep in Dyknin notation
+    int rS = physDim-1; // Label of SU(2) irrep 
     int mbA, mbB, mkA, mkB;
     double hVal;
     for(int bA=1;bA<=physDim;bA++) {
@@ -29,7 +29,7 @@ MPO_2site getMPO2s_AKLT(double tau) {
             mkA = -(rS) + 2*(kA-1);
             mkB = -(rS) + 2*(kB-1);
             // Loop over possible values of m given by tensor product
-            // of 2 spin (physDim-1) irreps (In Dynkin notation)
+            // of 2 spin (physDim-1) irreps
             hVal = 0.0;
             for(int m=-2*(rS);m<=2*(rS);m=m+2) {
                 if ((mbA+mbB == m) && (mkA+mkB == m)) {
@@ -48,16 +48,24 @@ MPO_2site getMPO2s_AKLT(double tau) {
             if((bA == kA) && (bB == kB)) {
                 // add 2*Id(bA,kA;bB,kB) == 
                 //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
-                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal+std::sqrt(2.0));
+                p.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
             } else {
-                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
+                p.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
             }
         }}
     }}
 
+    return p;
+}
+
+MPO_2site getMPO2s_AKLT(double tau) {
+    Index s1,s2;
+
+    auto p12 = Projector_S2tpS2_S1(s1,s2);
+    
     auto cmbI = combiner(s1,s2);
-    h12 = (cmbI * h12 ) * prime(cmbI);
-    ITensor u12 = expHermitian(h12, {-tau, 0.0});
+    p12 = (cmbI * p12 ) * prime(cmbI);
+    ITensor u12 = expHermitian(p12, {-tau, 0.0});
     u12 = (cmbI * u12 ) * prime(cmbI);
     // definition of U_12 done
 
@@ -65,63 +73,18 @@ MPO_2site getMPO2s_AKLT(double tau) {
 }
 
 MPO_3site getMPO3s_AKLT(double tau) {
-    int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
-    std::cout.precision(10);
+    Index s1,s2;
+    auto p12 = Projector_S2tpS2_S1(s1,s2);
 
-    Index s1 = Index("S1", physDim, PHYS);
-    Index s2 = Index("S2", physDim, PHYS);
-    Index s3 = Index("S3", physDim, PHYS);
+    Index s3 = Index("S3", s1.m(), PHYS);
     Index s1p = prime(s1);
     Index s2p = prime(s2);
     Index s3p = prime(s3);
 
-    auto h12 = ITensor(s1, s2, s1p, s2p);
-
-    // Loop over <bra| indices
-    int rS = physDim-1; // Label of SU(2) irrep in Dyknin notation
-    int mbA, mbB, mkA, mkB;
-    double hVal;
-    for(int bA=1;bA<=physDim;bA++) {
-    for(int bB=1;bB<=physDim;bB++) {
-        // Loop over |ket> indices
-        for(int kA=1;kA<=physDim;kA++) {
-        for(int kB=1;kB<=physDim;kB++) {
-            // Use Dynkin notation to specify irreps
-            mbA = -(rS) + 2*(bA-1);
-            mbB = -(rS) + 2*(bB-1);
-            mkA = -(rS) + 2*(kA-1);
-            mkB = -(rS) + 2*(kB-1);
-            // Loop over possible values of m given by tensor product
-            // of 2 spin (physDim-1) irreps (In Dynkin notation)
-            hVal = 0.0;
-            for(int m=-2*(rS);m<=2*(rS);m=m+2) {
-                if ((mbA+mbB == m) && (mkA+mkB == m)) {
-                    
-                //DEBUG
-                // if(dbg) std::cout <<"<"<< mbA <<","<< mbB <<"|"<< m 
-                //     <<"> x <"<< m <<"|"<< mkA <<","<< mkB 
-                //     <<"> = "<< SU2_getCG(rS, rS, 2*rS, mbA, mbB, m)
-                //     <<" x "<< SU2_getCG(rS, rS, 2*rS, mkA, mkB, m)
-                //     << std::endl;
-
-                hVal += SU2_getCG(rS, rS, 2*rS, mbA, mbB, m) 
-                    *SU2_getCG(rS, rS, 2*rS, mkA, mkB, m);
-                }
-            }
-            if((bA == kA) && (bB == kB)) {
-                // add 2*Id(bA,kA;bB,kB) == 
-                //    sqrt(2)*Id(bA,kA)(x)sqrt(2)*Id(bB,kB)
-                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal+std::sqrt(2.0));
-            } else {
-                h12.set(s1(kA),s2(kB),s1p(bA),s2p(bB),hVal);
-            }
-        }}
-    }}
-
     auto h123 = ITensor(s1, s2, s3, s1p, s2p, s3p);
 
-    h123 = h12 * delta(s3,s3p);
-    h123 += (h12 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p);
+    h123 = p12 * delta(s3,s3p);
+    h123 += (p12 * delta(s1,s3) * delta(s1p,s3p)) * delta(s1,s1p);
 
     auto cmbI = combiner(s1,s2,s3);
     h123 = (cmbI * h123 ) * prime(cmbI);

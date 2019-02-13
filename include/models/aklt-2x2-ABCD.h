@@ -7,7 +7,11 @@
 namespace itensor {
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
+ITensor Projector_S2tpS2_S1(Index & s1, Index & s2);
+
 MPO_2site getMPO2s_AKLT(double tau);
+
+MPO_3site getMPO3s_AKLT(double tau);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 
