@@ -808,6 +808,44 @@ double EVBuilder::get2SOPTN(bool DBG,
         std::pair<ITensor,ITensor> const& Op,
         Vertex const& v1, Vertex const& v2) const 
 {
+    auto tN = EVBuilder::insert2S(DBG, Op, v1, v2);
+
+    if ( tN.r() > 0 ) {
+        std::string error_msg = "Unexpected rank r=" + tN.r();
+        throw std::runtime_error(error_msg);
+    }
+    if(DBG) std::cout <<"===== EVBuilder::get2SOPTN done ====="
+        << std::string(36,'=') << std::endl;
+
+    return sumels(tN);
+}
+
+ITensor EVBuilder::redDenMat_2S(Vertex const& v1, Vertex const& v2, bool DBG) const 
+{
+    auto BRAKET_OFFSET = p_cluster->BRAKET_OFFSET;
+
+    // find corresponding sites in elementary cluster
+    auto id1 = p_cluster->vertexToId(v1);
+    auto id2 = p_cluster->vertexToId(v2);
+    // find the index of site given its elem position within cluster
+    auto pI1 = p_cluster->mphys.at(id1);
+    auto pI2 = p_cluster->mphys.at(id2);
+
+    auto tmp_Op_v1 = p_cluster->sites.at(id1) 
+        * delta(prime(pI1,1),prime(pI1,BRAKET_OFFSET))
+        * dag(p_cluster->sites.at(id1)).prime(BRAKET_OFFSET);
+
+    auto tmp_Op_v2 = p_cluster->sites.at(id2) 
+        * delta(prime(pI2,1),prime(pI2,BRAKET_OFFSET))
+        * dag(p_cluster->sites.at(id2)).prime(BRAKET_OFFSET);
+
+    return insert2S(DBG, std::make_pair(tmp_Op_v1,tmp_Op_v2), v1, v2);
+}
+
+ITensor EVBuilder::insert2S(bool DBG,
+        std::pair<ITensor,ITensor> const& Op,
+        Vertex const& v1, Vertex const& v2) const 
+{
     using DIRECTION = CtmEnv::DIRECTION;
 
     int const tmp_prime_offset = 10;
@@ -1141,15 +1179,7 @@ double EVBuilder::get2SOPTN(bool DBG,
         // 3) ##### Construct RIGHT edge DONE ##################################################
     }
 
-
-    if ( tN.r() > 0 ) {
-        std::string error_msg = "Unexpected rank r=" + tN.r();
-        throw std::runtime_error(error_msg);
-    }
-    if(DBG) std::cout <<"===== EVBuilder::get2SOPTN done ====="
-        << std::string(36,'=') << std::endl;
-
-    return sumels(tN);
+    return tN;
 }
 
 double EVBuilder::evalSS(Vertex const& v1, Vertex const& v2, 

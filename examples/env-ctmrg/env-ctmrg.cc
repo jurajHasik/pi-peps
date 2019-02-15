@@ -30,13 +30,11 @@ int main( int argc, char *argv[] ) {
     
 	//read cluster infile OR initialize by one of the predefined
 	//options FILE, RND, RND_AB, AFM, RVB, ...
-	std::string initBy(jsonCls["initBy"].get<std::string>());
-    
-	int physDim, auxBondDim;
-	std::string inClusterFile;
-	inClusterFile = jsonCls["inClusterFile"].get<std::string>();
-	physDim       = jsonCls["physDim"].get<int>();
-	auxBondDim    = jsonCls["auxBondDim"].get<int>();
+    auto json_cluster(jsonCls["cluster"]);
+    std::string initBy(json_cluster["initBy"].get<std::string>());
+    std::string inClusterFile = json_cluster.value("inClusterFile","DEFAULT");
+    int physDim    = json_cluster["physDim"].get<int>();
+    int auxBondDim = json_cluster["auxBondDim"].get<int>();
     
 	// read cluster outfile
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
@@ -72,12 +70,28 @@ int main( int argc, char *argv[] ) {
     std::unique_ptr<Cluster> p_cls;
 
     // choose initial wavefunction
-    if (sitesInit == "FILE") {
-        // cls = readCluster(inClusterFile);
-        p_cls = p_readCluster(inClusterFile);
+    if (initBy == "FILE" and inClusterFile != "DEFAULT") {
+        std::ifstream infile(inClusterFile, std::ios::in);
+        nlohmann::json json_cluster_file = nlohmann::json::parse(infile);
+
+        // preprocess parameters of input cluster
+        // set initBy to FILE
+        json_cluster_file["initBy"] = "FILE";
+        json_cluster_file["auxBondDim"] = auxBondDim;
+        for(auto & site : json_cluster_file["sites"]) {
+            site["auxDim"] = auxBondDim;
+        }
+
+        p_cls = p_readCluster(json_cluster_file);
         // initClusterSites(cls);
         // initClusterWeights(cls);
+        // setWeights(*p_cls, suWeightsInit);
         // setOnSiteTensorsFromFile(cls, inClusterFile);
+    } else if (initBy == "FILE" and inClusterFile == "DEFAULT") {
+        throw std::runtime_error("No cluster input file  given for inClusterFile");
+    } else {
+        ClusterFactory cf = ClusterFactory();
+        p_cls = cf.create(json_cluster);
     }
     // std::cout << cls;
     std::cout << *p_cls;
@@ -85,10 +99,8 @@ int main( int argc, char *argv[] ) {
 
     // ***** INITIALIZE MODEL *************************************************
     // DEFINE MODEL
-    // std::unique_ptr<Model> ptr_model;
-    // ptr_model = getModel(json_model_params);
     ModelFactory mf = ModelFactory();
-    auto ptr_model = mf.create("ISING_2X2_ABCD",json_model_params);
+    auto ptr_model = mf.create(json_model_params);
     // ***** INITIALIZE MODEL DONE ********************************************
 
     // *****
@@ -169,24 +181,13 @@ int main( int argc, char *argv[] ) {
         if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
             t_begin_int = std::chrono::steady_clock::now();
             
-            e_curr[0]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(1,0));
-            e_curr[1]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,0), Vertex(0,1));
-            e_curr[2]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1,0), Vertex(1,1));
-            e_curr[3]=ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0,1), Vertex(1,1));
+            e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+            e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+            e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+            e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
 
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
-
-            t_begin_int = std::chrono::steady_clock::now();
-
-            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT, true);
-            ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN, true);
-
-            t_end_int = std::chrono::steady_clock::now();
-            std::cout<<"Var(boundary) T: "<< get_s(t_begin_int,t_end_int) << std::endl;
-
-             
+            std::cout<<" || Var(boundary) in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] : "
+                    << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
 
             // if the difference between energies along NN links is lower then arg_envEps
             // consider the environment converged

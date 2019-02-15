@@ -101,6 +101,14 @@ class EVBuilder {
         std::pair< itensor::ITensor,itensor::ITensor > const& Op,
         Vertex const& v1, Vertex const& v2) const;
 
+    itensor::ITensor redDenMat_2S(
+        Vertex const& v1, 
+        Vertex const& v2, bool DBG) const;
+
+    itensor::ITensor insert2S(bool DBG,
+        std::pair< itensor::ITensor,itensor::ITensor > const& Op,
+        Vertex const& v1, Vertex const& v2) const; 
+
     // coefs[0] * SxSx + coefs[1] * SySy + coefs[2] * SzSz
     double evalSS(Vertex const& v1, Vertex const& v2, 
         std::vector<double> coefs = {1.0, 1.0, 1.0}, bool DBG = false) const;

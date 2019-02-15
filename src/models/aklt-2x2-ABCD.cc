@@ -23,7 +23,7 @@ ITensor Projector_S2tpS2_S1(Index & s1, Index & s2) {
         // Loop over |ket> indices
         for(int kA=1;kA<=physDim;kA++) {
         for(int kB=1;kB<=physDim;kB++) {
-            // Use Dynkin notation to specify irreps
+
             mbA = -(rS) + 2*(bA-1);
             mbB = -(rS) + 2*(bB-1);
             mkA = -(rS) + 2*(kA-1);
@@ -58,11 +58,43 @@ ITensor Projector_S2tpS2_S1(Index & s1, Index & s2) {
     return p;
 }
 
-MPO_2site getMPO2s_AKLT(double tau) {
+ITensor Projector_S2tpS2_S1_v2(Index & s1, Index & s2) {
+    int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
+
+    auto S1S2 = [](Index const& s1, Index const& s2) { 
+        return SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2)
+        + 0.5*( SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2)
+        + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ); 
+    };
+
+    s1 = Index("S1", physDim, PHYS);
+    s2 = Index("S2", physDim, PHYS);
+
+    auto tmp_S1S2   = S1S2(s1,s2);
+    auto tmp_S1S2_2 = mapprime( tmp_S1S2 * prime(tmp_S1S2,1), 2, 1);
+    auto tmp_S1S2_3 = mapprime( tmp_S1S2 * prime(tmp_S1S2,1) 
+        * prime(tmp_S1S2,2), 3, 1);
+    auto tmp_S1S2_4 = mapprime( tmp_S1S2 * prime(tmp_S1S2,1) 
+        * prime(tmp_S1S2,2) * prime(tmp_S1S2,3), 4, 1);
+
+    auto p = (1.0/14.0)*( tmp_S1S2 + (7.0/10.0)*tmp_S1S2_2 
+        + (7.0/45.0)*tmp_S1S2_3 + (1.0/90.0)*tmp_S1S2_4);
+
+    return p;
+}
+
+MPO_2site getMPO2s_AKLT(double tau, double lambda) {
     Index s1,s2;
 
     auto p12 = Projector_S2tpS2_S1(s1,s2);
+    // auto p12 = Projector_S2tpS2_S1_v2(s1,s2);
+    auto id12 = ITensor(s1, prime(s1));
+    for (int i=1; i<=s1.m(); i++) id12.set(s1(i),prime(s1)(i),1.0);
+    id12 = id12 * delta(s2,prime(s2));
     
+    // add lambda*Id
+    p12 = p12 + lambda*id12;
+
     auto cmbI = combiner(s1,s2);
     p12 = (cmbI * p12 ) * prime(cmbI);
     ITensor u12 = expHermitian(p12, {-tau, 0.0});
@@ -188,7 +220,8 @@ std::unique_ptr<Model> AKLTModel_2x2_ABCD::create(nlohmann::json & json_model) {
 
 std::unique_ptr<Engine> AKLTModel_2x2_ABCD::buildEngine(nlohmann::json & json_model) {
     
-    double arg_tau = json_model["tau"].get<double>();
+    double arg_tau    = json_model["tau"].get<double>();
+    double arg_lambda = json_model["lambda"].get<double>();
 
     // gate sequence
     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
@@ -199,7 +232,7 @@ std::unique_ptr<Engine> AKLTModel_2x2_ABCD::buildEngine(nlohmann::json & json_mo
     if (arg_fuGateSeq == "2SITE") {
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
-        pe->td.gateMPO.push_back( getMPO2s_AKLT(arg_tau) );
+        pe->td.gateMPO.push_back( getMPO2s_AKLT(arg_tau, arg_lambda) );
         
         pe->td.tgates = {
             TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
@@ -260,7 +293,8 @@ void AKLTModel_2x2_AB::setObservablesHeader(std::ofstream & output) {
     output <<"STEP, " 
         <<"SS AB (0,0)(1,0), "<<"SS BA (1,0)(2,0), "
         <<"SS AB (0,0)(0,1), "<<"SS BA (1,0)(1,1), "
-        <<"Avg mag=|S|, "<<"Energy"
+        <<"Avg mag=|S|, "<<"Energy, "<<"m_z(0,0), "<<"m_x(0,0, "
+        <<"m_z(1,0), "<<"m_x(1,0) "
         <<std::endl;
 }
 
@@ -282,13 +316,38 @@ void AKLTModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
         Vertex(1,0), Vertex(1,1))); //B-3--1-A
 
-    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
-    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
-    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
+    auto rdm_2S = ev.redDenMat_2S(Vertex(0,0),Vertex(1,0), false);
+    Print(rdm_2S);
 
-    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
-    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
-    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
+    auto id1 = ev.p_cluster->vertexToId(Vertex(0,0));
+    auto id2 = ev.p_cluster->vertexToId(Vertex(1,0));
+    auto pI1 = ev.p_cluster->mphys.at(id1);
+    auto pI2 = ev.p_cluster->mphys.at(id2);
+
+    // get norm
+    auto rdm_2S_normT = (rdm_2S * delta( pI1, prime(pI1))) * delta( pI2, prime(pI2) );
+    double rdm_2S_norm = sumels(rdm_2S_normT);
+
+    // contract to rdm of site (0,0)
+    auto rdm_1S_00 = rdm_2S * delta( pI2, prime(pI2) );
+    // contract to rdm of site (1,0)
+    auto rdm_1S_10 = rdm_2S * delta( pI1, prime(pI1) );
+
+    ev_sA[0] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_Z, pI1)) / rdm_2S_norm;
+    ev_sA[1] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_P, pI1)) / rdm_2S_norm;
+    ev_sA[2] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_M, pI1)) / rdm_2S_norm; 
+
+    ev_sB[0] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_Z, pI2)) / rdm_2S_norm;
+    ev_sB[1] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_P, pI2)) / rdm_2S_norm;
+    ev_sB[2] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_M, pI2)) / rdm_2S_norm; 
+
+    // ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    // ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    // ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
+
+    // ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    // ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    // ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
     // write energy
     output << lineNo; 
@@ -314,6 +373,9 @@ void AKLTModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     // return energy in metaInf
     metaInf.add("energy",energy);
 
+    // individual magnetizations
+    output <<" "<< ev_sA[0] <<" "<< ev_sA[1] <<" "<< ev_sB[0] <<" "<< ev_sB[1];
+
     output << std::endl;
 }
 
@@ -323,7 +385,8 @@ std::unique_ptr<Model> AKLTModel_2x2_AB::create(nlohmann::json & json_model) {
 
 std::unique_ptr<Engine> AKLTModel_2x2_AB::buildEngine(nlohmann::json & json_model) {
     
-    double arg_tau = json_model["tau"].get<double>();
+    double arg_tau    = json_model["tau"].get<double>();
+    double arg_lambda = json_model["lambda"].get<double>();
 
     // gate sequence
     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
@@ -334,8 +397,8 @@ std::unique_ptr<Engine> AKLTModel_2x2_AB::buildEngine(nlohmann::json & json_mode
     if (arg_fuGateSeq == "2SITE") {
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
-        pe->td.gateMPO.push_back( getMPO2s_AKLT(arg_tau) );
-        
+        pe->td.gateMPO.push_back( getMPO2s_AKLT(arg_tau, arg_lambda) );
+
         pe->td.tgates = {
             TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
             TrotterGate<MPO_2site>(Vertex(1,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
