@@ -316,38 +316,13 @@ void AKLTModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     evNN.push_back(ev.eval2Smpo(EVBuilder::OP2S_AKLT_S2_H,
         Vertex(1,0), Vertex(1,1))); //B-3--1-A
 
-    auto rdm_2S = ev.redDenMat_2S(Vertex(0,0),Vertex(1,0), false);
-    Print(rdm_2S);
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
 
-    auto id1 = ev.p_cluster->vertexToId(Vertex(0,0));
-    auto id2 = ev.p_cluster->vertexToId(Vertex(1,0));
-    auto pI1 = ev.p_cluster->mphys.at(id1);
-    auto pI2 = ev.p_cluster->mphys.at(id2);
-
-    // get norm
-    auto rdm_2S_normT = (rdm_2S * delta( pI1, prime(pI1))) * delta( pI2, prime(pI2) );
-    double rdm_2S_norm = sumels(rdm_2S_normT);
-
-    // contract to rdm of site (0,0)
-    auto rdm_1S_00 = rdm_2S * delta( pI2, prime(pI2) );
-    // contract to rdm of site (1,0)
-    auto rdm_1S_10 = rdm_2S * delta( pI1, prime(pI1) );
-
-    ev_sA[0] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_Z, pI1)) / rdm_2S_norm;
-    ev_sA[1] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_P, pI1)) / rdm_2S_norm;
-    ev_sA[2] = sumels(rdm_1S_00 * ev.getSpinOp(EVBuilder::MPO_S_M, pI1)) / rdm_2S_norm; 
-
-    ev_sB[0] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_Z, pI2)) / rdm_2S_norm;
-    ev_sB[1] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_P, pI2)) / rdm_2S_norm;
-    ev_sB[2] = sumels(rdm_1S_10 * ev.getSpinOp(EVBuilder::MPO_S_M, pI2)) / rdm_2S_norm; 
-
-    // ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0,0));
-    // ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0,0));
-    // ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0,0));
-
-    // ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
-    // ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
-    // ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1,0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1,0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1,0));
 
     // write energy
     output << lineNo; 
