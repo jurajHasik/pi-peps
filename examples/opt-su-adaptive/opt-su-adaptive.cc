@@ -211,11 +211,10 @@ int main( int argc, char *argv[] ) {
         std::cout<<std::endl;
     }
 
-    auto printBondSpectra = [&p_cls] {
+    auto printBondSpectra_weights = [&p_cls] {
         auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
 
-        std::cout<<"BOND SPECTRA - START"<< std::endl;
-        // loop over link weights and perform svd uniquely
+        std::cout<<"BOND SPECTRA(WEIGHTS) - START"<< std::endl;
         std::vector< std::string > lwIds;
         for (auto const& stw : p_cls->siteToWeights )
             for (auto const& lw : stw.second)
@@ -232,8 +231,45 @@ int main( int argc, char *argv[] ) {
                 
                     lwIds.push_back(lw.wId);
                 }
-        std::cout<<"BOND SPECTRA - END"<< std::endl;
+        std::cout<<"BOND SPECTRA(WEIGHTS) - END"<< std::endl;
     };
+    auto printBondSpectra_sites = [&p_cls] {
+        auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+
+        std::cout<<"BOND SPECTRA(SITES) - START"<< std::endl;
+        // loop over link weights and perform svd uniquely
+        std::vector< std::string > lwIds;
+        for (auto const& stw : p_cls->siteToWeights )
+            for (auto const& lw : stw.second)
+                if ( std::find(lwIds.begin(), lwIds.end(), lw.wId) == lwIds.end() ) {
+                    nlohmann::json jentry;
+                    jentry["sites"] = lw.sId;
+                    jentry["directions"] = lw.dirs;
+                    jentry["weightId"] = lw.wId;
+                    
+                    std::cout<< lw.sId[0] <<"-"<< lw.dirs[0] <<"--"<< lw.dirs[1] <<"-"
+                        << lw.sId[1] <<" ";
+
+                    std::vector<Index> indsL;
+                    for (int i=0;i<4;i++) if(i != lw.dirs[0]) indsL.push_back(
+                        p_cls->AIc(lw.sId[0],i));
+                    indsL.push_back(p_cls->mphys.at(lw.sId[0]));
+                    ITensor tmpL(indsL), S, tmpR;
+
+                    auto tmpT = p_cls->sites.at(lw.sId[0]) * delta( p_cls->AIc(lw.sId[0],lw.dirs[0]),
+                        p_cls->AIc(lw.sId[1],lw.dirs[1]) ) * p_cls->sites.at(lw.sId[1]);
+
+                    svd(tmpT,tmpL,S,tmpR,{"Minm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m(),
+                        "Maxm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m()});
+                    S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+                    S.visit(printS);
+                    std::cout<<std::endl;
+                
+                    lwIds.push_back(lw.wId);
+                }
+        std::cout<<"BOND SPECTRA(SITES) - END"<< std::endl;
+    };
+
 
     std::vector<double> diag_minCornerSV(1, 0.);
     bool expValEnvConv = false;
@@ -358,6 +394,8 @@ int main( int argc, char *argv[] ) {
     t_end_int = std::chrono::steady_clock::now();
     std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
         <<" [sec] "<< std::endl;
+    printBondSpectra_weights();
+    printBondSpectra_sites();
     p_cls->absorbWeightsToLinks();
     // ***** INITIALIZE ENVIRONMENT DONE **************************************
 
@@ -387,10 +425,10 @@ int main( int argc, char *argv[] ) {
         diagData_fu.push_back(diag_fu);
 
         if (suI % arg_obsFreq == 0) {
-            printBondSpectra();
-            
+            printBondSpectra_weights();
             
             p_cls->absorbWeightsToSites();
+            printBondSpectra_sites();
             // reset environment
             if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
                 

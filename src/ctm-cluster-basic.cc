@@ -185,9 +185,8 @@ void Cluster_2x2_ABBA::init_AFM() {
     auto pIB = mphys.at("B");
 
     // Spin DOWN on site A, spin   UP on site B
-    // Spin UP   on site C, spin DOWN on site D
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(2), 1.0);
+        pIA(pIA.m()), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
         pIB(1), 1.0);
 } 
@@ -204,11 +203,11 @@ void Cluster_2x2_ABBA::init_ALIGNX() {
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
         pIA(1), 1.0/std::sqrt(2.0));
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(2), 1.0/std::sqrt(2.0));
+        pIA(pIA.m()), 1.0/std::sqrt(2.0));
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
         pIB(1), 1.0/std::sqrt(2.0));
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(2), 1.0/std::sqrt(2.0));
+        pIB(pIB.m()), 1.0/std::sqrt(2.0));
 }
 
 void Cluster_2x2_ABBA::init_ALIGNZ() {
@@ -240,11 +239,11 @@ void Cluster_2x2_ABBA::init_VBS() {
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
         pIA(1), 1.0);
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(2),
-        pIA(2), -1.0);
+        pIA(pIA.m()), -1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
         pIB(1), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(2),
-        pIB(2), -1.0);
+        pIB(pIB.m()), -1.0);
 }
 
 std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(nlohmann::json const& json_cluster) {
