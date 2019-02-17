@@ -365,6 +365,13 @@ int main( int argc, char *argv[] ) {
     // # SETUP OPTIMIZATION LOOP                                              #
     // ########################################################################
 
+    // Diagnostic data
+    std::vector<std::string> diag_log;
+
+    double best_energy = 1.0e+16;
+    auto past_tensors = p_cls->sites;
+    auto past_weights = p_cls->weights;
+
     Args suArgs = {
         "suDbg",arg_suDbg,
         "suDbgLevel",arg_suDbgLevel
@@ -520,9 +527,41 @@ int main( int argc, char *argv[] ) {
             std::cout << "Observables computed in T: "<< get_s(t_begin_int,t_end_int) 
                 <<" [sec] "<< std::endl;
 
-            writeCluster(outClusterFile, *p_cls);
             p_cls->absorbWeightsToLinks();
             
+            // check energy, preserve the best_energy state obtained so far
+            auto current_energy = metaInf.getReal("energy");
+            if( best_energy > current_energy ) {
+                best_energy = current_energy;
+                p_cls->metaInfo = "BestEnergy(FUStep=" + std::to_string(suI) + ")";
+                p_cls->absorbWeightsToSites();
+                writeCluster(outClusterFile, *p_cls);
+                p_cls->absorbWeightsToLinks();
+                past_tensors = p_cls->sites;
+                past_weights = p_cls->weights;
+            }
+            // check if current energy > previous energy
+            if ( current_energy > best_energy ) {
+                std::ostringstream oss;
+                oss << std::scientific;
+                oss << suI <<": ENERGY INCREASED: E(i)-E(i-1)="<< current_energy - best_energy;
+                // TODO revert to previous tensors and recompute the environment
+                oss << " Reverting to previous tensors";
+                p_cls->sites = past_tensors;
+                p_cls->weights = past_weights;
+                // decrease time-step
+                auto current_dt = json_model_params["tau"].get<double>();
+                json_model_params["tau"] = current_dt / 2.0;
+                jsonCls["model"] = json_model_params;
+                oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt / 2.0;
+                // regenerate model with new lower timestep
+                ptr_engine = ef.build(json_model_params);
+                // update simulation parameters on cluster
+                p_cls->simParam = jsonCls;
+                diag_log.push_back(oss.str());
+                std::cout<< oss.str() << std::endl;
+            }
+
             // TODO current energy is higher than energy at previous step STOP
             // if (arg_stopEnergyInc && *energyDiff*) {
             //     break;
@@ -533,4 +572,5 @@ int main( int argc, char *argv[] ) {
 
     // SIMPLE UPDATE FINISHED
     std::cout <<"SIMPLE UPDATE DONE"<< std::endl;
+    for (auto const& log_entry : diag_log) std::cout<< log_entry << std::endl;
 }

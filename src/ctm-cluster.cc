@@ -362,15 +362,23 @@ void Cluster::absorbWeightsToSites(bool dbg) {
 void Cluster::absorbWeightsToLinks(bool dbg) {
 
     if (weights_absorbed) {
-        auto invSqrtT = [](double r) { return 1.0/std::sqrt(r); };
 
         for ( auto & siteEntry : sites ) {
             auto sId = siteEntry.first;
             // contract each on-site tensor with its weights
             // and set back the original index
             for ( auto const& stw : siteToWeights.at(sId) ) {
-                auto tmp_weight = weights.at(stw.wId);
-                tmp_weight.apply(invSqrtT);
+                ITensor tmp_weight = weights.at(stw.wId);
+                
+                auto ind1 = tmp_weight.inds()[0];
+                auto ind2 = tmp_weight.inds()[1];
+                std::vector<double> tmpD;
+                for (int i=1;i<=ind1.m();i++) {
+                    double elem = tmp_weight.real(ind1(i),ind2(i));
+                    tmpD.push_back(1.0/std::sqrt(elem)); 
+                }
+                tmp_weight = diagTensor(tmpD, ind1, ind2);
+
                 siteEntry.second *= tmp_weight;
                 siteEntry.second *= delta(tmp_weight.inds());
             }

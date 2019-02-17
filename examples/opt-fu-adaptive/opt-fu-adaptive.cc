@@ -480,7 +480,7 @@ int main( int argc, char *argv[] ) {
                 out_file_diag << diag_fu.getString("locMinDiag_descriptor") << " ";
             if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
                 out_file_diag << diag_fu.getString("diag_protoEnv_descriptor") << " ";
-            out_file_diag << "MinCornerSV" << " "
+            out_file_diag << "max_tailCornerSV" << " "
                 << "MaxBoundaryVar" << " "
                 << std::endl;
         }
@@ -491,7 +491,7 @@ int main( int argc, char *argv[] ) {
             out_file_diag <<" "<< diag_fu.getString("locMinDiag","");
         if ( diag_fu.getString("diag_protoEnv","").length() > 0 ) 
             out_file_diag << " " << diag_fu.getString("diag_protoEnv","");
-        out_file_diag <<" "<< diagData_ctm.getReal("minCornerSV",-1.0)
+        out_file_diag <<" "<< diagData_ctm.getReal("max_tailCornerSV",-1.0)
             <<" "<< diagData_ctm.getReal("maxBoundaryVariance",-1.0)
             <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
             <<" "<< diag_fu.getReal("ratioNonSymFN",0.0)
