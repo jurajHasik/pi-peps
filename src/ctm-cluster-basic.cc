@@ -200,14 +200,36 @@ void Cluster_2x2_ABBA::init_ALIGNX() {
     auto pIA = mphys.at("A");
     auto pIB = mphys.at("B");
 
-    sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(1), 1.0/std::sqrt(2.0));
-    sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(pIA.m()), 1.0/std::sqrt(2.0));
-    sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(1), 1.0/std::sqrt(2.0));
-    sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(pIB.m()), 1.0/std::sqrt(2.0));
+    // compute coefficients
+    auto nCk = [](int n, int k) {
+        if (k > n) return 0;
+        if (k * 2 > n) k = n-k;
+        if (k == 0) return 1;
+
+        int result = n;
+        for( int i = 2; i <= k; ++i ) {
+            result *= (n-i+1);
+            result /= i;
+        }
+
+        return result;
+    };
+
+    double site_norm = 0.0;
+    for (int i=1; i<=pIA.m(); i++) {
+        sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
+            pIA(i), std::sqrt(nCk(pIA.m()-1,i-1)) );
+        site_norm += nCk(pIA.m()-1,i-1);
+    }
+    sites.at("A") *= 1.0/std::sqrt(site_norm);
+
+    site_norm = 0.0;
+    for (int i=1; i<=pIB.m(); i++) {
+        sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
+            pIB(i), std::sqrt(nCk(pIB.m()-1,i-1)) );
+        site_norm += nCk(pIB.m()-1,i-1);
+    }
+    sites.at("B") *= 1.0/std::sqrt(site_norm);
 }
 
 void Cluster_2x2_ABBA::init_ALIGNZ() {
@@ -419,13 +441,13 @@ void Cluster_2x2_ABCD::init_AFM() {
     // Spin DOWN on site A, spin   UP on site B
     // Spin UP   on site C, spin DOWN on site D
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(2), 1.0);
+        pIA(1), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(1), 1.0);
+        pIB(pIB.m()), 1.0);
     sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(1), 1.0);
+        pIC(pIC.m()), 1.0);
     sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(2), 1.0);
+        pID(1), 1.0);
 } 
 
 void Cluster_2x2_ABCD::init_ALIGNX() {
@@ -441,22 +463,35 @@ void Cluster_2x2_ABCD::init_ALIGNX() {
     auto pIC = mphys.at("C");
     auto pID = mphys.at("D");
 
-    sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(1), 1.0/std::sqrt(2.0));
-    sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(2), 1.0/std::sqrt(2.0));
-    sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(1), 1.0/std::sqrt(2.0));
-    sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(2), 1.0/std::sqrt(2.0));
-    sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(1), 1.0/std::sqrt(2.0));
-    sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(2), 1.0/std::sqrt(2.0));
-    sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(1), 1.0/std::sqrt(2.0));
-    sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(2), 1.0/std::sqrt(2.0));
+     // compute coefficients
+    auto nCk = [](int n, int k) {
+        if (k > n) return 0;
+        if (k * 2 > n) k = n-k;
+        if (k == 0) return 1;
+
+        int result = n;
+        for( int i = 2; i <= k; ++i ) {
+            result *= (n-i+1);
+            result /= i;
+        }
+
+        return result;
+    };
+
+    auto setAlignAlongX = [&nCk] (ITensor & site, Index & ia, Index & ip) {
+        double site_norm = 0.0;
+        for (int i=1; i<=ip.m(); i++) {
+            site.set(ia(1), prime(ia,1)(1), prime(ia,2)(1), prime(ia,3)(1),
+                ip(i), std::sqrt(nCk(ip.m()-1,i-1)) );
+            site_norm += nCk(ip.m()-1,i-1);
+        }
+        site *= 1.0/std::sqrt(site_norm);
+    };
+
+    setAlignAlongX(sites.at("A"), aIA, pIA);
+    setAlignAlongX(sites.at("B"), aIB, pIB);
+    setAlignAlongX(sites.at("C"), aIC, pIC);
+    setAlignAlongX(sites.at("D"), aID, pID);
 }
 
 void Cluster_2x2_ABCD::init_ALIGNZ() {
@@ -474,13 +509,13 @@ void Cluster_2x2_ABCD::init_ALIGNZ() {
 
     // Spin UP on all sites
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(1), 1.0);
+        pIA(pIA.m()), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(1), 1.0);
+        pIB(pIB.m()), 1.0);
     sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(1), 1.0);
+        pIC(pIC.m()), 1.0);
     sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(1), 1.0);
+        pID(pID.m()), 1.0);
 }
 
 void Cluster_2x2_ABCD::init_VBS() {
@@ -500,19 +535,19 @@ void Cluster_2x2_ABCD::init_VBS() {
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
         pIA(1), 1.0);
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(2),
-        pIA(2), -1.0);
+        pIA(pIA.m()), -1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
         pIB(1), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(2),
-        pIB(2), -1.0);
+        pIB(pIB.m()), -1.0);
     sites.at("C").set(aIC(1), prime(aIC,1)(2), prime(aIC,2)(1), prime(aIC,3)(1),
         pIC(1), 1.0);
     sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(2), 1.0);
+        pIC(pIC.m()), 1.0);
     sites.at("D").set(aID(1), prime(aID,1)(2), prime(aID,2)(1), prime(aID,3)(1),
         pID(1), 1.0);
     sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(2), 1.0);
+        pID(pID.m()), 1.0);
 }
 
 std::unique_ptr<Cluster> Cluster_2x2_ABCD::create(nlohmann::json const& json_cluster) {

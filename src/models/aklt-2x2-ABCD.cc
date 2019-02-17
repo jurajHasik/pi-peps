@@ -137,7 +137,12 @@ void AKLTModel_2x2_ABCD::setObservablesHeader(std::ofstream & output) {
         <<"SS BD (1,0)(1,1), "<<"SS CD (0,1)(1,1), "
         <<"SS BA (1,0)(2,0), "<<"SS CA (0,1)(0,2), "
         <<"SS DB (1,1)(1,2), "<<"SS DC (1,1)(2,1), "
-        <<"Avg mag=|S|, "<<"Energy"<<std::endl;
+        <<"Avg mag=|S|, "<<"Energy"
+        <<"m_z(0,0), "<<"m_x(0,0), "<<"Re(m_y(0,0)), "
+        <<"m_z(1,0), "<<"m_x(1,0), "<<"Re(m_y(1,0)), "
+        <<"m_z(0,1), "<<"m_x(0,1), "<<"Re(m_y(0,1)), "
+        <<"m_z(1,1), "<<"m_x(1,1), "<<"Re(m_y(1,1))"
+        <<std::endl;
 }
 
 void AKLTModel_2x2_ABCD::computeAndWriteObservables(EVBuilder const& ev, 
@@ -197,16 +202,22 @@ void AKLTModel_2x2_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     // write magnetization
     double evMag_avg = 0.;
     evMag_avg = 0.25*(
-        std::sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
-        + std::sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
-        + std::sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[1] )
-        + std::sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[1] )
+        std::sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[2] )
+        + std::sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[2] )
+        + std::sqrt(ev_sC[0]*ev_sC[0] + ev_sC[1]*ev_sC[2] )
+        + std::sqrt(ev_sD[0]*ev_sD[0] + ev_sD[1]*ev_sD[2] )
     );
     output <<" "<< evMag_avg;
 
     // write Energy
     double energy = 2.0*evNN_avg;
     output <<" "<< energy;
+
+    // write components of magentization
+    output <<" "<< ev_sA[0] <<" "<< 0.5*(ev_sA[1]+ev_sA[2]) <<" "<< 0.5*(ev_sA[1]-ev_sA[2]);
+    output <<" "<< ev_sB[0] <<" "<< 0.5*(ev_sB[1]+ev_sB[2]) <<" "<< 0.5*(ev_sB[1]-ev_sB[2]);
+    output <<" "<< ev_sC[0] <<" "<< 0.5*(ev_sC[1]+ev_sC[2]) <<" "<< 0.5*(ev_sC[1]-ev_sC[2]);
+    output <<" "<< ev_sD[0] <<" "<< 0.5*(ev_sD[1]+ev_sD[2]) <<" "<< 0.5*(ev_sD[1]-ev_sD[2]);
 
     // return energy in metaInf
     metaInf.add("energy",energy);
@@ -293,8 +304,9 @@ void AKLTModel_2x2_AB::setObservablesHeader(std::ofstream & output) {
     output <<"STEP, " 
         <<"SS AB (0,0)(1,0), "<<"SS BA (1,0)(2,0), "
         <<"SS AB (0,0)(0,1), "<<"SS BA (1,0)(1,1), "
-        <<"Avg mag=|S|, "<<"Energy, "<<"m_z(0,0), "<<"m_x(0,0, "
-        <<"m_z(1,0), "<<"m_x(1,0) "
+        <<"Avg mag=|S|, "<<"Energy, "
+        <<"m_z(0,0), "<<"m_x(0,0), "<<"Re(m_y(0,0)), "
+        <<"m_z(1,0), "<<"m_x(1,0), "<<"Re(m_y(1,0))"
         <<std::endl;
 }
 
@@ -336,8 +348,8 @@ void AKLTModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     // write magnetization
     double evMag_avg = 0.;
     evMag_avg = 0.5*(
-        std::sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[1] )
-        + std::sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[1] )
+        std::sqrt(ev_sA[0]*ev_sA[0] + ev_sA[1]*ev_sA[2])
+        + std::sqrt(ev_sB[0]*ev_sB[0] + ev_sB[1]*ev_sB[2])
     );
     output <<" "<< evMag_avg;
 
@@ -349,7 +361,8 @@ void AKLTModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     metaInf.add("energy",energy);
 
     // individual magnetizations
-    output <<" "<< ev_sA[0] <<" "<< ev_sA[1] <<" "<< ev_sB[0] <<" "<< ev_sB[1];
+    output <<" "<< ev_sA[0] <<" "<< 0.5*(ev_sA[1]+ev_sA[2]) <<" "<< 0.5*(ev_sA[1]-ev_sA[2])
+        <<" "<< ev_sB[0] <<" "<< 0.5*(ev_sB[1]+ev_sB[2]) <<" "<< 0.5*(ev_sB[1]-ev_sB[2]);
 
     output << std::endl;
 }
