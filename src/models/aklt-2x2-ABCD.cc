@@ -7,8 +7,8 @@ namespace itensor {
 ITensor Projector_S2tpS2_S1(Index & s1, Index & s2) {
     int physDim = 5; // dimension of Hilbert space of spin s=2 DoF
     
-    s1 = Index("S1", physDim, PHYS);
-    s2 = Index("S2", physDim, PHYS);
+    if (!s1 || s1.m() != physDim) s1 = Index("S1", physDim, PHYS);
+    if (!s2 || s2.m() != physDim) s2 = Index("S2", physDim, PHYS);
     Index s1p = prime(s1);
     Index s2p = prime(s2);
 
@@ -67,8 +67,8 @@ ITensor Projector_S2tpS2_S1_v2(Index & s1, Index & s2) {
         + SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2) ); 
     };
 
-    s1 = Index("S1", physDim, PHYS);
-    s2 = Index("S2", physDim, PHYS);
+    if (!s1 || s1.m() != physDim) s1 = Index("S1", physDim, PHYS);
+    if (!s2 || s2.m() != physDim) s2 = Index("S2", physDim, PHYS);
 
     auto tmp_S1S2   = S1S2(s1,s2);
     auto tmp_S1S2_2 = mapprime( tmp_S1S2 * prime(tmp_S1S2,1), 2, 1);
@@ -125,11 +125,13 @@ MPO_3site getMPO3s_AKLT(double tau) {
 
     return symmMPO3Sdecomp(u123, s1, s2, s3);
 }
+
+
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 
 // ----- Definition of model base class and its particular instances --
-AKLTModel_2x2_ABCD::AKLTModel_2x2_ABCD() {}
+AKLTModel_2x2_ABCD::AKLTModel_2x2_ABCD() { physDim = 5; }
 
 void AKLTModel_2x2_ABCD::setObservablesHeader(std::ofstream & output) {
     output <<"STEP, " 

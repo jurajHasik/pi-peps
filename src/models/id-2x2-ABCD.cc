@@ -4,8 +4,8 @@ namespace itensor {
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
 // TODO implement more generic external field
-MPO_2site getMPO2s_ID() {
-    int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
+MPO_2site getMPO2s_ID(int pd) {
+    int physDim = 5; // dimension of Hilbert space of spin s=1/2 DoF
 
     Index s1 = Index("S1", physDim, PHYS);
     Index s2 = Index("S2", physDim, PHYS);
@@ -21,7 +21,7 @@ MPO_2site getMPO2s_ID() {
 }
 
 // TODO implement more generic external field
-MPO_3site getMPO3s_ID() {
+MPO_3site getMPO3s_ID(int pd) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
 
     Index s1 = Index("S1", physDim, PHYS);
@@ -40,7 +40,7 @@ MPO_3site getMPO3s_ID() {
 }
 
 // TODO implement more generic external field
-OpNS getOP4s_ID() {
+OpNS getOP4s_ID(int pd) {
     int physDim = 2; // dimension of Hilbert space of spin s=1/2 DoF
 
     Index s1 = Index("S1", physDim, PHYS);
@@ -68,7 +68,7 @@ OpNS getOP4s_ID() {
 
 
 // ----- Definition of model base class and its particular instances --
-IdentityModel_2x2_ABCD::IdentityModel_2x2_ABCD() {}
+IdentityModel_2x2_ABCD::IdentityModel_2x2_ABCD(int pd) { physDim = pd; }
 
 void IdentityModel_2x2_ABCD::setObservablesHeader(std::ofstream & output) {}
 
@@ -76,13 +76,17 @@ void IdentityModel_2x2_ABCD::computeAndWriteObservables(EVBuilder const& ev,
     std::ofstream & output, Args & metaInf) {}
 
 std::unique_ptr<Model> IdentityModel_2x2_ABCD::create(nlohmann::json & json_model) {
-    return std::unique_ptr<Model>(new IdentityModel_2x2_ABCD());
+    
+    auto arg_physDim = json_model["physDim"].get<int>();
+
+    return std::unique_ptr<Model>(new IdentityModel_2x2_ABCD(arg_physDim));
 }
 
 std::unique_ptr<Engine> IdentityModel_2x2_ABCD::buildEngine(nlohmann::json & json_model) {
     
     // symmetrize Trotter Sequence
     bool arg_symmTrotter = json_model.value("symmTrotter",false);
+    auto arg_physDim = json_model["physDim"].get<int>();
 
     // gate sequence
     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
@@ -91,7 +95,7 @@ std::unique_ptr<Engine> IdentityModel_2x2_ABCD::buildEngine(nlohmann::json & jso
     if (arg_fuGateSeq == "2SITE") {
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
-        pe->td.gateMPO.push_back( getMPO2s_ID() );
+        pe->td.gateMPO.push_back( getMPO2s_ID(arg_physDim) );
         
         pe->td.tgates = {
             TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),
@@ -111,7 +115,7 @@ std::unique_ptr<Engine> IdentityModel_2x2_ABCD::buildEngine(nlohmann::json & jso
     else if (arg_fuGateSeq == "SYM3") {
         TrotterEngine<MPO_3site>* pe = new TrotterEngine<MPO_3site>();
 
-        pe->td.gateMPO.push_back( getMPO3s_ID() );
+        pe->td.gateMPO.push_back( getMPO3s_ID(arg_physDim) );
         
         pe->td.tgates = {
             TrotterGate<MPO_3site>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
@@ -139,7 +143,7 @@ std::unique_ptr<Engine> IdentityModel_2x2_ABCD::buildEngine(nlohmann::json & jso
     else if (arg_fuGateSeq == "4SITE") {
         TrotterEngine<OpNS>* pe = new TrotterEngine<OpNS>();
 
-        pe->td.gateMPO.push_back( getOP4s_ID() );
+        pe->td.gateMPO.push_back( getOP4s_ID(arg_physDim) );
         
         pe->td.tgates = {
             TrotterGate<OpNS>(Vertex(0,0), {Shift(1,0), Shift(0,1)}, &pe->td.gateMPO[0]),
@@ -162,7 +166,7 @@ std::unique_ptr<Engine> IdentityModel_2x2_ABCD::buildEngine(nlohmann::json & jso
 // ----- END Definition of model class --------------------------------
 
 // ----- Definition of model base class and its particular instances --
-IdentityModel_2x2_AB::IdentityModel_2x2_AB() {}
+IdentityModel_2x2_AB::IdentityModel_2x2_AB(int pd) { physDim = pd; }
 
 void IdentityModel_2x2_AB::setObservablesHeader(std::ofstream & output) {}
 
@@ -170,13 +174,17 @@ void IdentityModel_2x2_AB::computeAndWriteObservables(EVBuilder const& ev,
     std::ofstream & output, Args & metaInf) {}
 
 std::unique_ptr<Model> IdentityModel_2x2_AB::create(nlohmann::json & json_model) {
-    return std::unique_ptr<Model>(new IdentityModel_2x2_AB());
+    
+    auto arg_physDim = json_model["physDim"].get<int>();
+
+    return std::unique_ptr<Model>(new IdentityModel_2x2_AB(arg_physDim));
 }
 
 std::unique_ptr<Engine> IdentityModel_2x2_AB::buildEngine(nlohmann::json & json_model) {
     
     // symmetrize Trotter Sequence
     bool arg_symmTrotter = json_model.value("symmTrotter",false);
+    auto arg_physDim = json_model["physDim"].get<int>();
 
     // gate sequence
     std::string arg_fuGateSeq = json_model["fuGateSeq"].get<std::string>();
@@ -185,7 +193,7 @@ std::unique_ptr<Engine> IdentityModel_2x2_AB::buildEngine(nlohmann::json & json_
     if (arg_fuGateSeq == "2SITE") {
         TrotterEngine<MPO_2site>* pe = new TrotterEngine<MPO_2site>();
 
-        pe->td.gateMPO.push_back( getMPO2s_ID() );
+        pe->td.gateMPO.push_back( getMPO2s_ID(arg_physDim) );
         
         pe->td.tgates = {
             TrotterGate<MPO_2site>(Vertex(0,0), {Shift(1,0)}, &pe->td.gateMPO[0]),

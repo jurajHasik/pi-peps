@@ -7,11 +7,11 @@
 namespace itensor {
 
 // ----- Trotter gates (2site, ...) MPOs ------------------------------
-MPO_2site getMPO2s_ID();
+MPO_2site getMPO2s_ID(int pd);
 
-MPO_3site getMPO3s_ID();
+MPO_3site getMPO3s_ID(int pd);
 
-OpNS getOP4s_ID();
+OpNS getOP4s_ID(int pd);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
 
@@ -19,7 +19,7 @@ OpNS getOP4s_ID();
 class IdentityModel_2x2_ABCD : public Model {
     public:
 
-        IdentityModel_2x2_ABCD();
+        IdentityModel_2x2_ABCD(int pd);
 
         void setObservablesHeader(std::ofstream & output) override;
 
@@ -36,7 +36,7 @@ class IdentityModel_2x2_ABCD : public Model {
 class IdentityModel_2x2_AB : public Model {
     public:
 
-        IdentityModel_2x2_AB();
+        IdentityModel_2x2_AB(int pd);
 
         void setObservablesHeader(std::ofstream & output) override;
 

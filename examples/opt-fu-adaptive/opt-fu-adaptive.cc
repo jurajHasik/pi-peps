@@ -44,7 +44,8 @@ int main( int argc, char *argv[] ) {
 	std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
 
 	// read Hamiltonian and Trotter decomposition
-    auto json_model_params(jsonCls["model"]); 
+    auto json_model_params(jsonCls["model"]);
+    json_model_params["physDim"] = physDim;
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 
@@ -92,7 +93,7 @@ int main( int argc, char *argv[] ) {
     auto json_gauge_fix_params(jsonCls["gaugeFix"]);
     std::string arg_suWeightsInit = json_gauge_fix_params.value("suWeightsInit","DELTA");
     int arg_suIter = json_gauge_fix_params.value("suIter",128);
-    double arg_suTol = json_gauge_fix_params.value("suTol",1.0e-08);
+    double arg_suTol = json_gauge_fix_params.value("suTol",1.0e-12);
     bool arg_gf_dbg = json_gauge_fix_params.value("suDbg",false);
     int arg_gf_dbgLvl = json_gauge_fix_params.value("suDbgLevel",0);
     

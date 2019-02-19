@@ -47,6 +47,7 @@ int main( int argc, char *argv[] ) {
     
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
+    json_model_params["physDim"] = physDim;
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 	

@@ -41,6 +41,7 @@ int main( int argc, char *argv[] ) {
     
 	// read Hamiltonian and Trotter decomposition
     auto json_model_params(jsonCls["model"]);
+    json_model_params["physDim"] = physDim;
 	
     std::string sitesInit(jsonCls.value("sitesInit","FILE"));
     

@@ -25,6 +25,8 @@ OpNS getOP4s_J1Q(double tau, double J1, double Q);
 // ----- Definition of model base class and its particular instances --
 class Model {
     public:
+        int physDim;
+
         virtual void setObservablesHeader(std::ofstream & output) = 0;
 
         virtual void computeAndWriteObservables(EVBuilder const& ev, 
