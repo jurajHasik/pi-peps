@@ -48,7 +48,7 @@ MPO_2site symmMPO2Sdecomp(ITensor const& u12, Index const& s1,
     ITensor O1, O2, SVt;
 
     double pw;
-    auto pow_T = [&pw](double r) { return std::pow(r,pw); };
+    auto sqrt_T = [](double r) { return std::sqrt(r); };
 
     // first SVD
     O1 = ITensor(s1,s1p);
@@ -64,8 +64,7 @@ MPO_2site symmMPO2Sdecomp(ITensor const& u12, Index const& s1,
     Index a1 = commonIndex(O1,SVt);
     Index a2 = commonIndex(SVt,O2);
 
-    pw = 0.5;
-    SVt.apply(pow_T);
+    SVt.apply(sqrt_T);
 
     O1 = (O1*SVt) * delta(a2,a1);
     O2 = O2*SVt;

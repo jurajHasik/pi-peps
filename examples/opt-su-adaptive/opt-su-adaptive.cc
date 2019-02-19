@@ -55,7 +55,7 @@ int main( int argc, char *argv[] ) {
 
     int arg_suIter  = jsonCls["suIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
-    bool arg_stopEnergyInc = jsonCls.value("stopEnergyInc",false);
+    bool arg_decreaseTimestep = jsonCls.value("decreaseTimestep",true);
     bool arg_suDbg  = jsonCls["suDbg"].get<bool>();
     int arg_suDbgLevel = jsonCls["suDbgLevel"].get<int>();
     
@@ -261,7 +261,7 @@ int main( int argc, char *argv[] ) {
 
                     svd(tmpT,tmpL,S,tmpR,{"Minm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m(),
                         "Maxm",p_cls->AIc(lw.sId[0],lw.dirs[0]).m()});
-                    S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+                    // S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
                     S.visit(printS);
                     std::cout<<std::endl;
                 
@@ -406,7 +406,7 @@ int main( int argc, char *argv[] ) {
     // Diagnostic data
     std::vector<std::string> diag_log;
 
-    double best_energy = 1.0e+16;
+    double best_energy = metaInf.getReal("energy");
     auto past_tensors = p_cls->sites;
     auto past_weights = p_cls->weights;
 
@@ -579,7 +579,7 @@ int main( int argc, char *argv[] ) {
                 past_weights = p_cls->weights;
             }
             // check if current energy > previous energy
-            if ( current_energy > best_energy ) {
+            if ( (current_energy > best_energy) && arg_decreaseTimestep ) {
                 std::ostringstream oss;
                 oss << std::scientific;
                 oss << suI <<": ENERGY INCREASED: E(i)-E(i-1)="<< current_energy - best_energy;

@@ -347,7 +347,7 @@ void Cluster::absorbWeightsToSites(bool dbg) {
             // contract each on-site tensor with its weights
             // and set back the original index
             for ( auto const& stw : siteToWeights.at(sId) ) {
-                auto tmp_weight = weights.at(stw.wId);
+                ITensor tmp_weight = weights.at(stw.wId);
                 tmp_weight.apply(sqrtT);
                 siteEntry.second *= tmp_weight;
                 siteEntry.second *= delta(tmp_weight.inds());
@@ -362,6 +362,7 @@ void Cluster::absorbWeightsToSites(bool dbg) {
 void Cluster::absorbWeightsToLinks(bool dbg) {
 
     if (weights_absorbed) {
+        double machine_eps = std::numeric_limits<double>::epsilon();
 
         for ( auto & siteEntry : sites ) {
             auto sId = siteEntry.first;
@@ -373,9 +374,16 @@ void Cluster::absorbWeightsToLinks(bool dbg) {
                 auto ind1 = tmp_weight.inds()[0];
                 auto ind2 = tmp_weight.inds()[1];
                 std::vector<double> tmpD;
+                double const tol = std::sqrt( tmp_weight.real(ind1(1),ind2(1)) 
+                    * std::max(ind1.m(),ind2.m()) * machine_eps );
+
                 for (int i=1;i<=ind1.m();i++) {
                     double elem = tmp_weight.real(ind1(i),ind2(i));
-                    tmpD.push_back(1.0/std::sqrt(elem)); 
+                    if ( std::abs(elem) > tol ) {
+                        tmpD.push_back( 1.0 / std::sqrt(elem) );
+                    }
+                    else
+                        tmpD.push_back(0.0);
                 }
                 tmp_weight = diagTensor(tmpD, ind1, ind2);
 
@@ -385,7 +393,7 @@ void Cluster::absorbWeightsToLinks(bool dbg) {
         }
         weights_absorbed = false;
     } else {
-        std::cout<<"[absorbWeightsToSites] Weights are not absorbed to sites"<<std::endl;
+        std::cout<<"[absorbWeightsToLinks] Weights are not absorbed to sites"<<std::endl;
     }
 }
 

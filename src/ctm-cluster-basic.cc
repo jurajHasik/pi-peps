@@ -509,13 +509,13 @@ void Cluster_2x2_ABCD::init_ALIGNZ() {
 
     // Spin UP on all sites
     sites.at("A").set(aIA(1), prime(aIA,1)(1), prime(aIA,2)(1), prime(aIA,3)(1),
-        pIA(pIA.m()), 1.0);
+        pIA(1), 1.0);
     sites.at("B").set(aIB(1), prime(aIB,1)(1), prime(aIB,2)(1), prime(aIB,3)(1),
-        pIB(pIB.m()), 1.0);
+        pIB(1), 1.0);
     sites.at("C").set(aIC(1), prime(aIC,1)(1), prime(aIC,2)(1), prime(aIC,3)(1),
-        pIC(pIC.m()), 1.0);
+        pIC(1), 1.0);
     sites.at("D").set(aID(1), prime(aID,1)(1), prime(aID,2)(1), prime(aID,3)(1),
-        pID(pID.m()), 1.0);
+        pID(1), 1.0);
 }
 
 void Cluster_2x2_ABCD::init_VBS() {
