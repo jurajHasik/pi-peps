@@ -573,6 +573,7 @@ int main( int argc, char *argv[] ) {
             if( best_energy > current_energy ) {
                 best_energy = current_energy;
                 p_cls->metaInfo = "BestEnergy(FUStep=" + std::to_string(suI) + ")";
+                p_cls->simParam = jsonCls;
                 p_cls->absorbWeightsToSites();
                 writeCluster(outClusterFile, *p_cls);
                 p_cls->absorbWeightsToLinks();
