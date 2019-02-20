@@ -57,6 +57,7 @@ int main( int argc, char *argv[] ) {
     int arg_suIter  = jsonCls["suIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     bool arg_decreaseTimestep = jsonCls.value("decreaseTimestep",true);
+    double arg_minTimestep    = jsonCls.value("minTimestep",1.0e-6);
     bool arg_suDbg  = jsonCls["suDbg"].get<bool>();
     int arg_suDbgLevel = jsonCls["suDbgLevel"].get<int>();
     
@@ -600,6 +601,10 @@ int main( int argc, char *argv[] ) {
                 p_cls->simParam = jsonCls;
                 diag_log.push_back(oss.str());
                 std::cout<< oss.str() << std::endl;
+                if ( current_dt < arg_minTimestep ) {
+                    std::cout << "Timstep too small. Stopping simulation" << std::endl; 
+                    break;
+                }
             }
 
             // TODO current energy is higher than energy at previous step STOP

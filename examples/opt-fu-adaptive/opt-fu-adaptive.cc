@@ -50,6 +50,8 @@ int main( int argc, char *argv[] ) {
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 
 	// full update parameters
+    bool arg_decreaseTimestep = jsonCls.value("decreaseTimestep",true);
+    double arg_minTimestep    = jsonCls.value("minTimestep",1.0e-6);
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     bool arg_fuTrialInit = jsonCls.value("fuTrialInit",true);
@@ -568,7 +570,7 @@ int main( int argc, char *argv[] ) {
                 past_tensors = p_cls->sites;
             }
             // check if current energy > previous energy
-            if ( current_energy > best_energy ) {
+            if ( (current_energy > best_energy) && arg_decreaseTimestep ) {
                 std::ostringstream oss;
                 oss << std::scientific;
                 oss << fuI <<": ENERGY INCREASED: E(i)-E(i-1)="<< current_energy - best_energy;
@@ -587,6 +589,10 @@ int main( int argc, char *argv[] ) {
                 p_cls->simParam = jsonCls;
                 diag_log.push_back(oss.str());
                 std::cout<< oss.str() << std::endl;
+                if ( current_dt < arg_minTimestep ) {
+                    std::cout << "Timstep too small. Stopping simulation" << std::endl; 
+                    break;
+                }
             }
             // past_energy.push_back(current_energy);
 
