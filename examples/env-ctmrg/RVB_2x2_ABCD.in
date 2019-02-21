@@ -1,4 +1,5 @@
 {
+	"type": "DEFAULT",
 	"physDim": 2,
 	"auxBondDim": 3,
 	"sizeN": 2,

@@ -1,18 +1,18 @@
 {
 	"cluster": {
-		"type": "DEFAULT",
+		"type": "2X2_ABBA",
 		"initBy": "FILE",
 		"physDim": 2,
 		"auxBondDim": 3,
-		"inClusterFile": "RVB_2x2_ABCD.in"
+		"inClusterFile": "RVB_2x2_AB.in"
        	},
 	"initStateNoise": 1.0e-16,
 	"outClusterFile": "output.in",
 
 	"model": {
-		"type": "J1J2_2X2_ABCD",
+		"type": "HB_2X2_AB",
 		"J1": 1.0,
-		"J2": 0.5,
+		"h": 0.0,
 		"del": 0.0
 	},
 
