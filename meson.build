@@ -1,15 +1,14 @@
-project('peps-cluster-ctm','cpp','c',
+project('p-ipeps','cpp','c',
         default_options : ['cpp_std=c++14',
 			   'buildtype=debug',
-			   'warning_level=3',
-                           'cpp_args=-w'],
+			   'warning_level=3'],
         version: '1.0')
 
 # useful variables
 project_name = meson.project_name()
 project_version = meson.project_version()
 
-short_name = 'peps'
+short_name = 'p-ipeps'
 
 include_dirs = []
 source_files = []

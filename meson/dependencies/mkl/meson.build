@@ -31,18 +31,30 @@ else
                                   _opt.to_upper()+' compile flags check',
                                   include_directories:_includedir)
 
-    _links = compiler.links(_code, name:
-                            _opt.to_upper()+' link flags check',
-                            include_directories:_includedir,
-                            args:_largs)
 
-    if not (_compiles and _links)
+    if not _compiles
         error('\n\nCannot find suitable installation for '+_opt.to_upper())
     endif
+
+    _libs = []
+    _mkl_libs = [
+              'mkl_intel_lp64',
+              'mkl_intel_thread',
+              'mkl_core',
+              'iomp5',
+              'pthread',
+              'm',
+              'dl']
+
+    foreach _lib : _mkl_libs
+       _libs += compiler.find_library(_lib,
+                                   dirs:[_libdir,_omplibdir], required:true )
+    
+    endforeach
     
     mkl = declare_dependency(include_directories:
                              _includedir,
-                             link_args: _largs)
+                             dependencies:_libs)
 endif
 
 deps += mkl

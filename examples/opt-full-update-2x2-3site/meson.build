@@ -1,4 +1,4 @@
-_source = 'opt-su-adaptive.cc'
+_source = 'opt-full-update-2x2-3site.cc'
 
 _exe_name = _source.split('.cc')[0]
 
@@ -14,16 +14,19 @@ executable(_exe_name,
            install_dir:'examples/'+_dir_name,
            install_rpath:_rpath)
 
-# copy the files in the build dir 
+
+# copy the files in the build dir
 _files = [
-'simulation-su-HB_2x2_ABCD.json',
-'simulation-su-HB_2x2_AB.json',
-'simulation-su-ISING_2x2_ABCD.json',
-'simulation-su-ISING_2x2_AB.json',
-'simulation-su-AKLT_2x2_ABCD.json',    
-'simulation-su-AKLT_2x2_AB.json',    
-'simulation-su-LADDERS_2x2_ABCD.json',
-'simulation-su-J1J2_2x2_ABCD.json']
+'simulation-2site-cholesky.json',
+'simulation-2site-pseudoinv.json',
+'simulation-AKLT_2x2_ABCD.json',
+'simulation-AKLT_2x2_AB.json',
+'simulation-HB_2x2_ABCD.json',
+'simulation-HB_2x2_AB.json',
+'simulation-ISING_2x2_ABCD.json',
+'simulation-ISING_2x2_AB.json',
+'simulation-J1J2_2x2_ABCD.json',
+'simulation-LADDERS_2x2_ABCD.json']
 
 foreach _f : _files
     if(meson.version() >= '0.47')
@@ -37,6 +40,8 @@ foreach _f : _files
                        input:_f,
                        configuration:configuration_data(),
                        install:true,
-                       install_dir:'examples/'+_dir_name)                       
+                       install_dir:'examples/'+_dir_name)
     endif
 endforeach
+        
+        

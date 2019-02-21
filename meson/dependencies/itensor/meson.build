@@ -3,7 +3,6 @@ _opt = 'itensor'
 _dir = get_option(_opt+'-dir')
 
 _includedir = include_directories(_dir)
-_largs = ['-L' + _dir + '/lib', '-litensor']
 
 # check that we can actually compile and link
     
@@ -18,18 +17,18 @@ _compiles = compiler.compiles(_code, name:
                               _opt.to_upper()+' compile flags check',
                               include_directories:_includedir)
 
-_links = compiler.links(_code, name:
-                        _opt.to_upper()+' link flags check',
-                        include_directories:_includedir,
-                        args:_largs)
-
-if not (_compiles and _links)
+if not _compiles
     error('\n\nCannot find suitable installation for '+_opt.to_upper())
 endif
 
+
+_libpath = _dir+'/lib'
+
+_lib = compiler.find_library('itensor', dirs:_libpath, required:true)
+
+
 itensor = declare_dependency(
-    include_directories:
-    _includedir,
-    link_args:_largs)
+    include_directories: _includedir,
+    dependencies:_lib)
 
 deps += itensor

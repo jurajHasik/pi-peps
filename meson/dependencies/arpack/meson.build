@@ -6,7 +6,6 @@ if _dir == '' # rely on pkg-config
     arpack = dependency('arpack', required: true)
 else
     _includedir = include_directories(_dir+'/include/arpack')
-    _largs = ['-L'+_dir+'/lib', '-L'+_dir+'/lib64', '-larpack']
 
     # check that we can actually link against arpack
     
@@ -62,18 +61,17 @@ extern "C" void dneupd_(int* rvec,
                                   _opt.to_upper()+' compile flags check',
                                   include_directories:_includedir)
 
-    _links = compiler.links(_code, name:
-                            _opt.to_upper()+' link flags check',
-                            include_directories:_includedir,
-                            args:_largs)
-
-    if not (_compiles and _links)
+    if not _compiles
         error('\n\nCannot find suitable installation for '+_opt.to_upper())
     endif
 
+     _libpath = _dir+'/lib'
+
+     _lib = compiler.find_library('arpack', dirs:_libpath, required:true)
+
     arpack = declare_dependency(include_directories:
                                 _includedir,
-                                link_args: _largs)
+                                dependencies:_lib)
 endif
 
 deps += arpack

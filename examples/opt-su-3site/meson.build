@@ -1,4 +1,4 @@
-_source = 'opt-su-adaptive.cc'
+_source = 'opt-su-3site.cc'
 
 _exe_name = _source.split('.cc')[0]
 
@@ -24,19 +24,19 @@ _files = [
 'simulation-su-AKLT_2x2_AB.json',    
 'simulation-su-LADDERS_2x2_ABCD.json',
 'simulation-su-J1J2_2x2_ABCD.json']
-
-foreach _f : _files
-    if(meson.version() >= '0.47')
-        configure_file(output:_f,
-                       input:_f,
+ 
+foreach _f : _files 
+    if(meson.version() >= '0.47') 
+        configure_file(output:_f, 
+                       input:_f, 
                        copy:true,
                        install:true,
                        install_dir:'examples/'+_dir_name)
-    else
-        configure_file(output:_f,
-                       input:_f,
+    else 
+        configure_file(output:_f, 
+                       input:_f, 
                        configuration:configuration_data(),
                        install:true,
-                       install_dir:'examples/'+_dir_name)                       
-    endif
-endforeach
+                       install_dir:'examples/'+_dir_name)
+    endif 
+endforeach 

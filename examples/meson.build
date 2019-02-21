@@ -7,5 +7,4 @@ examples = [
 
 foreach _example : examples
     subdir(_example) # build the example
-    # TODO: install the example with proper meson.build
 endforeach
