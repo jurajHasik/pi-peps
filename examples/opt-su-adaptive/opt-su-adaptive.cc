@@ -49,7 +49,6 @@ int main( int argc, char *argv[] ) {
     bool symmTrotter  = json_model_params.value("symmTrotter",true);
     bool randomizeSeq = json_model_params.value("randomizeSeq",false);
 	
-    std::string sitesInit(jsonCls.value("sitesInit","FILE"));
     std::string suWeightsInit(jsonCls.value("suWeightsInit","DELTA"));
 
     int arg_suIter  = jsonCls["suIter"].get<int>();
@@ -62,9 +61,7 @@ int main( int argc, char *argv[] ) {
     // read CTMRG parameters
     auto json_ctmrg_params(jsonCls["ctmrg"]);
     int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
-    std::string arg_ioEnvTag(json_ctmrg_params["ioEnvTag"].get<std::string>());
     CtmEnv::init_env_type arg_initEnvType(toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
-    bool envIsComplex = json_ctmrg_params["envIsComplex"].get<bool>();
     CtmEnv::isometry_type iso_type(toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
     double arg_isoPseudoInvCutoff = json_ctmrg_params["isoPseudoInvCutoff"].get<double>();
     CtmEnv::normalization_type norm_type(toNORMALIZATION(json_ctmrg_params["normType"].get<std::string>()));
@@ -175,7 +172,7 @@ int main( int argc, char *argv[] ) {
     SvdSolverFactory sf = SvdSolverFactory();
     auto pSvdSolver = sf.create(env_SVD_METHOD);
 
-    CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver,
+    CtmEnv ctmEnv("default", auxEnvDim, *p_cls, *pSvdSolver,
         {"isoPseudoInvCutoff",arg_isoPseudoInvCutoff,
          "SVD_METHOD",env_SVD_METHOD,
          "rsvd_power",rsvd_power,
@@ -184,10 +181,10 @@ int main( int argc, char *argv[] ) {
          "dbg",arg_envDbg,
          "dbgLevel",arg_envDbgLvl}
         );
-    ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
+    ctmEnv.init(arg_initEnvType, false, arg_envDbg);
     
     // INITIALIZE EXPECTATION VALUE BUILDER
-    EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
+    EVBuilder ev("default", *p_cls, ctmEnv);
     std::cout << ev;
 
     for (int y=0; y<4; y++) {
@@ -416,7 +413,7 @@ int main( int argc, char *argv[] ) {
             p_cls->absorbWeightsToSites();
             printBondSpectra_sites();
             // reset environment
-            if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
+            if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, false, arg_envDbg);
                 
             // ENTER ENVIRONMENT LOOP
             bool expValEnvConv = false;

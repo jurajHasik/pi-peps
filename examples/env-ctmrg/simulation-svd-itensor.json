@@ -20,7 +20,6 @@
 		"auxEnvDim": 50,
 		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
-		"envIsComplex": false,
 		"isoType": "ISOMETRY_T3",
 		"env_SVD_METHOD": "itensor",
 		"isoPseudoInvCutoff": 1.0e-8,

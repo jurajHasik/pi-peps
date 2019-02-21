@@ -18,12 +18,11 @@
 
 	"ctmrg": {
 		"auxEnvDim": 50,
-		"ioEnvTag": "test-env-2x2",
 		"initEnvType": "INIT_ENV_ctmrg",
-		"envIsComplex": false,
 		"isoType": "ISOMETRY_T3",
 		"env_SVD_METHOD": "rsvd",
 		"rsvd_oversampling": 20,
+		"rsvd_power": 2,
 		"isoPseudoInvCutoff": 1.0e-8,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 50,
