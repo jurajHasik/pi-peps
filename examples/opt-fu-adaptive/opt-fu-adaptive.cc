@@ -50,6 +50,7 @@ int main( int argc, char *argv[] ) {
 
 	// full update parameters
     bool arg_decreaseTimestep = jsonCls.value("decreaseTimestep",true);
+    double arg_dtFraction     = jsonCls.value("dtFraction",0.5);
     double arg_minTimestep    = jsonCls.value("minTimestep",1.0e-6);
     int arg_fuIter  = jsonCls["fuIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
@@ -394,7 +395,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
@@ -403,7 +404,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
@@ -412,7 +413,7 @@ int main( int argc, char *argv[] ) {
                     tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
                         sv.inds().back()(ctmEnv.x));
                     if (arg_envDbg) PrintData(sv);
-                    max_tailCornerSV = std::min(max_tailCornerSV, tmpVal);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
                     oss <<" "<< tmpVal;
 
                     std::cout << "MinVals: "<< oss.str() << std::endl;
@@ -565,9 +566,9 @@ int main( int argc, char *argv[] ) {
                 computeEnvironment(arg_maxInitEnvIter, true);
                 // decrease time-step
                 auto current_dt = json_model_params["tau"].get<double>();
-                json_model_params["tau"] = current_dt / 2.0;
+                json_model_params["tau"] = current_dt * arg_dtFraction;
                 jsonCls["model"] = json_model_params;
-                oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt / 2.0;
+                oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt * arg_dtFraction;
                 // regenerate model with new lower timestep
                 ptr_engine = ef.build(json_model_params, pLinSysSolver.get());
                 // update simulation parameters on cluster

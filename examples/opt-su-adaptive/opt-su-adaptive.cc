@@ -54,6 +54,7 @@ int main( int argc, char *argv[] ) {
     int arg_suIter  = jsonCls["suIter"].get<int>();
     int arg_obsFreq = jsonCls["obsFreq"].get<int>();
     bool arg_decreaseTimestep = jsonCls.value("decreaseTimestep",true);
+    double arg_dtFraction     = jsonCls.value("dtFraction",0.5);
     double arg_minTimestep    = jsonCls.value("minTimestep",1.0e-6);
     bool arg_suDbg  = jsonCls["suDbg"].get<bool>();
     int arg_suDbgLevel = jsonCls["suDbgLevel"].get<int>();
@@ -253,121 +254,144 @@ int main( int argc, char *argv[] ) {
         std::cout<<"BOND SPECTRA(SITES) - END"<< std::endl;
     };
 
+    auto computeEnvironment = [&ctmEnv, &ev, 
+        &iso_type, &arg_envEps, &arg_initEnvType, &arg_envDbg, &arg_envDbgLvl, 
+        &get_s](int maxIter, bool reinitEnv) {
 
-    std::vector<double> diag_minCornerSV(1, 0.);
-    bool expValEnvConv = false;
-    // COMPUTE INITIAL OBSERVABLES
-    p_cls->absorbWeightsToSites();
-    for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
-        t_begin_int = std::chrono::steady_clock::now();
+        time_point t_begin_int, t_end_int;
+        std::vector<double> accT(12,0.0);
+        std::vector<double> e_curr(4,0.0), e_prev(4,0.0);
+        bool expValEnvConv = false;
 
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
-        ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
+        Args diagData_ctm =  Args::global();
 
-        t_end_int = std::chrono::steady_clock::now();
-        std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] "; 
+        if (reinitEnv) ctmEnv.init(arg_initEnvType, false, arg_envDbg);
 
-        if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
+        for (int envI=1; envI<=maxIter; envI++ ) {
+
             t_begin_int = std::chrono::steady_clock::now();
 
-            e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
-            e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
-            e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
-            e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
+            ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
 
             t_end_int = std::chrono::steady_clock::now();
+            std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) <<" [sec] ";
 
-            std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
+            if ( envI % 1 == 0 ) {
+                t_begin_int = std::chrono::steady_clock::now();
+                e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
+                e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
+                e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
+                e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
+                t_end_int = std::chrono::steady_clock::now();
 
-            // if the difference between energies along NN links is lower then arg_envEps
-            // consider the environment converged
-            if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
-                (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
-                (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
-                (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
+                std::cout<<" || Var(boundary) in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] : "
+                    << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3] << std::endl;
+                
+                if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
+                    (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
+                    (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
+                    (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
 
-                expValEnvConv = true;
-                std::cout<< " ENV CONVERGED ";
+                    std::cout<< "INIT ENV CONVERGED" << std::endl;
+                    expValEnvConv = true;
+                }
+
+                if (envI==maxIter) {
+                    std::cout<< " MAX ENV iterations REACHED ";
+                    expValEnvConv = true;
+                }
+                e_prev = e_curr;
+            
+                if (expValEnvConv) {
+                    // maximal value of transfer-op variance
+                    std::vector<double>::iterator result = std::max_element(std::begin(e_curr), std::end(e_curr));
+                    auto max_boundaryVar = *result;
+
+                    std::ostringstream oss;
+                    oss << std::scientific;
+
+                    // Compute spectra of Corner matrices
+                    std::cout << std::endl;
+                    double tmpVal;
+                    double max_tailCornerSV = 0.0;
+                    Args args_dbg_cornerSVD = {"Truncate",false};
+                    std::cout << "Spectra: " << std::endl;
+
+                    ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
+                    auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
+                    tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
+                        sv.inds().back()(ctmEnv.x));
+                    if (arg_envDbg) PrintData(sv);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
+                    oss << tmpVal;
+
+                    tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
+                    tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
+                        sv.inds().back()(ctmEnv.x));
+                    if (arg_envDbg) PrintData(sv);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
+                    tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
+                        sv.inds().back()(ctmEnv.x));
+                    if (arg_envDbg) PrintData(sv);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
+                    spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
+                        tL,sv,tR,args_dbg_cornerSVD);
+                    tmpVal = sv.real(sv.inds().front()(ctmEnv.x),
+                        sv.inds().back()(ctmEnv.x));
+                    if (arg_envDbg) PrintData(sv);
+                    max_tailCornerSV = std::max(max_tailCornerSV, tmpVal);
+                    oss <<" "<< tmpVal;
+
+                    std::cout << "MinVals: "<< oss.str() << std::endl;
+
+                    // record diagnostic data
+                    diagData_ctm = Args("ctmI",envI,"max_tailCornerSV",max_tailCornerSV,"maxBoundaryVariance",max_boundaryVar);
+
+                    break;
+                }
             }
-
-            if ( envI==arg_maxEnvIter )  {
-                expValEnvConv = true;
-                std::cout<< " MAX ENV iterations REACHED ";
-            }
-            e_prev = e_curr;
-
-            if (expValEnvConv) {
-                diag_ctmIter.push_back(envI);
-
-                std::ostringstream oss;
-                oss << std::scientific;
-
-                // Compute spectra of Corner matrices
-                std::cout << std::endl;
-                double tmpVal;
-                double minCornerSV = 1.0e+16;
-                Args args_dbg_cornerSVD = {"Truncate",false};
-                std::cout << "Spectra: " << std::endl;
-
-                ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
-                auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
-                    tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss << tmpVal;
-
-                tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
-                    tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
-
-                tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
-                    tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
-
-                tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
-                    tL,sv,tR,args_dbg_cornerSVD);
-                tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                    sv.inds().back()(auxEnvDim));
-                PrintData(sv);
-                minCornerSV = std::min(minCornerSV, tmpVal);
-                oss <<" "<< tmpVal;
-
-                diag_minCornerSV.push_back(minCornerSV);
-                std::cout << "MinVals: "<< oss.str() << std::endl;
-
-                break;
-            }
-
         }
-        std::cout << std::endl;
-    }
 
+        if( arg_envDbg && (arg_envDbgLvl > 1) ) {
+            std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
+            std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
+                <<" "<< accT[3] << std::endl;
+            std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
+            std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
+                <<" "<< accT[7] << std::endl;
+            std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
+            std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
+                <<" "<< accT[11] << std::endl;
+        }
+
+        return diagData_ctm;
+    };
+
+    // COMPUTE INITIAL OBSERVABLES
+    Args diagData_ctm;
+
+    p_cls->absorbWeightsToSites();
+    diagData_ctm = computeEnvironment(arg_maxEnvIter, arg_reinitEnv);
+    
+    out_file_diag << 0 <<" "<< diagData_ctm.getInt("ctmI",-1)
+        <<" "<< diagData_ctm.getReal("max_tailCornerSV",-1.0)
+        <<" "<< diagData_ctm.getReal("maxBoundaryVariance",-1.0)
+        <<std::endl;
     // ***** INITIAL CTMRG DONE **************************************
-    std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
-    std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-        <<" "<< accT[3] << std::endl;
-    std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
-    std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-        <<" "<< accT[7] << std::endl;
-    std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
-    std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
-        <<" "<< accT[11] << std::endl;
 
     // Compute initial properties
     ptr_model->setObservablesHeader(out_file_energy);
@@ -412,134 +436,15 @@ int main( int argc, char *argv[] ) {
             
             p_cls->absorbWeightsToSites();
             printBondSpectra_sites();
-            // reset environment
-            if (arg_reinitEnv) ctmEnv.init(arg_initEnvType, false, arg_envDbg);
                 
             // ENTER ENVIRONMENT LOOP
-            bool expValEnvConv = false;
-            for (int envI=1; envI<=arg_maxEnvIter; envI++ ) {
-                t_begin_int = std::chrono::steady_clock::now();
-
-                ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
-                ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-                ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
-                ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
-
-                t_end_int = std::chrono::steady_clock::now();
-                std::cout << "CTM STEP " << envI <<" T: "<< get_s(t_begin_int,t_end_int) 
-                        <<" [sec] "; 
-
-                if ( (arg_maxEnvIter > 1) && (envI % 1 == 0) ) {
-                    t_begin_int = std::chrono::steady_clock::now();
-
-                    e_curr[0] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::RIGHT);
-                    e_curr[1] = ev.analyzeBoundaryVariance(Vertex(0,0), CtmEnv::DIRECTION::DOWN);
-                    e_curr[2] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::RIGHT);
-                    e_curr[3] = ev.analyzeBoundaryVariance(Vertex(1,1), CtmEnv::DIRECTION::DOWN);
-                    
-                    t_end_int = std::chrono::steady_clock::now();
-
-                    std::cout<<" || E in T: "<< get_s(t_begin_int,t_end_int) <<" [sec] E: "
-                        << e_curr[0] <<" "<< e_curr[1] <<" "<< e_curr[2] <<" "<< e_curr[3]; 
-
-                    // if the difference between energies along NN links is lower then arg_envEps
-                    // consider the environment converged
-                    if ((std::abs(e_prev[0]-e_curr[0]) < arg_envEps) &&
-                        (std::abs(e_prev[1]-e_curr[1]) < arg_envEps) &&
-                        (std::abs(e_prev[2]-e_curr[2]) < arg_envEps) &&
-                        (std::abs(e_prev[3]-e_curr[3]) < arg_envEps) ) {
-
-                        std::cout<< " ENV CONVERGED ";
-                        expValEnvConv = true;
-                    }
-
-                    if ( envI==arg_maxEnvIter )  {
-                        std::cout<< " MAX ENV iterations REACHED ";
-                        expValEnvConv = true;
-                    }
-                    e_prev = e_curr;
-
-                    if (expValEnvConv) {
-                        diag_ctmIter.push_back(envI);
-
-                        std::ostringstream oss;
-                        oss << std::scientific;
-
-                        // Compute spectra of Corner matrices
-                        std::cout << std::endl;
-                        double tmpVal;
-                        double minCornerSV = 1.0e+16;
-                        Args args_dbg_cornerSVD = {"Truncate",false};
-                        std::cout << "Spectra: " << std::endl;
-
-                        ITensor tL(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]).inds().front()),sv,tR;
-                        auto spec = svd(ctmEnv.C_LU.at(ctmEnv.p_cluster->siteIds[0]),
-                            tL,sv,tR,args_dbg_cornerSVD);
-                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                            sv.inds().back()(auxEnvDim));
-                        PrintData(sv);
-                        minCornerSV = std::min(minCornerSV, tmpVal);
-                        oss << tmpVal;
-
-                        tL = ITensor(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                        spec = svd(ctmEnv.C_RU.at(ctmEnv.p_cluster->siteIds[0]),
-                            tL,sv,tR,args_dbg_cornerSVD);
-                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                            sv.inds().back()(auxEnvDim));
-                        PrintData(sv);
-                        minCornerSV = std::min(minCornerSV, tmpVal);
-                        oss <<" "<< tmpVal;
-
-                        tL = ITensor(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                        spec = svd(ctmEnv.C_RD.at(ctmEnv.p_cluster->siteIds[0]),
-                            tL,sv,tR,args_dbg_cornerSVD);
-                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                            sv.inds().back()(auxEnvDim));
-                        PrintData(sv);
-                        minCornerSV = std::min(minCornerSV, tmpVal);
-                        oss <<" "<< tmpVal;
-
-                        tL = ITensor(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]).inds().front());
-                        spec = svd(ctmEnv.C_LD.at(ctmEnv.p_cluster->siteIds[0]),
-                            tL,sv,tR,args_dbg_cornerSVD);
-                        tmpVal = sv.real(sv.inds().front()(auxEnvDim),
-                            sv.inds().back()(auxEnvDim));
-                        PrintData(sv);
-                        minCornerSV = std::min(minCornerSV, tmpVal);
-                        oss <<" "<< tmpVal;
-
-                        diag_minCornerSV.push_back(minCornerSV);
-                        std::cout << "MinVals: "<< oss.str() << std::endl;
-
-                        break;
-                    }
-                 
-                }
-                std::cout << std::endl;
-            }
-
+            diagData_ctm = computeEnvironment(arg_maxEnvIter, arg_reinitEnv);
             // ***** CTMRG DONE **************************************
-            std::cout <<"Timings(CTMRG) :"<<"Projectors "<<"AbsorbReduce "<<"N/A "<<"Postprocess"<< std::endl;
-            std::cout <<"accT [mSec]: "<< accT[0] <<" "<< accT[1] <<" "<< accT[2]
-                <<" "<< accT[3] << std::endl;
-            std::cout <<"Timings(Projectors): "<<"Enlarge "<<"N/A "<<"SVD "<<"Contract"<< std::endl;
-            std::cout <<"isoZ [mSec]: "<< accT[4] <<" "<< accT[5] <<" "<< accT[6]
-                <<" "<< accT[7] << std::endl;
-            std::cout <<"Timings(AbsorbReduce): "<<"C "<<"T "<<"Ct "<<"N/A"<< std::endl;
-            std::cout <<"[mSec]: "<< accT[8] <<" "<< accT[9] <<" "<< accT[10]
-                <<" "<< accT[11] << std::endl;
 
-            out_file_diag << suI <<" "<< diag_ctmIter.back()
-                <<" "<< diag_minCornerSV.back();
-            //     <<" "<< diag_fu.getString("siteMaxElem")
-            //     <<" "<< diag_fu.getReal("finalDist0",0.0)
-            //     <<" "<< diag_fu.getReal("finalDist1",0.0);
-            // out_file_diag <<" "<< diag_fu.getReal("ratioNonSymLE",0.0)
-            //     <<" "<< diag_fu.getReal("ratioNonSymFN",0.0);
-            // out_file_diag <<" "<< diag_fu.getReal("minGapDisc",0.0) 
-            //     <<" "<< diag_fu.getReal("minEvKept",0.0);
-            out_file_diag << std::endl;
-    
+            out_file_diag << suI <<" "<< diagData_ctm.getInt("ctmI",-1)
+                <<" "<< diagData_ctm.getReal("max_tailCornerSV",-1.0)
+                <<" "<< diagData_ctm.getReal("maxBoundaryVariance",-1.0)
+                <<std::endl;
 
             t_begin_int = std::chrono::steady_clock::now();
             auto metaInf = Args("lineNo",suI);
@@ -573,9 +478,9 @@ int main( int argc, char *argv[] ) {
                 p_cls->weights = past_weights;
                 // decrease time-step
                 auto current_dt = json_model_params["tau"].get<double>();
-                json_model_params["tau"] = current_dt / 2.0;
+                json_model_params["tau"] = current_dt * arg_dtFraction;
                 jsonCls["model"] = json_model_params;
-                oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt / 2.0;
+                oss << " Timestep decreased: "<< current_dt <<" -> "<< current_dt * arg_dtFraction;
                 // regenerate model with new lower timestep
                 ptr_engine = ef.build(json_model_params);
                 // update simulation parameters on cluster
