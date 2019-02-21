@@ -1,6 +1,7 @@
 include_dirs += include_directories('.')
 
-install_headers(['arpack-rcdn.h',
+install_headers([
+#		 'arpack-rcdn.h',
                  'cluster-ev-builder.h',
                  'ctm-cluster-env_v2.h',
                  'ctm-cluster-global.h',
@@ -19,11 +20,8 @@ install_headers(['arpack-rcdn.h',
                  'mpo.h',
                  'simple-update_v2.h',
                  'su2.h',
-                 'svdsolver-factory.h',
-		 'itensor-svd-solvers.h',
-		 'linsyssolvers-lapack.h',
-		 'itensor-linsys-solvers.h',
-                 'lapacksvd-solver.h',
-                 'rsvd-solver.h'])
+                 'svdsolver-factory.h'
+])
 
 subdir('models')
+subdir('linalg')

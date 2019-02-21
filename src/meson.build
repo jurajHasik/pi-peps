@@ -1,12 +1,10 @@
 source_files += files([
-		       'cluster-ev-builder.cc', 
+                       'cluster-ev-builder.cc', 
                        'engine.cc',           
                        'engine-factory.cc',
-                       #'full-update-TEST.cc',
                        'fu-2site.cc',
                        'fu-3site.cc',
                        'fu-4site.cc',
-                       #'full-update.cc', 
                        'simple-update_v2.cc', 
                        'models.cc',
                        'model-factory.cc',
@@ -16,12 +14,10 @@ source_files += files([
                        'ctm-cluster.cc',
                        'ctm-cluster-basic.cc',
                        'cluster-factory.cc',
+                       'svdsolver-factory.cc',
                        'lattice.cc',
                        'mpo.cc',
-                       'su2.cc',
-                       'svdsolver-factory.cc',
-		       'itensor-svd-solvers.cc',
-		       'itensor-linsys-solvers.cc',
-                       'rsvd-solver.cc'])
+                       'su2.cc'])
 
 subdir('models')
+subdir('linalg')
