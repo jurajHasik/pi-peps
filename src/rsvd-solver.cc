@@ -104,5 +104,9 @@ RsvdSolver::solve(
 	SvdSolver::solve(M,U,D,V,args);
 }
 
+std::unique_ptr<RsvdSolver> RsvdSolver::create() {
+    return std::unique_ptr<RsvdSolver>(new RsvdSolver());
+}
+
 } // namespace itensor
 #endif

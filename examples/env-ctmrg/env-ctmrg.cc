@@ -10,9 +10,7 @@
 #include "ctm-cluster.h"
 #include "mpo.h"
 #include "model-factory.h"
-#include "itensor-svd-solvers.h"
-#include "lapacksvd-solver.h"
-#include "rsvd-solver.h"
+#include "svdsolver-factory.h"
 
 using namespace itensor;
 
@@ -129,22 +127,8 @@ int main( int argc, char *argv[] ) {
     // ***** INITIALIZE ENVIRONMENT *******************************************
 
     // ***** Select SVD solver to use *****************************************
-    std::unique_ptr<SvdSolver> pSvdSolver;
-    if (env_SVD_METHOD == "rsvd") {
-        pSvdSolver = std::unique_ptr<RsvdSolver>(new RsvdSolver());
-    } 
-    else if (env_SVD_METHOD == "gesdd") {
-        pSvdSolver = std::unique_ptr<GESDDSolver>(new GESDDSolver());
-    }  
-    else if (env_SVD_METHOD == "itensor") {
-        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
-    } 
-    else {
-        std::cout<<"WARNING: Unsupported or no SvdSolver specified."
-            <<" Using itensor"<<std::endl;
-        // TODO? set jsonCls["ctmrg"]["env_SVD_METHOD"] = "itensor";
-        pSvdSolver = std::unique_ptr<SvdSolver>(new SvdSolver());
-    }
+    SvdSolverFactory sf = SvdSolverFactory();
+    auto pSvdSolver = sf.create(env_SVD_METHOD);
 
     // CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
     CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver,

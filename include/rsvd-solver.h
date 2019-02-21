@@ -29,6 +29,7 @@ struct RsvdSolver : SvdSolver {
       MatRef<Cplx>  const& V,
       Args const& args);
 
+    static std::unique_ptr<RsvdSolver> create();
 };
 
 } // namespace itensor

@@ -19,6 +19,7 @@ source_files += files([
                        'lattice.cc',
                        'mpo.cc',
                        'su2.cc',
+                       'svdsolver-factory.cc',
 		       'itensor-svd-solvers.cc',
 		       'itensor-linsys-solvers.cc',
                        'rsvd-solver.cc'])

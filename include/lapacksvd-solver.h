@@ -227,6 +227,10 @@ struct GESDDSolver : SvdSolver {
     return;
   	}
 
+    static std::unique_ptr<GESDDSolver> create() {
+      return std::unique_ptr<GESDDSolver>(new GESDDSolver());
+    }
+
 };
 
 } // namespace itensor

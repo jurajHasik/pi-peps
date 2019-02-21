@@ -35,6 +35,12 @@ struct SvdSolver {
         auto thresh = args.getReal("SVDThreshold",1E-3);
         SVDRef(M,U,D,V,thresh);
     }
+
+    virtual ~SvdSolver() = default;
+
+    static std::unique_ptr<SvdSolver> create() {
+      return std::unique_ptr<SvdSolver>(new SvdSolver());
+    }
 };
 
 
