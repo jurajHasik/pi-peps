@@ -1,4 +1,4 @@
-#include "ctm-cluster-env_v2.h"
+#include "p-ipeps/ctm-cluster-env_v2.h"
 
 // TODO Implement convergence check as general function. The actual
 // implementation may vary - difference between SVD decomp,
@@ -189,7 +189,7 @@ CtmEnv::CtmEnv (
 /*
  * Assume the whole environment is delivered as a set of simple
  * environments for each of non-equivalent sites within cluster
- * Preserves compatibility with LEGACY ctm-cluster-io.h
+ * Preserves compatibility with LEGACY p-ipeps/ctm-cluster-io.h
  *
  */
 // CtmEnv::CtmEnv (std::string t_name,  std::vector<CtmData> const& ctmD, 

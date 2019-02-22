@@ -9,10 +9,10 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
-#include "ctm-cluster.h"
-#include "ctm-cluster-io.h"
-#include "ctm-cluster-global.h"
-#include "itensor-svd-solvers.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-io.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/itensor-svd-solvers.h"
 #include "itensor/all.h"
 
 
@@ -223,7 +223,7 @@ class CtmEnv
 
     // Reconstructs CtmEnv from given CtmData - a CtmEnv for each
     // of non-equivalent sites within cluster (compatibility with
-    // LEGACY ctm-cluster-io.h )
+    // LEGACY p-ipeps/ctm-cluster-io.h )
     // CtmEnv(std::string t_name, std::vector<CtmData> const& ctmD, 
     //     Cluster const& c, itensor::SvdSolver & solver,
     //     itensor::Args const& args = itensor::Args::global()); 

@@ -1,7 +1,7 @@
 #ifndef __MPO_
 #define __MPO_
 
-#include "ctm-cluster.h"
+#include "p-ipeps/ctm-cluster.h"
 #include "itensor/all.h"
 
 // ----- Main MPO Structures ------------------------------------------

@@ -7,7 +7,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "lattice.h"
+#include "p-ipeps/lattice.h"
 #include "json.hpp"
 #include "itensor/all.h"
 

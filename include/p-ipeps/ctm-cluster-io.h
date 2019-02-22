@@ -10,10 +10,10 @@
 #include <algorithm>
 #include <limits>
 #include "json.hpp"
-#include "ctm-cluster.h"
-#include "ctm-cluster-basic.h"
-#include "ctm-cluster-global.h"
-#include "cluster-factory.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-basic.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/cluster-factory.h"
 #include "itensor/all.h"
 
 const std::string WS4(4,' ');

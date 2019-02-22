@@ -5,11 +5,11 @@
 #include <iostream>
 #include <chrono>
 #include "json.hpp"
-#include "su2.h"
-#include "cluster-ev-builder.h"
-#include "ctm-cluster.h"
-#include "ctm-cluster-global.h"
-#include "mpo.h"
+#include "p-ipeps/su2.h"
+#include "p-ipeps/cluster-ev-builder.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/mpo.h"
 #include "itensor/all.h"
 
 // ----- Trotter gates (3site, ...) MPOs ------------------------------

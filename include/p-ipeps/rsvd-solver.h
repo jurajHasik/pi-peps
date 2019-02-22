@@ -5,7 +5,7 @@
 
 #ifdef PEPS_WITH_RSVD
 
-#include "itensor-svd-solvers.h"
+#include "p-ipeps/itensor-svd-solvers.h"
 #include "rank_revealing_algorithms_intel_mkl.h"
 
 namespace itensor {

@@ -9,8 +9,8 @@
 #include <vector>
 #include <cmath>
 #include <chrono>
-#include "ctm-cluster-io.h"
-#include "ctm-cluster-global.h"
+#include "p-ipeps/ctm-cluster-io.h"
+#include "p-ipeps/ctm-cluster-global.h"
 #include "itensor/all.h"
 
 class CtmEnv

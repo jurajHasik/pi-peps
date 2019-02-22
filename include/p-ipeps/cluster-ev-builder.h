@@ -4,12 +4,12 @@
 #include <string>
 #include <iostream>
 #include "itensor/all.h"
-#include "ctm-cluster-global.h"
-#include "ctm-cluster.h"
-#include "ctm-cluster-env_v2.h"
-#include "ctm-cluster-io.h"
-#include "mpo.h"
-#include "su2.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-env_v2.h"
+#include "p-ipeps/ctm-cluster-io.h"
+#include "p-ipeps/mpo.h"
+#include "p-ipeps/su2.h"
 #include "arpack-rcdn.h"
 
 
@@ -307,7 +307,7 @@ class EVBuilder {
 
     /*
      * wrapper around SU2_getSpinOp(SU2O su2o, itensor::Index const& s)
-     * from su2.h
+     * from p-ipeps/su2.h
      *
      */
     static itensor::ITensor getSpinOp(MPO_1S mpo, itensor::Index const& s,

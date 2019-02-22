@@ -7,7 +7,7 @@
 #include <map>
 #include "json.hpp"
 #include "itensor/all.h"
-#include "ctm-cluster.h"
+#include "p-ipeps/ctm-cluster.h"
 
 namespace itensor {
 

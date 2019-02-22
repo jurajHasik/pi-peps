@@ -1,8 +1,8 @@
 #ifndef __J1J2_2X2_ABCD_
 #define __J1J2_2X2_ABCD_
 
-#include "models.h"
-#include "engine.h"
+#include "p-ipeps/models.h"
+#include "p-ipeps/engine.h"
 
 namespace itensor {
 

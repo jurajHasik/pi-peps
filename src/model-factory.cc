@@ -1,4 +1,4 @@
-#include "model-factory.h"
+#include "p-ipeps/model-factory.h"
 #include "ising-2x2-ABCD.h"
 #include "hb-2x2-ABCD.h"
 #include "aklt-2x2-ABCD.h"

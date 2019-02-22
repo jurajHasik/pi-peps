@@ -2,7 +2,7 @@
 #define __CLUSTER_FACTORY_
 
 #include "json.hpp"
-#include "ctm-cluster.h"
+#include "p-ipeps/ctm-cluster.h"
 
 class ClusterFactory {
 	public:

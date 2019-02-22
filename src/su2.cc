@@ -1,4 +1,4 @@
-#include "su2.h"
+#include "p-ipeps/su2.h"
 
 using namespace std;
 

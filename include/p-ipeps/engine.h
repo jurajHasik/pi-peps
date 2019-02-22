@@ -4,14 +4,14 @@
 #include <string>
 #include "json.hpp"
 #include "itensor/all.h"
-#include "cluster-ev-builder.h"
-#include "ctm-cluster.h"
-#include "ctm-cluster-global.h"
-#include "mpo.h"
-#include "models.h"
-#include "simple-update_v2.h"
-#include "full-update.h"
-#include "itensor-linsys-solvers.h"
+#include "p-ipeps/cluster-ev-builder.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/mpo.h"
+#include "p-ipeps/models.h"
+#include "p-ipeps/simple-update_v2.h"
+#include "p-ipeps/full-update.h"
+#include "p-ipeps/itensor-linsys-solvers.h"
 
 template<class T>
 class TrotterGate {

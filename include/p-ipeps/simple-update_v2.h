@@ -7,11 +7,11 @@
 #include <iomanip>
 #include <cmath>
 #include <limits>
-#include "models.h"
-#include "mpo.h"
-#include "ctm-cluster.h"
-#include "ctm-cluster-global.h"
-#include "su2.h"
+#include "p-ipeps/models.h"
+#include "p-ipeps/mpo.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-global.h"
+#include "p-ipeps/su2.h"
 #include "itensor/all.h"
 
 // ----- 2-Site operator functions ------------------------------------

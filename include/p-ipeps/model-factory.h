@@ -2,7 +2,7 @@
 #define __MODEL_FACTORY_
 
 #include "json.hpp"
-#include "models.h"
+#include "p-ipeps/models.h"
 
 class ModelFactory {
 	public:
