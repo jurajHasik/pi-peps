@@ -1,4 +1,4 @@
-#include "j1j2-2x2-ABCD.h"
+#include "p-ipeps/models/j1j2-2x2-ABCD.h"
 
 namespace itensor {
 

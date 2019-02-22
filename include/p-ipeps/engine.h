@@ -11,7 +11,7 @@
 #include "p-ipeps/models.h"
 #include "p-ipeps/simple-update_v2.h"
 #include "p-ipeps/full-update.h"
-#include "p-ipeps/itensor-linsys-solvers.h"
+#include "p-ipeps/linalg/itensor-linsys-solvers.h"
 
 template<class T>
 class TrotterGate {

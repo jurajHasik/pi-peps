@@ -1,4 +1,4 @@
-#include "p-ipeps/itensor-linsys-solvers.h" 
+#include "p-ipeps/linalg/itensor-linsys-solvers.h" 
 
 namespace itensor {
 

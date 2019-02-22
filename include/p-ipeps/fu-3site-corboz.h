@@ -9,7 +9,7 @@
 #include "p-ipeps/ctm-cluster-global.h"
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/su2.h"
-#include "p-ipeps/itensor-linsys-solvers.h"
+#include "p-ipeps/linalg/itensor-linsys-solvers.h"
 #include "itensor/all.h"
 
 const int IOFFSET = 100;

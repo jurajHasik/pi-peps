@@ -2,7 +2,7 @@
 #define __SVDSOLVER_FACTORY_
 
 #include "json.hpp"
-#include "p-ipeps/itensor-svd-solvers.h"
+#include "p-ipeps/linalg/itensor-svd-solvers.h"
 
 class SvdSolverFactory {
 	public:

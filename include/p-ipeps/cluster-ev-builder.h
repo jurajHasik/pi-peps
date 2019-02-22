@@ -10,7 +10,7 @@
 #include "p-ipeps/ctm-cluster-io.h"
 #include "p-ipeps/mpo.h"
 #include "p-ipeps/su2.h"
-#include "arpack-rcdn.h"
+#include "p-ipeps/linalg/arpack-rcdn.h"
 
 
 class EVBuilder {

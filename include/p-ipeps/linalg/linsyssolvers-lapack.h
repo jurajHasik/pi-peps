@@ -1,7 +1,7 @@
 #ifndef _ITENSOR_LAPACK_LINSYS_SOLVERS_H
 #define _ITENSOR_LAPACK_LINSYS_SOLVERS_H
 
-#include "p-ipeps/itensor-linsys-solvers.h"
+#include "p-ipeps/linalg/itensor-linsys-solvers.h"
 
 
 namespace itensor {

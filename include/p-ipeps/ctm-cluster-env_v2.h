@@ -12,7 +12,7 @@
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/ctm-cluster-io.h"
 #include "p-ipeps/ctm-cluster-global.h"
-#include "p-ipeps/itensor-svd-solvers.h"
+#include "p-ipeps/linalg/itensor-svd-solvers.h"
 #include "itensor/all.h"
 
 
