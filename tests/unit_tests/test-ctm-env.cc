@@ -1,7 +1,7 @@
 #include <iostream>
 #include <gtest/gtest.h>
-#include "ctm-cluster-basic.h"
-#include "ctm-cluster-env_v2.h"
+#include "p-ipeps/ctm-cluster-basic.h"
+#include "p-ipeps/ctm-cluster-env_v2.h"
 
 using namespace itensor;
 

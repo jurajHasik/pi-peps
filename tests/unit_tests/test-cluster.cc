@@ -1,9 +1,9 @@
 #include <iostream>
 #include <string>
 #include <gtest/gtest.h>
-#include "ctm-cluster.h"
-#include "ctm-cluster-basic.h"
-#include "ctm-cluster-io.h"
+#include "p-ipeps/ctm-cluster.h"
+#include "p-ipeps/ctm-cluster-basic.h"
+#include "p-ipeps/ctm-cluster-io.h"
 
 using namespace itensor;
 

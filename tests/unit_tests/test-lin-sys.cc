@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "itensor/all.h"
-#include "linsyssolvers-lapack.h"
+#include "p-ipeps/linalg/linsyssolvers-lapack.h"
 
 using namespace itensor;
 
