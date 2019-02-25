@@ -6,6 +6,20 @@ foreach _opt : optional_deps
     _cdata.set(_v, get_variable('with_'+_opt, false))
 endforeach
 
+
+code = '''_Pragma("GCC diagnostic push")
+  _Pragma("GCC diagnostic ignored \"-Wextra\"")
+  _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"")
+  _Pragma("GCC diagnostic ignored \"-Wpragmas\"")
+  int main() { return 0; }
+  _Pragma("GCC diagnostic pop")
+'''
+
+_pragma = meson.get_compiler('cpp').compiles(code, name: 'pragma check')
+
+_cdata.set('COMPILER_HAS_DIAGNOSTIC_PRAGMA', _pragma)
+
+
 configure_file(output: 'config.h',
                input: 'config.h.in',
                configuration: _cdata,
