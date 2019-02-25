@@ -1,7 +1,7 @@
 #ifndef _ITENSOR_CUSTOM_SOLVERS_RSVD_H
 #define _ITENSOR_CUSTOM_SOLVERS_RSVD_H
 
-#include "p-ipeps_config.h"
+#include "p-ipeps/config.h"
 
 #ifdef PEPS_WITH_RSVD
 
