@@ -1,11 +1,11 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/engine-factory.h"
-#include "p-ipeps/models/id-2x2-ABCD.h"
-#include "p-ipeps/models/ising-2x2-ABCD.h"
-#include "p-ipeps/models/hb-2x2-ABCD.h"
-#include "p-ipeps/models/aklt-2x2-ABCD.h"
-#include "p-ipeps/models/j1j2-2x2-ABCD.h"
-#include "p-ipeps/models/ladders-2x2-ABCD.h"
+#include "pi-peps/config.h"
+#include "pi-peps/engine-factory.h"
+#include "pi-peps/models/id-2x2-ABCD.h"
+#include "pi-peps/models/ising-2x2-ABCD.h"
+#include "pi-peps/models/hb-2x2-ABCD.h"
+#include "pi-peps/models/aklt-2x2-ABCD.h"
+#include "pi-peps/models/j1j2-2x2-ABCD.h"
+#include "pi-peps/models/ladders-2x2-ABCD.h"
 
 EngineFactory::EngineFactory() {
     registerEngine("ID_2X2_ABCD", &itensor::IdentityModel_2x2_ABCD::buildEngine);

@@ -1,10 +1,10 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <iostream>
 #include <string>
 #include <gtest/gtest.h>
-#include "p-ipeps/ctm-cluster.h"
-#include "p-ipeps/ctm-cluster-basic.h"
-#include "p-ipeps/ctm-cluster-io.h"
+#include "pi-peps/ctm-cluster.h"
+#include "pi-peps/ctm-cluster-basic.h"
+#include "pi-peps/ctm-cluster-io.h"
 
 using namespace itensor;
 

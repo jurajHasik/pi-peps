@@ -1,4 +1,4 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include "full-update-TEST.h"
 
 using namespace itensor;

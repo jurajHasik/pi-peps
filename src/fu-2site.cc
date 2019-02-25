@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/full-update.h"
+#include "pi-peps/config.h"
+#include "pi-peps/full-update.h"
 
 using namespace itensor;
 

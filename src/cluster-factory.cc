@@ -1,6 +1,6 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/cluster-factory.h"
-#include "p-ipeps/ctm-cluster-basic.h"
+#include "pi-peps/config.h"
+#include "pi-peps/cluster-factory.h"
+#include "pi-peps/ctm-cluster-basic.h"
 
 ClusterFactory::ClusterFactory() {
 	registerCluster("DEFAULT", &Cluster::create);

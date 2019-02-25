@@ -1,4 +1,4 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <string>
 #include <iostream>
 #include <fstream>
@@ -7,15 +7,15 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
-#include "p-ipeps/ctm-cluster-env_v2.h"
-#include "p-ipeps/cluster-ev-builder.h"
-#include "p-ipeps/ctm-cluster-io.h"
-#include "p-ipeps/ctm-cluster.h"
-#include "p-ipeps/cluster-factory.h"
-#include "p-ipeps/mpo.h"
-#include "p-ipeps/model-factory.h"
-#include "p-ipeps/engine-factory.h"
-#include "p-ipeps/svdsolver-factory.h"
+#include "pi-peps/ctm-cluster-env_v2.h"
+#include "pi-peps/cluster-ev-builder.h"
+#include "pi-peps/ctm-cluster-io.h"
+#include "pi-peps/ctm-cluster.h"
+#include "pi-peps/cluster-factory.h"
+#include "pi-peps/mpo.h"
+#include "pi-peps/model-factory.h"
+#include "pi-peps/engine-factory.h"
+#include "pi-peps/svdsolver-factory.h"
 
 using namespace itensor;
 

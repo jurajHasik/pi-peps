@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/models/id-2x2-ABCD.h"
+#include "pi-peps/config.h"
+#include "pi-peps/models/id-2x2-ABCD.h"
 
 namespace itensor {
 
