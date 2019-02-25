@@ -30,10 +30,11 @@ readability-*,\
 -readability-else-after-return"
 
 
-SRC="${SOURCE_DIR}/src/geotop/*.cc\
-     ${SOURCE_DIR}/src/libraries/*/*.cc"
+SRC="${SOURCE_DIR}/src/*.cc\
+     ${SOURCE_DIR}/src/models/*.cc\
+     ${SOURCE_DIR}/src/linalg/*.cc"
 
-HEAD="${SOURCE_DIR}/src/geotop/*.h ${SOURCE_DIR}/src/libraries/{ascii,fluidturtle,geomorphology,math}/*.h"
+HEAD="${SOURCE_DIR}/include/pi-peps/*.h ${SOURCE_DIR}/include/pi-peps/linalg/*.h ${SOURCE_DIR}/include/pi-peps/models/*.h"
 
 clang-tidy -p ${BUILD_DIR} -checks="${CHECKS}" ${SRC}  \
 	   -header-filter="${HEAD}" -quiet $ARGS
