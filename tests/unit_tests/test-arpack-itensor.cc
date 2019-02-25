@@ -1,3 +1,4 @@
+#include <gtest/gtest.h>
 #include "pi-peps/config.h"
 #include <gtest/gtest.h>
 #include "pi-peps/linalg/arpack-rcdn.h"

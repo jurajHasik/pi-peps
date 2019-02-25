@@ -2146,6 +2146,7 @@ void EVBuilder::analyzeTransferMatrix(Vertex const& v,
     std::cout << "[EVBuilder::analyzeTransferMatrix] Unsupported option: "
               << alg_type << std::endl;
   }
+
 }
 
 // Diagonal s1, s1+[1,1]
