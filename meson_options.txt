@@ -24,3 +24,7 @@ option('arpack-dir', type: 'string', value: '')
 option('rsvd', type: 'boolean', value: false)
 option('lbfgs', type: 'boolean', value: true)
 
+# used to pass additional arguments when running tidy
+# target e.g. '-fix-errors' to apply fixes proposed
+# by the linter
+option('tidy_args', type: 'string', value: '', description:'additional arguments passed to clang-tidy through the target tidy') 
