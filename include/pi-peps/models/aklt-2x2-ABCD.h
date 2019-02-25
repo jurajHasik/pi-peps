@@ -2,56 +2,55 @@
 #define __AKLT_2X2_ABCD_
 
 #include "pi-peps/config.h"
-#include "pi-peps/models.h"
 #include "pi-peps/engine.h"
+#include "pi-peps/models.h"
 
 namespace itensor {
 
-// ----- Trotter gates (2site, ...) MPOs ------------------------------
-ITensor Projector_S2tpS2_S1(Index & s1, Index & s2);
+  // ----- Trotter gates (2site, ...) MPOs ------------------------------
+  ITensor Projector_S2tpS2_S1(Index& s1, Index& s2);
 
-ITensor Projector_S2tpS2_S1_v2(Index & s1, Index & s2);
+  ITensor Projector_S2tpS2_S1_v2(Index& s1, Index& s2);
 
-MPO_2site getMPO2s_AKLT(double tau, double lambda);
+  MPO_2site getMPO2s_AKLT(double tau, double lambda);
 
-MPO_3site getMPO3s_AKLT(double tau);
-// ----- END Trotter gates (3site, ...) MPOs --------------------------
+  MPO_3site getMPO3s_AKLT(double tau);
+  // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
+  // ----- Definition of model base class and its particular instances --
+  class AKLTModel_2x2_ABCD : public Model {
+   public:
+    AKLTModel_2x2_ABCD();
 
-// ----- Definition of model base class and its particular instances --
-class AKLTModel_2x2_ABCD : public Model {
-    public:
+    void setObservablesHeader(std::ofstream& output) override;
 
-        AKLTModel_2x2_ABCD();
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
 
-        void setObservablesHeader(std::ofstream & output) override;
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
 
-        void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            Args & metaInf) override;
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
 
-        static std::unique_ptr<Model> create(nlohmann::json & json_model);
+  // ----- Definition of model base class and its particular instances --
+  class AKLTModel_2x2_AB : public Model {
+   public:
+    AKLTModel_2x2_AB();
 
-        static std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
-};
-// ----- END Definition of model class --------------------------------
+    void setObservablesHeader(std::ofstream& output) override;
 
-// ----- Definition of model base class and its particular instances --
-class AKLTModel_2x2_AB : public Model {
-    public:
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
 
-        AKLTModel_2x2_AB();
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
 
-        void setObservablesHeader(std::ofstream & output) override;
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
 
-        void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            Args & metaInf) override;
-
-        static std::unique_ptr<Model> create(nlohmann::json & json_model);
-
-        static std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
-};
-// ----- END Definition of model class --------------------------------
-
-} //namespace itensor
+}  // namespace itensor
 
 #endif
