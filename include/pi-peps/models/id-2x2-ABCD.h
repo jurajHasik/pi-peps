@@ -2,54 +2,53 @@
 #define __ID_2X2_ABCD_
 
 #include "pi-peps/config.h"
-#include "pi-peps/models.h"
 #include "pi-peps/engine.h"
+#include "pi-peps/models.h"
 
 namespace itensor {
 
-// ----- Trotter gates (2site, ...) MPOs ------------------------------
-MPO_2site getMPO2s_ID(int pd);
+  // ----- Trotter gates (2site, ...) MPOs ------------------------------
+  MPO_2site getMPO2s_ID(int pd);
 
-MPO_3site getMPO3s_ID(int pd);
+  MPO_3site getMPO3s_ID(int pd);
 
-OpNS getOP4s_ID(int pd);
-// ----- END Trotter gates (3site, ...) MPOs --------------------------
+  OpNS getOP4s_ID(int pd);
+  // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
+  // ----- Definition of model base class and its particular instances --
+  class IdentityModel_2x2_ABCD : public Model {
+   public:
+    IdentityModel_2x2_ABCD(int pd);
 
-// ----- Definition of model base class and its particular instances --
-class IdentityModel_2x2_ABCD : public Model {
-    public:
+    void setObservablesHeader(std::ofstream& output) override;
 
-        IdentityModel_2x2_ABCD(int pd);
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
 
-        void setObservablesHeader(std::ofstream & output) override;
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
 
-        void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            Args & metaInf) override;
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
 
-        static std::unique_ptr<Model> create(nlohmann::json & json_model);
+  // ----- Definition of model base class and its particular instances --
+  class IdentityModel_2x2_AB : public Model {
+   public:
+    IdentityModel_2x2_AB(int pd);
 
-        static std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
-};
-// ----- END Definition of model class --------------------------------
+    void setObservablesHeader(std::ofstream& output) override;
 
-// ----- Definition of model base class and its particular instances --
-class IdentityModel_2x2_AB : public Model {
-    public:
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
 
-        IdentityModel_2x2_AB(int pd);
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
 
-        void setObservablesHeader(std::ofstream & output) override;
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
 
-        void computeAndWriteObservables(EVBuilder const& ev, std::ofstream & output, 
-            Args & metaInf) override;
-
-        static std::unique_ptr<Model> create(nlohmann::json & json_model);
-
-        static std::unique_ptr<Engine> buildEngine(nlohmann::json & json_model);
-};
-// ----- END Definition of model class --------------------------------
-
-} //namespace itensor
+}  // namespace itensor
 
 #endif

@@ -6,20 +6,20 @@
 #include "pi-peps/engine.h"
 
 class EngineFactory {
-	public:
-		using TCreateMethod = std::function<
-			std::unique_ptr<Engine>(nlohmann::json & json_model)>;
+ public:
+  using TCreateMethod =
+    std::function<std::unique_ptr<Engine>(nlohmann::json& json_model)>;
 
-		EngineFactory();
-		virtual ~EngineFactory() = default;
+  EngineFactory();
+  virtual ~EngineFactory() = default;
 
-		bool registerEngine(std::string const& name, TCreateMethod funcCreate);
+  bool registerEngine(std::string const& name, TCreateMethod funcCreate);
 
-		std::unique_ptr<Engine> build(nlohmann::json & json_model, 
-			itensor::LinSysSolver * pSolver = nullptr);
+  std::unique_ptr<Engine> build(nlohmann::json& json_model,
+                                itensor::LinSysSolver* pSolver = nullptr);
 
-	private:
-		std::map<std::string, TCreateMethod> s_methods;
+ private:
+  std::map<std::string, TCreateMethod> s_methods;
 };
 
 #endif

@@ -2,15 +2,15 @@
 #define __MODELS_
 
 #include "pi-peps/config.h"
-#include <string>
-#include <iostream>
-#include <chrono>
 #include "json.hpp"
-#include "pi-peps/su2.h"
 #include "pi-peps/cluster-ev-builder.h"
-#include "pi-peps/ctm-cluster.h"
 #include "pi-peps/ctm-cluster-global.h"
+#include "pi-peps/ctm-cluster.h"
 #include "pi-peps/mpo.h"
+#include "pi-peps/su2.h"
+#include <chrono>
+#include <iostream>
+#include <string>
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
@@ -19,35 +19,35 @@ ENABLE_WARNINGS
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);
 // ----- END Trotter gates (3site, ...) MPOs --------------------------
 
-
 // ----- Trotter gates (4site, ...) MPOs ------------------------------
 OpNS getOP4s_J1Q(double tau, double J1, double Q);
 // ----- END Trotter gates (4site, ...) MPOs --------------------------
 
-
 // ----- Definition of model base class and its particular instances --
 class Model {
-    public:
-        int physDim;
+ public:
+  int physDim;
 
-        virtual void setObservablesHeader(std::ofstream & output) = 0;
+  virtual void setObservablesHeader(std::ofstream& output) = 0;
 
-        virtual void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args & metaInf) = 0;
+  virtual void computeAndWriteObservables(EVBuilder const& ev,
+                                          std::ofstream& output,
+                                          itensor::Args& metaInf) = 0;
 
-        virtual ~Model() = default;
+  virtual ~Model() = default;
 };
 
 class J1QModel : public Model {
-    public:
-        double J1, Q;
+ public:
+  double J1, Q;
 
-        J1QModel(double arg_J1, double arg_Q);
+  J1QModel(double arg_J1, double arg_Q);
 
-        void setObservablesHeader(std::ofstream & output);
-        
-        void computeAndWriteObservables(EVBuilder const& ev, 
-            std::ofstream & output, itensor::Args & metaInf);
+  void setObservablesHeader(std::ofstream& output);
+
+  void computeAndWriteObservables(EVBuilder const& ev,
+                                  std::ofstream& output,
+                                  itensor::Args& metaInf);
 };
 
 // class Ising3BodyModel : public Model {
@@ -58,18 +58,17 @@ class J1QModel : public Model {
 
 //         void setObservablesHeader(std::ofstream & output);
 
-//         void computeAndWriteObservables(EVBuilder const& ev, 
+//         void computeAndWriteObservables(EVBuilder const& ev,
 //             std::ofstream & output, itensor::Args & metaInf);
 // };
 // ----- END Definition of model class --------------------------------
 
-
 // ----- Model Definitions --------------------------------------------
-std::unique_ptr<Model> getModel_J1Q(nlohmann::json & json_model);
+std::unique_ptr<Model> getModel_J1Q(nlohmann::json& json_model);
 
 // std::unique_ptr<Model> getModel_Ising3Body(nlohmann::json & json_model);
 
-std::unique_ptr<Model> getModel(nlohmann::json & json_model);
+std::unique_ptr<Model> getModel(nlohmann::json& json_model);
 // ----- END Model Definitions ----------------------------------------
 
 #endif
