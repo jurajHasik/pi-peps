@@ -1,4 +1,5 @@
 option('build-examples', type: 'boolean', value: true)
+option('openmp', type: 'boolean', value: true, description: 'enable openMP support')
 
 ########### external dependendencies:
 # one option with `library_name`, type boolean
