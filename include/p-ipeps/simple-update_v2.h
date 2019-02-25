@@ -13,7 +13,9 @@
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/ctm-cluster-global.h"
 #include "p-ipeps/su2.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 // ----- 2-Site operator functions ------------------------------------
 

@@ -1,7 +1,9 @@
 #include "p-ipeps/config.h"
 #include <gtest/gtest.h>
 #include <iostream>
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include "p-ipeps/linalg/lapacksvd-solver.h"
 
 using namespace itensor;

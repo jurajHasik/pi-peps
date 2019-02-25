@@ -15,7 +15,9 @@
 #include "p-ipeps/ctm-cluster-basic.h"
 #include "p-ipeps/ctm-cluster-global.h"
 #include "p-ipeps/cluster-factory.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 const std::string WS4(4,' ');
 

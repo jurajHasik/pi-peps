@@ -3,7 +3,9 @@
 
 #include "p-ipeps/config.h"
 #include "p-ipeps/ctm-cluster.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 // ----- Main MPO Structures ------------------------------------------
 // Index names of 3-site MPO indices

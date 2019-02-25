@@ -10,7 +10,9 @@
 #include <map>
 #include "p-ipeps/lattice.h"
 #include "json.hpp"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 // ############################################################################
 // IO for cluster definition using JSON data format

@@ -11,7 +11,9 @@
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/su2.h"
 #include "p-ipeps/linalg/itensor-linsys-solvers.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 const int IOFFSET = 100;
 

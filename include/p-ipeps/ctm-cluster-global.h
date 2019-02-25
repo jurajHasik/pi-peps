@@ -3,7 +3,9 @@
 
 #include "p-ipeps/config.h"
 #include <string>
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 /*
  * ENVironment of nxm cluster 
