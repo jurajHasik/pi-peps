@@ -4,7 +4,9 @@
 #include "p-ipeps/config.h"
 #include <string>
 #include "json.hpp"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include "p-ipeps/cluster-ev-builder.h"
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/ctm-cluster-global.h"

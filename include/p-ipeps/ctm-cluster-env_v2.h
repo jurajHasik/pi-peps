@@ -14,7 +14,9 @@
 #include "p-ipeps/ctm-cluster-io.h"
 #include "p-ipeps/ctm-cluster-global.h"
 #include "p-ipeps/linalg/itensor-svd-solvers.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 
 class CtmEnv

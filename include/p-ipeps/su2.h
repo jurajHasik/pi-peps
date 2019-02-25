@@ -5,7 +5,9 @@
 #include <algorithm>
 #include <complex>
 #include <cmath>
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 // Supported types of 1-site operators
 enum SU2O {

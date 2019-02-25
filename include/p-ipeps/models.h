@@ -11,7 +11,9 @@
 #include "p-ipeps/ctm-cluster.h"
 #include "p-ipeps/ctm-cluster-global.h"
 #include "p-ipeps/mpo.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 // ----- Trotter gates (3site, ...) MPOs ------------------------------
 MPO_3site getMPO3s_Ising3Body(double tau, double J1, double J2, double h);

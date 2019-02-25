@@ -1,6 +1,8 @@
 #include "p-ipeps/config.h"
 #include <iostream>
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include <chrono>
 
 using namespace itensor;

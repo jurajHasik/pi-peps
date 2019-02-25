@@ -2,7 +2,9 @@
 #define _ITENSOR_LINSYS_SOLVERS_H
 
 #include "p-ipeps/config.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 namespace itensor {
 

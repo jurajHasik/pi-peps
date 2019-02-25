@@ -4,7 +4,9 @@
 #include <fstream>
 #include <chrono>
 #include "json.hpp"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include "p-ipeps/ctm-cluster-env_v2.h"
 #include "p-ipeps/cluster-ev-builder.h"
 #include "p-ipeps/ctm-cluster-io.h"

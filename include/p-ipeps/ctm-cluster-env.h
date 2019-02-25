@@ -12,7 +12,9 @@
 #include <chrono>
 #include "p-ipeps/ctm-cluster-io.h"
 #include "p-ipeps/ctm-cluster-global.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 
 class CtmEnv
 {
