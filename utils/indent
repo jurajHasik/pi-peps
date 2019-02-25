@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#
+# This script indents all source files of geotop according to our
+# usual code formatting standards. It is used to ensure that our
+# code base looks uniform, as uniformity helps make code easier to
+# read.
+#
+# While we're already touching every file, this script also makes
+# sure we set permissions correctly
+#
+# The script needs to be executed as 
+#   ./utils/indent
+# from the top-level directory of the source tree, or via
+#   make indent
+# from a build directory.
+#
+
+# Author: Alberto Sartori (2018). This script has been adapted from
+# the deal.II library (www.deal.II.org)
+
+
+if test ! -d src -o ! -d tests ; then
+  echo "***  This script must be run from the top-level directory of the repo."
+  exit 1
+fi
+
+if test -z "`which clang-format`" ; then
+  echo "***  No clang-format program found."
+  echo "***"
+  echo "***  Please install clang-format 6.0"
+  exit 1
+fi
+
+_CLANG_MAJOR=$(clang-format --version | awk '{print $3}' | cut -d '.' -f 1)
+_CLANG_MINOR=$(clang-format --version | awk '{print $3}' | cut -d '.' -f 2)
+
+if [ ${_CLANG_MAJOR} -ne 6 ] || [ ${_CLANG_MINOR} -ne 0 ]
+then
+    echo "***  The indent target requires clang-format version 6.0,"
+    echo "***  but version ${_CLANG_MAJOR}.${_CLANG_MINOR} was found."
+    exit 1
+fi
+
+
+# execute on all source files the command passed as arguments of the
+# function
+do_on_files(){
+    find src tests examples include \
+	 \(                    \
+	 -name '*.cc' -o       \
+	 -name '*.h'  -o       \
+	 -name '*.c'           \
+	 \)                    \
+	 -exec $@ {} \; 
+}
+
+
+do_on_files "clang-format -i"

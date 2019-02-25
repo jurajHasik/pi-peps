@@ -2,7 +2,7 @@
 subdir('dependencies')
 
 # define custom targets
-#subdir('custom')
+subdir('custom')
 
 # generate a proper configuration file
 # depending on the build options and
