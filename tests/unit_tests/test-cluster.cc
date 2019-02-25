@@ -1,8 +1,8 @@
 #include "pi-peps/config.h"
+#include <gtest/gtest.h>
 #include "pi-peps/ctm-cluster-basic.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
-#include <gtest/gtest.h>
 #include <iostream>
 #include <string>
 
