@@ -65,6 +65,8 @@ class Engine {
 
         virtual itensor::Args performFullUpdate(
         	Cluster & cls, CtmEnv const& ctmEnv, itensor::Args const& args) = 0;
+  /** make sure the right dtor is invoked */
+  virtual ~Engine() = default;
 };
 
 template <class T>

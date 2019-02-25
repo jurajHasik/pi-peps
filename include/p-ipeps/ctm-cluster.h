@@ -125,14 +125,13 @@ struct Cluster {
 
     Cluster() {}
 
-    Cluster(int lX_, int lY_) : lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_),
-        cluster_type("DEFAULT") {}
+  Cluster(int lX_, int lY_) : cluster_type("DEFAULT"), sizeN(lY_),sizeM(lX_),   lX(lX_), lY(lY_) {}
 
     // Cluster(int lX_, int lY_, int pd) : physDim(pd),
     //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
 
-    Cluster(int lX_, int lY_, int ad, int pd) : auxBondDim(ad), physDim(pd),
-        lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_), cluster_type("DEFAULT") {}
+  Cluster(int lX_, int lY_, int ad, int pd) : cluster_type("DEFAULT"), 
+         sizeN(lY_), sizeM(lX_), lX(lX_), lY(lY_), auxBondDim(ad), physDim(pd) {}
 
     static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 
@@ -162,6 +161,9 @@ struct Cluster {
     void absorbWeightsToSites(bool dbg = false);
 
     void absorbWeightsToLinks(bool dbg = false);
+
+  /** make sure the right dtor is called */
+  virtual ~Cluster() = default;
 };
 
 void initClusterSites(Cluster & c, bool dbg = false);

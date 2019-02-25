@@ -5,7 +5,7 @@ using namespace itensor;
 
 EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& ev_, 
     Vertex const& v_, CtmEnv::DIRECTION dir_) 
-    : ev(ev_), v_ref(v_), dir(dir_) {}
+  :  dir(dir_), v_ref(v_), ev(ev_)  {}
 
 void EVBuilder::TransferOpVecProd::operator() (
     double const* const x, 
@@ -228,7 +228,7 @@ void EVBuilder::TransferOpVecProd::operator() (
 
 EVBuilder::TransferOpVecProd_itensor::TransferOpVecProd_itensor(EVBuilder const& ev_, 
     Vertex const& v_, CtmEnv::DIRECTION dir_) 
-    : ev(ev_), v_ref(v_), dir(dir_) {}
+  :  dir(dir_), v_ref(v_),ev(ev_) {}
 
 void EVBuilder::TransferOpVecProd_itensor::operator() (
     ITensor & bT, 
