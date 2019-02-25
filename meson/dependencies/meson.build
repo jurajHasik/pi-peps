@@ -19,11 +19,6 @@ foreach _opt : optional_deps
         # first, we source the subdir where we test we can
         # compile and link and we update the list deps
         subdir(_opt)
-        # everything went fine and we can define a variable
-        # that will be used in the generation of the
-        # config file where we log the features of
-        # our project
-        set_variable('with_'+_opt, true)
     endif
 endforeach
 

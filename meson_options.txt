@@ -1,7 +1,5 @@
 option('build-examples', type: 'boolean', value: true)
 
-# TODO these should become type feature
-
 ########### external dependendencies:
 # one option with `library_name`, type boolean
 # one option with `library_name-dir`, type string
