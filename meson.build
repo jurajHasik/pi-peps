@@ -1,4 +1,4 @@
-project('p-ipeps','cpp','c',
+project('pi-peps','cpp','c',
         default_options : ['cpp_std=c++14',
 			   'buildtype=debug',
 			   'warning_level=3'],
@@ -8,7 +8,7 @@ project('p-ipeps','cpp','c',
 project_name = meson.project_name()
 project_version = meson.project_version()
 
-short_name = 'p-ipeps'
+short_name = 'pi-peps'
 
 include_dirs = []
 source_files = []
@@ -44,12 +44,4 @@ subdir('examples')
 
 subdir('tests')
 
-### generate a .pc file 
-pkg = import('pkgconfig')
-pkg.generate(libraries: our_lib,
-             libraries_private: deps,
-             subdirs : 'include',
-             version : project_version,
-             name : project_name+' library',
-             filebase : project_name,
-             description : 'A library that...')
+subdir('pkgconfig')
