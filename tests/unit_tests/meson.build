@@ -18,10 +18,10 @@ test('cluster',
      executable('test-cluster','test-cluster.cc',
                 dependencies:[gtest,our_lib_dep])
 )
-test('ctm-env',
-     executable('test-ctm-env','test-ctm-env.cc',
-                dependencies:[gtest,our_lib_dep])
-)
+#test('ctm-env',
+#     executable('test-ctm-env','test-ctm-env.cc',
+#                dependencies:[gtest,our_lib_dep])
+#)
 
 test('svd-solver-gesdd',
      executable('gesdd-svd-solver','test-gesdd-svd-solver.cc',
