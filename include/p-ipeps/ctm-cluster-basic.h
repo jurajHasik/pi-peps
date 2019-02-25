@@ -2,6 +2,7 @@
 #define __CLS_BASIC_H_
 
 
+#include "p-ipeps/config.h"
 #include <iostream>
 #include <vector>
 #include <map>

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <iostream>
 #include "itensor/all.h"
 #include <chrono>

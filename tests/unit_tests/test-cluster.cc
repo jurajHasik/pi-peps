@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <iostream>
 #include <string>
 #include <gtest/gtest.h>

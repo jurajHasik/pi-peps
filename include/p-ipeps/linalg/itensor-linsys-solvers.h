@@ -1,6 +1,7 @@
 #ifndef _ITENSOR_LINSYS_SOLVERS_H
 #define _ITENSOR_LINSYS_SOLVERS_H
 
+#include "p-ipeps/config.h"
 #include "itensor/all.h"
 
 namespace itensor {

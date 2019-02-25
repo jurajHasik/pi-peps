@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/lattice.h"
 
 // namespace itensor { 

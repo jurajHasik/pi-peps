@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/svdsolver-factory.h"
 #include "p-ipeps/rsvd-solver.h"
 #include "p-ipeps/linalg/lapacksvd-solver.h"

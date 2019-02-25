@@ -1,6 +1,7 @@
 #ifndef __FULL_UPDT_3S_H_CORBOZ_
 #define __FULL_UPDT_3S_H_CORBOZ_
 
+#include "p-ipeps/config.h"
 #include <cmath>
 #include <limits>
 #include <chrono>

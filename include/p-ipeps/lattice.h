@@ -1,6 +1,7 @@
 #ifndef __LATTICE_H_
 #define __LATTICE_H_
 
+#include "p-ipeps/config.h"
 #include <iostream>
 #include <array>
 

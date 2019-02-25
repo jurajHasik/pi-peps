@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/su2.h"
 
 using namespace std;

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <iostream>
 #include <gtest/gtest.h>
 #include "p-ipeps/ctm-cluster-basic.h"

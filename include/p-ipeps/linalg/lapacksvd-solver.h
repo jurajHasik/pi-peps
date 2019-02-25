@@ -1,6 +1,7 @@
 #ifndef _PEPS_LAPACK_SVD_SOLVERS_H
 #define _PEPS_LAPACK_SVD_SOLVERS_H
 
+#include "p-ipeps/config.h"
 #include "p-ipeps/linalg/itensor-svd-solvers.h"
 
 namespace itensor {

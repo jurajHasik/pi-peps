@@ -1,4 +1,5 @@
 #include "p-ipeps/config.h"
+#include "p-ipeps/config.h"
 
 #ifdef PEPS_WITH_RSVD
 

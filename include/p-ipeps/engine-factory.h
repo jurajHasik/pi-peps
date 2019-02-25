@@ -1,6 +1,7 @@
 #ifndef __ENGINE_FACTORY_
 #define __ENGINE_FACTORY_
 
+#include "p-ipeps/config.h"
 #include "json.hpp"
 #include "p-ipeps/engine.h"
 

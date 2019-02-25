@@ -1,6 +1,7 @@
 #ifndef __SVDSOLVER_FACTORY_
 #define __SVDSOLVER_FACTORY_
 
+#include "p-ipeps/config.h"
 #include "json.hpp"
 #include "p-ipeps/linalg/itensor-svd-solvers.h"
 

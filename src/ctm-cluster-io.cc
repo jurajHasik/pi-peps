@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/ctm-cluster-io.h"
 
 using namespace std;

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/cluster-ev-builder.h"
 
 using namespace itensor;

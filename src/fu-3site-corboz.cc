@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/fu-3site-corboz.h"
 
 using namespace itensor;

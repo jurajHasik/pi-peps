@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/ctm-cluster-env_v2.h"
 
 // TODO Implement convergence check as general function. The actual

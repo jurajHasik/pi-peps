@@ -1,6 +1,7 @@
 #ifndef __MPO_
 #define __MPO_
 
+#include "p-ipeps/config.h"
 #include "p-ipeps/ctm-cluster.h"
 #include "itensor/all.h"
 

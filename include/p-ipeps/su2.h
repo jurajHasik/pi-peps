@@ -1,6 +1,7 @@
 #ifndef __SU2_
 #define __SU2_
 
+#include "p-ipeps/config.h"
 #include <algorithm>
 #include <complex>
 #include <cmath>

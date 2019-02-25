@@ -4,6 +4,7 @@
 #ifndef __SMPL_UPDT_H_
 #define __SMPL_UPDT_H_
 
+#include "p-ipeps/config.h"
 #include <iomanip>
 #include <cmath>
 #include <limits>

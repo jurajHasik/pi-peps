@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/model-factory.h"
 #include "p-ipeps/models/ising-2x2-ABCD.h"
 #include "p-ipeps/models/hb-2x2-ABCD.h"

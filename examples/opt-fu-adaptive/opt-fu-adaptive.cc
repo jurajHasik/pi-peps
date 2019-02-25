@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <string>
 #include <iostream>
 #include <fstream>
