@@ -1,6 +1,7 @@
 #ifndef __CTM_CLS_IO_
 #define __CTM_CLS_IO_
 
+#include "p-ipeps/config.h"
 #include <complex>
 #include <vector>
 #include <string>

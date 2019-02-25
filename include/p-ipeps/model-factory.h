@@ -1,6 +1,7 @@
 #ifndef __MODEL_FACTORY_
 #define __MODEL_FACTORY_
 
+#include "p-ipeps/config.h"
 #include "json.hpp"
 #include "p-ipeps/models.h"
 

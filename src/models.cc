@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/models.h"
 
 using namespace itensor;

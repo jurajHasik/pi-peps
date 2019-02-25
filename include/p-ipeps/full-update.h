@@ -4,6 +4,7 @@
 #ifndef __FULL_UPDT_H_
 #define __FULL_UPDT_H_
 
+#include "p-ipeps/config.h"
 #include <cmath>
 #include <limits>
 #include <chrono>

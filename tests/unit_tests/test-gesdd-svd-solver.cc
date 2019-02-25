@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <gtest/gtest.h>
 #include <iostream>
 #include "itensor/all.h"

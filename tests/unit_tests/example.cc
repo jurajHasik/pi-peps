@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <gtest/gtest.h>
 // additional include needed for this test from this project
 #include "p-ipeps/engine.h"

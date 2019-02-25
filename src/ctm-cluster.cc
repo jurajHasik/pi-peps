@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/ctm-cluster.h"
 
 using namespace itensor;

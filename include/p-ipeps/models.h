@@ -1,6 +1,7 @@
 #ifndef __MODELS_
 #define __MODELS_
 
+#include "p-ipeps/config.h"
 #include <string>
 #include <iostream>
 #include <chrono>

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/simple-update_v2.h"
 
 using namespace itensor;

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include <algorithm>
 #include <tuple>
 #include "p-ipeps/linalg/itensor-svd-solvers.h" 

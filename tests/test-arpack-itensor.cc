@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/linalg/arpack-rcdn.h"
 #include "itensor/all.h"
 	

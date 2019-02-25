@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 #include "p-ipeps/models/aklt-2x2-ABCD.h"
 
 namespace itensor {

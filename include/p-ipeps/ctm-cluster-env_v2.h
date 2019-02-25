@@ -4,6 +4,7 @@
 #ifndef __CTM_CLS_ENV_H_
 #define __CTM_CLS_ENV_H_
 
+#include "p-ipeps/config.h"
 #include <string>
 #include <iostream>
 #include <vector>

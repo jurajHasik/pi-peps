@@ -1,6 +1,7 @@
 #ifndef __CLS_EV_BUILDER_
 #define __CLS_EV_BUILDER_
 
+#include "p-ipeps/config.h"
 #include <string>
 #include <iostream>
 #include "itensor/all.h"

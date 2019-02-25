@@ -1,6 +1,7 @@
 #ifndef __CTM_CLS_GLOBAL_
 #define __CTM_CLS_GLOBAL_
 
+#include "p-ipeps/config.h"
 #include <string>
 #include "itensor/all.h"
 

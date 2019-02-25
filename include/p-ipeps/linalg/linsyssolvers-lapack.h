@@ -1,6 +1,7 @@
 #ifndef _ITENSOR_LAPACK_LINSYS_SOLVERS_H
 #define _ITENSOR_LAPACK_LINSYS_SOLVERS_H
 
+#include "p-ipeps/config.h"
 #include "p-ipeps/linalg/itensor-linsys-solvers.h"
 
 

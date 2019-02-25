@@ -1,6 +1,7 @@
 #ifndef __ARPACK_RCI_H_
 #define __ARPACK_RCI_H_
 
+#include "p-ipeps/config.h"
 // #include "arpack.hpp"
 
 #include <array>

@@ -1,3 +1,4 @@
+#include "p-ipeps/config.h"
 // #include "full-update-TEST.h"
 #include "p-ipeps/full-update.h"
 

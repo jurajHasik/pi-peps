@@ -1,6 +1,7 @@
 #ifndef __ENGINE_
 #define __ENGINE_
 
+#include "p-ipeps/config.h"
 #include <string>
 #include "json.hpp"
 #include "itensor/all.h"
