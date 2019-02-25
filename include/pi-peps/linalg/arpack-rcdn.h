@@ -8,6 +8,7 @@
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <complex>
 
 #ifndef BLASINT
 #  define BLASINT int
@@ -62,16 +63,20 @@ struct ARDNS {
 
   ARDNS(T& mmvp) : mvp(mmvp) {}
 
-  void real_nonsymm_runner(BLASINT const N,
+  void real_nonsymm(BLASINT const N,
                            BLASINT const nev,
                            BLASINT const max_ncv,
                            double const tol,
-                           BLASINT const maxIter) {
+                           BLASINT const maxIter,
+                           std::vector< std::complex<double> > & ev,
+                           std::vector<double> & V,
+                           bool rvec = false,
+                           bool dbg = false) {
     BLASINT ncv = std::max(max_ncv, 2 * nev + 1);
     BLASINT ldv = N;
     BLASINT lworkl = 3 * (ncv * ncv) + 6 * ncv;
 
-    std::cout << "N " << N << "\n"
+    if (dbg) std::cout << "N " << N << "\n"
               << "nev " << nev << "\n"
               << "tol " << tol << "\n"
               << "maxIter " << maxIter << "\n"
@@ -82,7 +87,7 @@ struct ARDNS {
     // ***** Local Arrays **********************************************
     // dnaupd
     std::vector<double> resid(N);
-    std::vector<double> V(ncv * N);
+    V.resize(ncv * N);
     std::vector<double> workd(3 * N, 0.0);
     std::vector<double> workl(lworkl, 0.0);
     std::array<BLASINT, 11> iparam{};
@@ -128,7 +133,7 @@ struct ARDNS {
       std::cout << "[arpack::dnaupd] info=" << info << std::endl;
       // throw std::domain_error("Error inside ARPACK routines");
     } else {
-      std::cout << "Processing result of [arpack::dnaupd]" << std::endl;
+      if (dbg) std::cout << "Processing result of [arpack::dnaupd]" << std::endl;
     }
 
     // ***** dnaupd exited succesfully, post-process result ************
@@ -141,13 +146,13 @@ struct ARDNS {
 
     std::vector<int> select(ncv);
     // bool const rvec = false; // Extract eigenvectors Y/N ?
-    int rvec = 0;  // Extract eigenvectors Y/N ?
+    int irvec = (rvec) ? 1 : 0;  // Extract eigenvectors Y/N ?
 
     double sigmar = 0.0;
     double sigmai = 0.0;
 
     char howmny[2] = "A";  // compute NEV Ritz vectors
-    dneupd_(&rvec, howmny, select.data(),
+    dneupd_(&irvec, howmny, select.data(),
             dr.data(),  // first column of d contains real part of eigenvalues
             di.data(),  // second column of d contains imag part of eigenvalues
             z.data(), &ldz,
@@ -162,17 +167,16 @@ struct ARDNS {
 
     if (info != 0) {
       std::cout << "[arpack::dneupd] info=" << info << std::endl;
-      throw std::domain_error("Error in dneupd");
+      throw std::domain_error("[arpack::dneupd] Error in dneupd");
     } else {
-      std::cout << "Processing done [arpack::dneupd]" << std::endl;
+      if (dbg) std::cout << "[arpack::dneupd] Processing done" << std::endl;
     }
 
-    for (int i = 0; i < nev; ++i) {
-      std::cout << dr[i] << " " << di[i] << "i"
-                << "\n";
-    }
-    std::cout << "------\n";
+    // record eigenvalues
+    ev.resize(nev);
+    for (int i = 0; i < nev; ++i) ev[i] = (dr[i], di[i]);
   }
+
 };
 
 #endif
