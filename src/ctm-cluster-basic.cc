@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/ctm-cluster-basic.h"
+#include "pi-peps/config.h"
+#include "pi-peps/ctm-cluster-basic.h"
 
 namespace itensor {
 

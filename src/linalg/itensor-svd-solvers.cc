@@ -1,7 +1,7 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <algorithm>
 #include <tuple>
-#include "p-ipeps/linalg/itensor-svd-solvers.h" 
+#include "pi-peps/linalg/itensor-svd-solvers.h" 
 
 namespace itensor {
 

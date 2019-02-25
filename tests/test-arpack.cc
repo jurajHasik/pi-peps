@@ -1,4 +1,4 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include "arpack.hpp"
 
 #include <array>

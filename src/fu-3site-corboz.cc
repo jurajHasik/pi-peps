@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/fu-3site-corboz.h"
+#include "pi-peps/config.h"
+#include "pi-peps/fu-3site-corboz.h"
 
 using namespace itensor;
 

@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/cluster-ev-builder.h"
+#include "pi-peps/config.h"
+#include "pi-peps/cluster-ev-builder.h"
 
 using namespace itensor;
 
@@ -3291,7 +3291,7 @@ std::pair< ITensor, ITensor > EVBuilder::get2SiteSpinOP(OP_2S op2s,
     return std::make_pair(OpA, OpB);
 }
 
-// TODO use getSpinOp defined in p-ipeps/su2.h to get spin operator
+// TODO use getSpinOp defined in pi-peps/su2.h to get spin operator
 ITensor EVBuilder::getSpinOp(MPO_1S mpo, Index const& s, bool DBG) {
 
     SU2O su2o;

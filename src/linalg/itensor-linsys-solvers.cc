@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/linalg/itensor-linsys-solvers.h" 
+#include "pi-peps/config.h"
+#include "pi-peps/linalg/itensor-linsys-solvers.h" 
 
 namespace itensor {
 

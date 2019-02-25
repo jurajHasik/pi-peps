@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/linalg/arpack-rcdn.h"
+#include "pi-peps/config.h"
+#include "pi-peps/linalg/arpack-rcdn.h"
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS

@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/su2.h"
+#include "pi-peps/config.h"
+#include "pi-peps/su2.h"
 
 using namespace std;
 

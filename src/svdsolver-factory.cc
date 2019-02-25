@@ -1,7 +1,7 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/svdsolver-factory.h"
-#include "p-ipeps/rsvd-solver.h"
-#include "p-ipeps/linalg/lapacksvd-solver.h"
+#include "pi-peps/config.h"
+#include "pi-peps/svdsolver-factory.h"
+#include "pi-peps/rsvd-solver.h"
+#include "pi-peps/linalg/lapacksvd-solver.h"
 
 SvdSolverFactory::SvdSolverFactory() {
 	registerSolver("default", &itensor::SvdSolver::create);

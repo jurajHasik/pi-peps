@@ -1,6 +1,6 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 // #include "full-update-TEST.h"
-#include "p-ipeps/full-update.h"
+#include "pi-peps/full-update.h"
 
 using namespace itensor;
 

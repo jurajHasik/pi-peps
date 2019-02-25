@@ -1,4 +1,4 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <iostream>
 DISABLE_WARNINGS
 #include "itensor/all.h"

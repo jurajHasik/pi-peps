@@ -1,10 +1,10 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <gtest/gtest.h>
 #include <iostream>
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
-#include "p-ipeps/linalg/lapacksvd-solver.h"
+#include "pi-peps/linalg/lapacksvd-solver.h"
 
 using namespace itensor;
 

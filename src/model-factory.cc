@@ -1,10 +1,10 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/model-factory.h"
-#include "p-ipeps/models/ising-2x2-ABCD.h"
-#include "p-ipeps/models/hb-2x2-ABCD.h"
-#include "p-ipeps/models/aklt-2x2-ABCD.h"
-#include "p-ipeps/models/j1j2-2x2-ABCD.h"
-#include "p-ipeps/models/ladders-2x2-ABCD.h"
+#include "pi-peps/config.h"
+#include "pi-peps/model-factory.h"
+#include "pi-peps/models/ising-2x2-ABCD.h"
+#include "pi-peps/models/hb-2x2-ABCD.h"
+#include "pi-peps/models/aklt-2x2-ABCD.h"
+#include "pi-peps/models/j1j2-2x2-ABCD.h"
+#include "pi-peps/models/ladders-2x2-ABCD.h"
 
 ModelFactory::ModelFactory() {
 	registerModel("ISING_2X2_ABCD", &itensor::IsingModel_2x2_ABCD::create);

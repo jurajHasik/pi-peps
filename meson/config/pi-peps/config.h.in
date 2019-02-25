@@ -1,0 +1,14 @@
+#ifndef _peps_config_h_meson
+#define _peps_config_h_meson
+
+#mesondefine PEPS_WITH_ARPACK
+#mesondefine PEPS_WITH_LBFGS
+#mesondefine PEPS_WITH_MKL
+#mesondefine PEPS_WITH_RSVD
+
+#mesondefine COMPILER_HAS_DIAGNOSTIC_PRAGMA
+
+// macros DISABLE_WARNINGS and ENABLE_WARNINGS
+#include "pi-peps/warnings.h"
+
+#endif

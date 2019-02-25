@@ -1,7 +1,7 @@
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
 #include <gtest/gtest.h>
 // additional include needed for this test from this project
-#include "p-ipeps/engine.h"
+#include "pi-peps/engine.h"
 
 TEST(TrotterDecomposition, Default_cotr){
   ASSERT_NO_THROW(TrotterDecomposition<int>{});

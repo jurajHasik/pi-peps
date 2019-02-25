@@ -1,0 +1,25 @@
+install_headers(['cluster-ev-builder.h',
+                 'cluster-factory.h',
+                 'ctm-cluster-basic.h',
+                 'ctm-cluster-env.h',
+                 'ctm-cluster-env_v2.h',
+                 'ctm-cluster-global.h',
+                 'ctm-cluster.h',
+                 'ctm-cluster-io.h',
+                 'engine-factory.h',
+                 'engine.h',
+                 'fu-3site-corboz.h',
+                 'full-update.h',
+                 'lattice.h',
+                 'model-factory.h',
+                 'models.h',
+                 'mpo.h',
+                 'rsvd-solver.h',
+                 'simple-update_v2.h',
+                 'su2.h',
+                 'svdsolver-factory.h',
+                 'warnings.h'],
+                subdir:'pi-peps')
+
+subdir('linalg')
+subdir('models')

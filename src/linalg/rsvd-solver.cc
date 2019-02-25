@@ -1,9 +1,9 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/config.h"
+#include "pi-peps/config.h"
+#include "pi-peps/config.h"
 
 #ifdef PEPS_WITH_RSVD
 
-#include "p-ipeps/rsvd-solver.h"
+#include "pi-peps/rsvd-solver.h"
 
 namespace itensor {
 

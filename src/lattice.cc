@@ -1,5 +1,5 @@
-#include "p-ipeps/config.h"
-#include "p-ipeps/lattice.h"
+#include "pi-peps/config.h"
+#include "pi-peps/lattice.h"
 
 // namespace itensor { 
 
