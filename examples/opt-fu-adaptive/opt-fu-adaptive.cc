@@ -4,16 +4,16 @@
 #include <chrono>
 #include <algorithm>
 #include "json.hpp"
-#include "ctm-cluster-basic.h"
-#include "ctm-cluster-io.h"
-#include "cluster-factory.h"
-#include "ctm-cluster-env_v2.h"
-#include "cluster-ev-builder.h"
-#include "mpo.h"
-#include "model-factory.h"
-#include "engine-factory.h"
-#include "svdsolver-factory.h"
-#include "linsyssolvers-lapack.h"
+#include "p-ipeps/ctm-cluster-basic.h"
+#include "p-ipeps/ctm-cluster-io.h"
+#include "p-ipeps/cluster-factory.h"
+#include "p-ipeps/ctm-cluster-env_v2.h"
+#include "p-ipeps/cluster-ev-builder.h"
+#include "p-ipeps/mpo.h"
+#include "p-ipeps/model-factory.h"
+#include "p-ipeps/engine-factory.h"
+#include "p-ipeps/svdsolver-factory.h"
+#include "p-ipeps/linalg/linsyssolvers-lapack.h"
 
 using namespace itensor;
 

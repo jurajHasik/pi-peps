@@ -1,5 +1,5 @@
-#include "cluster-factory.h"
-#include "ctm-cluster-basic.h"
+#include "p-ipeps/cluster-factory.h"
+#include "p-ipeps/ctm-cluster-basic.h"
 
 ClusterFactory::ClusterFactory() {
 	registerCluster("DEFAULT", &Cluster::create);

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <iostream>
 #include "itensor/all.h"
-#include "lapacksvd-solver.h"
+#include "p-ipeps/linalg/lapacksvd-solver.h"
 
 using namespace itensor;
 
