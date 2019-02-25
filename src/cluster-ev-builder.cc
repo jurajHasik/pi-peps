@@ -2129,88 +2129,91 @@ double EVBuilder::contract2Smpo(std::pair<ITensor, ITensor> const& Op,
 //     return ccVal;
 // }
 
-void EVBuilder::analyzeTransferMatrix(Vertex const& v,
-                                      CtmEnv::DIRECTION dir,
-                                      std::string alg_type) {
-  if (alg_type == "ARPACK") {
-    TransferOpVecProd tvp((*this), v, dir);
+void EVBuilder::analyzeTransferMatrix(Vertex const& v, CtmEnv::DIRECTION dir, 
+    std::string alg_type) 
+{
+    if(alg_type=="ARPACK") {
+        TransferOpVecProd tvp( (*this), v, dir);
 
-    int N = std::pow(p_cluster->AIc(v, dir).m(), 2) * std::pow(p_ctmEnv->x, 2);
-    ARDNS<TransferOpVecProd> ardns(tvp);
-    ardns.real_nonsymm_runner(N, 4, 100, 0.0, N * 10);
-  }
-  // else if (alg_type=="rsvd") {
-  //     std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
-  //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-  //     auto cmbI = combinedIndex(cmbX);
-  //     //cmbX.prime(cmbI);
+        int N = std::pow(p_cluster->AIc(v,dir).m(),2) * std::pow(p_ctmEnv->x,2);
+        ARDNS<TransferOpVecProd> ardns(tvp);
 
-  //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-  //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-  //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+        std::vector< std::complex<double> > ev;
+        std::vector<double> V;
+        ardns.real_nonsymm(N, 4, 100, 0.0, N * 10, ev, V);
+    } 
+    // else if (alg_type=="rsvd") {
+    //     std::cout<<"===== Transfer operator RSVD ====="<<std::endl;
+    //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+    //     auto cmbI = combinedIndex(cmbX);
+    //     //cmbX.prime(cmbI);
 
-  //     X *= cmbX;
-  //     X.prime();
-  //     Print(X);
-  //     {
-  //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X *= X2;
-  //     }
-  //     Print(X);
-  //     X *= noprime(cmbX);
+    //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-  //     auto argsSVDRRt = Args(
-  //         "Cutoff",-1.0,
-  //         "Maxm",3,
-  //         "SVDThreshold",1E-2,
-  //         "SVD_METHOD","rsvd",
-  //         "rsvd_power",2,
-  //         "rsvd_reortho",1
-  //     );
-  //     ITensor U(cmbI), S, V;
-  //     svd(X, U, S, V, argsSVDRRt);
+    //     X *= cmbX;
+    //     X.prime();
+    //     Print(X);
+    //     {
+    //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X *= X2;
+    //     }
+    //     Print(X);
+    //     X *= noprime(cmbX);
 
-  //     PrintData(S);
-  // }
-  // else if (alg_type=="gesdd") {
-  //     std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
-  //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
-  //     auto cmbI = combinedIndex(cmbX);
-  //     //cmbX.prime(cmbI);
+    //     auto argsSVDRRt = Args(
+    //         "Cutoff",-1.0,
+    //         "Maxm",3,
+    //         "SVDThreshold",1E-2,
+    //         "SVD_METHOD","rsvd",
+    //         "rsvd_power",2,
+    //         "rsvd_reortho",1
+    //     );
+    //     ITensor U(cmbI), S, V;
+    //     svd(X, U, S, V, argsSVDRRt);
+    
+    //     PrintData(S);
+    // }
+    // else if (alg_type=="gesdd") {
+    //     std::cout<<"===== Transfer operator GESDD ====="<<std::endl;
+    //     auto cmbX = combiner(prime(cd_f.I_U),prime(cd_f.I_XH),prime(cd_f.I_D));
+    //     auto cmbI = combinedIndex(cmbX);
+    //     //cmbX.prime(cmbI);
 
-  //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
-  //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
-  //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
+    //     auto X = cd_f.T_U[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.sites[cd_f.cToS.at(std::make_pair(1,0))];
+    //     X *= cd_f.T_D[cd_f.cToS.at(std::make_pair(1,0))];
 
-  //     X *= cmbX;
-  //     X.prime();
-  //     Print(X);
-  //     {
-  //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
-  //         X *= X2;
-  //     }
-  //     Print(X);
-  //     X *= noprime(cmbX);
+    //     X *= cmbX;
+    //     X.prime();
+    //     Print(X);
+    //     {
+    //         auto X2 = cd_f.T_U[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.sites[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X2 *= cd_f.T_D[cd_f.cToS.at(std::make_pair(0,0))];
+    //         X *= X2;
+    //     }
+    //     Print(X);
+    //     X *= noprime(cmbX);
 
-  //     auto argsSVDRRt = Args(
-  //         "Cutoff",-1.0,
-  //         "Maxm",3,
-  //         "SVDThreshold",1E-2,
-  //         "SVD_METHOD","gesdd"
-  //     );
-  //     ITensor U(cmbI), S, V;
-  //     svd(X, U, S, V, argsSVDRRt);
-
-  //     PrintData(S);
-  // }
-  else {
-    std::cout << "[EVBuilder::analyzeTransferMatrix] Unsupported option: "
-              << alg_type << std::endl;
-  }
+    //     auto argsSVDRRt = Args(
+    //         "Cutoff",-1.0,
+    //         "Maxm",3,
+    //         "SVDThreshold",1E-2,
+    //         "SVD_METHOD","gesdd"
+    //     );
+    //     ITensor U(cmbI), S, V;
+    //     svd(X, U, S, V, argsSVDRRt);
+    
+    //     PrintData(S);
+    // }
+    else {
+        std::cout<<"[EVBuilder::analyzeTransferMatrix] Unsupported option: "
+            << alg_type <<std::endl;
+    }
 }
 
 // Diagonal s1, s1+[1,1]
