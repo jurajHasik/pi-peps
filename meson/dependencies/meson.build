@@ -13,7 +13,7 @@ foreach _opt : optional_deps
     # from command line either with the option -Dopt
     # or -Dopt-dir
     # there is no need to use both
-    if not _wanted and _dir == ''
+    if not _wanted
         message('Compiling without '+ _opt.to_upper())
     else
         # first, we source the subdir where we test we can
