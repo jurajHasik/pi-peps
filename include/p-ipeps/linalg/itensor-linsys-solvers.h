@@ -24,17 +24,17 @@ struct LinSysSolver {
   	
   	virtual void 
     solve(
-      	ITensor & A,
-      	ITensor & B, 
-      	ITensor & X,
-      	Args const& args) const;
+	  ITensor & /*A*/,
+	  ITensor & /*B*/, 
+	  ITensor & /*X*/,
+	  Args const& /*args*/) const;
 
     virtual void 
     solve(
-      	MatRefc<Real>	const& A,
-      	VecRef<Real>  	const& B, 
-      	VecRef<Real>	const& X,
-      	Args const& args) const
+	  MatRefc<Real>	const& /*A*/,
+	  VecRef<Real>  	const& /*B*/, 
+	  VecRef<Real>	const& /*X*/,
+	  Args const& /*args*/) const
     {  
         // To be overloaded by derived classes
         std::cout<<"[LinSysSolver::solve<Real>] called"<<std::endl;
@@ -42,14 +42,17 @@ struct LinSysSolver {
 
     virtual void 
     solve(
-      	MatRefc<Cplx>   const& A,
-      	VecRef<Cplx>	const& B, 
-     	VecRef<Cplx>	const& X, 
-     	Args const& args) const 
+	  MatRefc<Cplx>   const& /*A*/,
+	  VecRef<Cplx>	const& /*B*/, 
+	  VecRef<Cplx>	const& /*X*/, 
+	  Args const& /*args*/) const 
     {  
         // To be overloaded by derived classes
         std::cout<<"[LinSysSolver::solve<Cplx>] called"<<std::endl;
     }
+
+  /** make sure the correct destructor is called */
+  virtual ~LinSysSolver() = default;
 };
 
 struct PseudoInvSolver : LinSysSolver {

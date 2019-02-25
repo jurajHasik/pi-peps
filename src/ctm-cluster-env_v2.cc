@@ -19,7 +19,7 @@ using namespace itensor;
 CtmEnv::CtmEnv (
     std::string t_name, int t_x, Cluster const& c, 
     SvdSolver & ssolver, Args const& args) 
-    : m_name(t_name), p_cluster(&c), solver(ssolver), 
+  :  p_cluster(&c), solver(ssolver), m_name(t_name), 
     d(c.auxBondDim*c.auxBondDim), x(t_x), 
     sizeN(c.sizeN), sizeM(c.sizeM) 
     {
