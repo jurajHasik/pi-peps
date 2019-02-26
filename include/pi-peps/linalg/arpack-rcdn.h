@@ -6,9 +6,9 @@
 
 #include <array>
 #include <cmath>
+#include <complex>
 #include <iostream>
 #include <vector>
-#include <complex>
 
 #ifndef BLASINT
 #  define BLASINT int
@@ -64,25 +64,26 @@ struct ARDNS {
   ARDNS(T& mmvp) : mvp(mmvp) {}
 
   void real_nonsymm(BLASINT const N,
-                           BLASINT const nev,
-                           BLASINT const max_ncv,
-                           double const tol,
-                           BLASINT const maxIter,
-                           std::vector< std::complex<double> > & ev,
-                           std::vector<double> & V,
-                           bool rvec = false,
-                           bool dbg = false) {
+                    BLASINT const nev,
+                    BLASINT const max_ncv,
+                    double const tol,
+                    BLASINT const maxIter,
+                    std::vector<std::complex<double>>& ev,
+                    std::vector<double>& V,
+                    bool rvec = false,
+                    bool dbg = false) {
     BLASINT ncv = std::max(max_ncv, 2 * nev + 1);
     BLASINT ldv = N;
     BLASINT lworkl = 3 * (ncv * ncv) + 6 * ncv;
 
-    if (dbg) std::cout << "N " << N << "\n"
-              << "nev " << nev << "\n"
-              << "tol " << tol << "\n"
-              << "maxIter " << maxIter << "\n"
-              << "ncv " << ncv << "\n"
-              << "ldv " << ldv << "\n"
-              << "lworkl " << lworkl << "\n";
+    if (dbg)
+      std::cout << "N " << N << "\n"
+                << "nev " << nev << "\n"
+                << "tol " << tol << "\n"
+                << "maxIter " << maxIter << "\n"
+                << "ncv " << ncv << "\n"
+                << "ldv " << ldv << "\n"
+                << "lworkl " << lworkl << "\n";
 
     // ***** Local Arrays **********************************************
     // dnaupd
@@ -133,7 +134,8 @@ struct ARDNS {
       std::cout << "[arpack::dnaupd] info=" << info << std::endl;
       // throw std::domain_error("Error inside ARPACK routines");
     } else {
-      if (dbg) std::cout << "Processing result of [arpack::dnaupd]" << std::endl;
+      if (dbg)
+        std::cout << "Processing result of [arpack::dnaupd]" << std::endl;
     }
 
     // ***** dnaupd exited succesfully, post-process result ************
@@ -169,14 +171,15 @@ struct ARDNS {
       std::cout << "[arpack::dneupd] info=" << info << std::endl;
       throw std::domain_error("[arpack::dneupd] Error in dneupd");
     } else {
-      if (dbg) std::cout << "[arpack::dneupd] Processing done" << std::endl;
+      if (dbg)
+        std::cout << "[arpack::dneupd] Processing done" << std::endl;
     }
 
     // record eigenvalues
     ev.resize(nev);
-    for (int i = 0; i < nev; ++i) ev[i] = (dr[i], di[i]);
+    for (int i = 0; i < nev; ++i)
+      ev[i] = (dr[i], di[i]);
   }
-
 };
 
 #endif

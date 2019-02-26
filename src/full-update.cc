@@ -606,8 +606,8 @@ Args fullUpdate(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl >=
-      // 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; 		elem =
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
       // }
@@ -1323,8 +1323,8 @@ Args fullUpdate(MPO_3site const& uJ1J2,
       // tempOLP = (prime(conj(niso),4)*M)*niso;
       // if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a
       // scalar"<<std::endl; ovrlp_val = sumelsC(tempOLP); if
-      // (isComplex(tempOLP)) { 	std::cout<<"NORM is Complex: imag(ovrlp_val)="<<
-      // ovrlp_val.imag() << std::endl;
+      // (isComplex(tempOLP)) { 	std::cout<<"NORM is Complex:
+      // imag(ovrlp_val)="<< ovrlp_val.imag() << std::endl;
       // }
 
       // niso = (1.0/(1.0 + lambda*ovrlp_val.real() ))*(Msym*K)*cmbKp;
@@ -1385,8 +1385,8 @@ Args fullUpdate(MPO_3site const& uJ1J2,
       // 	tempOLP = (prime(conj(niso),4)*M)*niso;
       // 	if (rank(tempOLP) > 0) std::cout<<"ERROR - tempOLP not a
       // scalar"<<std::endl; 	ovrlp_val = sumelsC(tempOLP); 	if
-      // (isComplex(tempOLP)) { 		std::cout<<"NORM is Complex: imag(ovrlp_val)="<<
-      // ovrlp_val.imag() << std::endl;
+      // (isComplex(tempOLP)) { 		std::cout<<"NORM is Complex:
+      // imag(ovrlp_val)="<< ovrlp_val.imag() << std::endl;
       // 	}
       // 	lambda = lambda - (1.0-std::abs(ovrlp_val.real()))*lstep;
       // }

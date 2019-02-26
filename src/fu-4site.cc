@@ -852,22 +852,25 @@ void FU4SiteGradMin::gradient(std::vector<ITensor>& grad) {
 // 	double mag = fxi * 0.01;
 // 	// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(mag)
 // * g[j]; } 	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; } 	auto tmp_val  =
-// func(); 	std::cout<<"linmin -mag: "<< tmp_val << std::endl; 	if ( tmp_val < fxi
-// ) { sgn = -1; } 	for (int j=0; j<4; j++) { rX[j] += (2.0 * mag) * g[j]; } 	auto
-// tmp_val2 = func(); 	std::cout<<"linmin +mag: "<< tmp_val2 << std::endl; 	if (
-// (tmp_val2 < fxi) && (tmp_val2 < tmp_val) ) { sgn = 1; }
+// func(); 	std::cout<<"linmin -mag: "<< tmp_val << std::endl; 	if ( tmp_val <
+// fxi ) { sgn = -1; } 	for (int j=0; j<4; j++) { rX[j] += (2.0 * mag) * g[j]; }
+// auto tmp_val2 = func(); 	std::cout<<"linmin +mag: "<< tmp_val2 << std::endl;
+// if ( (tmp_val2 < fxi) && (tmp_val2 < tmp_val) ) { sgn = 1; }
 
 // 	for (int j=0; j<4; j++) { rX[j] -= mag * g[j]; }
 // 	double fx = 0.0;
 // 	double fx_prev = fxi;
 // 	for (int i=0; i<MAXIT; i++) {
 // 		for (int j=0; j<4; j++) { rX[j] += (sgn * mag) * g[j]; }
-// 		// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] + std::sin(sgn
-// * mag) * g[j]; } 		fx = func(); 		std::cout<<"linmin its: "<< i << " dist: "<< fx
+// 		// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] +
+// std::sin(sgn
+// * mag) * g[j]; } 		fx = func(); 		std::cout<<"linmin its: "<< i << " dist:
+// "<< fx
 // << std::endl; 		if (fx > fx_prev) {
 // 			// mag = mag * 0.5;
 // 			// for (int j=0; j<4; j++) { rX[j] = std::cos(mag) * tmpT[j] +
-// std::sin(sgn * mag) * g[j]; } 			for (int j=0; j<4; j++) { rX[j] -= (sgn * mag)
+// std::sin(sgn * mag) * g[j]; } 			for (int j=0; j<4; j++) { rX[j] -= (sgn *
+// mag)
 // * g[j]; } 			fx = fx_prev; 			break; 		} else { 			mag = mag * 2.0;
 
 // 			fx_prev = fx;
