@@ -392,8 +392,8 @@ Args fullUpdate_COMB_INV(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl >=
-      // 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; 		elem =
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
       // }
@@ -672,8 +672,8 @@ ITensor psInv(ITensor const& M, Args const& args) {
   // 			// 	//maxEvDisc  = dM_elems[idm];
   // 			// }
 
-  // 			for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++) dM_elems[iidm]
-  // = 0.0;
+  // 			for (int iidm=index_cutoff; iidm<dM_elems.size(); iidm++)
+  // dM_elems[iidm] = 0.0;
 
   // 			//Dynamic setting of iso_eps
   // 			//iso_eps = std::min(iso_eps, dM_elems[std::max(idm-1,0)]);
@@ -1136,8 +1136,8 @@ Args fullUpdate_COMB_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl >=
-      // 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; 		elem =
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
       // }
@@ -1837,8 +1837,8 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl >=
-      // 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; 		elem =
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
       // }
@@ -2807,8 +2807,8 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl >=
-      // 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; 		elem =
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
       // }
@@ -3251,8 +3251,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 
 // ***** PRODCTION ALS over 3 sites, BiCG with ITensor
 // Args fullUpdate_ALS3S_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
-// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	LinSysSolver const&
-// ls, 	Args const& args) {
+// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	LinSysSolver
+// const& ls, 	Args const& args) {
 
 // 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
 //     auto dbg    = args.getBool("fuDbg",false);
@@ -3374,17 +3374,19 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 			if(dbg) {
 // 				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
 // 					<< tn[s] << std::endl;
-// 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] <<
-// std::endl;
+// 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2]
+// << std::endl;
 // 			}
 
 // 			// Assign indices by which site is connected to ENV
 // 			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK
-// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-// 			} else {
-// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK
-// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]],
+// HSLINK
+// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]],
+// VSLINK ); 			} else { 				iToE[s][tmp_iToE[0]] = findtype(
+// (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK
+// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]],
+// HSLINK );
 // 			}
 
 // 			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
@@ -3393,13 +3395,13 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 			// set primeLevel of ENV indices between T's to 0 to be ready for
 // contraction 			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
 
-// 			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding
-// tensors
+// 			// Disentangle HSLINK and VSLINK indices into aux-indices of
+// corresponding tensors
 // 			// define combiner
 // 			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]),
-// prime(aux[s],tmp_iToE[0]+4)); 			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]),
-// prime(aux[s],tmp_iToE[1]+4)); 			if(dbg && dbgLvl >= 3) { Print(cmb0);
-// Print(cmb1); }
+// prime(aux[s],tmp_iToE[0]+4)); 			auto cmb1 =
+// combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4)); 			if(dbg
+// && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
 
 // 			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) *
 // cmb0)
@@ -3421,7 +3423,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // *******************
 
 // 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT
-// *************************** 		t_begin_int = std::chrono::steady_clock::now();
+// *************************** 		t_begin_int =
+// std::chrono::steady_clock::now();
 
 // 		// C  D
 // 		//    |
@@ -3429,9 +3432,9 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		// ITensor eRE;
 // 		// ITensor deltaBra, deltaKet;
 
-// 		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps))
-// ? 1.0 : 0.0; }; 		auto cutoffS = [&machine_eps](Real r) { return (r >
-// sqrt(10.0*machine_eps)) ? r : 0; };
+// 		auto maskS   = [&machine_eps](Real r) { return (r >
+// sqrt(10.0*machine_eps)) ? 1.0 : 0.0; }; 		auto cutoffS = [&machine_eps](Real
+// r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; };
 
 // 		// Decompose A tensor on which the gate is applied
 // 		//ITensor QA, tempSA, eA(prime(aux[0],pl[1]), phys[0]);
@@ -3532,8 +3535,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		t_end_int = std::chrono::steady_clock::now();
 // 		std::cout<<"Constructed reduced Env - T: "<<
 // 			std::chrono::duration_cast<std::chrono::microseconds>(t_end_int -
-// t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl; 		if(dbg && (dbgLvl >=3))
-// Print(eRE);
+// t_begin_int).count()/1000000.0 <<" [sec]"<<std::endl; 		if(dbg && (dbgLvl
+// >=3)) Print(eRE);
 // 		// ***** COMPUTE "EFFECTIVE" REDUCED ENVIRONMENT DONE
 // **********************
 // 	}
@@ -3544,8 +3547,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 	double condNum = 1.0;
 // 	if (symmProtoEnv) {
 // 		// ***** SYMMETRIZE "EFFECTIVE" REDUCED ENVIRONMENT
-// ************************ 		t_begin_int = std::chrono::steady_clock::now(); 		auto
-// cmbKet = combiner(iQA, iQB, iQD); 		auto cmbBra = prime(cmbKet,4);
+// ************************ 		t_begin_int = std::chrono::steady_clock::now();
+// auto cmbKet = combiner(iQA, iQB, iQD); 		auto cmbBra = prime(cmbKet,4);
 
 // 		eRE = (eRE * cmbKet) * cmbBra;
 
@@ -3615,9 +3618,10 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 			diag_protoEnv = oss.str();
 // 			if(dbg && (dbgLvl >= 1)) {
 // 				std::cout<<"REFINED SPECTRUM"<< std::endl;
-// 				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " << nval
-// <<std::endl; 				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF <<"/"<<
-// countNEG << "/"
+// 				std::cout<< std::scientific << "MAX EV: "<< mval << " MIN EV: " <<
+// nval
+// <<std::endl; 				std::cout <<"RATIO svd_cutoff/negative/all "<< countCTF
+// <<"/"<< countNEG << "/"
 // 					<< dM_elems.size() << std::endl;
 // 			}
 // 			// ##### END V3 ##################################################
@@ -3663,7 +3667,7 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 			// std::vector<double> dM_elems;
 // 			// for (int idm=1; idm<=D_eRE.inds().front().m(); idm++)
 // dM_elems.push_back(
-// 			// 		sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)))
+// 			// sqrt(D_eRE.real(D_eRE.inds().front()(idm),D_eRE.inds().back()(idm)))
 // );
 // 			// D_eRE =
 // diagTensor(dM_elems,D_eRE.inds().front(),D_eRE.inds().back());
@@ -3697,7 +3701,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // std::endl;
 // 			// 		elem = 0.0;
 // 			// 	} else if (elem < 0.0) {
-// 			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem)
+// 			// 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<<
+// std::fabs(elem)
 // << std::endl;
 // 			// 		elem = std::fabs(elem);
 // 			// 	}
@@ -3724,11 +3729,13 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 	t_begin_int = std::chrono::steady_clock::now();
 
 // 	ITensor protoK = eRE * (eA * delta(prime(aux[0],pl[1]), prime(aux[1],pl[2]))
-// ); 	protoK *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) ); 	protoK
+// ); 	protoK *= (eB * delta(prime(aux[1],pl[3]), prime(aux[2],pl[4])) );
+// protoK
 // *= eD; 	if(dbg && (dbgLvl >=2)) Print(protoK);
 
 // 	protoK = (( protoK * delta(opPI[0],phys[0]) ) * uJ1J2.H1) *
-// prime(delta(opPI[0],phys[0])); 	protoK = (( protoK * delta(opPI[1],phys[1]) )
+// prime(delta(opPI[0],phys[0])); 	protoK = (( protoK * delta(opPI[1],phys[1])
+// )
 // * uJ1J2.H2) * prime(delta(opPI[1],phys[1])); 	protoK = (( protoK *
 // delta(opPI[2],phys[2]) ) * uJ1J2.H3) * prime(delta(opPI[2],phys[2]));
 // 	protoK.prime(PHYS,-1);
@@ -3764,14 +3771,14 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 
 // 	// trial initialization
 // 	if (fuTrialInit) {
-// 		auto maskS   = [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps))
-// ? 1.0 : 0.0; }; 		auto cutoffS = [&machine_eps](Real r) { return (r >
-// sqrt(10.0*machine_eps)) ? r : 0; }; 		auto SqrtT   = [&machine_eps](Real r) {
-// return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0; }; 		auto printS  = [](Real
-// r) { std::cout << std::scientific << r << std::endl; }; 		auto extractDiagReal
-// = [](Diag<Real> const& d) { return d.store; }; 		auto invDiagT = [](ITensor
-// const& t)->ITensor { 			double machine_eps =
-// std::numeric_limits<double>::epsilon();
+// 		auto maskS   = [&machine_eps](Real r) { return (r >
+// sqrt(10.0*machine_eps)) ? 1.0 : 0.0; }; 		auto cutoffS = [&machine_eps](Real
+// r) { return (r > sqrt(10.0*machine_eps)) ? r : 0; }; 		auto SqrtT   =
+// [&machine_eps](Real r) { return (r > sqrt(10.0*machine_eps)) ? sqrt(r) : 0;
+// }; 		auto printS  = [](Real r) { std::cout << std::scientific << r <<
+// std::endl; }; 		auto extractDiagReal = [](Diag<Real> const& d) { return
+// d.store; }; 		auto invDiagT = [](ITensor const& t)->ITensor { 			double
+// machine_eps = std::numeric_limits<double>::epsilon();
 
 // 			// assume t is diagTensor of rank 2
 // 			std::vector<double> tmpD(t.inds()[0].m());
@@ -3792,8 +3799,8 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 			auto els1 = applyFunc(extractDiagReal,t1.store());
 // 			auto els2 = applyFunc(extractDiagReal,t2.store());
 // 			double sum = 0.0;
-// 			for (int i=0; i<els1.size(); i++ ) sum += (els1[i] - els2[i]) * (els1[i] -
-// els2[i]) ; 			return sum;
+// 			for (int i=0; i<els1.size(); i++ ) sum += (els1[i] - els2[i]) * (els1[i]
+// - els2[i]) ; 			return sum;
 // 		};
 // 		auto diagCopyAndIndex = [&extractDiagReal](ITensor const& t, Index i1,
 // Index i2)->ITensor {
@@ -3923,8 +3930,9 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(eA), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = prev_finit = normPsi
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = prev_finit
+// = normPsi
 // - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0 *
 // sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
@@ -3933,9 +3941,9 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		vec_normPsi.push_back( normPsi );
 // 		//if ( fdist.back() < cg_fdistance_eps ) { converged = true; break; }
 // 		std::cout << "stopCond: " << (fdistN.back() -
-// fdistN[fdistN.size()-2])/fdistN[0] << std::endl; 		if ( (fdistN.size() > 1) &&
-// std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 			{
-// converged = true; break; }
+// fdistN[fdistN.size()-2])/fdistN[0] << std::endl; 		if ( (fdistN.size() > 1)
+// && std::abs((fdistN.back() - fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf )
+// { converged = true; break; }
 
 // 		// ***** SOLVE LINEAR SYSTEM M*eA = K by CG ***************************
 // 		auto temp = eA;
@@ -3987,22 +3995,24 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		prev_finit = finit; 		finit   =
-// normPsi - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0 *
-// sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		prev_finit = finit;
+// finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0
+// * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
 // 		fdist.push_back( finit );
 // 		fdistN.push_back( finitN );
 // 		vec_normPsi.push_back( normPsi );
 // 		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
 // 		if ( (fdistN.size() > 1) && std::abs((fdistN.back() -
-// fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 			{ converged = true; break; }
+// fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 			{ converged = true;
+// break; }
 
 // 		// ***** SOLVE LINEAR SYSTEM M*eB = K ******************************
 // 		temp = eB;
 // 		FULSCG_IT fulscgEB(M,K,eB,cmbX2, combiner(iQB, prime(aux[1],pl[2]),
-// prime(aux[1],pl[3])), args ); 		fulscgEB.solve(K, eB, fiter, ferr, ls, args);
+// prime(aux[1],pl[3])), args ); 		fulscgEB.solve(K, eB, fiter, ferr, ls,
+// args);
 
 // 		NORMPSI = (prime(conj(eB), AUXLINK,4) * M) * eB;
 // 		OVERLAP = prime(conj(eB), AUXLINK,4) * K;
@@ -4049,17 +4059,18 @@ void FuncALS_CG::df(VecDoub_I& x, VecDoub_O& deriv) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(eD), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		prev_finit = finit; 		finit   =
-// normPsi - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0 *
-// sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		prev_finit = finit;
+// finit   = normPsi - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0
+// * sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0;
 
 // 		fdist.push_back( finit );
 // 		fdistN.push_back( finitN );
 // 		vec_normPsi.push_back( normPsi );
 // 		std::cout << "stopCond: " << (finit - prev_finit)/fdist[0] << std::endl;
 // 		if ( (fdistN.size() > 1) && std::abs((fdistN.back() -
-// fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 			{ converged = true; break; }
+// fdistN[fdistN.size()-2])/fdistN[0]) < epsdistf ) 			{ converged = true;
+// break; }
 
 // 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
 // 		temp = eD;
@@ -4775,7 +4786,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 
 // ***** ALS over 4 sites while applying a 3 site gate
 // Args fullUpdate_CG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
-// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const& args) {
+// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const& args)
+// {
 
 // 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
 //     auto dbg = args.getBool("fuDbg",false);
@@ -4891,17 +4903,19 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 			if(dbg) {
 // 				std::cout <<"primeLevels (pl) of indices connected to ENV - site: "
 // 					<< tn[s] << std::endl;
-// 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2] <<
-// std::endl;
+// 				std::cout << tmp_iToE[0] <<" "<< tmp_iToE[1] <<" iToC: "<< tmp_iToE[2]
+// << std::endl;
 // 			}
 
 // 			// Assign indices by which site is connected to ENV
 // 			if( findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK ) ) {
-// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], HSLINK
-// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], VSLINK );
-// 			} else {
-// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK
-// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]], HSLINK );
+// 				iToE[s][tmp_iToE[0]] = findtype( (*iToT.at(tmp_iToE[0]))[si[s]],
+// HSLINK
+// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]],
+// VSLINK ); 			} else { 				iToE[s][tmp_iToE[0]] = findtype(
+// (*iToT.at(tmp_iToE[0]))[si[s]], VSLINK
+// ); 				iToE[s][tmp_iToE[1]] = findtype( (*iToT.at(tmp_iToE[1]))[si[s]],
+// HSLINK );
 // 			}
 
 // 			pc[s] = (*iToT.at(tmp_iToE[0]))[si[s]]*(*iToC.at(tmp_iToE[2]))[si[s]]*
@@ -4910,13 +4924,13 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 			// set primeLevel of ENV indices between T's to 0 to be ready for
 // contraction 			pc[s].noprime(LLINK, ULINK, RLINK, DLINK);
 
-// 			// Disentangle HSLINK and VSLINK indices into aux-indices of corresponding
-// tensors
+// 			// Disentangle HSLINK and VSLINK indices into aux-indices of
+// corresponding tensors
 // 			// define combiner
 // 			auto cmb0 = combiner(prime(aux[s],tmp_iToE[0]),
-// prime(aux[s],tmp_iToE[0]+4)); 			auto cmb1 = combiner(prime(aux[s],tmp_iToE[1]),
-// prime(aux[s],tmp_iToE[1]+4)); 			if(dbg && dbgLvl >= 3) { Print(cmb0);
-// Print(cmb1); }
+// prime(aux[s],tmp_iToE[0]+4)); 			auto cmb1 =
+// combiner(prime(aux[s],tmp_iToE[1]), prime(aux[s],tmp_iToE[1]+4)); 			if(dbg
+// && dbgLvl >= 3) { Print(cmb0); Print(cmb1); }
 
 // 			pc[s] = (pc[s] * delta(combinedIndex(cmb0), iToE[s][tmp_iToE[0]]) *
 // cmb0)
@@ -5123,9 +5137,9 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(cls.sites.at(tn[0])), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi - 2.0 *
-// sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0 *
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi
+// - 2.0 * sumels(OVERLAP) + normUPsi; 		finitN  = 1.0 - 2.0 *
 // sumels(OVERLAP)/std::sqrt(normUPsi * normPsi) + 1.0; 		prev_finit = finit;
 
 // 		fdist.push_back( finit );
@@ -5137,17 +5151,18 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps )
 // 		{
 // 			std::cout << "stopCond: " << (fdist.back() -
-// fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break; 		} else
-// { 			std::cout << "stopCond: " << (fdist.back() -
+// fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break; 		}
+// else { 			std::cout << "stopCond: " << (fdist.back() -
 // fdist[fdist.size()-2])/fdist[0] << std::endl;
 // 		}
 
 // 		// ***** SOLVE LINEAR SYSTEM M*A = K by CG ***************************
 // 		ITensor dummyComb;
 // 		int tensorDim = cls.physDim * cls.auxBondDim * cls.auxBondDim *
-// cls.auxBondDim * cls.auxBondDim; 		FULSCG_IT fulscg(M, K, cls.sites.at(tn[0]),
-// dummyComb, dummyComb, svd_cutoff ); 		fulscg.solveIT(K, cls.sites.at(tn[0]),
-// itol, cg_gradientNorm_eps, tensorDim, fiter, ferr); 		std::cout <<"A f_err= "<<
+// cls.auxBondDim * cls.auxBondDim; 		FULSCG_IT fulscg(M, K,
+// cls.sites.at(tn[0]), dummyComb, dummyComb, svd_cutoff ); fulscg.solveIT(K,
+// cls.sites.at(tn[0]), itol, cg_gradientNorm_eps, tensorDim, fiter, ferr);
+// std::cout <<"A f_err= "<<
 // ferr <<" f_iter= "<< fiter << std::endl; 		pcS[0] = (pc[0] *
 // cls.sites.at(tn[0])) * prime(conj(cls.sites.at(tn[0])), AUXLINK,4);
 
@@ -5223,9 +5238,9 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(cls.sites.at(tn[1])), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi - 2.0 *
-// sumels(OVERLAP) + normUPsi;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi
+// - 2.0 * sumels(OVERLAP) + normUPsi;
 
 // 		// stopCond
 // 		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) <
@@ -5245,7 +5260,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		//while ( (ferr > cg_gradientNorm_eps) && (accfiter < tensorDim * 10 ) ) {
 // 			FULSCG_IT fulscgEB(M,K,cls.sites.at(tn[1]),dummyComb, dummyComb,
 // svd_cutoff ); 			fulscgEB.solveIT(K, cls.sites.at(tn[1]), itol,
-// cg_gradientNorm_eps, tensorDim, fiter, ferr); 			accfiter += fiter; 			std::cout
+// cg_gradientNorm_eps, tensorDim, fiter, ferr); 			accfiter += fiter;
+// std::cout
 // <<"B f_err= "<< ferr <<" f_iter= "<< accfiter << std::endl;
 // 		//}
 // 		pcS[1] = (pc[1] * cls.sites.at(tn[1])) * prime(conj(cls.sites.at(tn[1])),
@@ -5323,9 +5339,9 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(cls.sites.at(tn[2])), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi - 2.0 *
-// sumels(OVERLAP) + normUPsi;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi
+// - 2.0 * sumels(OVERLAP) + normUPsi;
 
 // 		// stopCond
 // 		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) <
@@ -5340,7 +5356,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		prev_finit = finit;
 
 // 		// ***** SOLVE LINEAR SYSTEM M*eD = K ******************************
-// 		FULSCG_IT fulscgED(M,K,cls.sites.at(tn[2]),dummyComb, dummyComb, svd_cutoff
+// 		FULSCG_IT fulscgED(M,K,cls.sites.at(tn[2]),dummyComb, dummyComb,
+// svd_cutoff
 // ); 		fulscgED.solveIT(K, cls.sites.at(tn[2]), itol, cg_gradientNorm_eps,
 // tensorDim, fiter, ferr);
 
@@ -5420,9 +5437,9 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		// <psi'|U|psi>
 // 		OVERLAP = prime(conj(cls.sites.at(tn[3])), AUXLINK,4) * K;
 
-// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP rank
-// > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi - 2.0 *
-// sumels(OVERLAP) + normUPsi;
+// 		if (NORMPSI.r() > 0 || OVERLAP.r() > 0) std::cout<<"NORMPSI or OVERLAP
+// rank > 0"<<std::endl; 		normPsi = sumels(NORMPSI); 		finit   = normPsi
+// - 2.0 * sumels(OVERLAP) + normUPsi;
 
 // 		// stopCond
 // 		if ( (fdist.size() > 1) && std::abs((finit - prev_finit)/fdist[0]) <
@@ -5437,7 +5454,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // 		prev_finit = finit;
 
 // 		// ***** SOLVE LINEAR SYSTEM M*C = K ******************************
-// 		FULSCG_IT fulscgEC(M,K,cls.sites.at(tn[3]),dummyComb, dummyComb, svd_cutoff
+// 		FULSCG_IT fulscgEC(M,K,cls.sites.at(tn[3]),dummyComb, dummyComb,
+// svd_cutoff
 // ); 		fulscgEC.solveIT(K, cls.sites.at(tn[3]), itol, cg_gradientNorm_eps,
 // tensorDim, fiter, ferr);
 

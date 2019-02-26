@@ -51,8 +51,8 @@ namespace itensor {
 #endif
 
   void dgesdd_wrapper(
-    char jobz,  // char* specifying how much of U, V to compute
-                // choosing *jobz=='S' computes min(m,n) cols of U, V
+    char jobz,        // char* specifying how much of U, V to compute
+                      // choosing *jobz=='S' computes min(m,n) cols of U, V
     LAPACK_INT m,     // number of rows of input matrix *A
     LAPACK_INT n,     // number of cols of input matrix *A
     LAPACK_REAL* A,   // contents of input matrix A
@@ -155,8 +155,8 @@ namespace itensor {
       int info;
       dgesdd_wrapper('S',  // char* specifying how much of U, V to compute
                            // choosing *jobz=='S' computes min(m,n) cols of U, V
-                     Mr,  // number of rows of input matrix *A
-                     Mc,  // number of cols of input matrix *A
+                     Mr,   // number of rows of input matrix *A
+                     Mc,   // number of cols of input matrix *A
                      cpA.data(),
                      D.data(),  // on return, singular values of A
                      U.data(),  // on return, unitary matrix U
@@ -221,8 +221,8 @@ namespace itensor {
       int info;
       zgesdd_wrapper('S',  // char* specifying how much of U, V to compute
                            // choosing *jobz=='S' computes min(m,n) cols of U, V
-                     Mr,  // number of rows of input matrix *A
-                     Mc,  // number of cols of input matrix *A
+                     Mr,   // number of rows of input matrix *A
+                     Mc,   // number of cols of input matrix *A
                      cpA.data(),
                      D.data(),  // on return, singular values of A
                      U.data(),  // on return, unitary matrix U

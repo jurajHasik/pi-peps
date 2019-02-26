@@ -17,8 +17,7 @@ install_headers(['cluster-ev-builder.h',
                  'rsvd-solver.h',
                  'simple-update_v2.h',
                  'su2.h',
-                 'svdsolver-factory.h',
-                 'warnings.h'],
+                 'svdsolver-factory.h'],
                 subdir:'pi-peps')
 
 subdir('linalg')

@@ -160,9 +160,9 @@ TEST(SvdGesddComplex0, Default_cotr) {
 //         //Feb 10, 2016: code that fixes sign of
 //         //singular values to be positive was broken
 // 		auto s1 =
-// IQIndex("s1",Index("s1+",1,Site),QN(+1),Index("s1-",1,Site),QN(-1)); 		auto s2
-// = IQIndex("s2",Index("s2+",1,Site),QN(+1),Index("s2-",1,Site),QN(-1)); 		auto
-// sing = IQTensor(s1,s2); 		sing.set(s1(1),s2(2), 1./sqrt(2));
+// IQIndex("s1",Index("s1+",1,Site),QN(+1),Index("s1-",1,Site),QN(-1)); 		auto
+// s2 = IQIndex("s2",Index("s2+",1,Site),QN(+1),Index("s2-",1,Site),QN(-1));
+// auto sing = IQTensor(s1,s2); 		sing.set(s1(1),s2(2), 1./sqrt(2));
 // 		sing.set(s1(2),s2(1),-1./sqrt(2));
 // 		auto prod = IQTensor(s1,s2);
 // 		prod.set(s1(1),s2(2),1.);
