@@ -1,7 +1,7 @@
 #include "pi-peps/config.h"
+#include <gtest/gtest.h>
 #include "pi-peps/ctm-cluster-basic.h"
 #include "pi-peps/ctm-cluster-env_v2.h"
-#include <gtest/gtest.h>
 #include <iostream>
 
 using namespace itensor;
