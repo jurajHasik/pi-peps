@@ -1,7 +1,6 @@
 #include "pi-peps/config.h"
 #include <gtest/gtest.h>
 #include "pi-peps/linalg/arpack-rcdn.h"
-#include <gtest/gtest.h>
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
