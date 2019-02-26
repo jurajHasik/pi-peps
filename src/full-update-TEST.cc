@@ -1137,8 +1137,12 @@ Args fullUpdate_COMB_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
+<<<<<<< HEAD
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
+=======
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+>>>>>>> amends, moving warnings.h into config
       // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
@@ -1839,8 +1843,12 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
+<<<<<<< HEAD
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
+=======
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+>>>>>>> amends, moving warnings.h into config
       // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
@@ -2810,8 +2818,12 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
+<<<<<<< HEAD
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
+=======
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+>>>>>>> amends, moving warnings.h into config
       // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
@@ -4790,8 +4802,12 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 
 // ***** ALS over 4 sites while applying a 3 site gate
 // Args fullUpdate_CG_IT(MPO_3site const& uJ1J2, Cluster & cls, CtmEnv const&
+<<<<<<< HEAD
 // ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const&
 // args)
+=======
+// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const& args)
+>>>>>>> amends, moving warnings.h into config
 // {
 
 // 	auto maxAltLstSqrIter = args.getInt("maxAltLstSqrIter",50);
@@ -5156,8 +5172,13 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // fdist[fdist.size()-2])/fdist[0]) < cg_fdistance_eps )
 // 		{
 // 			std::cout << "stopCond: " << (fdist.back() -
+<<<<<<< HEAD
 // fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break;
 // } else { 			std::cout << "stopCond: " << (fdist.back() -
+=======
+// fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break; 		}
+// else { 			std::cout << "stopCond: " << (fdist.back() -
+>>>>>>> amends, moving warnings.h into config
 // fdist[fdist.size()-2])/fdist[0] << std::endl;
 // 		}
 
