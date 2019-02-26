@@ -61,8 +61,10 @@ ForEachMacros:
 IncludeBlocks:   Preserve
 IncludeCategories:
 #config.h must be first
-  - Regex:   "pi-peps/config.h"
+  - Regex:   "gtest/gtest.h"
     Priority: -1
+  - Regex:   "pi-peps/config.h"
+    Priority: -2
   - Regex:           '^"(llvm|llvm-c|clang|clang-c)/'
     Priority:        2
   - Regex:           '^(<|"(gtest|isl|json)/)'
