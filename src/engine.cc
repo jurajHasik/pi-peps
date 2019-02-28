@@ -167,6 +167,14 @@ using namespace itensor;
 //     td.gate_auxInds[gi], args);
 // }
 
+// lattice directions
+// 
+//        1=(0,-1) 
+//           |
+// 0=(-1,0)--A--2=(1,0)
+//           |
+//        3=(0,1)
+
 template <>
 Args TrotterEngine<MPO_2site>::performSimpleUpdate(Cluster& cls,
                                                    Args const& args) {
@@ -217,14 +225,14 @@ Args TrotterEngine<MPO_3site>::performSimpleUpdate(Cluster& cls,
   //     3                          3
   //
   std::vector<int> tmp_auxIndsDir_seq = {
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
-    dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(td.tgates[gi].disp[0]),
+    dirFromShift(-1 * td.tgates[gi].disp[0]),
+    dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(-1 * td.tgates[gi].disp[0]),
     dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(td.tgates[gi].disp[1])};
+    dirFromShift(-1 * td.tgates[gi].disp[1])};
 
   return simpleUpdate(*td.tgates[gi].ptr_gate, cls, tmp_siteId_seq,
                       tmp_auxIndsDir_seq, args);
@@ -302,14 +310,14 @@ Args TrotterEngine<MPO_3site>::performFullUpdate(Cluster& cls,
   //     3                          3
   //
   std::vector<int> tmp_auxIndsDir_seq = {
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
-    dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(td.tgates[gi].disp[0]),
+    dirFromShift(-1 * td.tgates[gi].disp[0]),
+    dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(-1 * td.tgates[gi].disp[0]),
     dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(td.tgates[gi].disp[1])};
+    dirFromShift(-1 * td.tgates[gi].disp[1])};
 
   return fullUpdate_ALS3S_IT(*td.tgates[gi].ptr_gate, cls, ctmEnv,
                              tmp_siteId_seq, tmp_auxIndsDir_seq,
@@ -351,14 +359,14 @@ Args TrotterEngine<OpNS>::performFullUpdate(Cluster& cls,
   //     3                          3
   //
   std::vector<int> tmp_auxIndsDir_seq = {
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
-    dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[0]),
-    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(td.tgates[gi].disp[0]),
+    dirFromShift(-1 * td.tgates[gi].disp[0]),
+    dirFromShift(td.tgates[gi].disp[1]),
+    dirFromShift(-1 * td.tgates[gi].disp[1]),
     dirFromShift(-1 * td.tgates[gi].disp[0]),
     dirFromShift(td.tgates[gi].disp[0]),
-    dirFromShift(td.tgates[gi].disp[1])};
+    dirFromShift(-1 * td.tgates[gi].disp[1])};
 
   return fullUpdate_CG_full4S(*td.tgates[gi].ptr_gate, cls, ctmEnv,
                               tmp_siteId_seq, tmp_auxIndsDir_seq, args);
