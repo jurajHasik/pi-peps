@@ -16,15 +16,14 @@ executable(_exe_name,
 
 
 # copy the files in the build dir
-_files = [
-'RVB_2x2_ABCD.in',
-'RVB_2x2_AB.in',
-'simulation-svd-itensor.json',
-'simulation-svd-gesdd.json',
-'simulation-svd-gesdd_AB.json',
-'simulation-svd-rsvd.json',
-'simulation-svd-rsvd_AB.json'
-]
+_files = ['env-ctmrg.cc',
+          'RVB_2x2_ABCD.in',
+          'RVB_2x2_AB.in',
+          'simulation-svd-itensor.json',
+          'simulation-svd-gesdd.json',
+          'simulation-svd-gesdd_AB.json',
+          'simulation-svd-rsvd.json',
+          'simulation-svd-rsvd_AB.json']
 
 foreach _f : _files
     if(meson.version() >= '0.47')

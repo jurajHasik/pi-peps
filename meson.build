@@ -1,6 +1,6 @@
 project('pi-peps','cpp','c',
         default_options : ['cpp_std=c++14',
-			   'buildtype=debug',
+			   'buildtype=release',
 			   'warning_level=3'],
         version: '1.0')
 
@@ -29,12 +29,12 @@ subdir('bundled')
 # populate the variable deps with all the dependencies
 subdir('meson')
 
-our_lib = shared_library(project_name,
-                         source_files,
-                         dependencies: deps,
-                         include_directories: include_dirs,
-                         version: project_version,
-                         install: true)
+our_lib = library(project_name,
+                  source_files,
+                  dependencies: deps,
+                  include_directories: include_dirs,
+                  version: project_version,
+                  install: true)
 
 our_lib_dep = declare_dependency(dependencies: deps,
                                  link_with: our_lib,
@@ -43,5 +43,6 @@ our_lib_dep = declare_dependency(dependencies: deps,
 subdir('examples')
 
 subdir('tests')
+
 
 subdir('pkgconfig')

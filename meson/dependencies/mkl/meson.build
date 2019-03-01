@@ -54,6 +54,7 @@ else
     
     mkl = declare_dependency(include_directories:
                              _includedir,
+                             compile_args:'-I'+_dir+'/include',
                              dependencies:_libs)
 endif
 

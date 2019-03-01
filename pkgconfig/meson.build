@@ -1,8 +1,7 @@
 ### generate a .pc file 
 pkg = import('pkgconfig')
-pkg.generate(libraries: our_lib,
-             libraries_private: deps,
-             subdirs : 'include',
+pkg.generate(our_lib,
+             libraries: deps,
              version : project_version,
              name : project_name+' library',
              filebase : project_name,
