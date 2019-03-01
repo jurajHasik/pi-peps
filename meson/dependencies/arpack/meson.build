@@ -68,6 +68,7 @@ extern "C" void dneupd_(int* rvec,
      _libpath = _dir+'/lib'
 
      _lib = compiler.find_library('arpack', dirs:_libpath, required:true)
+     libs += _libs
 
     arpack = declare_dependency(include_directories:
                                 _includedir,

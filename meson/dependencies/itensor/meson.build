@@ -27,7 +27,7 @@ _libpath = _dir+'/lib'
 _lib = compiler.find_library('itensor', dirs:_libpath, required:true)
 
 
-itensor = declare_dependency(
+itensor = declare_dependency(compile_args:'-I'+_dir,
     include_directories: _includedir,
     dependencies:_lib)
 
