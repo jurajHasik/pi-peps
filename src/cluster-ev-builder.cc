@@ -2142,6 +2142,15 @@ void EVBuilder::analyzeTransferMatrix(Vertex const& v,
     std::vector<std::complex<double>> ev;
     std::vector<double> V;
     ardns.real_nonsymm(N, 4, 100, 0.0, N * 10, ev, V);
+    
+    //sort
+    std::sort(ev.begin(), ev.end(), [](std::complex<double> a, std::complex<double> b) {
+        return std::abs(a) > std::abs(b);   
+    });
+    for (auto const& val : ev) {
+      std::cout<< val / std::abs(ev[0]) << std::endl;
+    }
+
   } else {
     std::cout << "[EVBuilder::analyzeTransferMatrix] Unsupported option: "
               << alg_type << std::endl;

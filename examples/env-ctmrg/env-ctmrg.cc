@@ -48,10 +48,8 @@ int main(int argc, char* argv[]) {
   // read CTMRG parameters
   auto json_ctmrg_params(jsonCls["ctmrg"]);
   int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
-  std::string arg_ioEnvTag(json_ctmrg_params["ioEnvTag"].get<std::string>());
   CtmEnv::init_env_type arg_initEnvType(
     toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
-  bool envIsComplex = json_ctmrg_params["envIsComplex"].get<bool>();
   CtmEnv::isometry_type iso_type(
     toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
   double arg_isoPseudoInvCutoff =
@@ -141,16 +139,16 @@ int main(int argc, char* argv[]) {
   auto pSvdSolver = sf.create(env_SVD_METHOD);
 
   // CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, cls, *pSvdSolver,
-  CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver,
+  CtmEnv ctmEnv("default", auxEnvDim, *p_cls, *pSvdSolver,
                 {"isoPseudoInvCutoff", arg_isoPseudoInvCutoff, "SVD_METHOD",
                  env_SVD_METHOD, "rsvd_power", rsvd_power, "rsvd_reortho",
                  rsvd_reortho, "rsvd_oversampling", rsvd_oversampling, "dbg",
                  arg_envDbg, "dbgLevel", arg_envDbgLvl});
-  ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
+  ctmEnv.init(arg_initEnvType, false, arg_envDbg);
 
   // INITIALIZE EXPECTATION VALUE BUILDER
   // EVBuilder ev(arg_ioEnvTag, cls, ctmEnv);
-  EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
+  EVBuilder ev("default", *p_cls, ctmEnv);
   std::cout << ev;
 
   std::vector<double> diag_minCornerSV(1, 0.);
