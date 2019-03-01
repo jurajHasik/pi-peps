@@ -177,8 +177,9 @@ struct ARDNS {
 
     // record eigenvalues
     ev.resize(nev);
-    for (int i = 0; i < nev; ++i)
-      ev[i] = (dr[i], di[i]);
+    for (int i = 0; i < nev; ++i) {
+      ev[i] = std::complex<double>(dr[i], di[i]);
+    }
   }
 };
 
