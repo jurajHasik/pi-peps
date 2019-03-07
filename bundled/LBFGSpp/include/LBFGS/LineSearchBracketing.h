@@ -4,7 +4,10 @@
 #ifndef _ITENSOR_PORT_LINE_SEARCH_BRACKETING_H
 #define _ITENSOR_PORT_LINE_SEARCH_BRACKETING_H
 
+#include "pi-peps/config.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include <stdexcept>  // std::runtime_error
 #include <math.h>
 
