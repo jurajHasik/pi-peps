@@ -16,7 +16,7 @@ executable(_exe_name,
 
 
 # copy the files in the build dir
-_files = ['env-ctmrg.cc',
+_files = [_source,
           'RVB_2x2_ABCD.in',
           'RVB_2x2_AB.in',
           'simulation-svd-itensor.json',
@@ -42,3 +42,13 @@ foreach _f : _files
 endforeach
         
         
+# generate the meson.build to be used to compile the example
+# once installed
+_cdata = configuration_data()
+_cdata.set('XXXX',_exe_name)
+
+configure_file(output:'meson.build',
+               input:'meson.build.in',
+               install:true,
+               install_dir:'examples/'+_dir_name,
+               configuration:_cdata)

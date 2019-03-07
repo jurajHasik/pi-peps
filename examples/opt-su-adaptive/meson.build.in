@@ -1,0 +1,26 @@
+project('@XXXX@','cpp',default_options:['cpp_std=c++14',
+                                      'buildtype=release'])
+
+pi_peps = dependency('pi-peps', required: false)
+
+if not pi_peps.found()
+    s = '''
+
+   Could not find the pi-peps.pc file.
+   It is located in the *prefix* dir where the library pi-peps is installed.
+   You can check the value of the *prefix* option executing the following
+   command from the build directory
+
+   meson configure | grep prefix
+
+   Once you figured it out, add the prefix dir to the environment variable 
+   PKG_CONFIG_PATH. If you are on linux, for example,
+  
+   export PKG_CONFIG_PATH=/path/to/prefix:$PKG_CONFIG_PATH
+
+   and then rerun meson.
+'''    
+   error(s)
+endif
+
+executable('@XXXX@','@XXXX@.cc',dependencies:pi_peps)

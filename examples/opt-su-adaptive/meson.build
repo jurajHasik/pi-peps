@@ -15,15 +15,15 @@ executable(_exe_name,
            install_rpath:_rpath)
 
 # copy the files in the build dir 
-_files = [
-'simulation-su-HB_2x2_ABCD.json',
-'simulation-su-HB_2x2_AB.json',
-'simulation-su-ISING_2x2_ABCD.json',
-'simulation-su-ISING_2x2_AB.json',
-'simulation-su-AKLT_2x2_ABCD.json',    
-'simulation-su-AKLT_2x2_AB.json',    
-'simulation-su-LADDERS_2x2_ABCD.json',
-'simulation-su-J1J2_2x2_ABCD.json']
+_files = [_source,
+          'simulation-su-HB_2x2_ABCD.json',
+          'simulation-su-HB_2x2_AB.json',
+          'simulation-su-ISING_2x2_ABCD.json',
+          'simulation-su-ISING_2x2_AB.json',
+          'simulation-su-AKLT_2x2_ABCD.json',    
+          'simulation-su-AKLT_2x2_AB.json',    
+          'simulation-su-LADDERS_2x2_ABCD.json',
+          'simulation-su-J1J2_2x2_ABCD.json']
 
 foreach _f : _files
     if(meson.version() >= '0.47')
@@ -40,3 +40,15 @@ foreach _f : _files
                        install_dir:'examples/'+_dir_name)                       
     endif
 endforeach
+
+
+# generate the meson.build to be used to compile the example
+# once installed
+_cdata = configuration_data()
+_cdata.set('XXXX',_exe_name)
+
+configure_file(output:'meson.build',
+               input:'meson.build.in',
+               install:true,
+               install_dir:'examples/'+_dir_name,
+               configuration:_cdata)
