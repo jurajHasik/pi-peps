@@ -4,7 +4,10 @@
 #ifndef _ITENSOR_PORT_LBFGS_H
 #define _ITENSOR_PORT_LBFGS_H
 
+#include "pi-peps/config.h"
+DISABLE_WARNINGS
 #include "itensor/all.h"
+ENABLE_WARNINGS
 #include "LBFGS/Param.h"
 #include "LBFGS/LineSearch.h"
 
