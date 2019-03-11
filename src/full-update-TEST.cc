@@ -1844,7 +1844,8 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2,
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
 =======
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
+      // (dbgLvl
 >>>>>>> amends, moving warnings.h into config
 =======
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
@@ -2824,7 +2825,8 @@ Args fullUpdate_ALS_CG(MPO_3site const& uJ1J2,
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
 =======
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg && (dbgLvl
+      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
+      // (dbgLvl
 >>>>>>> amends, moving warnings.h into config
 =======
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
@@ -4813,7 +4815,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const&
 // args)
 =======
-// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const& args)
+// ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const&
+// args)
 >>>>>>> amends, moving warnings.h into config
 =======
 // ctmEnv, 	std::vector<std::string> tn, std::vector<int> pl, 	Args const&
@@ -5188,7 +5191,8 @@ Doub Linbcg::snrm(VecDoub_I& sx, const Int itol) {
 // fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break;
 // } else { 			std::cout << "stopCond: " << (fdist.back() -
 =======
-// fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break; 		}
+// fdist[fdist.size()-2])/fdist[0] << std::endl; 			converged = true; break;
+// }
 // else { 			std::cout << "stopCond: " << (fdist.back() -
 >>>>>>> amends, moving warnings.h into config
 =======
