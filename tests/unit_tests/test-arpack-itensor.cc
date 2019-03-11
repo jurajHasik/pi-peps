@@ -65,6 +65,10 @@ TEST(ArpackReal0, Default_cotr) {
   std::vector<double> V;
   ardns.real_nonsymm(10, 2, 5, 0.0, 10 * 10, ev, V);
 
-  EXPECT_TRUE((std::abs(ev[0]) - 10.0) < eps);
-  EXPECT_TRUE((std::abs(ev[1]) - 9.0) < eps);
+  for (const auto& e : ev)
+    std::cout << e << std::endl;
+
+  // eigenvalues are sorted in ascending order
+  EXPECT_TRUE((std::abs(ev[0]) - 9.0) < eps);
+  EXPECT_TRUE((std::abs(ev[1]) - 10.0) < eps);
 }
