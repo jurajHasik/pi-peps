@@ -24,7 +24,6 @@ CtmEnv::CtmEnv(std::string t_name,
   : p_cluster(&c),
     solver(ssolver),
     m_name(t_name),
-    d(c.auxBondDim * c.auxBondDim),
     x(t_x),
     sizeN(c.sizeN),
     sizeM(c.sizeM) {
@@ -58,18 +57,6 @@ CtmEnv::CtmEnv(std::string t_name,
    *  index, but the "the prime" differentiates the two. This will
    *  enable us to formulate "insert, absorb & renormalize" algorithm
    */
-
-  // Define indices between corner matrices "C_*" and row/column
-  // tensors "T_*"
-  // I_U = Index(TAG_I_U, x, ULINK);
-  // I_R = Index(TAG_I_R, x, RLINK);
-  // I_D = Index(TAG_I_D, x, DLINK);
-  // I_L = Index(TAG_I_L, x, LLINK);
-
-  // Define indices between row/column tensors "T_*" and on-site
-  // tensors "X**"
-  I_XH = Index(TAG_I_XH, d, HSLINK);
-  I_XV = Index(TAG_I_XV, d, VSLINK);
 
   for (auto const& id : c.siteIds) {
     eaux[id] = std::vector<Index>(8);
@@ -121,8 +108,8 @@ CtmEnv::CtmEnv(std::string t_name,
     for (int dir = 0; dir < 4; dir++)
       CMB[id][dir] = formCMB(id, dir);
   }
+
   // directions on lattice and their corresponding fused indices
-  fusedSiteI = std::vector<Index>({I_XH, I_XV, prime(I_XH), prime(I_XV)});
   for (auto const& id : c.siteIds) {
     faux[id] = std::vector<Index>(4);
 
@@ -1369,7 +1356,7 @@ void CtmEnv::updateCluster(Cluster const& c) {
 
 std::ostream& CtmEnv::print(std::ostream& s) const {
   s << "CtmEnv( " << std::endl
-    << m_name << ", d=" << d << ", x=" << x << std::endl
+    << m_name << ", x=" << x << std::endl
     << "cluster(NxM): " << sizeN << "(row) x " << sizeM << "(column)"
     << std::endl;
 

@@ -32,10 +32,6 @@ struct IO_site {
   itensor::ITensor t;
 };
 
-Cluster readCluster(std::string const& filename);
-
-Cluster readCluster(nlohmann::json const& jsonCls);
-
 std::unique_ptr<Cluster> p_readCluster(std::string const& filename);
 
 std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls);
@@ -76,8 +72,6 @@ itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset = 1);
 std::pair<std::vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
   nlohmann::json const& j,
   int offset = 1);
-
-void readOnSiteFromJSON(Cluster& c, nlohmann::json const& j, bool dbg = false);
 
 void setOnSiteTensorsFromFile(Cluster& cls,
                               std::string const& filename,

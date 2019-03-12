@@ -8,7 +8,7 @@
 
 using namespace itensor;
 
-TEST(Cluster0, Default_cotr) {
+TEST(Shift0, Default_cotr) {
   auto s1 = Shift(1, 1);
   auto s2 = Shift(2, 3);
   auto s3 = Shift(-2, 4);
@@ -26,7 +26,7 @@ TEST(Cluster0, Default_cotr) {
   EXPECT_TRUE(s3 == Shift(-3, 3));
 }
 
-TEST(Cluster1, Default_cotr) {
+TEST(ShiftVertex0, Default_cotr) {
   auto s1 = Shift(1, 1);
   auto s2 = Shift(2, 3);
   auto v1 = Vertex(-2, 4);
@@ -45,17 +45,82 @@ TEST(Cluster1, Default_cotr) {
   EXPECT_TRUE(v2 == Vertex(4, 4));
 }
 
-// TODO test for equality
-TEST(ClusterIO0, Default_cotr) {
-  std::string inClusterFile = "RVB_2x2_ABCD_customIndices.in";
-  auto cluster = readCluster(inClusterFile);
+TEST(ClusterBasic0_1x1_A, Default_cotr) {
+  nlohmann::json jCls;
+  jCls["type"]    = "1X1_A";
+  jCls["physDim"] = 2;
+  jCls["auxBondDim"] = 3;
+  jCls["initBy"] = "ZPRST";
 
-  std::string outClusterFile = "test_RVB_2x2_ABCD.in";
-  writeCluster(outClusterFile, cluster);
-  auto cluster_out = readCluster(outClusterFile);
+  auto p_cls = Cluster_1x1_A::create(jCls);
+
+  std::string out_file = "out.in";
+  writeCluster(out_file, *p_cls);
+
+  auto p_cls_ff = p_readCluster(out_file);
+
+  EXPECT_TRUE(p_cls_ff->siteIds.size() == 1);
+   
+  for (auto const& siteId : p_cls_ff->siteIds ) {
+    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+    for (auto const& ai : p_cls_ff->caux.at(siteId)) {
+      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+    }
+  }
 }
 
-TEST(ClusterIO1, Default_cotr) {
-  auto cluster = Cluster_2x2_ABCD(3, 2);
-  std::cout << cluster;
+TEST(ClusterBasic0_2x2_ABBA, Default_cotr) {
+  nlohmann::json jCls;
+  jCls["type"]    = "2X2_ABBA";
+  jCls["physDim"] = 2;
+  jCls["auxBondDim"] = 3;
+  jCls["initBy"] = "ZPRST";
+
+  auto p_cls = Cluster_2x2_ABBA::create(jCls);
+
+  std::string out_file = "out.in";
+  writeCluster(out_file, *p_cls);
+
+  auto p_cls_ff = p_readCluster(out_file);
+
+  EXPECT_TRUE(p_cls_ff->siteIds.size() == 2);
+   
+  for (auto const& siteId : p_cls_ff->siteIds ) {
+    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+    for (auto const& ai : p_cls_ff->caux.at(siteId)) {
+      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+    }
+  }
 }
+
+TEST(ClusterBasic0_2x2_ABCD, Default_cotr) {
+  nlohmann::json jCls;
+  jCls["type"]    = "2X2_ABCD";
+  jCls["physDim"] = 2;
+  jCls["auxBondDim"] = 3;
+  jCls["initBy"] = "ZPRST";
+
+  auto p_cls = Cluster_2x2_ABCD::create(jCls);
+
+  std::string out_file = "out.in";
+  writeCluster(out_file, *p_cls);
+
+  auto p_cls_ff = p_readCluster(out_file);
+
+  EXPECT_TRUE(p_cls_ff->siteIds.size() == 4);
+   
+  for (auto const& siteId : p_cls_ff->siteIds ) {
+    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+    for (auto const& ai : p_cls_ff->caux.at(siteId)) {
+      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+    }
+  }
+}
+
+// TEST(ClusterIO1, Default_cotr) {
+//   auto cluster = Cluster_2x2_ABCD(3, 2);
+//   std::cout << cluster;
+// }

@@ -72,23 +72,6 @@ class CtmEnv {
   int rsvd_oversampling = 10;
 
   /*
-   * Auxiliary dimension of bond-indices of on-site tensor TT given by
-   * contraction of physical index "s" of bra & ket tensor T* resp. T
-   *
-   * given:       contract "s":
-   *
-   *         D D                D D     D D            D^2
-   *         |/                  \|      \|             |
-   *     D--|T|~~s           D--|T*|~~s~~|T|--D = D^2--|TT|--D^2
-   *         |                    |       |             |
-   *         D                    D       D            D^2
-   *
-   * And call D^2 = d. Hence dimension auxBondDim == d
-   *
-   */
-  int d;
-
-  /*
    * Auxiliary dimension of the environment - dimension
    * of indices connection corner & half-row/column tensor
    * auxEnvDim == x
@@ -147,6 +130,7 @@ class CtmEnv {
   //            6->I_L1, 7->I_L0
   std::map<std::string, std::vector<itensor::Index>>
     eaux;  // environment aux indices
+
   // indices labeled by direction of T_* tensors
   //   LEFT, UP, RIGHT, DOWN     id  direction
   std::vector<std::map<std::string, std::vector<itensor::Index>>> itaux;
@@ -182,9 +166,6 @@ class CtmEnv {
     int i2 = (ci * 2 + 7) % 8;
     return {eaux.at(id)[i1], eaux.at(id)[i2]};
   }
-
-  // aux bond indices of sites ( of auxBondDim == d)
-  itensor::Index I_XH, I_XV;
 
   // vector indexes combiners 0 1 2 3 in respect to four directions on
   // lattice L, U, R, D for each site
