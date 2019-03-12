@@ -568,9 +568,13 @@ int main(int argc, char* argv[]) {
       auto num_eps = std::numeric_limits<double>::epsilon();
       t_begin_int = std::chrono::steady_clock::now();
 
+      int max_auxBondDim = 0;
+      for (auto const& siteAuxI : p_cls->caux )
+        for ( auto const& ai : siteAuxI.second )
+          max_auxBondDim = std::max( ai.m(), (long int) max_auxBondDim ); 
       auto const tol = (true)
                          ? arg_suTol
-                         : num_eps * p_cls->auxBondDim * p_cls->weights.size();
+                         : num_eps * max_auxBondDim * p_cls->weights.size();
 
       // Assuming the weights have been initialized
       initClusterWeights(*p_cls);

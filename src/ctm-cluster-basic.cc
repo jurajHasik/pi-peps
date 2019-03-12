@@ -12,7 +12,9 @@ namespace itensor {
    */
   Cluster_1x1_A::Cluster_1x1_A() : Cluster(1, 1) { cluster_type = "1X1_A"; }
 
-  Cluster_1x1_A::Cluster_1x1_A(int ad, int pd) : Cluster(1, 1, ad, pd) {
+  Cluster_1x1_A::Cluster_1x1_A(std::string init_type, int ad, int pd)
+    : Cluster(1, 1) {
+    
     cluster_type = "1X1_A";
     siteIds = {"A"};
     SI = {{"A", 0}};
@@ -21,17 +23,14 @@ namespace itensor {
     vToId = {{{0, 0}, "A"}};
     idToV = {{"A", {0, 0}}};
 
-    auto aIA = Index("A", auxBondDim, AUXLINK);
-    auto pIA = Index("A", physDim, PHYS);
+    auto aIA = Index("A", ad, AUXLINK);
+    auto pIA = Index("A", pd, PHYS);
 
-    aux = {aIA};
-    phys = {pIA};
-    maux = {{"A", aIA}};
     mphys = {{"A", pIA}};
     for (const auto& id : siteIds) {
       caux[id] = std::vector<Index>(4);
       for (int i = 0; i < caux[id].size(); i++)
-        caux[id][i] = prime(maux.at(id), i);
+        caux[id][i] = prime(aIA,i);
     }
 
     auto A = ITensor(aIA, prime(aIA, 1), prime(aIA, 2), prime(aIA, 3), pIA);
@@ -41,21 +40,17 @@ namespace itensor {
     // Define siteToWeights
     siteToWeights["A"] = {{{"A", "A"}, {2, 0}, "L1"},
                           {{"A", "A"}, {3, 1}, "L2"}};
-  }
 
-  // TODO initialization
-  Cluster_1x1_A::Cluster_1x1_A(std::string init_type, int ad, int pd)
-    : Cluster_1x1_A(ad, pd) {
-    // if(init_type == "RANDOM") {
-    //     init_RANDOM();
-    // } else if (init_type == "ALIGNX") {
-    //     init_ALIGNX();
-    // } else if (init_type == "ZPRST") {
-    //     init_ALIGNZ();
-    // } else {
-    //     std::cout <<"Unsupported cluster initialization: "<< init_type <<
-    //     std::endl;
-    // }
+    if(init_type == "RANDOM") {
+        init_RANDOM();
+    } else if (init_type == "XPRST") {
+        init_ALIGNX();
+    } else if (init_type == "ZPRST") {
+        init_ALIGNZ();
+    } else {
+        std::cout <<"Unsupported cluster initialization: "<< init_type <<
+        std::endl;
+    }
   }
 
   std::string Cluster_1x1_A::vertexToId(Vertex const& v) const {
@@ -65,11 +60,72 @@ namespace itensor {
 
   std::unique_ptr<Cluster> Cluster_1x1_A::create(
     nlohmann::json const& json_cluster) {
-    int pd = json_cluster["physDim"].get<int>();
-    int ad = json_cluster["auxBondDim"].get<int>();
     std::string init_type = json_cluster["initBy"].get<std::string>();
+    
+    if (init_type != "FILE") {
+      int pd = json_cluster["physDim"].get<int>();
+      int ad = json_cluster["auxBondDim"].get<int>();
+      return std::unique_ptr<Cluster>(new Cluster_1x1_A(init_type, ad, pd));
+    }
 
-    return std::unique_ptr<Cluster>(new Cluster_1x1_A(init_type, ad, pd));
+    return std::unique_ptr<Cluster>(new Cluster_1x1_A());
+  }
+
+  void Cluster_1x1_A::init_RANDOM() {
+    std::cout << "Initializing by RANDOM TENSOR" << std::endl;
+
+    auto shift05 = [](Real r) { return r - 0.5; };
+    for (auto& t : sites) {
+      randomize(t.second);
+      t.second.apply(shift05);
+    }
+  }
+
+  void Cluster_1x1_A::init_ALIGNX() {
+    std::cout << "Initializing by PRODUCT STATE along X" << std::endl;
+
+    auto aIA = caux.at("A")[0];
+
+    auto pIA = mphys.at("A");
+
+    // compute coefficients
+    auto nCk = [](int n, int k) {
+      if (k > n)
+        return 0;
+      if (k * 2 > n)
+        k = n - k;
+      if (k == 0)
+        return 1;
+
+      int result = n;
+      for (int i = 2; i <= k; ++i) {
+        result *= (n - i + 1);
+        result /= i;
+      }
+
+      return result;
+    };
+
+    double site_norm = 0.0;
+    for (int i = 1; i <= pIA.m(); i++) {
+      sites.at("A").set(aIA(1), prime(aIA, 1)(1), prime(aIA, 2)(1),
+                        prime(aIA, 3)(1), pIA(i),
+                        std::sqrt(nCk(pIA.m() - 1, i - 1)));
+      site_norm += nCk(pIA.m() - 1, i - 1);
+    }
+    sites.at("A") *= 1.0 / std::sqrt(site_norm);
+  }
+
+  void Cluster_1x1_A::init_ALIGNZ() {
+    std::cout << "Initializing by PRODUCT STATE along Z +1/2" << std::endl;
+
+    auto aIA = caux.at("A")[0];
+
+    auto pIA = mphys.at("A");
+
+    // Spin UP on all sites
+    sites.at("A").set(aIA(1), prime(aIA, 1)(1), prime(aIA, 2)(1),
+                      prime(aIA, 3)(1), pIA(1), 1.0);
   }
 
   /*
@@ -83,18 +139,10 @@ namespace itensor {
     cluster_type = "2X2_ABBA";
   }
 
-  Cluster_2x2_ABBA::Cluster_2x2_ABBA(int ad, int pd) : Cluster(2, 2, ad, pd) {
-    cluster_type = "2X2_ABBA";
-  }
-
   Cluster_2x2_ABBA::Cluster_2x2_ABBA(std::string init_type, int ad, int pd)
-    : Cluster_2x2_ABBA(ad, pd) {
-    if (init_type == "FILE") {
-      // pass, the elements are initialized outside
-      return;
-    }
+    : Cluster(2, 2) {
 
-    // Assume initialization of elements by one of the predefined functions
+    cluster_type = "2X2_ABBA";
     siteIds = {"A", "B"};
     SI = {{"A", 0}, {"B", 1}};
 
@@ -105,14 +153,12 @@ namespace itensor {
     vToId = {{{0, 0}, "A"}, {{1, 0}, "B"}};
     idToV = {{"A", {0, 0}}, {"B", {1, 0}}};
 
-    auto aIA = Index("A", auxBondDim, AUXLINK);
-    auto aIB = Index("B", auxBondDim, AUXLINK);
-    auto pIA = Index("A", physDim, PHYS);
-    auto pIB = Index("B", physDim, PHYS);
+    auto aIA = Index("A", ad, AUXLINK);
+    auto aIB = Index("B", ad, AUXLINK);
+    auto pIA = Index("A", pd, PHYS);
+    auto pIB = Index("B", pd, PHYS);
 
-    aux = {aIA, aIB};
-    phys = {pIA, pIB};
-    maux = {{"A", aIA}, {"B", aIB}};
+    std::map<std::string, itensor::Index> maux = {{"A", aIA}, {"B", aIB}};
     mphys = {{"A", pIA}, {"B", pIB}};
     for (const auto& id : siteIds) {
       caux[id] = std::vector<Index>(4);
@@ -269,11 +315,16 @@ namespace itensor {
 
   std::unique_ptr<Cluster> Cluster_2x2_ABBA::create(
     nlohmann::json const& json_cluster) {
-    int pd = json_cluster["physDim"].get<int>();
-    int ad = json_cluster["auxBondDim"].get<int>();
+    
     std::string init_type = json_cluster["initBy"].get<std::string>();
+    
+    if (init_type != "FILE") {
+      int pd = json_cluster["physDim"].get<int>();
+      int ad = json_cluster["auxBondDim"].get<int>();
+      return std::unique_ptr<Cluster>(new Cluster_2x2_ABBA(init_type, ad, pd));
+    }
 
-    return std::unique_ptr<Cluster>(new Cluster_2x2_ABBA(init_type, ad, pd));
+    return std::unique_ptr<Cluster>(new Cluster_2x2_ABBA());
   }
 
   /*
@@ -287,18 +338,11 @@ namespace itensor {
     cluster_type = "2X2_ABCD";
   }
 
-  Cluster_2x2_ABCD::Cluster_2x2_ABCD(int ad, int pd) : Cluster(2, 2, ad, pd) {
-    cluster_type = "2X2_ABCD";
-  }
-
   Cluster_2x2_ABCD::Cluster_2x2_ABCD(std::string init_type, int ad, int pd)
-    : Cluster_2x2_ABCD(ad, pd) {
-    if (init_type == "FILE") {
-      // pass, the elements are initialized outside
-      return;
-    }
+    : Cluster(2, 2) {
 
     // Assume initialization of elements by one of the predefined functions
+    cluster_type = "2X2_ABCD";
     siteIds = {"A", "B", "C", "D"};
     SI = {{"A", 0}, {"B", 1}, {"C", 2}, {"D", 3}};
 
@@ -309,18 +353,16 @@ namespace itensor {
     vToId = {{{0, 0}, "A"}, {{1, 0}, "B"}, {{0, 1}, "C"}, {{1, 1}, "D"}};
     idToV = {{"A", {0, 0}}, {"B", {1, 0}}, {"C", {0, 1}}, {"D", {1, 1}}};
 
-    auto aIA = Index("A", auxBondDim, AUXLINK);
-    auto aIB = Index("B", auxBondDim, AUXLINK);
-    auto aIC = Index("C", auxBondDim, AUXLINK);
-    auto aID = Index("D", auxBondDim, AUXLINK);
-    auto pIA = Index("A", physDim, PHYS);
-    auto pIB = Index("B", physDim, PHYS);
-    auto pIC = Index("C", physDim, PHYS);
-    auto pID = Index("D", physDim, PHYS);
+    auto aIA = Index("A", ad, AUXLINK);
+    auto aIB = Index("B", ad, AUXLINK);
+    auto aIC = Index("C", ad, AUXLINK);
+    auto aID = Index("D", ad, AUXLINK);
+    auto pIA = Index("A", pd, PHYS);
+    auto pIB = Index("B", pd, PHYS);
+    auto pIC = Index("C", pd, PHYS);
+    auto pID = Index("D", pd, PHYS);
 
-    aux = {aIA, aIB, aIC, aID};
-    phys = {pIA, pIB, pIC, pID};
-    maux = {{"A", aIA}, {"B", aIB}, {"C", aIC}, {"D", aID}};
+    std::map<std::string, itensor::Index> maux = {{"A", aIA}, {"B", aIB}, {"C", aIC}, {"D", aID}};
     mphys = {{"A", pIA}, {"B", pIB}, {"C", pIC}, {"D", pID}};
     for (const auto& id : siteIds) {
       caux[id] = std::vector<Index>(4);
@@ -546,11 +588,16 @@ namespace itensor {
 
   std::unique_ptr<Cluster> Cluster_2x2_ABCD::create(
     nlohmann::json const& json_cluster) {
-    int pd = json_cluster["physDim"].get<int>();
-    int ad = json_cluster["auxBondDim"].get<int>();
+
     std::string init_type = json_cluster["initBy"].get<std::string>();
 
-    return std::unique_ptr<Cluster>(new Cluster_2x2_ABCD(init_type, ad, pd));
+    if(init_type != "FILE") {
+      int pd = json_cluster["physDim"].get<int>();
+      int ad = json_cluster["auxBondDim"].get<int>();
+      return std::unique_ptr<Cluster>(new Cluster_2x2_ABCD(init_type, ad, pd));
+    }
+
+    return std::unique_ptr<Cluster>(new Cluster_2x2_ABCD());
   }
 
 }  // namespace itensor

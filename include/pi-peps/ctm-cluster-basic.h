@@ -23,13 +23,17 @@ namespace itensor {
   struct Cluster_1x1_A : Cluster {
     Cluster_1x1_A();
 
-    Cluster_1x1_A(int ad, int pd);
-
     Cluster_1x1_A(std::string init_type, int ad, int pd);
 
     std::string virtual vertexToId(Vertex const& v) const override;
 
     static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
+
+    void init_RANDOM();
+
+    void init_ALIGNX();
+
+    void init_ALIGNZ();
   };
 
   /*
@@ -41,8 +45,6 @@ namespace itensor {
    */
   struct Cluster_2x2_ABBA : Cluster {
     Cluster_2x2_ABBA();
-
-    Cluster_2x2_ABBA(int ad, int pd);
 
     Cluster_2x2_ABBA(std::string init_type, int ad, int pd);
 
@@ -70,8 +72,6 @@ namespace itensor {
    */
   struct Cluster_2x2_ABCD : Cluster {
     Cluster_2x2_ABCD();
-
-    Cluster_2x2_ABCD(int ad, int pd);
 
     Cluster_2x2_ABCD(std::string init_type, int ad, int pd);
 

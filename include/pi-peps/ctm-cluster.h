@@ -54,19 +54,14 @@ struct Cluster {
   int sizeN, sizeM;
   int lX, lY;
 
-  // auxiliary bond dimension
-  int auxBondDim;
-  // dimension of local Hilbert space = dimension of physical index
-  int physDim;
-
   // siteIds
   std::vector<std::string> siteIds;
   std::map<std::string, int> SI;
 
-  // aux indices and phys indicies of sites siteIds[0] <-> aux[0],phys[0]
-  std::vector<itensor::Index> aux, phys;
-  std::map<std::string, itensor::Index> mphys, maux;
-  // map to individual aux indices of sites
+  // mapt to physical indices of on-site tensors
+  std::map<std::string, itensor::Index> mphys;
+  
+  // map to individual aux indices of on-site tensors
   // A -> { index in dir 0, ..., index in dir 3 }
   //         dir 1
   //          |
@@ -131,18 +126,6 @@ struct Cluster {
   Cluster(int lX_, int lY_)
     : cluster_type("DEFAULT"), sizeN(lY_), sizeM(lX_), lX(lX_), lY(lY_) {}
 
-  // Cluster(int lX_, int lY_, int pd) : physDim(pd),
-  //     lX(lX_), lY(lY_), sizeM(lX_), sizeN(lY_) {}
-
-  Cluster(int lX_, int lY_, int ad, int pd)
-    : cluster_type("DEFAULT"),
-      sizeN(lY_),
-      sizeM(lX_),
-      lX(lX_),
-      lY(lY_),
-      auxBondDim(ad),
-      physDim(pd) {}
-
   static std::unique_ptr<Cluster> create(nlohmann::json const& json_cluster);
 
   // Implements Boundary condition of cluster by derived class
@@ -175,8 +158,6 @@ struct Cluster {
   virtual ~Cluster() = default;
 };
 
-void initClusterSites(Cluster& c, bool dbg = false);
-
 void initClusterWeights(Cluster& c, bool dbg = false);
 
 void setWeights(Cluster& c, std::string option, bool dbg = false);
@@ -184,12 +165,6 @@ void setWeights(Cluster& c, std::string option, bool dbg = false);
 void saveWeights(Cluster& c, bool dbg = false);
 
 double weightDist(Cluster const& c);
-
-void setSites(Cluster& c, std::string option, bool dbg = false);
-
-// itensor::ITensor contractCluster(Cluster const& c, bool dbg = false);
-
-// itensor::ITensor clusterDenMat(Cluster const& c, bool dbg = false);
 
 std::ostream& operator<<(std::ostream& s, Cluster const& c);
 

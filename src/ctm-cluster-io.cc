@@ -16,70 +16,13 @@ IO_ENV_FMT toIO_ENV_FMT(string const& ioFmt) {
 // ############################################################################
 // IO for cluster definition using JSON data format
 
-Cluster readCluster(string const& filename) {
-  ifstream infile;
-  infile.open(filename, ios::in);
-
-  nlohmann::json jsonCls;
-  infile >> jsonCls;
-
-  return readCluster(jsonCls);
-}
-
-Cluster readCluster(nlohmann::json const& jsonCls) {
-  // Create corresponding cluster struct
-  auto lX = jsonCls["sizeM"].get<int>();
-  auto lY = jsonCls["sizeN"].get<int>();
-
-  // Cluster c = Cluster(lX, lY);
-  itensor::Cluster_2x2_ABBA c = itensor::Cluster_2x2_ABBA();
-
-  c.physDim = jsonCls["physDim"].get<int>();
-  c.auxBondDim = jsonCls["auxBondDim"].get<int>();
-
-  for (const auto& mapEntry : jsonCls["map"].get<vector<nlohmann::json>>()) {
-    c.cToS[make_pair(mapEntry["x"].get<int>(), mapEntry["y"].get<int>())] =
-      mapEntry["siteId"].get<string>();
-    c.vToId[Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>())] =
-      mapEntry["siteId"].get<string>();
-    c.idToV[mapEntry["siteId"].get<string>()] =
-      Vertex(mapEntry["x"].get<int>(), mapEntry["y"].get<int>());
-  }
-
-  for (const auto& siteIdEntry : jsonCls["siteIds"].get<vector<string>>()) {
-    c.siteIds.push_back(siteIdEntry);
-    c.SI[siteIdEntry] = c.siteIds.size() - 1;
-  }
-
-  // initClusterSites(c);
-  // setOnSiteTensorsFromJSON(c, jsonCls);
-  for (const auto& siteEntry : jsonCls["sites"]) {
-    auto id = siteEntry["siteId"].get<string>();
-    auto tmp = readIndsAndTfromJSON(siteEntry);
-
-    c.mphys[id] = tmp.first[0];
-    c.caux[id] = std::vector<itensor::Index>(tmp.first.size() - 1);
-    for (int i = 1; i < tmp.first.size(); i++)
-      c.caux[id][i - 1] = tmp.first[i];
-    // std::copy( tmp.first.begin()+1, tmp.first.end(), c.caux[id] );
-    c.sites[id] = tmp.second;  // tensor
-  }
-
-  // construction of weights on links within c
-  if (jsonCls.value("linkWeightsUsed", false)) {
-    readClusterWeights(c, jsonCls);  // reads the link-weights data
-    initClusterWeights(c);           // creates the link-weight tensors
-  }
-
-  return c;
-}
-
 std::unique_ptr<Cluster> p_readCluster(string const& filename) {
   ifstream infile;
   infile.open(filename, ios::in);
 
   nlohmann::json jsonCls;
   infile >> jsonCls;
+  jsonCls["initBy"] = "FILE";
 
   return p_readCluster(jsonCls);
 }
@@ -103,8 +46,6 @@ std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
     p_cls->SI[siteIdEntry] = p_cls->siteIds.size() - 1;
   }
 
-  // initClusterSites(c);
-  // setOnSiteTensorsFromJSON(c, jsonCls);
   for (const auto& siteEntry : jsonCls["sites"]) {
     auto id = siteEntry["siteId"].get<string>();
     auto tmp = readIndsAndTfromJSON(siteEntry);
@@ -157,10 +98,8 @@ void writeCluster(string const& filename, Cluster const& cls) {
   jCls["type"] = cls.cluster_type;
   jCls["meta"] = cls.metaInfo;
   jCls["simParam"] = cls.simParam;
-  jCls["physDim"] = cls.physDim;
-  jCls["auxBondDim"] = cls.auxBondDim;
-  jCls["sizeN"] = cls.sizeN;
-  jCls["sizeM"] = cls.sizeM;
+  jCls["lX"] = cls.lX;
+  jCls["lY"] = cls.lY;
 
   vector<nlohmann::json> jcToS;
   for (auto const& entry : cls.cToS) {
@@ -196,18 +135,19 @@ void writeCluster(string const& filename, Cluster const& cls) {
 
   vector<nlohmann::json> jsites;
   for (auto const& entry : cls.sites) {
+    auto siteId = entry.first;
+
     nlohmann::json jentry;
-    jentry["siteId"] = entry.first;
-    jentry["physDim"] = cls.physDim;
-    jentry["auxDim"] = cls.auxBondDim;
-    vector<nlohmann::json> auxInds(cls.caux.at(entry.first).size());
-    for (int i = 0; i < cls.caux.at(entry.first).size(); i++) {
-      auto ind = cls.caux.at(entry.first)[i];
+    jentry["siteId"] = siteId;
+    jentry["physDim"] = cls.mphys.at(siteId).m();
+    vector<nlohmann::json> auxInds(cls.caux.at(siteId).size());
+    for (int i = 0; i < cls.caux.at(siteId).size(); i++) {
+      auto ind = cls.caux.at(siteId)[i];
       auxInds[i] = {{"dir", i}, {"ad", ind.m()}, {"name", ind.rawname()}};
     }
     jentry["auxInds"] = auxInds;
     vector<string> tensorElems;
-    writeOnSiteTElems(tensorElems, cls, entry.first);
+    writeOnSiteTElems(tensorElems, cls, siteId);
     jentry["numEntries"] = tensorElems.size();
     jentry["entries"] = tensorElems;
     jsites.push_back(jentry);
@@ -308,42 +248,6 @@ pair<vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
   return make_pair(ti, t);
 }
 
-void readOnSiteFromJSON(Cluster& c, nlohmann::json const& j, bool dbg) {
-  std::string sId = j["siteId"].get<string>();
-
-  auto physI = c.phys[c.SI.at(sId)];
-  auto auxI0 = c.aux[c.SI.at(sId)];
-  auto auxI1 = prime(auxI0, 1);
-  auto auxI2 = prime(auxI0, 2);
-  auto auxI3 = prime(auxI0, 3);
-
-  string token[7];
-  int offset = 1;
-  int pI, aI0, aI1, aI2, aI3;
-  char delim = ' ';
-  for (const auto& tEntry : j["entries"].get<vector<string>>()) {
-    istringstream iss(tEntry);
-
-    token[6] = "0.0";
-
-    for (int i = 0; i < 7; i++) {
-      getline(iss, token[i], delim);
-    }
-
-    // ITensor indices start from 1, hence if input file indices start from
-    // 0 use offset 1
-    pI = offset + stoi(token[0]);
-    aI0 = offset + stoi(token[1]);
-    aI1 = offset + stoi(token[2]);
-    aI2 = offset + stoi(token[3]);
-    aI3 = offset + stoi(token[4]);
-
-    c.sites.at(sId).set(physI(pI), auxI0(aI0), auxI1(aI1), auxI2(aI2),
-                        auxI3(aI3),
-                        complex<double>(stod(token[5]), stod(token[6])));
-  }
-}
-
 void setOnSiteTensorsFromFile(Cluster& c, string const& filename, bool dbg) {
   ifstream infile;
   infile.open(filename, ios::in);
@@ -359,8 +263,16 @@ void setOnSiteTensorsFromFile(Cluster& c, string const& filename, bool dbg) {
 }
 
 void setOnSiteTensorsFromJSON(Cluster& c, nlohmann::json const& j, bool dbg) {
-  for (const auto& siteEntry : j["sites"].get<vector<nlohmann::json>>())
-    readOnSiteFromJSON(c, siteEntry);
+  for (const auto& siteEntry : j["sites"].get<vector<nlohmann::json>>()) {
+    pair<vector<itensor::Index>, itensor::ITensor> tmp = readIndsAndTfromJSON(siteEntry);
+
+    auto id = siteEntry["siteId"].get<string>();
+    c.mphys[id] = tmp.first[0];
+    c.caux[id] = std::vector<itensor::Index>(tmp.first.size() - 1);
+    for (int i = 1; i < tmp.first.size(); i++)
+      c.caux[id][i - 1] = tmp.first[i];
+    c.sites[id] = tmp.second;  // tensor
+  }
 }
 
 void writeOnSiteTElems(vector<string>& tEs,
@@ -400,260 +312,6 @@ void writeOnSiteTElems(vector<string>& tEs,
     }
   }
 }
-
-// ############################################################################
-// IO for environment of nxm cluster
-
-/*
- * TODO write accompanying CTM description file
- * TODO implement compression
- *
- */
-// void writeEnv(IO_ENV_FMT ioFmt, string TAG, CtmData const& ctmD) {
-
-//     cout << ctmD;
-
-//     switch(ioFmt) {
-//         case(IO_ENV_FMT_txt): {
-//             cout << "Writing ENV in TEXT with TAG: " << TAG << endl;
-
-//             string SUFFIX = ".dat";
-
-//             writeTensorF(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
-//             writeTensorF(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
-//             writeTensorF(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
-//             writeTensorF(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
-
-//             for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
-//                 writeTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX,
-//                 ctmD.T_U[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
-//                 writeTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX,
-//                 ctmD.T_R[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
-//                 writeTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX,
-//                 ctmD.T_D[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
-//                 writeTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX,
-//                 ctmD.T_L[i]);
-//             }
-
-//             break;
-//         }
-//         case(IO_ENV_FMT_bin): {
-//             cout << "Writing ENV in BINARY with TAG: " << TAG << endl;
-
-//             string SUFFIX = ".bin";
-
-//             writeTensorB(TAG+"-"+TAG_C_LU+SUFFIX, ctmD.C_LU);
-//             writeTensorB(TAG+"-"+TAG_C_RU+SUFFIX, ctmD.C_RU);
-//             writeTensorB(TAG+"-"+TAG_C_RD+SUFFIX, ctmD.C_RD);
-//             writeTensorB(TAG+"-"+TAG_C_LD+SUFFIX, ctmD.C_LD);
-
-//             for( size_t i=0; i<ctmD.T_U.size(); i++ ) {
-//                 writeTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX,
-//                 ctmD.T_U[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_R.size(); i++ ) {
-//                 writeTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX,
-//                 ctmD.T_R[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_D.size(); i++ ) {
-//                 writeTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX,
-//                 ctmD.T_D[i]);
-//             }
-//             for( size_t i=0; i<ctmD.T_L.size(); i++ ) {
-//                 writeTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX,
-//                 ctmD.T_L[i]);
-//             }
-
-//             break;
-//         }
-//         default: {
-//             cout << "Invalid ENV i/o format" << endl;
-//             exit(EXIT_FAILURE);
-//             break;
-//         }
-//     }
-// }
-
-// /*
-//  * TODO? Redundancy of information sizeN,sizeM both in CtmData and Cluster
-//  *
-//  */
-// CtmData readEnv(IO_ENV_FMT ioFmt, string const& TAG, Cluster const& c) {
-//     CtmData ctmD;
-
-//     ctmD.sizeN = c.sizeN;
-//     ctmD.sizeM = c.sizeM;
-
-//     switch(ioFmt) {
-//         case(IO_ENV_FMT_txt): {
-//             cout <<"Reading ENV in TEXT with TAG: "<< TAG << endl;
-
-//             string SUFFIX = ".dat";
-
-//             ctmD.C_LU = readTensorF(TAG+"-"+TAG_C_LU+SUFFIX);
-//             ctmD.C_RU = readTensorF(TAG+"-"+TAG_C_RU+SUFFIX);
-//             ctmD.C_RD = readTensorF(TAG+"-"+TAG_C_RD+SUFFIX);
-//             ctmD.C_LD = readTensorF(TAG+"-"+TAG_C_LD+SUFFIX);
-
-//             for( int i=0; i<c.sizeN; i++ ) {
-//                 ctmD.T_L.push_back(
-//                     readTensorF(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
-//                 ctmD.T_R.push_back(
-//                     readTensorF(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
-//             }
-
-//             for( int i=0; i<c.sizeM; i++ ) {
-//                 ctmD.T_U.push_back(
-//                     readTensorF(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
-//                 ctmD.T_D.push_back(
-//                     readTensorF(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
-//             }
-
-//             // Read of the indices from environment and
-//             // expose them in CtmData
-//             ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
-//             ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
-
-//             ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
-//             ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
-
-//             ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
-//             ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
-
-//             // Sync indices across env tensors
-//             ctmD.C_RU *= itensor::delta( itensor::findtype(
-//                 ctmD.C_RU,ULINK), itensor::prime(ctmD.I_U,c.sizeM) );
-
-//             ctmD.C_RD *= itensor::delta( itensor::findtype(
-//                 ctmD.C_RD,RLINK), itensor::prime(ctmD.I_R,c.sizeN) );
-//             ctmD.C_RD *= itensor::delta( itensor::findtype(
-//                 ctmD.C_RD,DLINK), prime(ctmD.I_D,c.sizeM) );
-
-//             ctmD.C_LD *= itensor::delta( itensor::findtype(
-//                 ctmD.C_LD,LLINK), itensor::prime(ctmD.I_L,c.sizeN) );
-
-//             itensor::IndexSet iSet;
-//             for( auto& t : ctmD.T_U ) {
-//                 iSet = t.inds();
-//                 for ( auto& i : iSet ) {
-//                     Print(i);
-//                     if ( i.type() == ULINK ) {
-//                         t *= itensor::delta( i,
-//                             itensor::prime( ctmD.I_U,i.primeLevel()) );
-//                     } else if ( i.type() == VSLINK ) {
-//                         t *= itensor::delta( i, ctmD.I_XV );
-//                     }
-//                 }
-//             }
-
-//             for( auto& t : ctmD.T_R ) {
-//                 iSet = t.inds();
-//                 for ( auto& i : iSet ) {
-//                     if ( i.type() == RLINK ) {
-//                         t *= itensor::delta( i,
-//                             itensor::prime( ctmD.I_R,i.primeLevel()) );
-//                     } else if ( i.type() == HSLINK ) {
-//                         t *= itensor::delta( i, itensor::prime(ctmD.I_XH,1)
-//                         );
-//                     }
-//                 }
-//             }
-
-//             for( auto& t : ctmD.T_D ) {
-//                 iSet = t.inds();
-//                 for ( auto& i : iSet ) {
-//                     if ( i.type() == DLINK ) {
-//                         t *= itensor::delta( i,
-//                             itensor::prime( ctmD.I_D,i.primeLevel()) );
-//                     } else if ( i.type() == VSLINK ) {
-//                         t *= itensor::delta( i, itensor::prime(ctmD.I_XV,1)
-//                         );
-//                     }
-//                 }
-//             }
-
-//             for( auto& t : ctmD.T_L ) {
-//                 iSet = t.inds();
-//                 for ( auto& i : iSet ) {
-//                     if ( i.type() == LLINK ) {
-//                         t *= itensor::delta( i,
-//                             itensor::prime( ctmD.I_L,i.primeLevel()) );
-//                     } else if ( i.type() == HSLINK ) {
-//                         t *= itensor::delta( i, ctmD.I_XH );
-//                     }
-//                 }
-//             }
-
-//             break;
-//         }
-//         case(IO_ENV_FMT_bin): {
-//             cout <<"Reading ENV in BINARY with TAG: "<< TAG << endl;
-
-//             string SUFFIX = ".bin";
-
-//             ctmD.C_LU = readTensorB(TAG+"-"+TAG_C_LU+SUFFIX);
-//             ctmD.C_RU = readTensorB(TAG+"-"+TAG_C_RU+SUFFIX);
-//             ctmD.C_RD = readTensorB(TAG+"-"+TAG_C_RD+SUFFIX);
-//             ctmD.C_LD = readTensorB(TAG+"-"+TAG_C_LD+SUFFIX);
-
-//             for( int i=0; i<c.sizeN; i++ ) {
-//                 ctmD.T_L.push_back(
-//                     readTensorB(TAG+"-"+TAG_T_L+to_string(i)+SUFFIX) );
-//                 ctmD.T_R.push_back(
-//                     readTensorB(TAG+"-"+TAG_T_R+to_string(i)+SUFFIX) );
-//             }
-
-//             for( int i=0; i<c.sizeM; i++ ) {
-//                 ctmD.T_U.push_back(
-//                     readTensorB(TAG+"-"+TAG_T_U+to_string(i)+SUFFIX) );
-//                 ctmD.T_D.push_back(
-//                     readTensorB(TAG+"-"+TAG_T_D+to_string(i)+SUFFIX) );
-//             }
-
-//             // Read of the indices from environment and
-//             // expose them in CtmData
-//             ctmD.I_L = itensor::findtype(ctmD.C_LU, LLINK);
-//             ctmD.I_U = itensor::findtype(ctmD.C_LU, ULINK);
-
-//             ctmD.I_R = itensor::findtype(ctmD.C_RU, RLINK);
-//             ctmD.I_D = itensor::findtype(ctmD.C_LD, DLINK);
-
-//             ctmD.I_XH = itensor::findtype(ctmD.T_L[0], HSLINK);
-//             ctmD.I_XV = itensor::findtype(ctmD.T_U[0], VSLINK);
-
-//             break;
-//         }
-//         default: {
-//             cout <<"Invalid ENV i/o format"<< endl;
-//             exit(EXIT_FAILURE);
-//             break;
-//         }
-//     }
-
-//     // Read in the dimensions of tensors
-//     ctmD.auxDimEnv  = ctmD.I_U.m();
-//     ctmD.auxDimSite = c.auxBondDim*c.auxBondDim;
-
-//     cout << ctmD;
-
-//     return ctmD;
-// }
-
-// std::vector<CtmData> readEnv_V2(IO_ENV_FMT ioFmt, string const& TAG,
-//     Cluster const& cls) {
-
-//     std::vector<CtmData> result;
-//     return result;
-// }
-
-// ############################################################################
-// IO for ITensor tensors
 
 /*
  * Write out tensor in given (human-readable) format to output file
@@ -904,64 +562,3 @@ itensor::ITensor readTensorB(string const& fname) {
 
   return t;
 }
-
-// ############################################################################
-// IO toString methods
-
-// ostream& operator<<(ostream& s, CtmData const& d) {
-//     s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
-//         << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl
-//         << TAG_C_LU <<" "<< d.C_LU << TAG_C_RU <<" "<< d.C_RU
-//         << TAG_C_RD <<" "<< d.C_RD << TAG_C_LD <<" "<< d.C_LD;
-
-//         for( size_t i=0; i<d.T_U.size(); i++ ) {
-//             s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
-//         }
-//         for( size_t i=0; i<d.T_R.size(); i++ ) {
-//             s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
-//         }
-//         for( size_t i=0; i<d.T_D.size(); i++ ) {
-//             s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
-//         }
-//         for( size_t i=0; i<d.T_L.size(); i++ ) {
-//             s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
-//         }
-//         s << endl;
-//     return s;
-// }
-
-// ostream& operator<<(ostream& s, CtmData_Full const& d) {
-//     s <<"CtmData( auxDimEnv: "<< d.auxDimEnv <<" auxDimSite: "<< d.auxDimSite
-//         << endl << "cluster: "<< d.sizeN <<" x "<< d.sizeM << endl;
-
-//     s <<"----- CORNER MATRICES --------------------------------------"<<
-//     endl;
-//         for( size_t i=0; i<d.C_LU.size(); i++ ) {
-//             s << TAG_C_LU << to_string(i) <<" "<< d.C_LU[i];
-//         }
-//         for( size_t i=0; i<d.C_RU.size(); i++ ) {
-//             s << TAG_C_RU << to_string(i) <<" "<< d.C_RU[i];
-//         }
-//         for( size_t i=0; i<d.C_RD.size(); i++ ) {
-//             s << TAG_C_RD << to_string(i) <<" "<< d.C_RD[i];
-//         }
-//         for( size_t i=0; i<d.C_LD.size(); i++ ) {
-//             s << TAG_C_LD << to_string(i) <<" "<< d.C_LD[i];
-//         }
-//     s <<"----- HALF ROW/COLUMN TENSORS ------------------------------"<<
-//     endl;
-//         for( size_t i=0; i<d.T_U.size(); i++ ) {
-//             s << TAG_T_U << to_string(i) <<" "<< d.T_U[i];
-//         }
-//         for( size_t i=0; i<d.T_R.size(); i++ ) {
-//             s << TAG_T_R << to_string(i) <<" "<< d.T_R[i];
-//         }
-//         for( size_t i=0; i<d.T_D.size(); i++ ) {
-//             s << TAG_T_D << to_string(i) <<" "<< d.T_D[i];
-//         }
-//         for( size_t i=0; i<d.T_L.size(); i++ ) {
-//             s << TAG_T_L << to_string(i) <<" "<< d.T_L[i];
-//         }
-//         s << endl;
-//     return s;
-// }

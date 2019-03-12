@@ -52,6 +52,15 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2,
       m = std::abs(d);
   };
 
+  auto linear_dim = [](ITensor t) {
+    IndexSet inds(t.inds());
+    int n = 1;
+    for (auto const& ind : inds) {
+      n *= ind.m();
+    }
+    return n;
+  };
+
   // read off auxiliary and physical indices of the cluster sites
   // std::array<Index, 4> aux;
   // for (int i=0; i<4; i++) aux[i] = cls.aux[ cls.SI.at(tn[i]) ];
@@ -187,7 +196,10 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2,
 
   // prepare init guess by vectorizing vector<ITensor> rX into Vec
   Vec<Real> x;
-  resize(x, 4 * std::pow(cls.auxBondDim, 4) * cls.physDim);
+  // compute total number of parameters
+  int param_length = 0;
+  for (auto const& t : rX) param_length += linear_dim(t);
+  resize(x, param_length);
 
   auto extractDenseReal = [](Dense<Real> const& d) { return d.store; };
   for (int i = 0; i < 4; i++) {
