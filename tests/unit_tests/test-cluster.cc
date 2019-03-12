@@ -47,7 +47,7 @@ TEST(ShiftVertex0, Default_cotr) {
 
 TEST(ClusterBasic0_1x1_A, Default_cotr) {
   nlohmann::json jCls;
-  jCls["type"]    = "1X1_A";
+  jCls["type"] = "1X1_A";
   jCls["physDim"] = 2;
   jCls["auxBondDim"] = 3;
   jCls["initBy"] = "ZPRST";
@@ -60,19 +60,19 @@ TEST(ClusterBasic0_1x1_A, Default_cotr) {
   auto p_cls_ff = p_readCluster(out_file);
 
   EXPECT_TRUE(p_cls_ff->siteIds.size() == 1);
-   
-  for (auto const& siteId : p_cls_ff->siteIds ) {
-    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+  for (auto const& siteId : p_cls_ff->siteIds) {
+    EXPECT_TRUE(p_cls_ff->mphys.at(siteId).m() == jCls["physDim"]);
 
     for (auto const& ai : p_cls_ff->caux.at(siteId)) {
-      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+      EXPECT_TRUE(ai.m() == jCls["auxBondDim"]);
     }
   }
 }
 
 TEST(ClusterBasic0_2x2_ABBA, Default_cotr) {
   nlohmann::json jCls;
-  jCls["type"]    = "2X2_ABBA";
+  jCls["type"] = "2X2_ABBA";
   jCls["physDim"] = 2;
   jCls["auxBondDim"] = 3;
   jCls["initBy"] = "ZPRST";
@@ -85,19 +85,19 @@ TEST(ClusterBasic0_2x2_ABBA, Default_cotr) {
   auto p_cls_ff = p_readCluster(out_file);
 
   EXPECT_TRUE(p_cls_ff->siteIds.size() == 2);
-   
-  for (auto const& siteId : p_cls_ff->siteIds ) {
-    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+  for (auto const& siteId : p_cls_ff->siteIds) {
+    EXPECT_TRUE(p_cls_ff->mphys.at(siteId).m() == jCls["physDim"]);
 
     for (auto const& ai : p_cls_ff->caux.at(siteId)) {
-      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+      EXPECT_TRUE(ai.m() == jCls["auxBondDim"]);
     }
   }
 }
 
 TEST(ClusterBasic0_2x2_ABCD, Default_cotr) {
   nlohmann::json jCls;
-  jCls["type"]    = "2X2_ABCD";
+  jCls["type"] = "2X2_ABCD";
   jCls["physDim"] = 2;
   jCls["auxBondDim"] = 3;
   jCls["initBy"] = "ZPRST";
@@ -110,12 +110,12 @@ TEST(ClusterBasic0_2x2_ABCD, Default_cotr) {
   auto p_cls_ff = p_readCluster(out_file);
 
   EXPECT_TRUE(p_cls_ff->siteIds.size() == 4);
-   
-  for (auto const& siteId : p_cls_ff->siteIds ) {
-    EXPECT_TRUE( p_cls_ff->mphys.at(siteId).m() == jCls["physDim"] );
+
+  for (auto const& siteId : p_cls_ff->siteIds) {
+    EXPECT_TRUE(p_cls_ff->mphys.at(siteId).m() == jCls["physDim"]);
 
     for (auto const& ai : p_cls_ff->caux.at(siteId)) {
-      EXPECT_TRUE( ai.m() == jCls["auxBondDim"] );
+      EXPECT_TRUE(ai.m() == jCls["auxBondDim"]);
     }
   }
 }

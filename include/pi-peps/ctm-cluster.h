@@ -60,7 +60,7 @@ struct Cluster {
 
   // mapt to physical indices of on-site tensors
   std::map<std::string, itensor::Index> mphys;
-  
+
   // map to individual aux indices of on-site tensors
   // A -> { index in dir 0, ..., index in dir 3 }
   //         dir 1
