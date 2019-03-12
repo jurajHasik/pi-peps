@@ -264,7 +264,8 @@ void setOnSiteTensorsFromFile(Cluster& c, string const& filename, bool dbg) {
 
 void setOnSiteTensorsFromJSON(Cluster& c, nlohmann::json const& j, bool dbg) {
   for (const auto& siteEntry : j["sites"].get<vector<nlohmann::json>>()) {
-    pair<vector<itensor::Index>, itensor::ITensor> tmp = readIndsAndTfromJSON(siteEntry);
+    pair<vector<itensor::Index>, itensor::ITensor> tmp =
+      readIndsAndTfromJSON(siteEntry);
 
     auto id = siteEntry["siteId"].get<string>();
     c.mphys[id] = tmp.first[0];

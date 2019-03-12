@@ -198,7 +198,8 @@ Args fullUpdate_CG_full4S(OpNS const& uJ1J2,
   Vec<Real> x;
   // compute total number of parameters
   int param_length = 0;
-  for (auto const& t : rX) param_length += linear_dim(t);
+  for (auto const& t : rX)
+    param_length += linear_dim(t);
   resize(x, param_length);
 
   auto extractDenseReal = [](Dense<Real> const& d) { return d.store; };
