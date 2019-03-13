@@ -5,7 +5,7 @@
 #define __FULL_UPDT_H_
 
 #include "pi-peps/config.h"
-#include "pi-peps/ctm-cluster-env_v2.h"
+#include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-global.h"
 #include "pi-peps/ctm-cluster.h"
 #include "pi-peps/linalg/itensor-linsys-solvers.h"
