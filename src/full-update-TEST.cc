@@ -1839,18 +1839,8 @@ Args fullUpdate_CG(MPO_3site const& uJ1J2,
       // for (auto & elem : dM_elems) {
       // 	if (elem < 0.0 && std::fabs(elem/mval) < svd_cutoff) {
       // 		if(dbg && (dbgLvl >= 1)) std::cout<< elem <<" -> "<< 0.0 <<
-<<<<<<< HEAD
-<<<<<<< HEAD
       // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
       // (dbgLvl
-=======
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
-      // (dbgLvl
->>>>>>> amends, moving warnings.h into config
-=======
-      // std::endl; 		elem = 0.0; 	} else if (elem < 0.0) { 		if(dbg &&
-      // (dbgLvl
->>>>>>> indent
       // >= 1)) std::cout<< elem <<" -> "<< std::fabs(elem) << std::endl; elem =
       // std::fabs(elem);
       // 	}
