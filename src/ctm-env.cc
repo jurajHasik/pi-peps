@@ -1,5 +1,5 @@
 #include "pi-peps/config.h"
-#include "pi-peps/ctm-cluster-env_v2.h"
+#include "pi-peps/ctm-env.h"
 
 // TODO Implement convergence check as general function. The actual
 // implementation may vary - difference between SVD decomp,

@@ -14,7 +14,7 @@ ENABLE_WARNINGS
 #include "pi-peps/linalg/itensor-linsys-solvers.h"
 #include "pi-peps/models.h"
 #include "pi-peps/mpo.h"
-#include "pi-peps/simple-update_v2.h"
+#include "pi-peps/simple-update.h"
 
 template <class T>
 class TrotterGate {

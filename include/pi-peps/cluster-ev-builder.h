@@ -7,7 +7,7 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
-#include "pi-peps/ctm-cluster-env_v2.h"
+#include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-global.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
