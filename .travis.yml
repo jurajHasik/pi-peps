@@ -11,8 +11,12 @@ matrix:
         - ubuntu-toolchain-r-test
         packages:
         - g++-8
+        - liblapack-dev
+        - liblapacke-dev
+        - libopenblas-dev
     env:
     - COMPILER="CXX=g++-8"
+    - PLATFORM="lapack"
 
   - os: linux
     addons:
@@ -24,8 +28,12 @@ matrix:
           key_url: 'https://apt.llvm.org/llvm-snapshot.gpg.key'
         packages:
         - clang-6.0
+        - liblapack-dev
+        - liblapacke-dev
+        - libopenblas-dev
     env:
     - COMPILER="CXX=clang++-6.0"
+    - PLATFORM="lapack"
       
 notifications:
   email: false
@@ -37,8 +45,10 @@ before_install:
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda
 - conda install meson
-
+- git clone git@github.com:ITensor/ITensor.git itensor && pushd itensor
+- sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2 && popd
 script: 
 - $CXX --version
 - meson --version
 - ninja --version
+- cat itensor/options.mk | grep -i platform
