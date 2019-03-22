@@ -31,6 +31,14 @@ notifications:
   email: false
   
 before_install:
-- eval $COMPILER
+- eval "$COMPILER"
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -p _miniconda;  else  wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh && bash Miniconda3-latest-MacOSX-x86_64.sh -b -p _miniconda; fi
+- export PATH="$PWD/_miniconda/bin:$PATH"
+- conda config --set always_yes yes --set changeps1 no
+- conda update -q conda
+- conda install meson
 
-script: $CXX --version
+script: 
+- $CXX --version
+- meson --version
+- ninja --version
