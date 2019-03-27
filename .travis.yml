@@ -45,8 +45,12 @@ before_install:
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda
 - conda install meson
-- mkdir deps && pushd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
-- sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2 && popd
+- export PEPS=$PWD
+- cd ..
+- export SRC=$PWD
+- mkdir deps && cd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
+- sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2
+- cd $PEPS
 script: 
 - ls
-- meson -Ditensor-dir=./deps/itensor -Dmkl=false -Darpack=false build && cd build && ninja -j1
+- meson -Ditensor-dir=$SRC/deps/itensor -Dmkl=false -Darpack=false build && cd build && ninja -j1
