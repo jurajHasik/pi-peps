@@ -45,7 +45,7 @@ before_install:
 - conda config --set always_yes yes --set changeps1 no
 - conda update -q conda
 - conda install meson
-- git clone https://github.com/ITensor/ITensor.git itensor && pushd itensor
+- mkdir deps && pushd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
 - sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2 && popd
 script: 
 - ls
