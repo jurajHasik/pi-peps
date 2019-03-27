@@ -7,7 +7,7 @@ if _dir == '' # rely on pkg-config
     arpack = dependency('arpack', required: false)
     # old versions do not install .pc file
     if not arpack.found()
-       arpack = compiler.find_libary('arpack')
+       arpack = compiler.find_library('arpack')
     endif
 else
     _includedir = include_directories(_dir+'/include/arpack')
