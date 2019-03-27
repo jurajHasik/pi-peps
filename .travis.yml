@@ -53,4 +53,4 @@ before_install:
 - cd $PEPS
 script: 
 - ls
-- meson -Ditensor-dir=$SRC/deps/itensor -Dmkl=false -Darpack=false build && cd build && ninja -j1
+- meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false build && cd build && ninja -j1
