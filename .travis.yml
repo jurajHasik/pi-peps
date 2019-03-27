@@ -42,17 +42,18 @@ notifications:
   
 before_install:
 - eval "$COMPILER"
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -p _miniconda;  else  wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh && bash Miniconda3-latest-MacOSX-x86_64.sh -b -p _miniconda; fi
-- export PATH="$PWD/_miniconda/bin:$PATH"
-- conda config --set always_yes yes --set changeps1 no
-- conda update -q conda
-- conda install meson
-- export PEPS=$PWD
-- cd ..
-- export SRC=$PWD
-- mkdir deps && cd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
-- sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2
-- cd $PEPS
+- find / -name 'arpack.pc' 2>/dev/null
+# - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh && bash Miniconda3-latest-Linux-x86_64.sh -b -p _miniconda;  else  wget https://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh && bash Miniconda3-latest-MacOSX-x86_64.sh -b -p _miniconda; fi
+# - export PATH="$PWD/_miniconda/bin:$PATH"
+# - conda config --set always_yes yes --set changeps1 no
+# - conda update -q conda
+# - conda install meson
+# - export PEPS=$PWD
+# - cd ..
+# - export SRC=$PWD
+# - mkdir deps && cd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
+# - sed '/^PLATFORM=/,/^$/s/^/#/;/^#PLATFORM='$PLATFORM'$/,/^$/s/^#//' options.mk.sample > options.mk && make -j2
+# - cd $PEPS
 script: 
 - ls
-- CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=true -Dmkl=false -Darpack=true build && cd build && ninja -j1
+# - CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=true -Dmkl=false -Darpack=true build && cd build && ninja -j1
