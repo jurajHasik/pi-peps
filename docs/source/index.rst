@@ -11,6 +11,7 @@ Welcome to pi-peps's documentation!
    :caption: Contents:
 
    install
+   quickstart
    cluster
 
 
