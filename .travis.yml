@@ -16,6 +16,7 @@ matrix:
         - libopenblas-dev
         - libarpack2-dev
         - libblas-dev
+        - libatlas-base-dev
     env:
     - COMPILER="CXX=g++-8"
     - PLATFORM="lapack"
@@ -35,6 +36,7 @@ matrix:
         - libopenblas-dev
         - libarpack2-dev
         - libblas-dev
+        - libatlas-base-dev
     env:
     - COMPILER="CXX=clang++-6.0"
     - PLATFORM="lapack"
