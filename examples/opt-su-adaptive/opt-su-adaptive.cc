@@ -155,6 +155,7 @@ int main(int argc, char* argv[]) {
   // ***** INITIALIZE MODEL DONE ********************************************
 
   // *****
+  std::string outClusterBestFile = outClusterFile + ".best";
   std::ofstream out_file_energy(outClusterFile + ".energy.dat", std::ios::out);
   std::ofstream out_file_diag(outClusterFile + ".diag.dat", std::ios::out);
   out_file_energy.precision(std::numeric_limits<double>::max_digits10);
@@ -497,10 +498,10 @@ int main(int argc, char* argv[]) {
       auto current_energy = metaInf.getReal("energy");
       if (best_energy > current_energy) {
         best_energy = current_energy;
-        p_cls->metaInfo = "BestEnergy(FUStep=" + std::to_string(suI) + ")";
+        p_cls->metaInfo = "BestEnergy(SUStep=" + std::to_string(suI) + ")";
         p_cls->simParam = jsonCls;
         p_cls->absorbWeightsToSites();
-        writeCluster(outClusterFile, *p_cls);
+        writeCluster(outClusterBestFile, *p_cls);
         p_cls->absorbWeightsToLinks();
         past_tensors = p_cls->sites;
         past_weights = p_cls->weights;
@@ -544,6 +545,11 @@ int main(int argc, char* argv[]) {
 
   // SIMPLE UPDATE FINISHED
   std::cout << "SIMPLE UPDATE DONE" << std::endl;
+  
+  p_cls->absorbWeightsToSites();
+  writeCluster(outClusterFile, *p_cls);
+  p_cls->absorbWeightsToLinks();
+  
   for (auto const& log_entry : diag_log)
     std::cout << log_entry << std::endl;
 }
