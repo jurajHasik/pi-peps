@@ -1,12 +1,14 @@
 #include "pi-peps/config.h"
 #include "pi-peps/svdsolver-factory.h"
 #include "pi-peps/linalg/lapacksvd-solver.h"
-#include "pi-peps/rsvd-solver.h"
+#include "pi-peps/linalg/rsvd-solver.h"
 
 SvdSolverFactory::SvdSolverFactory() {
   registerSolver("default", &itensor::SvdSolver::create);
   registerSolver("itensor", &itensor::SvdSolver::create);
+#ifdef PEPS_WITH_RSVD
   registerSolver("rsvd", &itensor::RsvdSolver::create);
+#endif
   registerSolver("gesdd", &itensor::GESDDSolver::create);
 }
 

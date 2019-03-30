@@ -1,5 +1,6 @@
 source_files += files([
                        'cluster-ev-builder.cc', 
+                       'transfer-op.cc',
                        'engine.cc',           
                        'engine-factory.cc',
                        'fu-2site.cc',

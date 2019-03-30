@@ -5,234 +5,6 @@
 
 using namespace itensor;
 
-EVBuilder::TransferOpVecProd::TransferOpVecProd(EVBuilder const& ev_,
-                                                Vertex const& v_,
-                                                CtmEnv::DIRECTION dir_)
-  : dir(dir_), v_ref(v_), ev(ev_) {}
-
-void EVBuilder::TransferOpVecProd::operator()(double const* const x,
-                                              double* const y,
-                                              bool DBG) {
-  using DIRECTION = CtmEnv::DIRECTION;
-
-  auto vToId = [this](Vertex const& v) { return ev.p_cluster->vertexToId(v); };
-
-  auto getSiteBraKet = [this, &vToId](Vertex const& v) {
-    return ev.p_cluster->sites.at(vToId(v)) *
-           dag(ev.p_cluster->sites.at(vToId(v)))
-             .prime(AUXLINK, ev.p_cluster->BRAKET_OFFSET);
-  };
-
-  auto applyDeltaEdge = [this](ITensor& t, Vertex const& v, DIRECTION edge,
-                               DIRECTION dir) {
-    // (edge = LEFT or RIGHT => dir = UP or DOWN) or
-    // (edge = UP or DOWN => dir = LEFT or RIGHT)
-    if ((edge == dir) || ((edge + 2) % 4 == dir)) {
-      std::cout << "[TransferOpVecProd::operator()] Invalid input: edge= "
-                << edge << " dir: " << dir << std::endl;
-      throw std::runtime_error("[get2SOPTN::applyDeltaEdge] Invalid input");
-    }
-
-    Shift s;
-    switch (dir) {
-      case DIRECTION::LEFT: {
-        s = Shift(1, 0);
-        break;
-      }
-      case DIRECTION::UP: {
-        s = Shift(0, 1);
-        break;
-      }
-      case DIRECTION::RIGHT: {
-        s = Shift(-1, 0);
-        break;
-      }
-      case DIRECTION::DOWN: {
-        s = Shift(0, -1);
-        break;
-      }
-    }
-
-    t *= delta(ev.p_ctmEnv->tauxByVertex(edge, v + s, dir),
-               ev.p_ctmEnv->tauxByVertex(edge, v, (dir + 2) % 4));
-  };
-
-  // Depending on a direction, get the dimension of the TransferOp
-  int N = pow_2(ev.p_cluster->AIc(v_ref, dir).m()) * pow_2(ev.p_ctmEnv->x);
-
-  auto i = Index("i", N);
-  auto ip = prime(i);
-
-  // copy x
-  std::vector<double> cpx(N);
-  std::copy(x, x + N, cpx.data());
-
-  // auto vecRefX = makeVecRef(cpx.data(),cpx.size());
-
-  auto isX = IndexSet(i);
-  auto tN = ITensor(isX, Dense<double>(std::move(cpx)));
-
-  ITensor cmbX;
-  if (dir == DIRECTION::RIGHT) {
-    cmbX = combiner(
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::UP, v_ref, DIRECTION::LEFT),
-      ev.p_cluster->AIc(v_ref, DIRECTION::LEFT),
-      prime(ev.p_cluster->AIc(v_ref, DIRECTION::LEFT),
-            ev.p_cluster->BRAKET_OFFSET),
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::DOWN, v_ref, DIRECTION::LEFT));
-  } else if (dir == DIRECTION::DOWN) {
-    cmbX = combiner(
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::LEFT, v_ref, DIRECTION::UP),
-      ev.p_cluster->AIc(v_ref, DIRECTION::UP),
-      prime(ev.p_cluster->AIc(v_ref, DIRECTION::UP),
-            ev.p_cluster->BRAKET_OFFSET),
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::RIGHT, v_ref, DIRECTION::UP));
-  } else {
-    std::cout << "[TransferOpVecProd] Unsupported option: " << dir << std::endl;
-    exit(EXIT_FAILURE);
-  }
-
-  // TODO check if dimension of combindedIndex and i is the same
-  tN *= delta(combinedIndex(cmbX), i);
-  tN *= cmbX;
-
-  // Apply lY rows or lX columns depending on chosen direction
-  auto v = v_ref;
-  if (dir == DIRECTION::RIGHT) {
-    for (int col = 0; col < ev.p_cluster->lX; col++) {
-      v = v_ref + col * Shift(1, 0);
-
-      if (DBG)
-        std::cout << "T_U[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      if (col > 0)
-        applyDeltaEdge(tN, v, DIRECTION::UP, DIRECTION::RIGHT);
-      tN *= ev.p_ctmEnv->T_U.at(vToId(v));
-
-      if (DBG)
-        Print(tN);
-      if (DBG)
-        std::cout << "[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      Index tmp_down, tmp_right;
-
-      tmp_down = ev.p_cluster->AIc(v, DIRECTION::UP);
-      if (col > 0) {
-        //     applyDeltaSite(tN,v,DIRECTION::LEFT)
-        tmp_right = ev.p_cluster->AIc(v + Shift(-1, 0), DIRECTION::RIGHT);
-      } else {
-        tmp_right = ev.p_cluster->AIc(v, DIRECTION::LEFT);
-      };
-
-      auto tmp_cmb0 =
-        combiner(tmp_down, prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
-                 tmp_right, prime(tmp_right, ev.p_cluster->BRAKET_OFFSET));
-      auto tmp_cmb1 = combiner(
-        ev.p_cluster->AIc(v, DIRECTION::UP),
-        prime(ev.p_cluster->AIc(v, DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
-        ev.p_cluster->AIc(v, DIRECTION::LEFT),
-        prime(ev.p_cluster->AIc(v, DIRECTION::LEFT),
-              ev.p_cluster->BRAKET_OFFSET));
-
-      tN *= tmp_cmb0;
-      // TODO use delta instead of reindex
-      tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
-      tN *= getSiteBraKet(v) * tmp_cmb1;
-
-      if (DBG)
-        std::cout << "T_D[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      if (col > 0)
-        applyDeltaEdge(tN, v, DIRECTION::DOWN, DIRECTION::RIGHT);
-      tN *= ev.p_ctmEnv->T_D.at(vToId(v));
-
-      if (DBG)
-        std::cout << ">>>>> Appended col X= " << col << " <<<<<" << std::endl;
-      if (DBG)
-        Print(tN);
-    }
-  } else if (dir == DIRECTION::DOWN) {
-    for (int row = 0; row < ev.p_cluster->lY; row++) {
-      v = v_ref + row * Shift(0, 1);
-
-      if (DBG)
-        std::cout << "T_L[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      if (row > 0)
-        applyDeltaEdge(tN, v, DIRECTION::LEFT, DIRECTION::DOWN);
-      tN *= ev.p_ctmEnv->T_L.at(vToId(v));
-
-      if (DBG)
-        Print(tN);
-      if (DBG)
-        std::cout << "[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      Index tmp_down, tmp_right;
-
-      if (row > 0) {
-        //     applyDeltaSite(tN,v,DIRECTION::UP)
-        tmp_down = ev.p_cluster->AIc(v + Shift(0, -1), DIRECTION::DOWN);
-      } else {
-        tmp_down = ev.p_cluster->AIc(v, DIRECTION::UP);
-      }
-      tmp_right = ev.p_cluster->AIc(v, DIRECTION::LEFT);
-
-      auto tmp_cmb0 =
-        combiner(tmp_down, prime(tmp_down, ev.p_cluster->BRAKET_OFFSET),
-                 tmp_right, prime(tmp_right, ev.p_cluster->BRAKET_OFFSET));
-      auto tmp_cmb1 = combiner(
-        ev.p_cluster->AIc(v, DIRECTION::UP),
-        prime(ev.p_cluster->AIc(v, DIRECTION::UP), ev.p_cluster->BRAKET_OFFSET),
-        ev.p_cluster->AIc(v, DIRECTION::LEFT),
-        prime(ev.p_cluster->AIc(v, DIRECTION::LEFT),
-              ev.p_cluster->BRAKET_OFFSET));
-
-      tN *= tmp_cmb0;
-      // TODO use delta instead of reindex
-      tN = reindex(tN, combinedIndex(tmp_cmb0), combinedIndex(tmp_cmb1));
-      tN *= getSiteBraKet(v) * tmp_cmb1;
-
-      if (DBG)
-        std::cout << "T_R[" << v << " => " << vToId(v) << "]" << std::endl;
-
-      if (row > 0)
-        applyDeltaEdge(tN, v, DIRECTION::RIGHT, DIRECTION::DOWN);
-      tN *= ev.p_ctmEnv->T_R.at(vToId(v));
-
-      if (DBG)
-        std::cout << ">>>>> Appended row X= " << row << " <<<<<" << std::endl;
-      if (DBG)
-        Print(tN);
-    }
-  }
-
-  if (dir == DIRECTION::RIGHT) {
-    cmbX =
-      combiner(ev.p_ctmEnv->tauxByVertex(DIRECTION::UP, v, DIRECTION::RIGHT),
-               ev.p_cluster->AIc(v, DIRECTION::RIGHT),
-               prime(ev.p_cluster->AIc(v, DIRECTION::RIGHT),
-                     ev.p_cluster->BRAKET_OFFSET),
-               ev.p_ctmEnv->tauxByVertex(DIRECTION::DOWN, v, DIRECTION::RIGHT));
-  } else if (dir == DIRECTION::DOWN) {
-    cmbX = combiner(
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::LEFT, v, DIRECTION::DOWN),
-      ev.p_cluster->AIc(v, DIRECTION::DOWN),
-      prime(ev.p_cluster->AIc(v, DIRECTION::DOWN), ev.p_cluster->BRAKET_OFFSET),
-      ev.p_ctmEnv->tauxByVertex(DIRECTION::RIGHT, v, DIRECTION::DOWN));
-  }
-
-  tN *= cmbX;
-  tN *= delta(combinedIndex(cmbX), i);
-
-  // TODO possibly redundant
-  tN.scaleTo(1.0);
-
-  auto extractReal = [](Dense<Real> const& d) { return d.store; };
-
-  auto xData = applyFunc(extractReal, tN.store());
-  std::copy(xData.data(), xData.data() + N, y);
-}
-
 EVBuilder::TransferOpVecProd_itensor::TransferOpVecProd_itensor(
   EVBuilder const& ev_,
   Vertex const& v_,
@@ -685,7 +457,7 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
 }
 
 // entanglement of the corner
-std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
+std::vector<double> EVBuilder::eeCorner_1s_inner(Vertex const& v, bool DBG) const {
   auto getSiteBraKet = [this](std::string const& id) {
     return p_cluster->sites.at(id) *
            dag(p_cluster->sites.at(id))
@@ -707,19 +479,130 @@ std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
     std::cout << "norm(t_sym): " << norm(t_sym)
               << " norm(t_asym): " << norm(t_asym) << std::endl;
 
-    // diagonalize
-    t_sym *= delta(i2T, prime(i1T));
-    ITensor U, D;
-    diagHermitian(t_sym, U, D, {"Truncate", false});
+    //
+    ITensor U(i1), S, Vt;
+    svd(t, U, S, Vt, {"Truncate", false});
 
     // compute normalization const
-    auto i1d = D.inds()[0];
-    auto i2d = D.inds()[1];
+    auto i1d = S.inds()[0];
+    auto i2d = S.inds()[1];
     std::vector<double> elemD(i1d.m(), 0.0);
     double trD = 0.0;
     for (int i = 1; i <= i1d.m(); i++) {
       elemD[i] =
-        (D.real(i1d(i), i2d(i)) > 0.0) ? D.real(i1d(i), i2d(i)) : 1.0e-16;
+        (S.real(i1d(i), i2d(i)) > 0.0) ? S.real(i1d(i), i2d(i)) : 1.0e-16;
+      trD += elemD[i];
+    }
+
+    // EE = -Tr ( rho log (rho) ) = - 1/(sum_i D_i) sum_j (D_j log( D_j / (sum_k
+    // D_k)) )
+    //                            = - 1/(sum_i D_i) sum_j (D_j (log D_j - log
+    //                            (sum_k D_k)) )
+    double ee = 0.0;
+    for (int j = 1; j <= i1d.m(); j++)
+      ee += -(1.0 / trD) * elemD[j] * (std::log(elemD[j]) - std::log(trD));
+
+    return ee;
+  };
+
+  auto siteId = p_cluster->vertexToId(v);
+
+  std::vector<double> eecorner;
+  ITensor ev;
+
+  // upper-left corner
+  // ev = p_ctmEnv->C_RU.at(siteId);
+  // ev *= p_ctmEnv->T_R.at(siteId);
+  // ev *= p_ctmEnv->C_RD.at(siteId);
+
+  // ev *= p_ctmEnv->T_D.at(siteId);
+  // ev *= getSiteBraKet(siteId);
+  // ev *= p_ctmEnv->T_U.at(siteId);
+
+  // ev *= p_ctmEnv->C_LD.at(siteId);
+  // ev *= p_ctmEnv->T_L.at(siteId);
+  ev = p_ctmEnv->C_LU.at(siteId);
+  eecorner.push_back(computeEE(ev));
+
+  // upper-right corner
+  // ev = p_ctmEnv->C_LU.at(siteId);
+  // ev *= p_ctmEnv->T_L.at(siteId);
+  // ev *= p_ctmEnv->C_LD.at(siteId);
+
+  // ev *= p_ctmEnv->T_D.at(siteId);
+  // ev *= getSiteBraKet(siteId);
+  // ev *= p_ctmEnv->T_U.at(siteId);
+
+  // ev *= p_ctmEnv->C_RD.at(siteId);
+  // ev *= p_ctmEnv->T_R.at(siteId);
+  ev = p_ctmEnv->C_RU.at(siteId);
+  eecorner.push_back(computeEE(ev));
+
+  // lower-right corner
+  // ev = p_ctmEnv->C_LU.at(siteId);
+  // ev *= p_ctmEnv->T_L.at(siteId);
+  // ev *= p_ctmEnv->C_LD.at(siteId);
+
+  // ev *= p_ctmEnv->T_D.at(siteId);
+  // ev *= getSiteBraKet(siteId);
+  // ev *= p_ctmEnv->T_U.at(siteId);
+
+  // ev *= p_ctmEnv->C_RU.at(siteId);
+  // ev *= p_ctmEnv->T_R.at(siteId);
+  ev = p_ctmEnv->C_RD.at(siteId);
+  eecorner.push_back(computeEE(ev));
+
+  // lower-left corner
+  // ev = p_ctmEnv->C_RU.at(siteId);
+  // ev *= p_ctmEnv->T_R.at(siteId);
+  // ev *= p_ctmEnv->C_RD.at(siteId);
+
+  // ev *= p_ctmEnv->T_D.at(siteId);
+  // ev *= getSiteBraKet(siteId);
+  // ev *= p_ctmEnv->T_U.at(siteId);
+
+  // ev *= p_ctmEnv->C_LU.at(siteId);
+  // ev *= p_ctmEnv->T_L.at(siteId);
+  ev = p_ctmEnv->C_LD.at(siteId);
+  eecorner.push_back(computeEE(ev));
+
+  return eecorner;
+}
+
+std::vector<double> EVBuilder::eeCorner_1s_outer(Vertex const& v, bool DBG) const {
+  auto getSiteBraKet = [this](std::string const& id) {
+    return p_cluster->sites.at(id) *
+           dag(p_cluster->sites.at(id))
+             .prime(AUXLINK, p_cluster->BRAKET_OFFSET);
+  };
+
+  auto computeEE = [](ITensor const& t) {
+    // Check hermicity
+    auto i1 = t.inds()[0];
+    auto i2 = t.inds()[1];
+    auto i1T = Index("i1T", i1.m());
+    auto i2T = Index("i2T", i2.m());
+
+    auto t_sym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) +
+                        (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    auto t_asym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) -
+                         (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    //
+    std::cout << "norm(t_sym): " << norm(t_sym)
+              << " norm(t_asym): " << norm(t_asym) << std::endl;
+
+    //
+    ITensor U(i1), S, Vt;
+    svd(t, U, S, Vt, {"Truncate", false});
+
+    // compute normalization const
+    auto i1d = S.inds()[0];
+    auto i2d = S.inds()[1];
+    std::vector<double> elemD(i1d.m(), 0.0);
+    double trD = 0.0;
+    for (int i = 1; i <= i1d.m(); i++) {
+      elemD[i] =
+        (S.real(i1d(i), i2d(i)) > 0.0) ? S.real(i1d(i), i2d(i)) : 1.0e-16;
       trD += elemD[i];
     }
 
@@ -750,7 +633,6 @@ std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
 
   ev *= p_ctmEnv->C_LD.at(siteId);
   ev *= p_ctmEnv->T_L.at(siteId);
-
   eecorner.push_back(computeEE(ev));
 
   // upper-right corner
@@ -764,7 +646,6 @@ std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
 
   ev *= p_ctmEnv->C_RD.at(siteId);
   ev *= p_ctmEnv->T_R.at(siteId);
-
   eecorner.push_back(computeEE(ev));
 
   // lower-right corner
@@ -778,7 +659,6 @@ std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
 
   ev *= p_ctmEnv->C_RU.at(siteId);
   ev *= p_ctmEnv->T_R.at(siteId);
-
   eecorner.push_back(computeEE(ev));
 
   // lower-left corner
@@ -792,7 +672,6 @@ std::vector<double> EVBuilder::eeCorner_1s(Vertex const& v, bool DBG) const {
 
   ev *= p_ctmEnv->C_LU.at(siteId);
   ev *= p_ctmEnv->T_L.at(siteId);
-
   eecorner.push_back(computeEE(ev));
 
   return eecorner;
@@ -2130,33 +2009,6 @@ double EVBuilder::contract2Smpo(std::pair<ITensor, ITensor> const& Op,
 //     return ccVal;
 // }
 
-void EVBuilder::analyzeTransferMatrix(Vertex const& v,
-                                      CtmEnv::DIRECTION dir,
-                                      std::string alg_type) {
-  if (alg_type == "ARPACK") {
-    TransferOpVecProd tvp((*this), v, dir);
-
-    int N = pow_2(p_cluster->AIc(v, dir).m()) * pow_2(p_ctmEnv->x);
-    ARDNS<TransferOpVecProd> ardns(tvp);
-
-    std::vector<std::complex<double>> ev;
-    std::vector<double> V;
-    ardns.real_nonsymm(N, 4, 100, 0.0, N * 10, ev, V);
-
-    // sort
-    std::sort(ev.begin(), ev.end(),
-              [](std::complex<double> const& a, std::complex<double> const& b) {
-                return std::abs(a) > std::abs(b);
-              });
-    for (auto const& val : ev) {
-      std::cout << val / std::abs(ev[0]) << std::endl;
-    }
-
-  } else {
-    std::cout << "[EVBuilder::analyzeTransferMatrix] Unsupported option: "
-              << alg_type << std::endl;
-  }
-}
 
 // Diagonal s1, s1+[1,1]
 double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG) const {

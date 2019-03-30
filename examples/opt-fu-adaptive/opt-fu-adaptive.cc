@@ -713,9 +713,6 @@ int main(int argc, char* argv[]) {
   obs_metaInf = Args("lineNo", arg_fuIter + 1);
   ptr_model->computeAndWriteObservables(ev, out_file_energy, obs_metaInf);
 
-  ev.analyzeTransferMatrix(Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
-  ev.analyzeTransferMatrix(Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
-
   // Store final new cluster
   writeCluster(outClusterFile, *p_cls);
 

@@ -2,7 +2,7 @@
 
 #ifdef PEPS_WITH_RSVD
 
-#  include "pi-peps/rsvd-solver.h"
+#  include "pi-peps/linalg/rsvd-solver.h"
 
 namespace itensor {
 

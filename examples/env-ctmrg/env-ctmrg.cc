@@ -7,6 +7,7 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
+#include "pi-peps/transfer-op.h"
 #include "pi-peps/cluster-ev-builder.h"
 #include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-io.h"
@@ -307,10 +308,28 @@ int main(int argc, char* argv[]) {
   }
 
   // analyze corner entanglement entropy (ee)
-  auto eec_A = ev.eeCorner_1s(Vertex(0, 0));
-  auto eec_B = ev.eeCorner_1s(Vertex(1, 0));
-  auto eec_C = ev.eeCorner_1s(Vertex(0, 1));
-  auto eec_D = ev.eeCorner_1s(Vertex(1, 1));
+  // inner corners 
+  //
+  // C--
+  // |
+  //
+  auto eec_in_A = ev.eeCorner_1s_inner(Vertex(0, 0));
+  auto eec_in_B = ev.eeCorner_1s_inner(Vertex(1, 0));
+  auto eec_in_C = ev.eeCorner_1s_inner(Vertex(0, 1));
+  auto eec_in_D = ev.eeCorner_1s_inner(Vertex(1, 1));
+
+  // outer corners 
+  //
+  // C--T--C
+  // |  |  |
+  // T--A--T
+  // |  |  | 
+  // C--T--
+  //
+  auto eec_out_A = ev.eeCorner_1s_outer(Vertex(0, 0));
+  auto eec_out_B = ev.eeCorner_1s_outer(Vertex(1, 0));
+  auto eec_out_C = ev.eeCorner_1s_outer(Vertex(0, 1));
+  auto eec_out_D = ev.eeCorner_1s_outer(Vertex(1, 1));
 
   auto printEEC = [](std::vector<double> const& eec) {
     std::cout << "eec_A";
@@ -319,17 +338,24 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
   };
 
-  printEEC(eec_A);
-  printEEC(eec_B);
-  printEEC(eec_C);
-  printEEC(eec_D);
+  printEEC(eec_in_A);
+  printEEC(eec_in_B);
+  printEEC(eec_in_C);
+  printEEC(eec_in_D);
 
+  printEEC(eec_out_A);
+  printEEC(eec_out_B);
+  printEEC(eec_out_C);
+  printEEC(eec_out_D);
+
+#ifdef PEPS_WITH_ARPACK
   // Analyze transfer matrix
-  ev.analyzeTransferMatrix(Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
-  ev.analyzeTransferMatrix(Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
+  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
+  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
 
-  ev.analyzeTransferMatrix(Vertex(1, 1), CtmEnv::DIRECTION::RIGHT);
-  ev.analyzeTransferMatrix(Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
+  analyzeTransferMatrix(ev, Vertex(1, 1), CtmEnv::DIRECTION::RIGHT);
+  analyzeTransferMatrix(ev, Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
+#endif
 
   // FINISHED
   std::cout << "FINISHED" << std::endl;
