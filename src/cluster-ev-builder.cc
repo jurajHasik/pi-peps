@@ -457,7 +457,8 @@ double EVBuilder::eV_1sO_1sENV(MpoNS const& op,
 }
 
 // entanglement of the corner
-std::vector<double> EVBuilder::eeCorner_1s_inner(Vertex const& v, bool DBG) const {
+std::vector<double> EVBuilder::eeCorner_1s_inner(Vertex const& v,
+                                                 bool DBG) const {
   auto getSiteBraKet = [this](std::string const& id) {
     return p_cluster->sites.at(id) *
            dag(p_cluster->sites.at(id))
@@ -471,13 +472,13 @@ std::vector<double> EVBuilder::eeCorner_1s_inner(Vertex const& v, bool DBG) cons
     auto i1T = Index("i1T", i1.m());
     auto i2T = Index("i2T", i2.m());
 
-    auto t_sym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) +
-                        (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
-    auto t_asym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) -
-                         (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
-    //
-    std::cout << "norm(t_sym): " << norm(t_sym)
-              << " norm(t_asym): " << norm(t_asym) << std::endl;
+    // auto t_sym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) +
+    //                     (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    // auto t_asym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) -
+    //                      (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    // //
+    // std::cout << "norm(t_sym): " << norm(t_sym)
+    //           << " norm(t_asym): " << norm(t_asym) << std::endl;
 
     //
     ITensor U(i1), S, Vt;
@@ -569,7 +570,8 @@ std::vector<double> EVBuilder::eeCorner_1s_inner(Vertex const& v, bool DBG) cons
   return eecorner;
 }
 
-std::vector<double> EVBuilder::eeCorner_1s_outer(Vertex const& v, bool DBG) const {
+std::vector<double> EVBuilder::eeCorner_1s_outer(Vertex const& v,
+                                                 bool DBG) const {
   auto getSiteBraKet = [this](std::string const& id) {
     return p_cluster->sites.at(id) *
            dag(p_cluster->sites.at(id))
@@ -583,13 +585,13 @@ std::vector<double> EVBuilder::eeCorner_1s_outer(Vertex const& v, bool DBG) cons
     auto i1T = Index("i1T", i1.m());
     auto i2T = Index("i2T", i2.m());
 
-    auto t_sym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) +
-                        (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
-    auto t_asym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) -
-                         (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
-    //
-    std::cout << "norm(t_sym): " << norm(t_sym)
-              << " norm(t_asym): " << norm(t_asym) << std::endl;
+    // auto t_sym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) +
+    //                     (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    // auto t_asym = 0.5 * ((t * delta(i1, i1T)) * delta(i2, i2T) -
+    //                      (dag(t) * delta(i1, i2T)) * delta(i2, i1T));
+    // //
+    // std::cout << "norm(t_sym): " << norm(t_sym)
+    //           << " norm(t_asym): " << norm(t_asym) << std::endl;
 
     //
     ITensor U(i1), S, Vt;
@@ -2008,7 +2010,6 @@ double EVBuilder::contract2Smpo(std::pair<ITensor, ITensor> const& Op,
 
 //     return ccVal;
 // }
-
 
 // Diagonal s1, s1+[1,1]
 double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG) const {

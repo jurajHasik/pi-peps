@@ -192,10 +192,11 @@ namespace itensor {
 
     // write magnetization
     double evMag_avg = 0.;
-    evMag_avg = 0.25 * (std::sqrt( std::abs(ev_sA[0] * ev_sA[0] + ev_sA[1] * ev_sA[2]) ) +
-                        std::sqrt( std::abs(ev_sB[0] * ev_sB[0] + ev_sB[1] * ev_sB[2]) ) +
-                        std::sqrt( std::abs(ev_sC[0] * ev_sC[0] + ev_sC[1] * ev_sC[2]) ) +
-                        std::sqrt( std::abs(ev_sD[0] * ev_sD[0] + ev_sD[1] * ev_sD[2]) ) );
+    evMag_avg =
+      0.25 * (std::sqrt(std::abs(ev_sA[0] * ev_sA[0] + ev_sA[1] * ev_sA[2])) +
+              std::sqrt(std::abs(ev_sB[0] * ev_sB[0] + ev_sB[1] * ev_sB[2])) +
+              std::sqrt(std::abs(ev_sC[0] * ev_sC[0] + ev_sC[1] * ev_sC[2])) +
+              std::sqrt(std::abs(ev_sD[0] * ev_sD[0] + ev_sD[1] * ev_sD[2])));
     output << " " << evMag_avg;
 
     // write Energy

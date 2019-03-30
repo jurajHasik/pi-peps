@@ -7,10 +7,10 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
-#include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-global.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
+#include "pi-peps/ctm-env.h"
 #include "pi-peps/mpo.h"
 #include "pi-peps/su2.h"
 
@@ -69,9 +69,11 @@ class EVBuilder {
 
   double eV_1sO_1sENV(MpoNS const& op, Vertex const& v, bool DBG = false) const;
 
-  std::vector<double> eeCorner_1s_inner(Vertex const& v, bool DBG = false) const;
+  std::vector<double> eeCorner_1s_inner(Vertex const& v,
+                                        bool DBG = false) const;
 
-  std::vector<double> eeCorner_1s_outer(Vertex const& v, bool DBG = false) const;
+  std::vector<double> eeCorner_1s_outer(Vertex const& v,
+                                        bool DBG = false) const;
 
   // Supported types of 2-site operators
   enum OP_2S {

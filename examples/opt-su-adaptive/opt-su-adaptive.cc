@@ -9,9 +9,9 @@ DISABLE_WARNINGS
 ENABLE_WARNINGS
 #include "pi-peps/cluster-ev-builder.h"
 #include "pi-peps/cluster-factory.h"
-#include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
+#include "pi-peps/ctm-env.h"
 #include "pi-peps/engine-factory.h"
 #include "pi-peps/model-factory.h"
 #include "pi-peps/mpo.h"
@@ -545,11 +545,11 @@ int main(int argc, char* argv[]) {
 
   // SIMPLE UPDATE FINISHED
   std::cout << "SIMPLE UPDATE DONE" << std::endl;
-  
+
   p_cls->absorbWeightsToSites();
   writeCluster(outClusterFile, *p_cls);
   p_cls->absorbWeightsToLinks();
-  
+
   for (auto const& log_entry : diag_log)
     std::cout << log_entry << std::endl;
 }

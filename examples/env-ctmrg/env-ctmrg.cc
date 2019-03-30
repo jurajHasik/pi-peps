@@ -7,14 +7,14 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
-#include "pi-peps/transfer-op.h"
 #include "pi-peps/cluster-ev-builder.h"
-#include "pi-peps/ctm-env.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
+#include "pi-peps/ctm-env.h"
 #include "pi-peps/model-factory.h"
 #include "pi-peps/mpo.h"
 #include "pi-peps/svdsolver-factory.h"
+#include "pi-peps/transfer-op.h"
 
 using namespace itensor;
 
@@ -181,6 +181,7 @@ int main(int argc, char* argv[]) {
       e_curr[3] =
         ev.analyzeBoundaryVariance(Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
 
+      t_end_int = std::chrono::steady_clock::now();
       std::cout << " || Var(boundary) in T: " << get_s(t_begin_int, t_end_int)
                 << " [sec] : " << e_curr[0] << " " << e_curr[1] << " "
                 << e_curr[2] << " " << e_curr[3] << std::endl;
@@ -307,49 +308,49 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
 
+  auto printEEC = [](std::vector<double> const& eec) {
+    for (int i = 0; i < 4; i++)
+      std::cout << eec[i] << " ";
+    std::cout << std::endl;
+  };
+
+  std::cout << "Corner EE (inner): " << std::endl;
   // analyze corner entanglement entropy (ee)
-  // inner corners 
+  // inner corners
   //
   // C--
   // |
   //
-  auto eec_in_A = ev.eeCorner_1s_inner(Vertex(0, 0));
-  auto eec_in_B = ev.eeCorner_1s_inner(Vertex(1, 0));
-  auto eec_in_C = ev.eeCorner_1s_inner(Vertex(0, 1));
-  auto eec_in_D = ev.eeCorner_1s_inner(Vertex(1, 1));
+  std::vector<std::vector<double>> eec_in, eec_out;
+  std::vector<Vertex> vs = {Vertex(0, 0), Vertex(1, 0), Vertex(0, 1),
+                            Vertex(1, 1)};
+  for (auto const& v : vs) {
+    eec_in.push_back(ev.eeCorner_1s_inner(v));
+  }
+  for (int i = 0; i < vs.size(); i++) {
+    std::cout << vs[i] << " " << p_cls->vToId.at(vs[i]) << " ";
+    printEEC(eec_in[i]);
+  }
 
-  // outer corners 
+  std::cout << "Corner EE (outer): " << std::endl;
+  // outer corners
   //
   // C--T--C
   // |  |  |
   // T--A--T
-  // |  |  | 
+  // |  |  |
   // C--T--
   //
-  auto eec_out_A = ev.eeCorner_1s_outer(Vertex(0, 0));
-  auto eec_out_B = ev.eeCorner_1s_outer(Vertex(1, 0));
-  auto eec_out_C = ev.eeCorner_1s_outer(Vertex(0, 1));
-  auto eec_out_D = ev.eeCorner_1s_outer(Vertex(1, 1));
-
-  auto printEEC = [](std::vector<double> const& eec) {
-    std::cout << "eec_A";
-    for (int i = 0; i < 4; i++)
-      std::cout << " " << eec[i];
-    std::cout << std::endl;
-  };
-
-  printEEC(eec_in_A);
-  printEEC(eec_in_B);
-  printEEC(eec_in_C);
-  printEEC(eec_in_D);
-
-  printEEC(eec_out_A);
-  printEEC(eec_out_B);
-  printEEC(eec_out_C);
-  printEEC(eec_out_D);
+  for (auto const& v : vs) {
+    eec_out.push_back(ev.eeCorner_1s_outer(v));
+  }
+  for (int i = 0; i < vs.size(); i++) {
+    std::cout << vs[i] << " " << p_cls->vToId.at(vs[i]) << " ";
+    printEEC(eec_out[i]);
+  }
 
 #ifdef PEPS_WITH_ARPACK
-  // Analyze transfer matrix
+  std::cout << "Transfer matrix spectrum analysis: " << std::endl;
   analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
   analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
 
