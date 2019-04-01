@@ -53,8 +53,6 @@ namespace itensor {
     }
   };
 
-}  // namespace itensor
-
 TEST(ArpackReal0, Default_cotr) {
   double eps = 1.0e-08;
 
@@ -69,3 +67,43 @@ TEST(ArpackReal0, Default_cotr) {
   EXPECT_TRUE((std::abs(ev[0]) - 9.0) < eps);
   EXPECT_TRUE((std::abs(ev[1]) - 10.0) < eps);
 }
+
+TEST(ArpackRealSvd0, Default_cotr) {
+  double eps = 1.0e-08;
+  Index K = Index("k", 5);
+  Index Kp = prime(K);
+  ITensor A(K, Kp);
+  A.set(K(1), Kp(1), 6.80);
+  A.set(K(1), Kp(2), -6.05);
+  A.set(K(1), Kp(3), -0.45);
+  A.set(K(1), Kp(4), 8.32);
+  A.set(K(1), Kp(5), -9.67);
+  A.set(K(2), Kp(1), -2.11);
+  A.set(K(2), Kp(2), -3.30);
+  A.set(K(2), Kp(3), 2.58);
+  A.set(K(2), Kp(4), 2.71);
+  A.set(K(2), Kp(5), -5.14);
+  A.set(K(3), Kp(1), 5.66);
+  A.set(K(3), Kp(2), 5.36);
+  A.set(K(3), Kp(3), -2.70);
+  A.set(K(3), Kp(4), 4.35);
+  A.set(K(3), Kp(5), -7.26);
+  A.set(K(4), Kp(1), 5.97);
+  A.set(K(4), Kp(2), -4.44);
+  A.set(K(4), Kp(3), 0.27);
+  A.set(K(4), Kp(4), -7.17);
+  A.set(K(4), Kp(5), 6.08);
+  A.set(K(5), Kp(1), 8.23);
+  A.set(K(5), Kp(2), 1.08);
+  A.set(K(5), Kp(3), 9.04);
+  A.set(K(5), Kp(4), 2.14);
+  A.set(K(5), Kp(5), -6.87);
+
+  ArpackSvdSolver solver = ArpackSvdSolver();
+  ITensor U(Kp), D, V;
+  svd(A, U, D, V, solver, {"Truncate", false});
+
+  EXPECT_TRUE(norm(A - U * D * V) < eps);
+}
+
+} // namespace itensor

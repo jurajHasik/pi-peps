@@ -2,7 +2,9 @@
 #define __ARPACK_RCI_H_
 
 #include "pi-peps/config.h"
-// #include "arpack.hpp"
+#ifdef PEPS_WITH_ARPACK
+
+#include "pi-peps/linalg/itensor-svd-solvers.h"
 
 #include <array>
 #include <cmath>
@@ -58,9 +60,9 @@ extern "C" void dneupd_(int* rvec,
                         int* info);
 
 extern "C" void dsaupd_(int* ido, 
-  char* bmat, 
+  char const * bmat, 
   int* n, 
-  char* which, 
+  char const * which, 
   int* nev, 
   double* tol, 
   double* resid,
@@ -75,27 +77,27 @@ extern "C" void dsaupd_(int* ido,
   int* info );
 
 extern "C" void dseupd_(int* rvec, 
-  char* howmany, 
-  int* select, 
-  double* s, 
-  double* v, 
-  int* ldv, 
-  double* sigma,
-  char* bmat, 
+  char const * howmny, 
+  int const * select, 
+  double* d, 
+  double* z, 
+  int* ldz, 
+  double* sigma, 
+  char const* bmat, 
   int* n, 
-  char* which, 
-  int* nev, t
+  char const* which, 
+  int* nev, 
   double* tol, 
   double* resid, 
   int* ncv, 
   double* v, 
-  int* ldv,
+  int* ldv, 
   int* iparam, 
   int* ipntr, 
   double* workd, 
   double* workl, 
   int* lworkl, 
-  int* ierr );
+  int* info);
 
 template <class T>
 struct ARDNS {
@@ -308,8 +310,8 @@ namespace itensor {
 */
     int maxm = Mr;
     int maxn = Mc;
-    int maxnev = args.getInt("Maxm", Mr);
-    int maxncv = 2*maxnev + maxnev/2;
+    int maxnev = 1; //args.getInt("Maxm", Mc);
+    int maxncv = std::min(2*maxnev + maxnev/2,maxn);
     int ldv = maxn;
     int ldu = maxm;
 //
@@ -350,7 +352,7 @@ namespace itensor {
 
     std::string bmat;
     std::string which;
-    int ido, m, n, nev, ncv, lworkl, info, ierr, j, ishifts, maxitr, model, nconv;
+    int ido, m, n, nev, ncv, lworkl, info, ierr, ishfts, maxitr, mode1, nconv;
     int rvec;
     double tol, sigma, temp;
 
@@ -432,7 +434,7 @@ namespace itensor {
 // c     |             NEV + 1 <= NCV <= MAXNCV           |
 // c     %------------------------------------------------%
 // c
-      nev   = maxm;
+      nev   = maxnev;
       ncv   = maxncv;
       bmat  = "I";
       which = "LM";
@@ -523,18 +525,21 @@ namespace itensor {
 // c
       // av(n,x,y) computes y<-A*x
       // atv(n,y,w) computes w<-At*y
-      auto av = [&M,&Mr,&Mc,&ipntr,&workd,&ax]() {
+      auto av = [&M,&Mr,&Mc](double * x, double * y) {
         // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
-        auto x_vec = makeVecRef(&workd[ipntr[1-1]],Mc);
-        auto y_vec = makeVecRef(ax.data(),Mr);
-        y_vec = M*x_vec;
+        auto x_vec = makeVecRef(x,Mc);
+        auto y_vec = makeVecRef(y,Mr);
+        mult(M,x_vec,y_vec);
+      
+        for (int i=0; i<Mr; i++) std::cout<<" "<< y[i];
+        std::cout<<std::endl;
       };
 
       auto avt = [&M,&Mr,&Mc,&ipntr,&workd,&ax]() {
         // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
-        auto x_vec = makeVecRef(&workd[ipntr[2-1]],Mc);
-        auto y_vec = makeVecRef(ax.data(),Mr);
-        y_vec = M*x_vec;
+        auto x_vec = makeVecRef(ax.data(),Mr);
+        auto y_vec = makeVecRef(&workd[ipntr[2-1]],Mc);
+        mult(M,x_vec,y_vec,true); // transpose M
       };
 
       for (;;) {
@@ -556,8 +561,9 @@ namespace itensor {
 // c           %---------------------------------------%
 // c
             // call av (m, n, workd(ipntr(1)), ax)
-            av();
+            av(&workd[ipntr[1-1]],ax.data());
             // call atv (m, n, ax, workd(ipntr(2)))
+            avt();
 // c
 // c           %-----------------------------------------%
 // c           | L O O P   B A C K to call DSAUPD again. |
@@ -604,7 +610,7 @@ namespace itensor {
         rvec = 1;
         std::string howmny = "All";
 
-        dseupd(&rvec, howmny.c_str(), select.data(), s.data(), v.data(), &ldv, &sigma,
+        dseupd_(&rvec, howmny.c_str(), select.data(), s.data(), v.data(), &ldv, &sigma,
           bmat.c_str(), &n, which.c_str(), &nev, &tol, resid.data(), &ncv, v.data(), &ldv,
           iparam.data(), ipntr.data(), workd.data(), workl.data(), &lworkl, &ierr );
 // c
@@ -641,10 +647,14 @@ namespace itensor {
 // c              | divide by norm(Av) instead. |
 // c              %-----------------------------%
 // c
-            call av(m, n, v(1,j), ax)
-            call dcopy(m, ax, 1, u(1,j), 1)
-            temp = one/dnrm2(m, u(1,j), 1)
-            call dscal(m, temp, u(1,j), 1)
+            // call av(m, n, v(1,j), ax)
+            av(&v[ldv*(j-1)],ax.data());
+            // call dcopy(m, ax, 1, u(1,j), 1)
+            std::copy(ax.data(), ax.data()+m, &u[ldu*(j-1)]);
+            // temp = one/dnrm2(m, u(1,j), 1)
+            temp = one/dnrm2_wrapper(m, &u[ldu*(j-1)], 1);
+            // call dscal(m, temp, u(1,j), 1)
+            dscal_wrapper(m, temp, &u[ldu*(j-1)], 1);
 // c
 // c              %---------------------------%
 // c              |                           |
@@ -662,8 +672,10 @@ namespace itensor {
 // c              | column of array S.        |
 // c              %---------------------------%
 // c
-            call daxpy(m, -s(j,1), u(1,j), 1, ax, 1)
-            s(j,2) = dnrm2(m, ax, 1)
+            // call daxpy(m, -s(j,1), u(1,j), 1, ax, 1)
+            daxpy_wrapper(m, -s[j-1], &u[ldu*(j-1)], 1, ax.data(), 1);
+            // s(j,2) = dnrm2(m, ax, 1)
+            s[j+maxncv-1] = dnrm2_wrapper(m,ax.data(),1);
           }
 // ----- CONVERGENCE INFORMATION --------------------------------------
 // c
@@ -681,7 +693,7 @@ namespace itensor {
 // c
         if ( info == 1) {
             std::cout<<"[ArpackSvdSolver::solve] Maximum number of iterations reached."<< std::endl;
-        } else if ( info .== 3) {
+        } else if ( info == 3) {
             std::cout<<"[ArpackSvdSolver::solve] No shifts could be applied during implicit"
                     <<" Arnoldi update, try increasing NCV."<< std::endl;
         }
@@ -704,32 +716,13 @@ namespace itensor {
 // c     %-------------------------%
 // c
 
-
-
-
-      int info;
-      dgesdd_wrapper('S',  // char* specifying how much of U, V to compute
-                           // choosing *jobz=='S' computes min(m,n) cols of U, V
-                     Mr,   // number of rows of input matrix *A
-                     Mc,   // number of cols of input matrix *A
-                     cpA.data(),
-                     D.data(),  // on return, singular values of A
-                     U.data(),  // on return, unitary matrix U
-                     V.data(),  // on return, unitary matrix V transpose
-                     &info);
-      // from ?gesdd:
-      // if JOBZ = 'S', V contains the first min(M=Mr,N=Mc) rows of
-      // V**T (the right singular vectors, stored rowwise);
-      // Lapack stores V in column-major format, while the return of this
-      // function expects row-major format of V, hence the V is reordered
-      // accordingly
-      auto ncV = const_cast<Real*>(V.data());
-      auto pV = reinterpret_cast<Real*>(ncV);
-      int l = std::min(Mr, Mc);
-      std::vector<Real> vt(l * Mc);
-      std::copy(V.data(), V.data() + l * Mc, vt.data());
-      for (unsigned int i = 0; i < vt.size(); i++, pV++)
-        *pV = vt[(i % Mc) * l + i / Mc];
+      // auto ncV = const_cast<Real*>(V.data());
+      // auto pV = reinterpret_cast<Real*>(ncV);
+      // int l = std::min(Mr, Mc);
+      // std::vector<Real> vt(l * Mc);
+      // std::copy(V.data(), V.data() + l * Mc, vt.data());
+      // for (unsigned int i = 0; i < vt.size(); i++, pV++)
+      //   *pV = vt[(i % Mc) * l + i / Mc];
 
 #ifdef CHKSVD
       checksvd(M, U, D, V);
@@ -754,5 +747,7 @@ namespace itensor {
   };
 
 } // namespace itensor
+
+#endif
 
 #endif
