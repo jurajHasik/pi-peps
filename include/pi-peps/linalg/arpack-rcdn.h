@@ -504,9 +504,9 @@ namespace itensor {
       maxitr = n;
       mode1 = 1;
 //c
-      iparam[1] = ishfts;
-      iparam[3] = maxitr;
-      iparam[7] = mode1;
+      iparam[1-1] = ishfts;
+      iparam[3-1] = maxitr;
+      iparam[7-1] = mode1;
 // c
 // c     %------------------------------------------------%
 // c     | M A I N   L O O P (Reverse communication loop) |
@@ -521,6 +521,22 @@ namespace itensor {
 // c        | has been exceeded.                          |
 // c        %---------------------------------------------%
 // c
+      // av(n,x,y) computes y<-A*x
+      // atv(n,y,w) computes w<-At*y
+      auto av = [&M,&Mr,&Mc,&ipntr,&workd,&ax]() {
+        // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
+        auto x_vec = makeVecRef(&workd[ipntr[1-1]],Mc);
+        auto y_vec = makeVecRef(ax.data(),Mr);
+        y_vec = M*x_vec;
+      };
+
+      auto avt = [&M,&Mr,&Mc,&ipntr,&workd,&ax]() {
+        // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
+        auto x_vec = makeVecRef(&workd[ipntr[2-1]],Mc);
+        auto y_vec = makeVecRef(ax.data(),Mr);
+        y_vec = M*x_vec;
+      };
+
       for (;;) {
         dsaupd_(&ido, bmat.c_str(), &n, which.c_str(), &nev, &tol, resid.data(),
           &ncv, v.data(), &ldv, iparam.data(), ipntr.data(), workd.data(), workl.data(),
@@ -539,8 +555,9 @@ namespace itensor {
 // c           | workd(ipntr(2)).                      |
 // c           %---------------------------------------%
 // c
-            call av (m, n, workd(ipntr(1)), ax)
-            call atv (m, n, ax, workd(ipntr(2)))
+            // call av (m, n, workd(ipntr(1)), ax)
+            av();
+            // call atv (m, n, ax, workd(ipntr(2)))
 // c
 // c           %-----------------------------------------%
 // c           | L O O P   B A C K to call DSAUPD again. |
