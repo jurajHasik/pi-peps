@@ -310,8 +310,8 @@ namespace itensor {
 */
     int maxm = Mr;
     int maxn = Mc;
-    int maxnev = 1; //args.getInt("Maxm", Mc);
-    int maxncv = std::min(2*maxnev + maxnev/2,maxn);
+    int maxnev = 2; //args.getInt("Maxm", Mc);
+    int maxncv = 5; //std::min(2*maxnev + maxnev/2,maxn);
     int ldv = maxn;
     int ldu = maxm;
 //
@@ -327,7 +327,8 @@ namespace itensor {
 //      integer          iparam(11), ipntr(11)
 
     std::vector<double> v(ldv*maxncv,0.0);
-    std::vector<double> u(ldu*maxnev,0.0);
+    // std::vector<double> u(ldu*maxnev,0.0);
+    auto u = U.data();
     std::vector<double> workl(maxncv*(maxncv+8),0.0);    
     std::vector<double> workd(3*maxn,0.0);
     std::vector<double> s(2*maxncv,0.0);
@@ -503,7 +504,7 @@ namespace itensor {
 // c     %---------------------------------------------------%
 // c
       ishfts = 1;
-      maxitr = n;
+      maxitr = 10*n;
       mode1 = 1;
 //c
       iparam[1-1] = ishfts;
@@ -531,21 +532,35 @@ namespace itensor {
         auto y_vec = makeVecRef(y,Mr);
         mult(M,x_vec,y_vec);
       
+        std::cout<<"[av]";
+        for (int i=0; i<Mc; i++) std::cout<<" "<< x[i];
+        std::cout<<std::endl;
+        std::cout<<"[av]";
         for (int i=0; i<Mr; i++) std::cout<<" "<< y[i];
         std::cout<<std::endl;
       };
 
-      auto avt = [&M,&Mr,&Mc,&ipntr,&workd,&ax]() {
+      auto avt = [&M,&Mr,&Mc](double * x, double * y) {
         // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
-        auto x_vec = makeVecRef(ax.data(),Mr);
-        auto y_vec = makeVecRef(&workd[ipntr[2-1]],Mc);
+        auto x_vec = makeVecRef(x,Mr);
+        auto y_vec = makeVecRef(y,Mc);
         mult(M,x_vec,y_vec,true); // transpose M
+
+        std::cout<<"[avt]";
+        for (int i=0; i<Mr; i++) std::cout<<" "<< x[i];
+        std::cout<<std::endl;
+        std::cout<<"[avt]";
+        for (int i=0; i<Mc; i++) std::cout<<" "<< y[i];
+        std::cout<<std::endl;
       };
 
       for (;;) {
         dsaupd_(&ido, bmat.c_str(), &n, which.c_str(), &nev, &tol, resid.data(),
           &ncv, v.data(), &ldv, iparam.data(), ipntr.data(), workd.data(), workl.data(),
           &lworkl, &info );
+
+        for (int i=0; i<11; i++) std::cout<<" "<< iparam[i];
+        std::cout<< std::endl;
 
         if (ido == -1 || ido == 1) {
 // c
@@ -561,9 +576,9 @@ namespace itensor {
 // c           %---------------------------------------%
 // c
             // call av (m, n, workd(ipntr(1)), ax)
-            av(&workd[ipntr[1-1]],ax.data());
+            av(&workd[ipntr[1-1]-1],ax.data());
             // call atv (m, n, ax, workd(ipntr(2)))
-            avt();
+            avt(ax.data(),&workd[ipntr[2-1]-1]);
 // c
 // c           %-----------------------------------------%
 // c           | L O O P   B A C K to call DSAUPD again. |
@@ -632,7 +647,7 @@ namespace itensor {
             std::cout<<"[ArpackSvdSolver::solve] Error with _seupd, info = "<< ierr << std::endl;
             std::cout<<"[ArpackSvdSolver::solve] Check the documentation of _seupd. "<< std::endl;
         } else {
-          nconv =  iparam[5];
+          nconv =  iparam[5-1];
           for(int j=1; j<=nconv; j++) {
             // s(j,1) = sqrt(s(j,1))
             s[j-1] = std::sqrt(s[j-1]);
@@ -685,6 +700,10 @@ namespace itensor {
 // c
           //  call dmout(6, nconv, 2, s, maxncv, -6,
      //&                'Singular values and direct residuals')
+          std::cout<<"[ArpackSvdSolver::solve] Computed sing. values and residuals: "<< std::endl;
+          for(int i=0; i<nconv; i++) {
+            std::cout<< s[i] <<" "<< s[maxncv+i] << std::endl;
+          }
         }
 // c
 // c        %------------------------------------------%
@@ -706,8 +725,8 @@ namespace itensor {
          std::cout<<"[ArpackSvdSolver::solve] What portion of the spectrum: "<< which << std::endl;
          std::cout<<"[ArpackSvdSolver::solve] The number of converged Ritz values is "<< nconv << std::endl;
          std::cout<<"[ArpackSvdSolver::solve] The number of Implicit Arnoldi update"
-                  <<" iterations taken is "<< iparam[3] << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] The number of OP*x is "<< iparam[9] << std::endl;
+                  <<" iterations taken is "<< iparam[3-1] << std::endl;
+         std::cout<<"[ArpackSvdSolver::solve] The number of OP*x is "<< iparam[9-1] << std::endl;
          std::cout<<"[ArpackSvdSolver::solve] The convergence criterion is "<< tol << std::endl;
       }
 // c

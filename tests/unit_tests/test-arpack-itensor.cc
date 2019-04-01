@@ -103,6 +103,8 @@ TEST(ArpackRealSvd0, Default_cotr) {
   ITensor U(Kp), D, V;
   svd(A, U, D, V, solver, {"Truncate", false});
 
+  PrintData(U);
+
   EXPECT_TRUE(norm(A - U * D * V) < eps);
 }
 
