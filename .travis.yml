@@ -63,9 +63,10 @@ before_install:
 - sed -i "s/ITENSOR_MAKE_DYLIB=0/ITENSOR_MAKE_DYLIB=1/" options.mk
 - make -j 2
 - ldd lib/libitensor.so
+- cd unittest && make
 - cd $PEPS
 script: 
-- CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false build && cd build && ninja -j1
+- CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug build && cd build && ninja -j1
 - ldd libpi-peps.so
 - meson test -v
-- cd tests/unit_tests && gdb -ex 'run' ./test-cluster
+- cd tests/unit_tests && gdb -ex 'run' -ex 'bt' ./test-cluster 
