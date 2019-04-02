@@ -1,8 +1,8 @@
 #include "pi-peps/config.h"
 #include "pi-peps/svdsolver-factory.h"
+#include "pi-peps/linalg/arpack-rcdn.h"
 #include "pi-peps/linalg/lapacksvd-solver.h"
 #include "pi-peps/linalg/rsvd-solver.h"
-#include "pi-peps/linalg/arpack-rcdn.h"
 
 SvdSolverFactory::SvdSolverFactory() {
   registerSolver("default", &itensor::SvdSolver::create);
