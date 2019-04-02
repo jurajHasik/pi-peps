@@ -22,6 +22,10 @@ foreach _opt : optional_deps
     endif
 endforeach
 
+if not get_option('mkl')
+   subdir('lapack')
+endif
+
 # bundled dependendencies are dealt with in a different way
 # since the directory, for example, is well known
 _bundled = ['rsvd','lbfgs', 'openmp']

@@ -1,15 +1,19 @@
 _opt = 'arpack'
 _dir = get_option(_opt+'-dir')
 
+compiler = meson.get_compiler('cpp')
 
 if _dir == '' # rely on pkg-config
-    arpack = dependency('arpack', required: true)
+    arpack = dependency('arpack', required: false)
+    # old versions do not install .pc file
+    if not arpack.found()
+       arpack = compiler.find_library('arpack')
+    endif
 else
     _includedir = include_directories(_dir+'/include/arpack')
 
     # check that we can actually link against arpack
     
-    compiler = meson.get_compiler('cpp')
 
     _code = '''extern "C" void dnaupd_(int* ido,
                         char* bmat,
