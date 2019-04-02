@@ -54,6 +54,7 @@ before_install:
 - cd ..
 - export SRC=$PWD
 - mkdir deps && cd deps && git clone https://github.com/ITensor/ITensor.git itensor && cd itensor
+- git checkout 6c96c858a10c641ba052627936cc8850b5155bab
 - sed "s/^PLATFORM=/#PLATFORM=/g" options.mk.sample > options.mk
 - sed -i "s/^BLAS_LAPACK_LIBFLAGS=/#BLAS_LAPACK_LIBFLAGS=/g" options.mk
 - sed -i "s/^BLAS_LAPACK_INCLUDEFLAGS=/#BLAS_LAPACK_INCLUDEFLAGS=/g" options.mk
