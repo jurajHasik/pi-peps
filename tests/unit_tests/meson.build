@@ -28,7 +28,9 @@ test('svd-solver-gesdd',
                 dependencies:[gtest,our_lib_dep])
 )
 
-test('arpack-itensor',
-     executable('arpack-itensor','test-arpack-itensor.cc',
+if get_option('arpack')
+     test('arpack-itensor',
+         executable('arpack-itensor','test-arpack-itensor.cc',
                 dependencies:[gtest,our_lib_dep])
-)
+     )
+endif

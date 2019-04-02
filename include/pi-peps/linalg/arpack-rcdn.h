@@ -365,7 +365,7 @@ namespace itensor {
       //       msaitr = 0
       //       msapps = 0
       //       msaupd = 1
-      //       msaup2 = 0
+      //       msaup2 =
       //       mseigt = 0
       //       mseupd = 0
       // c
@@ -457,8 +457,6 @@ namespace itensor {
       // c     | M A I N   L O O P (Reverse communication loop) |
       // c     %------------------------------------------------%
       // c
-      // 10   continue
-      // c
       // c        %---------------------------------------------%
       // c        | Repeatedly call the routine DSAUPD and take |
       // c        | actions indicated by parameter IDO until    |
@@ -469,71 +467,43 @@ namespace itensor {
       // av(n,x,y) computes y<-A*x
       // atv(n,y,w) computes w<-At*y
       auto av = [&M, &Mr, &Mc](double* x, double* y) {
-        // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
         auto x_vec = makeVecRef(x, Mc);
         auto y_vec = makeVecRef(y, Mr);
         mult(M, x_vec, y_vec);
-
-        // std::cout<<"[av]";
-        // for (int i=0; i<Mc; i++) std::cout<<" "<< x[i];
-        // std::cout<<std::endl;
-        // std::cout<<"[av]";
-        // for (int i=0; i<Mr; i++) std::cout<<" "<< y[i];
-        // std::cout<<std::endl;
       };
 
       auto avt = [&M, &Mr, &Mc](double* x, double* y) {
-        // wrap workd[ipntr[1-1]] into a vector, wrap ax into a vector
         auto x_vec = makeVecRef(x, Mr);
         auto y_vec = makeVecRef(y, Mc);
         mult(M, x_vec, y_vec, true);  // transpose M
-
-        // std::cout<<"[avt]";
-        // for (int i=0; i<Mr; i++) std::cout<<" "<< x[i];
-        // std::cout<<std::endl;
-        // std::cout<<"[avt]";
-        // for (int i=0; i<Mc; i++) std::cout<<" "<< y[i];
-        // std::cout<<std::endl;
       };
 
-      for (;;) {
+      do {
         dsaupd_(&ido, bmat.c_str(), &n, which.c_str(), &nev, &tol, resid.data(),
                 &ncv, v.data(), &ldv, iparam.data(), ipntr.data(), workd.data(),
                 workl.data(), &lworkl, &info);
-
-        // for (int i=0; i<11; i++) std::cout<<" "<< iparam[i];
-        // std::cout<< std::endl;
-
-        if (ido == -1 || ido == 1) {
-          // c
-          // c           %---------------------------------------%
-          // c           | Perform matrix vector multiplications |
-          // c           |              w <--- A*x       (av())  |
-          // c           |              y <--- A'*w      (atv()) |
-          // c           | The user should supply his/her own    |
-          // c           | matrix vector multiplication routines |
-          // c           | here that takes workd(ipntr(1)) as    |
-          // c           | the input, and returns the result in  |
-          // c           | workd(ipntr(2)).                      |
-          // c           %---------------------------------------%
-          // c
-          // call av (m, n, workd(ipntr(1)), ax)
-          av(&workd[ipntr[0] - 1], ax.data());
-          // call atv (m, n, ax, workd(ipntr(2)))
-          avt(ax.data(), &workd[ipntr[1] - 1]);
-          // c
-          // c           %-----------------------------------------%
-          // c           | L O O P   B A C K to call DSAUPD again. |
-          // c           %-----------------------------------------%
-          // c
-          //             go to 10
-          // c
-          //          end if
-          // c
-        } else {
-          break;
-        }
-      }
+        // c
+        // c           %---------------------------------------%
+        // c           | Perform matrix vector multiplications |
+        // c           |              w <--- A*x       (av())  |
+        // c           |              y <--- A'*w      (atv()) |
+        // c           | The user should supply his/her own    |
+        // c           | matrix vector multiplication routines |
+        // c           | here that takes workd(ipntr(1)) as    |
+        // c           | the input, and returns the result in  |
+        // c           | workd(ipntr(2)).                      |
+        // c           %---------------------------------------%
+        // c
+        // call av (m, n, workd(ipntr(1)), ax)
+        av(&workd[ipntr[0] - 1], ax.data());
+        // call atv (m, n, ax, workd(ipntr(2)))
+        avt(ax.data(), &workd[ipntr[1] - 1]);
+        // c
+        // c           %-----------------------------------------%
+        // c           | L O O P   B A C K to call DSAUPD again. |
+        // c           %-----------------------------------------%
+        // c
+      } while (ido == -1 || ido == 1);
 
       // c     %----------------------------------------%
       // c     | Either we have convergence or there is |
