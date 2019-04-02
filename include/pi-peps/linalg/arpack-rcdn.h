@@ -235,9 +235,13 @@ namespace itensor {
                VectorRef const& D,
                MatRef<Real> const& V,
                Args const& args) {
+      bool dbg = args.getBool("svd_dbg", false);
+
       auto Mr = nrows(M);
       auto Mc = ncols(M);
-      if (Mr > Mc) {
+      if (Mr < Mc) {
+        if (dbg) std::cout<<"[ArpackSvdSolver::solve] transposing "<< Mr <<"x"<< Mc <<" -> "
+          << Mc <<"x"<< Mr << std::endl;
         solve(transpose(M), V, D, U, args);
         conjugate(V);
         conjugate(U);
@@ -249,24 +253,9 @@ namespace itensor {
         throw std::runtime_error("SVD (ref version), wrong size of U");
       if (!(nrows(V) == Mc && ncols(V) == Mr))
         throw std::runtime_error("SVD (ref version), wrong size of V");
-      if (D.size() != Mr)
+      if (D.size() != Mc)
         throw std::runtime_error("SVD (ref version), wrong size of D");
 #endif
-
-      auto pA = M.data();
-      std::vector<Real> cpA;
-      cpA.resize(Mr * Mc);
-
-      // LAPACK ?gesdd will read input matrix in column-major order. If we
-      // actually want to perform SVD of M**T where M is stored in column-major,
-      // we have to pass M**T stored in column-major. Copy of inpput matrix has
-      // to be done in any case, since input matrix is destroyed in ?gesdd
-      if (isTransposed(M)) {
-        for (unsigned int i = 0; i < cpA.size(); i++, pA++)
-          cpA[(i % Mc) * Mr + i / Mc] = *pA;
-      } else {
-        std::copy(pA, pA + Mr * Mc, cpA.data());
-      }
 
 // https://github.com/opencollab/arpack-ng/blob/master/EXAMPLES/SVD/dsvd.f
 //-----------------------------------------------------------------------
@@ -303,39 +292,32 @@ namespace itensor {
 //    %------------------------------------------------------%
 //
 
-/*    
-    integer          maxm, maxn, maxnev, maxncv, ldv, ldu
-    parameter       (maxm = 500, maxn=250, maxnev=10, maxncv=25,
-    &                 ldu = maxm, ldv=maxn )
-*/
-    int maxm = Mr;
-    int maxn = Mc;
-    int maxnev = 2; //args.getInt("Maxm", Mc);
-    int maxncv = 5; //std::min(2*maxnev + maxnev/2,maxn);
-    int ldv = maxn;
-    int ldu = maxm;
+    int m = Mr;
+    int n = Mc;
+    int requested_sv = args.getInt("Maxm", Mc);
+    if (requested_sv > n-1) {
+      throw std::runtime_error("[ArpackSvdSolver::solve] Number of singular values requested >= min(nrows,ncols)");
+    }
+    int nev = requested_sv;
+    int requested_ncv = args.getInt("arpack_svd_ncv",2*nev + nev/2);
+    int ncv = std::min(requested_ncv, n);
+    int ldv = n;
+    int ldu = m;
 //
 //     %--------------%
 //     | Local Arrays |
 //     %--------------%
 //
-//      Double precision
-//     &                 v(ldv,maxncv), u(ldu, maxnev),
-//     &                 workl(maxncv*(maxncv+8)), workd(3*maxn),
-//     &                 s(maxncv,2), resid(maxn), ax(maxm)
-//      logical          select(maxncv)
-//      integer          iparam(11), ipntr(11)
 
-    std::vector<double> v(ldv*maxncv,0.0);
-    // std::vector<double> u(ldu*maxnev,0.0);
+    std::vector<double> v(ldv*ncv,0.0);
     auto u = U.data();
-    std::vector<double> workl(maxncv*(maxncv+8),0.0);    
-    std::vector<double> workd(3*maxn,0.0);
-    std::vector<double> s(2*maxncv,0.0);
-    std::vector<double> resid(maxn,0.0);
-    std::vector<double> ax(maxm,0.0);
+    std::vector<double> workl(ncv*(ncv+8),0.0);    
+    std::vector<double> workd(3*n,0.0);
+    std::vector<double> s(2*ncv,0.0);
+    std::vector<double> resid(n,0.0);
+    std::vector<double> ax(m,0.0);
 
-    std::vector<int> select(maxncv,0);
+    std::vector<int> select(ncv,0);
     std::vector<int> iparam(11,0);
     std::vector<int> ipntr(11,0);
 
@@ -344,27 +326,19 @@ namespace itensor {
 // c     | Local Scalars |
 // c     %---------------%
 // c
-//       character        bmat*1, which*2
-//       integer          ido, m, n, nev, ncv, lworkl, info, ierr,
-//      &                 j, ishfts, maxitr, mode1, nconv
-//       logical          rvec
-//       Double precision
-//      &                 tol, sigma, temp
 
     std::string bmat;
     std::string which;
-    int ido, m, n, nev, ncv, lworkl, info, ierr, ishfts, maxitr, mode1, nconv;
+    int ido, lworkl, info, ierr, ishfts, maxitr, mode1, nconv;
     int rvec;
-    double tol, sigma, temp;
+    double tol = args.getReal("arpack_svd_tol",0.0); 
+    double sigma, temp;
 
 // c
 // c     %------------%
 // c     | Parameters |
 // c     %------------%
 // c
-//       Double precision
-//      &                 one, zero
-//       parameter        (one = 1.0D+0, zero = 0.0D+0)
 
     double  one = 1.0;
     double zero = 0.0;
@@ -403,21 +377,14 @@ namespace itensor {
 //       mseigt = 0
 //       mseupd = 0
 // c
-// c     %-------------------------------------------------%
-// c     | The following sets dimensions for this problem. |
-// c     %-------------------------------------------------%
-// c
-      m = maxm;
-      n = maxn;
-// c
 // c     %------------------------------------------------%
 // c     | Specifications for ARPACK usage are set        |
 // c     | below:                                         |
 // c     |                                                |
-// c     |    1) NEV = 4 asks for 4 singular values to be |
-// c     |       computed.                                |
+// c     |    1) NEV = sets number of singular values     |
+//       |       to be computed                           |
 // c     |                                                |
-// c     |    2) NCV = 20 sets the length of the Arnoldi  |
+// c     |    2) NCV sets the length of the Arnoldi       |
 // c     |       factorization                            |
 // c     |                                                |
 // c     |    3) This is a standard problem               |
@@ -435,24 +402,8 @@ namespace itensor {
 // c     |             NEV + 1 <= NCV <= MAXNCV           |
 // c     %------------------------------------------------%
 // c
-      nev   = maxnev;
-      ncv   = maxncv;
       bmat  = "I";
       which = "LM";
-// c
-//       if ( n .gt. maxn ) then
-//          print *, ' ERROR with _SVD: N is greater than MAXN '
-//          go to 9000
-//       else if ( m .gt. maxm ) then
-//          print *, ' ERROR with _SVD: M is greater than MAXM '
-//          go to 9000
-//       else if ( nev .gt. maxnev ) then
-//          print *, ' ERROR with _SVD: NEV is greater than MAXNEV '
-//          go to 9000
-//       else if ( ncv .gt. maxncv ) then
-//          print *, ' ERROR with _SVD: NCV is greater than MAXNCV '
-//          go to 9000
-//       end if
 // c
 // c     %-----------------------------------------------------%
 // c     | Specification of stopping rules and initial         |
@@ -487,7 +438,6 @@ namespace itensor {
 // c     %-----------------------------------------------------%
 // c
       lworkl = ncv*(ncv+8);
-      tol = zero;
       info = 0;
       ido = 0;
 // c
@@ -504,7 +454,7 @@ namespace itensor {
 // c     %---------------------------------------------------%
 // c
       ishfts = 1;
-      maxitr = 10*n;
+      maxitr = n;
       mode1 = 1;
 //c
       iparam[1-1] = ishfts;
@@ -532,12 +482,12 @@ namespace itensor {
         auto y_vec = makeVecRef(y,Mr);
         mult(M,x_vec,y_vec);
       
-        std::cout<<"[av]";
-        for (int i=0; i<Mc; i++) std::cout<<" "<< x[i];
-        std::cout<<std::endl;
-        std::cout<<"[av]";
-        for (int i=0; i<Mr; i++) std::cout<<" "<< y[i];
-        std::cout<<std::endl;
+        // std::cout<<"[av]";
+        // for (int i=0; i<Mc; i++) std::cout<<" "<< x[i];
+        // std::cout<<std::endl;
+        // std::cout<<"[av]";
+        // for (int i=0; i<Mr; i++) std::cout<<" "<< y[i];
+        // std::cout<<std::endl;
       };
 
       auto avt = [&M,&Mr,&Mc](double * x, double * y) {
@@ -546,12 +496,12 @@ namespace itensor {
         auto y_vec = makeVecRef(y,Mc);
         mult(M,x_vec,y_vec,true); // transpose M
 
-        std::cout<<"[avt]";
-        for (int i=0; i<Mr; i++) std::cout<<" "<< x[i];
-        std::cout<<std::endl;
-        std::cout<<"[avt]";
-        for (int i=0; i<Mc; i++) std::cout<<" "<< y[i];
-        std::cout<<std::endl;
+        // std::cout<<"[avt]";
+        // for (int i=0; i<Mr; i++) std::cout<<" "<< x[i];
+        // std::cout<<std::endl;
+        // std::cout<<"[avt]";
+        // for (int i=0; i<Mc; i++) std::cout<<" "<< y[i];
+        // std::cout<<std::endl;
       };
 
       for (;;) {
@@ -559,8 +509,8 @@ namespace itensor {
           &ncv, v.data(), &ldv, iparam.data(), ipntr.data(), workd.data(), workl.data(),
           &lworkl, &info );
 
-        for (int i=0; i<11; i++) std::cout<<" "<< iparam[i];
-        std::cout<< std::endl;
+        // for (int i=0; i<11; i++) std::cout<<" "<< iparam[i];
+        // std::cout<< std::endl;
 
         if (ido == -1 || ido == 1) {
 // c
@@ -690,7 +640,7 @@ namespace itensor {
             // call daxpy(m, -s(j,1), u(1,j), 1, ax, 1)
             daxpy_wrapper(m, -s[j-1], &u[ldu*(j-1)], 1, ax.data(), 1);
             // s(j,2) = dnrm2(m, ax, 1)
-            s[j+maxncv-1] = dnrm2_wrapper(m,ax.data(),1);
+            s[j+ncv-1] = dnrm2_wrapper(m,ax.data(),1);
           }
 // ----- CONVERGENCE INFORMATION --------------------------------------
 // c
@@ -700,9 +650,11 @@ namespace itensor {
 // c
           //  call dmout(6, nconv, 2, s, maxncv, -6,
      //&                'Singular values and direct residuals')
-          std::cout<<"[ArpackSvdSolver::solve] Computed sing. values and residuals: "<< std::endl;
-          for(int i=0; i<nconv; i++) {
-            std::cout<< s[i] <<" "<< s[maxncv+i] << std::endl;
+          if ( dbg ) {
+            std::cout<<"[ArpackSvdSolver::solve] Computed sing. values and residuals: "<< std::endl;
+            for(int i=0; i<nconv; i++) {
+              std::cout<< s[i] <<" "<< s[ncv+i] << std::endl;
+            }
           }
         }
 // c
@@ -710,24 +662,26 @@ namespace itensor {
 // c        | Print additional convergence information |
 // c        %------------------------------------------%
 // c
-        if ( info == 1) {
-            std::cout<<"[ArpackSvdSolver::solve] Maximum number of iterations reached."<< std::endl;
-        } else if ( info == 3) {
-            std::cout<<"[ArpackSvdSolver::solve] No shifts could be applied during implicit"
-                    <<" Arnoldi update, try increasing NCV."<< std::endl;
+        if ( dbg ) {
+          if ( info == 1) {
+              std::cout<<"[ArpackSvdSolver::solve] Maximum number of iterations reached."<< std::endl;
+          } else if ( info == 3) {
+              std::cout<<"[ArpackSvdSolver::solve] No shifts could be applied during implicit"
+                      <<" Arnoldi update, try increasing NCV."<< std::endl;
+          }
+          
+          std::cout<<"[ArpackSvdSolver::solve] _SVD "<< std::endl;
+          std::cout<<"[ArpackSvdSolver::solve] Size of the matrix is "<< n << std::endl;
+          std::cout<<"[ArpackSvdSolver::solve] The number of Ritz values requested is "<< nev << std::endl;
+          std::cout<<"[ArpackSvdSolver::solve] The number of Arnoldi vectors generated"
+                    <<" (NCV) is "<< ncv << std::endl;
+           std::cout<<"[ArpackSvdSolver::solve] What portion of the spectrum: "<< which << std::endl;
+           std::cout<<"[ArpackSvdSolver::solve] The number of converged Ritz values is "<< nconv << std::endl;
+           std::cout<<"[ArpackSvdSolver::solve] The number of Implicit Arnoldi update"
+                    <<" iterations taken is "<< iparam[3-1] << std::endl;
+           std::cout<<"[ArpackSvdSolver::solve] The number of OP*x is "<< iparam[9-1] << std::endl;
+           std::cout<<"[ArpackSvdSolver::solve] The convergence criterion is "<< tol << std::endl;
         }
-        
-        std::cout<<"[ArpackSvdSolver::solve] _SVD "<< std::endl;
-        std::cout<<"[ArpackSvdSolver::solve] Size of the matrix is "<< n << std::endl;
-        std::cout<<"[ArpackSvdSolver::solve] The number of Ritz values requested is "<< nev << std::endl;
-        std::cout<<"[ArpackSvdSolver::solve] The number of Arnoldi vectors generated"
-                  <<" (NCV) is "<< ncv << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] What portion of the spectrum: "<< which << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] The number of converged Ritz values is "<< nconv << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] The number of Implicit Arnoldi update"
-                  <<" iterations taken is "<< iparam[3-1] << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] The number of OP*x is "<< iparam[9-1] << std::endl;
-         std::cout<<"[ArpackSvdSolver::solve] The convergence criterion is "<< tol << std::endl;
       }
 // c
 // c     %-------------------------%
@@ -735,13 +689,24 @@ namespace itensor {
 // c     %-------------------------%
 // c
 
-      // auto ncV = const_cast<Real*>(V.data());
-      // auto pV = reinterpret_cast<Real*>(ncV);
-      // int l = std::min(Mr, Mc);
-      // std::vector<Real> vt(l * Mc);
-      // std::copy(V.data(), V.data() + l * Mc, vt.data());
-      // for (unsigned int i = 0; i < vt.size(); i++, pV++)
-      //   *pV = vt[(i % Mc) * l + i / Mc];
+      // Arpack orders singular values and corresponding vectors in ascending order
+      // to conform with ITensor, its necessary to reverse the order
+
+      // reverse singular values
+      for (int i=0; i<nconv; i++) { D[i]=s[nconv-i-1]; }
+
+      // reverse U
+      std::vector<double> tmp(ldu);
+      for (int j=0; j<nconv/2; j++) {
+        std::copy(U.data()+ldu*j,U.data()+ldu*(j+1),tmp.data());
+        std::copy(U.data()+ldu*(nconv-j-1),U.data()+ldu*(nconv-j),U.data()+ldu*j);
+        std::copy(tmp.data(),tmp.data()+ldu,U.data()+ldu*(nconv-j-1));
+      }
+
+      // copy and reverse v to V
+      for (int j=0; j<nconv; j++) {
+        std::copy(v.data()+ldv*j,v.data()+ldv*(j+1),V.data()+ldv*(nconv-j-1));
+      }
 
 #ifdef CHKSVD
       checksvd(M, U, D, V);

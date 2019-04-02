@@ -69,7 +69,8 @@ TEST(ArpackReal0, Default_cotr) {
 }
 
 TEST(ArpackRealSvd0, Default_cotr) {
-  double eps = 1.0e-08;
+  double eps = 1.0e-07;
+
   Index K = Index("k", 5);
   Index Kp = prime(K);
   ITensor A(K, Kp);
@@ -100,12 +101,66 @@ TEST(ArpackRealSvd0, Default_cotr) {
   A.set(K(5), Kp(5), -6.87);
 
   ArpackSvdSolver solver = ArpackSvdSolver();
-  ITensor U(Kp), D, V;
-  svd(A, U, D, V, solver, {"Truncate", false});
+  ITensor U(Kp), D, Vt;
+  svd(A, U, D, Vt, solver, {"Maxm", 4});
 
   PrintData(U);
+  PrintData(D);
+  PrintData(Vt);
 
-  EXPECT_TRUE(norm(A - U * D * V) < eps);
+  // true singular values of A = {21.5538, 12.5376, 9.5126, 8.4900, 1.759784917702199}
+  double n = norm(A - U * D * Vt);
+  EXPECT_TRUE(std::sqrt( std::abs(n*n - 1.759784917702199*1.759784917702199) ) < eps);
+}
+
+TEST(ArpackRealSvd1, Default_cotr) {
+  double eps = 1.0e-07;
+
+  Index a("a", 3), b("b", 2);
+  ITensor A(a, b);
+  A.set(a(1), b(1), 1);
+  A.set(a(2), b(1), 2);
+  A.set(a(3), b(1), 3);
+  A.set(a(1), b(2), 4);
+  A.set(a(2), b(2), 5);
+  A.set(a(3), b(2), 6);
+
+  ArpackSvdSolver solver = ArpackSvdSolver();
+  ITensor U(b), D, Vt;
+  svd(A, U, D, Vt, solver, {"Maxm", 1});
+
+  PrintData(U);
+  PrintData(D);
+  PrintData(Vt);
+
+  // true singular values of A = {9.5080, 0.772869635673485}
+  double n = norm(A - U * D * Vt);
+  EXPECT_TRUE( std::sqrt( std::abs(n*n - 0.772869635673485*0.772869635673485) ) < eps);
+}
+
+TEST(ArpackRealSvd2, Default_cotr) {
+  double eps = 1.0e-07;
+
+  Index a("a", 2), b("b", 3);
+  ITensor A(a, b);
+  A.set(a(1), b(1), 1);
+  A.set(a(2), b(1), 4);
+  A.set(a(1), b(2), 2);
+  A.set(a(2), b(2), 5);
+  A.set(a(1), b(3), 3);
+  A.set(a(2), b(3), 6);
+
+  ArpackSvdSolver solver = ArpackSvdSolver();
+  ITensor U(b), D, Vt;
+  svd(A, U, D, Vt, solver, {"Maxm", 1});
+
+  PrintData(U);
+  PrintData(D);
+  PrintData(Vt);
+
+  // true singular values of A = {9.5080, 0.772869635673485}
+  double n = norm(A - U * D * Vt);
+  EXPECT_TRUE( std::sqrt( std::abs(n*n - 0.772869635673485*0.772869635673485) ) < eps);
 }
 
 } // namespace itensor
