@@ -13,10 +13,9 @@ matrix:
         - g++-8
         - liblapack-dev
         - liblapacke-dev
-        - libopenblas-dev
         - libarpack2-dev
         - libblas-dev
-        - libatlas-base-dev
+        - gdb 
     env:
     - COMPILER="CXX=g++-8"
     - PLATFORM="lapack"
