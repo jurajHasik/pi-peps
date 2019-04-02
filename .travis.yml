@@ -15,7 +15,6 @@ matrix:
         - liblapacke-dev
         - libarpack2-dev
         - libblas-dev
-        - gdb 
     env:
     - COMPILER="CXX=g++-8"
     - PLATFORM="lapack"
@@ -32,10 +31,8 @@ matrix:
         - clang-6.0
         - liblapack-dev
         - liblapacke-dev
-        - libopenblas-dev
         - libarpack2-dev
         - libblas-dev
-        - libatlas-base-dev
     env:
     - COMPILER="CXX=clang++-6.0"
     - PLATFORM="lapack"
@@ -73,5 +70,3 @@ script:
 - CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug build && cd build && ninja -j1
 - ldd libpi-peps.so
 - meson test -v
-- cd tests/unit_tests && gdb -ex 'run' -ex 'bt' -ex 'q' ./test-cluster 
-- gdb -ex 'run' -ex 'bt' -ex 'q' ./test-lin-sys
