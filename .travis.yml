@@ -63,6 +63,7 @@ before_install:
 - sed -i "s/ITENSOR_MAKE_DYLIB=0/ITENSOR_MAKE_DYLIB=1/" options.mk
 - make -j 2
 - ldd lib/libitensor.so
+- export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
 - cd unittest && make
 - cd $PEPS
 script: 
