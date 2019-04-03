@@ -37,7 +37,7 @@ int main(int argc, char* argv[]) {
   int physDim = json_cluster["physDim"].get<int>();
   int auxBondDim = json_cluster["auxBondDim"].get<int>();
 
-  double initStateNoise = jsonCls.value("initStateNoise", 1.0e-16);
+  double initStateNoise = jsonCls.value("initStateNoise", 0.0);
 
   // read cluster outfile
   std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
@@ -60,8 +60,6 @@ int main(int argc, char* argv[]) {
   std::string arg_otNormType = jsonCls["otNormType"].get<std::string>();
 
   int arg_maxAltLstSqrIter = jsonCls["maxAltLstSqrIter"].get<int>();
-  std::string arg_fuIsoInit = jsonCls["fuIsoInit"].get<std::string>();
-  double arg_fuIsoInitNoiseLevel = jsonCls["fuIsoInitNoiseLevel"].get<double>();
   bool symmetrizeProtoEnv = jsonCls["symmetrizeProtoEnv"].get<bool>();
   bool posDefProtoEnv = jsonCls["positiveDefiniteProtoEnv"].get<bool>();
   // Iterative ALS procedure
@@ -70,13 +68,6 @@ int main(int argc, char* argv[]) {
   std::string linsolver = json_als_params.value("solver", "UNSUPPORTED");
   bool solver_dbg = json_als_params.value("dbg", false);
   double epsregularisation = json_als_params.value("epsregularisation", 0.0);
-
-  // BiCG params
-  double cg_convergence_check =
-    json_als_params.value("cg_convergence_check", 1);
-  double cg_gradientNorm_eps =
-    json_als_params.value("cg_gradientNorm_eps", 1.0e-8);
-  int cg_max_iter = json_als_params.value("cg_max_iter", 0);
 
   // direct linear solver params
   std::string als_ds_method = json_als_params.value("method", "LU");
@@ -104,10 +95,9 @@ int main(int argc, char* argv[]) {
   // read CTMRG parameters
   auto json_ctmrg_params(jsonCls["ctmrg"]);
   int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
-  std::string arg_ioEnvTag(json_ctmrg_params["ioEnvTag"].get<std::string>());
   CtmEnv::init_env_type arg_initEnvType(
     toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
-  bool envIsComplex = json_ctmrg_params["envIsComplex"].get<bool>();
+  bool envIsComplex = json_ctmrg_params.value("envIsComplex",false);
   CtmEnv::isometry_type iso_type(
     toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
   CtmEnv::normalization_type norm_type(
@@ -215,10 +205,10 @@ int main(int argc, char* argv[]) {
       env_args.add(key, (double)val);
   }
 
-  CtmEnv ctmEnv(arg_ioEnvTag, auxEnvDim, *p_cls, *pSvdSolver, env_args);
+  CtmEnv ctmEnv("default", auxEnvDim, *p_cls, *pSvdSolver, env_args);
 
   // INITIALIZE EXPECTATION VALUE BUILDER
-  EVBuilder ev(arg_ioEnvTag, *p_cls, ctmEnv);
+  EVBuilder ev("default", *p_cls, ctmEnv);
   std::cout << ev;
 
   // hold ctm observables used in the convergence criterion
@@ -264,24 +254,12 @@ int main(int argc, char* argv[]) {
     "epsdistf",
     epsdistf,
 
-    "fuIsoInit",
-    arg_fuIsoInit,
-    "fuIsoInitNoiseLevel",
-    arg_fuIsoInitNoiseLevel,
-
     "solver",
     linsolver,
     "dbg",
     solver_dbg,
     "epsregularisation",
     epsregularisation,
-
-    "cg_convergence_check",
-    cg_convergence_check,
-    "cg_gradientNorm_eps",
-    cg_gradientNorm_eps,
-    "cg_max_iter",
-    cg_max_iter,
 
     "method",
     als_ds_method,
@@ -290,9 +268,6 @@ int main(int argc, char* argv[]) {
     pseudoInvCutoff,
     "pseudoInvCutoffInsert",
     pseudoInvCutoffInsert,
-
-    //"dynamicEps",dynamicEps,
-    //"pseudoInvMaxLogGap",pseudoInvMaxLogGap
   };
   // Diagnostic data
   std::vector<std::string> diag_log;

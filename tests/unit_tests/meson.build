@@ -12,11 +12,13 @@ gtest_without_main = dependency('gtest', main: false,
 
 test('lin-system',
      executable('test-lin-sys','test-lin-sys.cc',
-                dependencies:[gtest,our_lib_dep])
+                dependencies:[gtest,our_lib_dep]),
+     suite: ['unit-tests']
 )
 test('cluster',
      executable('test-cluster','test-cluster.cc',
-                dependencies:[gtest,our_lib_dep])
+                dependencies:[gtest,our_lib_dep]),
+     suite: ['unit-tests']
 )
 #test('ctm-env',
 #     executable('test-ctm-env','test-ctm-env.cc',
@@ -25,12 +27,14 @@ test('cluster',
 
 test('svd-solver-gesdd',
      executable('gesdd-svd-solver','test-gesdd-svd-solver.cc',
-                dependencies:[gtest,our_lib_dep])
+                dependencies:[gtest,our_lib_dep]),
+     suite: ['unit-tests']
 )
 
 if get_option('arpack')
      test('arpack-itensor',
          executable('arpack-itensor','test-arpack-itensor.cc',
-                dependencies:[gtest,our_lib_dep])
+                dependencies:[gtest,our_lib_dep]),
+     suite: ['unit-tests']
      )
 endif
