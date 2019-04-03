@@ -1,8 +1,8 @@
 tests = [
 #            'env-ctmrg-rvb-2x2',
+#            'opt-fu-hb-1x2',
             'env-ctmrg-rvb-1x2',
-            'opt-su-hb-1x2',
-            'opt-fu-hb-1x2'
+            'opt-su-hb-1x2'
 ]
 
 compare = find_program('compare.sh')
