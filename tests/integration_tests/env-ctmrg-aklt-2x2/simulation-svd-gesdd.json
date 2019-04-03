@@ -1,0 +1,29 @@
+{
+	"cluster": {
+		"type": "DEFAULT",
+		"initBy": "FILE",
+		"physDim": 5,
+		"auxBondDim": 2,
+		"inClusterFile": "AKLT_2x2_ABCD.in"
+        },
+	"initStateNoise": 0.0,
+	"outClusterFile": "output.in",
+
+
+	"model": {
+		"type": "AKLT_2X2_ABCD"
+	},
+
+	"ctmrg": {
+		"auxEnvDim": 48,
+		"initEnvType": "INIT_ENV_ctmrg",
+		"isoType": "ISOMETRY_T3",
+		"env_SVD_METHOD": "gesdd",
+		"isoPseudoInvCutoff": 1.0e-8,
+		"normType": "NORM_BLE",
+		"maxEnvIter": 50,
+		"envEpsilon": 1.0e-10,
+		"dbg": false,
+		"dbgLvl": 0
+	}
+}
