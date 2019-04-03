@@ -68,7 +68,9 @@ before_install:
 - cd unittest && make
 - cd $PEPS
 script: 
-- CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug build && cd build && ninja -j1
-- meson test -v
+- CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug -Denable-tests=true build && cd build && ninja -j1
+- ldd libpi-peps.so
+- meson test --suite unit-tests -v
 - meson configure -Darpack=true
-- meson test -v
+- meson test --suite unit-tests -v
+- meson test --suite integration --timeout-multiplier=10
