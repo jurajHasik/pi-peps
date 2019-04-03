@@ -62,11 +62,11 @@ before_install:
 - sed -i "$(( flag_line_no + 1 )) s/^#BLAS_LAPACK_LIBFLAGS=/BLAS_LAPACK_LIBFLAGS=/" options.mk
 - sed -i "s/ITENSOR_MAKE_DYLIB=0/ITENSOR_MAKE_DYLIB=1/" options.mk
 - make -j 2
-- ldd lib/libitensor.so
 - export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
 - cd unittest && make
 - cd $PEPS
 script: 
 - CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug build && cd build && ninja -j1
-- ldd libpi-peps.so
+- meson test -v
+- meson configure -Darpack=true
 - meson test -v
