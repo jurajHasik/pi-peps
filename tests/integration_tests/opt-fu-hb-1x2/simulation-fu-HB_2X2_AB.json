@@ -8,7 +8,7 @@
 	},
 	"outClusterFile": "output_HB_2X2_AB.in",
 
-	"fuIter": 512,
+	"fuIter": 256,
 	"obsFreq": 8,
 	"decreaseTimestep": false,
 	"maxAltLstSqrIter": 50,
