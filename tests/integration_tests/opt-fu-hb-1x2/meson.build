@@ -31,12 +31,13 @@ endforeach
 
 _prefix = meson.current_build_dir()
 test('opt-fu-hb-1x2', 
-	compare, 
+	compare_ll, 
 	args:[
 		exe.full_path(), 
         	_prefix+'/'+'output_HB_2x2_AB.in.energy.dat',
         	_prefix+'/'+'reference_output_HB_2x2_AB.in.energy.dat',
-		_prefix+'/'+'simulation-fu-HB_2x2_AB.json'
+		_prefix+'/'+'simulation-fu-HB_2x2_AB.json',
+		'1e-6'
 	],
 	workdir: meson.current_build_dir(),
 	suite: ['integration'],
