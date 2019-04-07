@@ -22,11 +22,8 @@ included:
 for large-scale truncated singular value decompositions (requires MKL)
 
 <br>
-<br>
 
-<cite>[1]</cite> H. C. Jiang, Z. Y. Weng, T. Xiang [Phys. Rev. Lett. 101, 090603 (2008)](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.101.090603) or [arxiv:0806.3719](https://arxiv.org/abs/0806.3719)
-
-<cite>[2]</cite> H. N. Phien, J. A. Bengua, H. D. Tuan, P. Corboz, R. Orus [Phys. Rev. B 92, 035142 (2015)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.92.035142) or [arxiv:1503.05345](https://arxiv.org/abs/1503.05345)
-
+<cite>[1]</cite> H. C. Jiang, Z. Y. Weng, T. Xiang, [Phys. Rev. Lett. 101, 090603 (2008)](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.101.090603) or [arxiv:0806.3719](https://arxiv.org/abs/0806.3719)\
+<cite>[2]</cite> H. N. Phien, J. A. Bengua, H. D. Tuan, P. Corboz, R. Orus, [Phys. Rev. B 92, 035142 (2015)](https://journals.aps.org/prb/abstract/10.1103/PhysRevB.92.035142) or [arxiv:1503.05345](https://arxiv.org/abs/1503.05345)\
 <cite>[3]</cite> P. Corboz, T. M. Rice, M. Troyer, [Phys. Rev. Lett. 113, 046402 (2014)](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.113.046402) or [arxiv:1402.2859](https://arxiv.org/abs/1402.2859)
 
