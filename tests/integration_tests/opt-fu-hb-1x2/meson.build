@@ -36,7 +36,7 @@ test('opt-fu-hb-1x2',
 		exe.full_path(), 
         	_prefix+'/'+'output_HB_2X2_AB.in.energy.dat',
         	_prefix+'/'+'reference_output_HB_2X2_AB.in.energy.dat',
-		'1e-5',
+		'1e-4',
 		_prefix+'/'+'simulation-fu-HB_2X2_AB.json'
 	],
 	workdir: meson.current_build_dir(),
