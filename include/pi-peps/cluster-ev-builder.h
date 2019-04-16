@@ -200,7 +200,13 @@ class EVBuilder {
    */
   double eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG = false) const;
 
+  double eval2x2Diag11(std::pair<itensor::ITensor, itensor::ITensor> const& Op, Vertex const& v1, bool DBG = false) const;
+
   double contract2x2Diag11(OP_2S op2s,
+                                    Vertex const& v1,
+                                    bool DBG) const;
+
+  double contract2x2Diag11(std::pair<itensor::ITensor, itensor::ITensor> const& op,
                            Vertex const& v1,
                            bool DBG = false) const;
 
@@ -226,9 +232,15 @@ class EVBuilder {
    */
   double eval2x2DiagN11(OP_2S op2s, Vertex const& v1, bool DBG = false) const;
 
+  double eval2x2DiagN11(std::pair<itensor::ITensor, itensor::ITensor> const& Op, Vertex const& v1, bool DBG = false) const;
+
   double contract2x2DiagN11(OP_2S op2s,
                             Vertex const& v1,
                             bool DBG = false) const;
+
+  double contract2x2DiagN11(std::pair<itensor::ITensor, itensor::ITensor> const& op,
+                           Vertex const& v1,
+                           bool DBG = false) const;
 
   double eval2x2op4s(OP_4S op4s, Vertex const& v1, bool DBG = false) const;
 
