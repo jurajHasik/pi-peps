@@ -97,6 +97,41 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o, itensor::Index const& s, bool DBG) {
   return Op;
 }
 
+itensor::ITensor SU2_getRotOp(itensor::Index const& s) {
+  auto s1 = prime(s);
+  int dimS = s.m();
+
+  // Operator corresponds to "odd" site of bipartite AKLT
+  // state - perform rotation on physical indices
+  /*
+   * I(s)'--|Op|--I(s) =>
+   *
+   * I(s)'''--|R1|--I(s)'--|Op|--I(s)--|R2|--I(s)''
+   *
+   * where Rot is a real symmetric rotation matrix, thus R1 = R2
+   * defined below. Then one has to set indices of rotated
+   * Op to proper prime level
+   *
+   */
+  auto R1 = itensor::ITensor(s, s1);
+  for(int i=1;i<=dimS;i++) {
+      R1.set(s(i), s1(dimS+1-i), pow(-1,i-1));
+  }
+ 
+  return R1;
+}
+
+itensor::ITensor SU2_applyRot(itensor::Index const& s, itensor::ITensor const& op) {
+  auto s1 = prime(s);
+
+  auto res = prime(op);
+  auto R1 = SU2_getRotOp(s);
+  auto R2 = (R1*delta(s,prime(s,3)))*delta(s1,prime(s,2));
+  res = (R1*res*R2)*delta(prime(s,3),s1);
+
+  return res;
+}
+
 double SU2_getCG(int j1, int j2, int j, int m1, int m2, int m) {
   // (!) Use Dynkin notation to pass desired irreps
 

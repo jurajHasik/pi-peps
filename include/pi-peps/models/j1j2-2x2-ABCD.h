@@ -32,6 +32,25 @@ namespace itensor {
   };
   // ----- END Definition of model class --------------------------------
 
+  // ----- Definition of model base class and its particular instances --
+  class J1J2Model_1x1_A : public Model {
+   public:
+    double J1, J2, del;
+
+    J1J2Model_1x1_A(double arg_J1, double arg_J2, double arg_del);
+
+    void setObservablesHeader(std::ofstream& output) override;
+
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
+
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
+
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
+
 }  // namespace itensor
 
 #endif

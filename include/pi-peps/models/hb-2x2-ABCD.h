@@ -53,6 +53,24 @@ namespace itensor {
   };
   // ----- END Definition of model class --------------------------------
 
+  // ----- Definition of model base class and its particular instances --
+  class HeisenbergModel_1x1_A : public Model {
+   public:
+    double J, h, del;
+
+    HeisenbergModel_1x1_A(double arg_J, double arg_h, double arg_del);
+
+    void setObservablesHeader(std::ofstream& output) override;
+
+    void computeAndWriteObservables(EVBuilder const& ev,
+                                    std::ofstream& output,
+                                    Args& metaInf) override;
+
+    static std::unique_ptr<Model> create(nlohmann::json& json_model);
+
+    static std::unique_ptr<Engine> buildEngine(nlohmann::json& json_model);
+  };
+  // ----- END Definition of model class --------------------------------
 }  // namespace itensor
 
 #endif
