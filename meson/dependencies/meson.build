@@ -8,10 +8,9 @@ optional_deps = ['mkl','arpack']
 
 foreach _opt : optional_deps
     _wanted = get_option(_opt)
-    _dir = get_option(_opt+'-dir')
-    # the willingness to use a library can be specified
-    # from command line either with the option -Dopt
-    # or -Dopt-dir
+    # the willingness to use a library must be specified
+    # from command line with the option -Dopt
+    # and eventually -Dopt-dir
     # there is no need to use both
     if not _wanted
         message('Compiling without '+ _opt.to_upper())
@@ -28,7 +27,7 @@ endif
 
 # bundled dependendencies are dealt with in a different way
 # since the directory, for example, is well known
-_bundled = ['rsvd','lbfgs', 'openmp']
+_bundled = ['rsvd','lbfgs']
 
 foreach _opt : _bundled
     _wanted = get_option(_opt)
@@ -44,3 +43,18 @@ foreach _opt : _bundled
 endforeach
 
 optional_deps += _bundled
+
+
+_others = ['openmp']
+
+foreach _opt : _others
+    _wanted = get_option(_opt)
+    if not _wanted
+        message('Compiling without ' + _opt.to_upper())
+    else
+        message('Enabling ' + _opt.to_upper())
+        subdir(_opt)
+    endif
+endforeach
+
+optional_deps += _others
