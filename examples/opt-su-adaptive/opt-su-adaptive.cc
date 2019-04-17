@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
 
   int physDim = json_cluster["physDim"].get<int>();
   int auxBondDim = json_cluster["auxBondDim"].get<int>();
-  double initStateNoise = jsonCls.value("initStateNoise", 1.0e-16);
+  double initStateNoise = jsonCls.value("initStateNoise", 0.0);
 
   // read cluster outfile
   std::string outClusterFile(jsonCls["outClusterFile"].get<std::string>());
@@ -67,6 +67,7 @@ int main(int argc, char* argv[]) {
   int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
   CtmEnv::init_env_type arg_initEnvType(
     toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
+  bool envIsComplex = json_ctmrg_params.value("envIsComplex",false);
   CtmEnv::isometry_type iso_type(
     toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
   double arg_isoPseudoInvCutoff =
@@ -191,7 +192,7 @@ int main(int argc, char* argv[]) {
                  env_SVD_METHOD, "rsvd_power", rsvd_power, "rsvd_reortho",
                  rsvd_reortho, "rsvd_oversampling", rsvd_oversampling, "dbg",
                  arg_envDbg, "dbgLevel", arg_envDbgLvl});
-  ctmEnv.init(arg_initEnvType, false, arg_envDbg);
+  ctmEnv.init(arg_initEnvType, envIsComplex, arg_envDbg);
 
   // INITIALIZE EXPECTATION VALUE BUILDER
   EVBuilder ev("default", *p_cls, ctmEnv);
