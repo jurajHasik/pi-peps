@@ -3116,8 +3116,7 @@ std::pair<ITensor, ITensor> EVBuilder::get2SiteSpinOP(OP_2S op2s,
   // Assume s0 is different then s2
   Index tmp_sB = sB;
   if (sA == sB) {
-    std::cout << "On-site PHYS indices sA and sB are identitcal" << std::endl;
-    // exit(EXIT_FAILURE);
+    if (dbg) std::cout << "On-site PHYS indices sA and sB are identitcal" << std::endl;
     tmp_sB = Index(sB.rawname() + "_copy", sB.m(), sB.type(), sB.primeLevel());
   }
 

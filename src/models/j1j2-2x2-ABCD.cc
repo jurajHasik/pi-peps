@@ -366,7 +366,7 @@ namespace itensor {
 
     // compute energies NNN links
     if (compute_SS_NNN) {
-      evNNN.push_back(ev.eval2x2Diag11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(0, 0), true));
+      evNNN.push_back(ev.eval2x2Diag11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(0, 0)));
       evNNN.push_back(ev.eval2x2DiagN11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(1, 0)));
     }
 
