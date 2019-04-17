@@ -5,9 +5,10 @@ if _dir == '' # rely on pkg-config
     mkl = dependency('mkl-dynamic-lp64-iomp', required: true)
     # we assume the .pc file provides the correct flags
 else
-    _libdir = [_dir+'/lib/intel64_lin', _dir+'/lib']
+    _libdir = _dir+'/lib/intel64_lin'
+    _condalib =  _dir+'/lib'
     _d = _dir.split('mkl')
-    _omplibdir = [_d[0] + '/lib/intel64_lin', _d[0]+'/lib']
+    _omplibdir = _d[0] + '/lib/intel64_lin'
     _includedir = include_directories(_dir+'/include')
 
     # check that we can actually link against mkl
@@ -47,7 +48,7 @@ else
     
     foreach _lib : _mkl_libs
        _libs += compiler.find_library(_lib,
-                                   dirs:[_libdir,_omplibdir], required:true )
+                                   dirs:[_libdir,_omplibdir,_condalib], required:true )
     
     endforeach
     
