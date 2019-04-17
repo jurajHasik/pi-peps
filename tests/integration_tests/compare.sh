@@ -27,4 +27,6 @@ then
     echo "diff failed"
     exit 1
 fi
+
+rm $_out
 exit 0
