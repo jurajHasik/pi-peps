@@ -22,6 +22,7 @@ _files = [_source,
           'simulation-svd-itensor.json',
           'simulation-svd-gesdd.json',
           'simulation-svd-gesdd_AB.json',
+          'simulation-svd-arpack_AB.json',
           'simulation-svd-rsvd.json',
           'simulation-svd-rsvd_AB.json']
 
