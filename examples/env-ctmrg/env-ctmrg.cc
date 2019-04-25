@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
     ClusterFactory cf = ClusterFactory();
     p_cls = cf.create(json_cluster);
   }
-  // std::cout << cls;
+  p_cls->normalize();
   std::cout << *p_cls;
   // ***** INITIALIZE CLUSTER DONE ******************************************
 
@@ -308,54 +308,10 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
 
-  auto printEEC = [](std::vector<double> const& eec) {
-    for (int i = 0; i < 4; i++)
-      std::cout << eec[i] << " ";
-    std::cout << std::endl;
-  };
-
-  std::cout << "Corner EE (inner): " << std::endl;
-  // analyze corner entanglement entropy (ee)
-  // inner corners
-  //
-  // C--
-  // |
-  //
-  std::vector<std::vector<double>> eec_in, eec_out;
-  std::vector<Vertex> vs = {Vertex(0, 0), Vertex(1, 0), Vertex(0, 1),
-                            Vertex(1, 1)};
-  for (auto const& v : vs) {
-    eec_in.push_back(ev.eeCorner_1s_inner(v));
-  }
-  for (int i = 0; i < vs.size(); i++) {
-    std::cout << vs[i] << " " << p_cls->vToId.at(vs[i]) << " ";
-    printEEC(eec_in[i]);
-  }
-
-  std::cout << "Corner EE (outer): " << std::endl;
-  // outer corners
-  //
-  // C--T--C
-  // |  |  |
-  // T--A--T
-  // |  |  |
-  // C--T--
-  //
-  for (auto const& v : vs) {
-    eec_out.push_back(ev.eeCorner_1s_outer(v));
-  }
-  for (int i = 0; i < vs.size(); i++) {
-    std::cout << vs[i] << " " << p_cls->vToId.at(vs[i]) << " ";
-    printEEC(eec_out[i]);
-  }
-
 #ifdef PEPS_WITH_ARPACK
   std::cout << "Transfer matrix spectrum analysis: " << std::endl;
-  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
-  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
-
-  analyzeTransferMatrix(ev, Vertex(1, 1), CtmEnv::DIRECTION::RIGHT);
-  analyzeTransferMatrix(ev, Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
+  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT, 5);
+  analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN, 5);
 #endif
 
   // FINISHED

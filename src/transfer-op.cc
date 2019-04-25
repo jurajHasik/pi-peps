@@ -241,6 +241,7 @@ namespace itensor {
   void analyzeTransferMatrix(EVBuilder const& ev,
                              Vertex const& v,
                              CtmEnv::DIRECTION dir,
+                             int num_eigs,
                              std::string alg_type) {
     if (alg_type == "ARPACK") {
       TransferOpVecProd tvp(ev, v, dir);
@@ -250,7 +251,7 @@ namespace itensor {
 
       std::vector<std::complex<double>> eigv;
       std::vector<double> V;
-      ardns.real_nonsymm(N, 4, 100, 0.0, N * 10, eigv, V);
+      ardns.real_nonsymm(N, num_eigs, 100, 0.0, N * 10, eigv, V);
 
       // sort
       std::sort(

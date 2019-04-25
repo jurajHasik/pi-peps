@@ -26,6 +26,7 @@ namespace itensor {
   void analyzeTransferMatrix(EVBuilder const& ev,
                              Vertex const& v,
                              CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT,
+                             int num_eigs = 2,
                              std::string alg_type = "ARPACK");
 
 }  // namespace itensor

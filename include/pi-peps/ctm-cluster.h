@@ -154,6 +154,8 @@ struct Cluster {
 
   void absorbWeightsToLinks(bool dbg = false);
 
+  void normalize(std::string norm_type = "BLE");
+
   /** make sure the right dtor is called */
   virtual ~Cluster() = default;
 };

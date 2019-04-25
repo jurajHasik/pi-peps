@@ -22,6 +22,47 @@ std::unique_ptr<Cluster> Cluster::create(nlohmann::json const& json_cluster) {
   return std::unique_ptr<Cluster>(new Cluster(lX, lY));
 }
 
+void Cluster::normalize(std::string norm_type) {
+  
+  double m = 0.;
+  auto max_m = [&m](double d) {
+    if (std::abs(d) > m)
+      m = std::abs(d);
+  };
+
+  if (norm_type == "BLE") {
+    for (const auto& id : siteIds) {
+      m = 0.;
+      sites.at(id).visit(max_m);
+      sites.at(id) *= 1.0/m;
+    }
+  }
+  else if (norm_type == "BLE_SQRT") {
+    for (const auto& id : siteIds) {
+      m = 0.;
+      sites.at(id).visit(max_m);
+      sites.at(id) *= 1.0 / std::sqrt(m);
+    }
+  } 
+  else if (norm_type == "BALANCE") {
+    double iso_tot_mag = 1.0;
+    for (const auto& id : siteIds) {
+      m = 0.;
+      sites.at(id).visit(max_m);
+      sites.at(id) *= 1.0 / m;
+      iso_tot_mag = iso_tot_mag * m;
+    }
+    for (const auto& id : siteIds) {
+      sites.at(id) *= std::pow(iso_tot_mag, (0.5 / siteIds.size()) );
+    }
+  } else if (norm_type == "NONE") {
+  } else {
+    std::cout << "Unsupported on-site tensor normalisation after full update: "
+              << norm_type << std::endl;
+    exit(EXIT_FAILURE);
+  }
+}
+
 void initClusterWeights(Cluster& c, bool dbg) {
   if (c.siteToWeights.size() == 0) {
     std::cout << "[initClusterWeights]"
