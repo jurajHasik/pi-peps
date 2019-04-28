@@ -5,7 +5,8 @@ using namespace itensor;
 
 void CtmEnv::move_unidirectional(DIRECTION direction,
                                  ISOMETRY iso_type,
-                                 std::vector<double>& accT) {
+                                 std::vector<double>& accT,
+                                 int max_moves) {
   int length;
   switch (direction) {
     case DIRECTION::LEFT: {
@@ -28,6 +29,7 @@ void CtmEnv::move_unidirectional(DIRECTION direction,
       throw std::runtime_error("[move_singleDirection] Invalid direction");
   }
 
+  length = (max_moves < 0) ? length : std::min(max_moves,length);
   for (unsigned int i = 0; i < length; i++) {
     move_singleDirection(direction, iso_type, accT);
   }

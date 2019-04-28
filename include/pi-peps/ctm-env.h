@@ -248,7 +248,8 @@ class CtmEnv {
 
   void move_unidirectional(DIRECTION direction,
                            ISOMETRY iso_type,
-                           std::vector<double>& accT);
+                           std::vector<double>& accT,
+                           int max_moves = -1);
 
   void move_singleDirection(DIRECTION direction,
                             ISOMETRY iso_type,
