@@ -7,8 +7,12 @@ option('openmp', type: 'boolean', value: true, description: 'enable openMP suppo
 # one option with `library_name-dir`, type string
 
 # mkl
-option('mkl', type: 'boolean', value: true)
+option('mkl', type: 'boolean', value: false)
 option('mkl-dir', type: 'string', value: '')
+
+# lapack
+option('lapack', type: 'boolean', value: true)
+option('lapack-dir', type: 'string', value: '')
 
 # itensor
 option('itensor', type: 'boolean', value: true)
