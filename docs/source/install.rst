@@ -29,6 +29,12 @@ and `ninja` as
 
         $ conda install meson ninja
 
+To install Intel MKL and corresponding headers through `conda`:
+
+.. code-block:: bash
+
+        $ conda install mkl mkl-headers
+
 The simplest way to get ARPACK is to use package manager of your choice (`apt-get`, ...),
 for example we can again use `conda`:
 
@@ -66,14 +72,24 @@ using `ninja`
                 $ cd build
                 $ ninja
 
-Note that in the above example, `lapack` with `cblas` is used as default. If you want to use **mkl** instead, see below.
+Note that in the above example, `lapack` with `cblas` is used as default. If you want to use Intel MKL instead, see below.
 
-Configuring pi-peps with mkl
-----------------------------
+Configuring pi-peps with Intel MKL
+----------------------------------
+First, build the ITensor library with Intel MKL. Afterwards, you can build pi-peps:
+
 .. code-block:: bash
 		
-		$ meson -Ditensor-dir=/what/ever -Dmkl=true -Dmkl-dir=/path/to/mkl/root/dir  build-mkl
+		$ meson -Ditensor-dir=/path/to/ITensor -Dmkl=true -Dmkl-dir=/path/to/mkl/root/dir  build-mkl
 
+If you installed both Intel MKL and ARPACK through `conda`, an examplary configuration could be 
+done as follows:
+
+.. code-block:: bash
+		
+		$ meson -Ditensor-dir=/path/to/ITensor -Dmkl=true -Dmkl-dir=$CONDA_PREFIX -Darpack=true -Darpack-dir=$CONDA_PREFIX -Drsvd=true build-mkl
+
+where both ARPACK and randomized SVD functionality is enabled. The environment variable `CONDA_PREFIX` (automatically set by `conda`) points to the directory containing libraries and headers. 
 
 Changing the options of a build
 -------------------------------
