@@ -62,8 +62,9 @@ If the command is successfull, we can enter the `build` directory and compile th
 using `ninja`
   
 .. code-block:: bash
-		$ cd build
-		$ ninja
+
+                $ cd build
+                $ ninja
 
 Note that in the above example, `lapack` with `cblas` is used as default. If you want to use **mkl** instead, see below.
 
