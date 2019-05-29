@@ -33,7 +33,7 @@ To install Intel MKL and corresponding headers through `conda`:
 
 .. code-block:: bash
 
-        $ conda install mkl mkl-headers
+        $ conda install mkl mkl-include
 
 The simplest way to get ARPACK is to use package manager of your choice (`apt-get`, ...),
 for example we can again use `conda`:
