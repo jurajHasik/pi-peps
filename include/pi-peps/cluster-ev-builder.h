@@ -21,9 +21,6 @@ class EVBuilder {
   const Cluster* p_cluster;
   const CtmEnv* p_ctmEnv;
 
-  Cluster cls;
-  CtmData_Full cd_f;
-
   // Basic Constructor
   EVBuilder(std::string in_name, Cluster const& cls, CtmEnv const& env);
 
@@ -149,24 +146,6 @@ class EVBuilder {
   // itensor::ITensor redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2,
   //     bool DBG = false) const;
 
-  // Correlation function
-  // Compute expectation value of two 1-site operators O1, O2
-  // where O1 is applied on "site" and O2 "dist" sites to the right
-  // in horizontal direction
-  /*  _    _    _         _    _    _
-   * |C|--|T|--|T|--...--|T|--|T|--|C|
-   *  |    |    |         |    |    |
-   * |T|--|O1|-|X|--...--|X|-|O2|--|T|
-   *  |    |    |         |    |    |
-   * |C|--|T|--|T|--...--|T|--|T|--|C|
-   *
-   *           <--"dist"-->
-   * Hence "dist" = 0, means adjacent sites
-   *
-   */
-  // std::vector< std::complex<double> > expVal_1sO1sO_H(MPO_1S o1,
-  //     MPO_1S o2, std::pair< int, int > site, int dist, bool dbg = false);
-
   struct TransferOpVecProd_itensor {
     CtmEnv::DIRECTION dir;
     Vertex v_ref;
@@ -254,6 +233,37 @@ class EVBuilder {
   //     std::vector<std::string> tn, std::vector<int> pl, bool dbg = false)
   //     const;
 
+  std::vector< std::complex<double> > corrf_SS(Vertex const& v1,
+                CtmEnv::DIRECTION dir,
+                int dist,
+                std::vector<double> coefs = {1.0, 1.0, 1.0},
+                bool DBG = false) const;
+
+  // std::vector< std::complex<double> > corrf_SS(Vertex const& v1,
+  //               CtmEnv::DIRECTION dir,
+  //               int dist,
+  //               bool DBG = false) const;
+
+  // Correlation function
+  // Compute expectation value of two 1-site operators O1, O2
+  // where O1 is applied on "site" and O2 "dist" sites to the right
+  // in horizontal direction
+  /*  _    _    _         _    _    _
+   * |C|--|T|--|T|--...--|T|--|T|--|C|
+   *  |    |    |         |    |    |
+   * |T|--|O1|-|X|--...--|X|-|O2|--|T|
+   *  |    |    |         |    |    |
+   * |C|--|T|--|T|--...--|T|--|T|--|C|
+   *
+   *           <--"dist"-->
+   * Hence "dist" = 0, means adjacent sites
+   *
+   */
+  std::vector< std::complex<double> > expVal_1sO1sO_H(
+      Vertex const& v1,
+      int dist,
+      std::pair<MPO_1S, MPO_1S> const& Op, bool DBG = false) const;
+
   // Correlation function
   // Compute expectation value of two 1-site operators O1, O2
   // spaced by "dist" sites in vertical direction
@@ -275,8 +285,10 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
-  //  std::complex<double> expVal_1sO1sO_V(int dist,
-  //         itensor::ITensor const& op1, itensor::ITensor const& op2);
+  std::vector< std::complex<double> > expVal_1sO1sO_V(
+      Vertex const& v1,
+      int dist,
+      std::pair<MPO_1S, MPO_1S> const& Op, bool DBG = false) const;
 
   // Correlation function
   // Compute expectation value of two 2-site operators O1, O2
