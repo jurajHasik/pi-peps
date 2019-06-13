@@ -29,7 +29,7 @@ void CtmEnv::move_unidirectional(DIRECTION direction,
       throw std::runtime_error("[move_singleDirection] Invalid direction");
   }
 
-  length = (max_moves < 0) ? length : std::min(max_moves,length);
+  length = (max_moves < 0) ? length : std::min(max_moves, length);
   for (unsigned int i = 0; i < length; i++) {
     move_singleDirection(direction, iso_type, accT);
   }
@@ -755,7 +755,8 @@ void CtmEnv::compute_IsometriesT4(DIRECTION direction,
 
     // truncated SVD
     t_iso_begin = std::chrono::high_resolution_clock::now();
-    U = prime(ITensor(edgeIndices(opposite_direction, v_shift_oi, dir0)), AUXLINK, tmp_prime_offset);
+    U = prime(ITensor(edgeIndices(opposite_direction, v_shift_oi, dir0)),
+              AUXLINK, tmp_prime_offset);
     // readyToContract(R,direction,v,dir0,v_shift,dir1);
     // TODO use delta instead of reindex
     R = reindex(R, combinedIndex(cmb_p_inner), combinedIndex(cmb_pt_inner));
@@ -941,14 +942,16 @@ void CtmEnv::build_halves_V2(DIRECTION direction,
       getEdgeCombiners(cmb0, cmb1, DIRECTION::UP, vs[0], 2, vs[1], 0);
       H *= cmb0;
       H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
-      H *= prime(build_corner_V2(CORNER::RU, vs[1]) * cmb1, AUXLINK, tmp_prime_offset);  // RU
+      H *= prime(build_corner_V2(CORNER::RU, vs[1]) * cmb1, AUXLINK,
+                 tmp_prime_offset);  // RU
       // build lower half
       Ht = build_corner_V2(CORNER::LD, vs[2]);  // LD
       // readyToContract(Ht,DIRECTION::DOWN,vs[2],2,vs[3],0);
       getEdgeCombiners(cmb0, cmb1, DIRECTION::DOWN, vs[2], 2, vs[3], 0);
       Ht *= cmb0;
       Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
-      Ht *= prime(build_corner_V2(CORNER::RD, vs[3]) * cmb1, AUXLINK, tmp_prime_offset);  // RD
+      Ht *= prime(build_corner_V2(CORNER::RD, vs[3]) * cmb1, AUXLINK,
+                  tmp_prime_offset);  // RD
       break;
     }
     case DIRECTION::UP: {  // up
@@ -961,14 +964,16 @@ void CtmEnv::build_halves_V2(DIRECTION direction,
       getEdgeCombiners(cmb0, cmb1, DIRECTION::RIGHT, vs[0], 3, vs[1], 1);
       H *= cmb0;
       H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
-      H *= prime(build_corner_V2(CORNER::RD, vs[1]) * cmb1, AUXLINK, tmp_prime_offset);  // RD
+      H *= prime(build_corner_V2(CORNER::RD, vs[1]) * cmb1, AUXLINK,
+                 tmp_prime_offset);  // RD
       // build left half (upper_h)
       Ht = build_corner_V2(CORNER::LU, vs[2]);  // LU
       // readyToContract(Ht,DIRECTION::LEFT,vs[2],3,vs[3],1);
       getEdgeCombiners(cmb0, cmb1, DIRECTION::LEFT, vs[2], 3, vs[3], 1);
       Ht *= cmb0;
       Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
-      Ht *= prime(build_corner_V2(CORNER::LD, vs[3]) * cmb1, AUXLINK, tmp_prime_offset);  // LD
+      Ht *= prime(build_corner_V2(CORNER::LD, vs[3]) * cmb1, AUXLINK,
+                  tmp_prime_offset);  // LD
       break;
     }
     case DIRECTION::RIGHT: {  // right
@@ -981,14 +986,16 @@ void CtmEnv::build_halves_V2(DIRECTION direction,
       getEdgeCombiners(cmb0, cmb1, DIRECTION::DOWN, vs[0], 0, vs[1], 2);
       H *= cmb0;
       H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
-      H *= prime(build_corner_V2(CORNER::LD, vs[1]) * cmb1, AUXLINK, tmp_prime_offset);  // LD
+      H *= prime(build_corner_V2(CORNER::LD, vs[1]) * cmb1, AUXLINK,
+                 tmp_prime_offset);  // LD
       // build upper half
       Ht = build_corner_V2(CORNER::RU, vs[2]);  // RU
       // readyToContract(Ht,DIRECTION::UP,vs[2],0,vs[3],2);
       getEdgeCombiners(cmb0, cmb1, DIRECTION::UP, vs[2], 0, vs[3], 2);
       Ht *= cmb0;
       Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
-      Ht *= prime(build_corner_V2(CORNER::LU, vs[3]) * cmb1, AUXLINK, tmp_prime_offset);  // LU
+      Ht *= prime(build_corner_V2(CORNER::LU, vs[3]) * cmb1, AUXLINK,
+                  tmp_prime_offset);  // LU
       break;
     }
     case DIRECTION::DOWN: {  // down
@@ -1001,14 +1008,16 @@ void CtmEnv::build_halves_V2(DIRECTION direction,
       getEdgeCombiners(cmb0, cmb1, DIRECTION::LEFT, vs[0], 1, vs[1], 3);
       H *= cmb0;
       H = reindex(H, combinedIndex(cmb0), combinedIndex(cmb1));
-      H *= prime(build_corner_V2(CORNER::LU, vs[1]) * cmb1, AUXLINK, tmp_prime_offset);  // LU
+      H *= prime(build_corner_V2(CORNER::LU, vs[1]) * cmb1, AUXLINK,
+                 tmp_prime_offset);  // LU
       // build right half
       Ht = build_corner_V2(CORNER::RD, vs[2]);  // RD
       // readyToContract(Ht,DIRECTION::RIGHT,vs[2],1,vs[3],3);
       getEdgeCombiners(cmb0, cmb1, DIRECTION::RIGHT, vs[2], 1, vs[3], 3);
       Ht *= cmb0;
       Ht = reindex(Ht, combinedIndex(cmb0), combinedIndex(cmb1));
-      Ht *= prime(build_corner_V2(CORNER::RU, vs[3]) * cmb1, AUXLINK, tmp_prime_offset);  // RU
+      Ht *= prime(build_corner_V2(CORNER::RU, vs[3]) * cmb1, AUXLINK,
+                  tmp_prime_offset);  // RU
       break;
     }
   }

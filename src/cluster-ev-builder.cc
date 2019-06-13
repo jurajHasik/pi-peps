@@ -1854,14 +1854,14 @@ double EVBuilder::contract2Smpo(std::pair<ITensor, ITensor> const& Op,
 //     return ITensor();
 // }
 
-
-
 double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG) const {
-  return contract2x2Diag11(op2s, v1, DBG)/contract2x2Diag11(OP2S_Id, v1, DBG);
+  return contract2x2Diag11(op2s, v1, DBG) / contract2x2Diag11(OP2S_Id, v1, DBG);
 }
 
 // Diagonal s1, s1+[1,1]
-double EVBuilder::eval2x2Diag11(std::pair<ITensor, ITensor> const& Op, Vertex const& v1, bool DBG) const {
+double EVBuilder::eval2x2Diag11(std::pair<ITensor, ITensor> const& Op,
+                                Vertex const& v1,
+                                bool DBG) const {
   return contract2x2Diag11(Op, v1, DBG) / contract2x2Diag11(OP2S_Id, v1, DBG);
 }
 
@@ -1874,14 +1874,14 @@ double EVBuilder::contract2x2Diag11(OP_2S op2s,
   auto pI1 = p_cluster->mphys.at(vToId(v1));
   auto pI2 = p_cluster->mphys.at(vToId(v2));
 
-  // if the indices are identical, create a dummy index for creation of 
-  // the operator 
+  // if the indices are identical, create a dummy index for creation of
+  // the operator
   std::pair<ITensor, ITensor> op;
   if (pI1 == pI2) {
     auto p_dummy = Index("dummyPhys", pI2.m(), pI2.type(), pI2.primeLevel());
     op = get2SiteSpinOP(op2s, pI1, p_dummy, DBG);
-    op.second *= delta(p_dummy,pI2);
-    op.second *= delta(prime(p_dummy),prime(pI2));
+    op.second *= delta(p_dummy, pI2);
+    op.second *= delta(prime(p_dummy), prime(pI2));
   } else {
     op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
   }
@@ -1957,9 +1957,10 @@ double EVBuilder::contract2x2Diag11(std::pair<ITensor, ITensor> const& op,
   get2dirSiteCombiner(cmb0, v1, DIRECTION::LEFT, DIRECTION::UP);
   tN = (tN * cmb0) * (mpo1s.mpo[0] * cmb0);
   // offset in case of on-site itensor being identical ( 1 site-TI iPEPS )
-  tN.mapprime((int)DIRECTION::DOWN,DIRECTION::DOWN+AUXLINK_OFFSET,AUXLINK);
-  tN.mapprime(DIRECTION::DOWN+p_cluster->BRAKET_OFFSET,
-    DIRECTION::DOWN+p_cluster->BRAKET_OFFSET+AUXLINK_OFFSET,AUXLINK);
+  tN.mapprime((int)DIRECTION::DOWN, DIRECTION::DOWN + AUXLINK_OFFSET, AUXLINK);
+  tN.mapprime(DIRECTION::DOWN + p_cluster->BRAKET_OFFSET,
+              DIRECTION::DOWN + p_cluster->BRAKET_OFFSET + AUXLINK_OFFSET,
+              AUXLINK);
 
   if (DBG) {
     std::cout << ">>>>> 1) Upper Left corner done <<<<<" << std::endl;
@@ -2010,9 +2011,9 @@ double EVBuilder::contract2x2Diag11(std::pair<ITensor, ITensor> const& op,
     Print(tN);
   }
   // revert back the 1-site TI iPEPS primeLevel guard
-  tN.mapprime(DIRECTION::DOWN+AUXLINK_OFFSET,(int)DIRECTION::DOWN,AUXLINK);
-  tN.mapprime(DIRECTION::DOWN+p_cluster->BRAKET_OFFSET+AUXLINK_OFFSET,
-    DIRECTION::DOWN+p_cluster->BRAKET_OFFSET,AUXLINK);
+  tN.mapprime(DIRECTION::DOWN + AUXLINK_OFFSET, (int)DIRECTION::DOWN, AUXLINK);
+  tN.mapprime(DIRECTION::DOWN + p_cluster->BRAKET_OFFSET + AUXLINK_OFFSET,
+              DIRECTION::DOWN + p_cluster->BRAKET_OFFSET, AUXLINK);
 
   tmp = p_ctmEnv->C_LD.at(vToId(vY)) * p_ctmEnv->T_D.at(vToId(vY));
   tmp *= p_ctmEnv->T_L.at(vToId(vY));
@@ -2153,27 +2154,29 @@ double EVBuilder::eval2x2DiagN11(OP_2S op2s, Vertex const& v1, bool DBG) const {
 }
 
 // Diagonal s1, s1+[-1,+1]
-double EVBuilder::eval2x2DiagN11(std::pair<ITensor, ITensor> const& Op, Vertex const& v1, bool DBG) const {
+double EVBuilder::eval2x2DiagN11(std::pair<ITensor, ITensor> const& Op,
+                                 Vertex const& v1,
+                                 bool DBG) const {
   return contract2x2DiagN11(Op, v1, DBG) / contract2x2DiagN11(OP2S_Id, v1, DBG);
 }
 
 double EVBuilder::contract2x2DiagN11(OP_2S op2s,
-                                    Vertex const& v1,
-                                    bool DBG) const {
+                                     Vertex const& v1,
+                                     bool DBG) const {
   auto vToId = [this](Vertex const& v) { return p_cluster->vertexToId(v); };
 
   auto v2 = v1 + Shift(1, 1);
   auto pI1 = p_cluster->mphys.at(vToId(v1));
   auto pI2 = p_cluster->mphys.at(vToId(v2));
 
-  // if the indices are identical, create a dummy index for creation of 
-  // the operator 
+  // if the indices are identical, create a dummy index for creation of
+  // the operator
   std::pair<ITensor, ITensor> op;
   if (pI1 == pI2) {
     auto p_dummy = Index("dummyPhys", pI2.m(), pI2.type(), pI2.primeLevel());
     op = get2SiteSpinOP(op2s, pI1, p_dummy, DBG);
-    op.second *= delta(p_dummy,pI2);
-    op.second *= delta(prime(p_dummy),prime(pI2));
+    op.second *= delta(p_dummy, pI2);
+    op.second *= delta(prime(p_dummy), prime(pI2));
   } else {
     op = get2SiteSpinOP(op2s, pI1, pI2, DBG);
   }
@@ -2248,9 +2251,10 @@ double EVBuilder::contract2x2DiagN11(std::pair<ITensor, ITensor> const& op,
   get2dirSiteCombiner(cmb0, v1, DIRECTION::UP, DIRECTION::RIGHT);
   tN = (tN * cmb0) * (mpo1s.mpo[0] * cmb0);
   // offset in case of on-site itensor being identical ( 1 site-TI iPEPS )
-  tN.mapprime((int)DIRECTION::LEFT,DIRECTION::LEFT+AUXLINK_OFFSET,AUXLINK);
-  tN.mapprime(DIRECTION::LEFT+p_cluster->BRAKET_OFFSET,
-    DIRECTION::LEFT+p_cluster->BRAKET_OFFSET+AUXLINK_OFFSET,AUXLINK);
+  tN.mapprime((int)DIRECTION::LEFT, DIRECTION::LEFT + AUXLINK_OFFSET, AUXLINK);
+  tN.mapprime(DIRECTION::LEFT + p_cluster->BRAKET_OFFSET,
+              DIRECTION::LEFT + p_cluster->BRAKET_OFFSET + AUXLINK_OFFSET,
+              AUXLINK);
 
   if (DBG) {
     std::cout << ">>>>> 1) right upper corner done <<<<<" << std::endl;
@@ -2297,9 +2301,9 @@ double EVBuilder::contract2x2DiagN11(std::pair<ITensor, ITensor> const& op,
     Print(tN);
   }
   // revert back the 1-site TI iPEPS primeLevel guard
-  tN.mapprime(DIRECTION::LEFT+AUXLINK_OFFSET,(int)DIRECTION::LEFT,AUXLINK);
-  tN.mapprime(DIRECTION::LEFT+p_cluster->BRAKET_OFFSET+AUXLINK_OFFSET,
-    DIRECTION::LEFT+p_cluster->BRAKET_OFFSET,AUXLINK);
+  tN.mapprime(DIRECTION::LEFT + AUXLINK_OFFSET, (int)DIRECTION::LEFT, AUXLINK);
+  tN.mapprime(DIRECTION::LEFT + p_cluster->BRAKET_OFFSET + AUXLINK_OFFSET,
+              DIRECTION::LEFT + p_cluster->BRAKET_OFFSET, AUXLINK);
 
   tmp = p_ctmEnv->C_LU.at(vToId(vX)) * p_ctmEnv->T_L.at(vToId(vX));
   tmp *= p_ctmEnv->T_U.at(vToId(vX));
@@ -2699,7 +2703,7 @@ double EVBuilder::eval2x2op4s(OP_4S op4s, Vertex const& v1, bool DBG) const {
 
 //     auto X = ExpValBuilder::getTOT(MPO_Id, 0, env.i_Xh, env.i_Xv,
 //             false);
-//     
+//
 //     auto U   = env.C_lu*env.T_u*env.C_ru;
 //     U = U*env.T_l*op1*env.T_r;
 //     auto UId = env.C_lu*env.T_u*env.C_ru;
@@ -2979,7 +2983,8 @@ std::pair<ITensor, ITensor> EVBuilder::get2SiteSpinOP(OP_2S op2s,
   // Assume s0 is different then s2
   Index tmp_sB = sB;
   if (sA == sB) {
-    if (dbg) std::cout << "On-site PHYS indices sA and sB are identitcal" << std::endl;
+    if (dbg)
+      std::cout << "On-site PHYS indices sA and sB are identitcal" << std::endl;
     tmp_sB = Index(sB.rawname() + "_copy", sB.m(), sB.type(), sB.primeLevel());
   }
 
