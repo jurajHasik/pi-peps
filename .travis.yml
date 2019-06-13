@@ -65,7 +65,7 @@ before_install:
 - sed -i "s/ITENSOR_MAKE_DYLIB=0/ITENSOR_MAKE_DYLIB=1/" options.mk
 - make -j 2
 - export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
-- cd unittest && make || :
+- cd unittest && make || true
 - cd $PEPS
 script: 
 - CXX=$CXX meson -Ditensor-dir=$SRC/deps/itensor -Dopenmp=false -Dmkl=false -Darpack=false -Dbuildtype=debug -Denable-tests=true build && cd build && ninja -j1
