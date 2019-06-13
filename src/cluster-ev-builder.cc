@@ -1854,135 +1854,7 @@ double EVBuilder::contract2Smpo(std::pair<ITensor, ITensor> const& Op,
 //     return ITensor();
 // }
 
-// std::vector< std::complex<double> > EVBuilder::expVal_1sO1sO_H(
-//         MPO_1S o1, MPO_1S o2,
-//         Vertex const& v, int dist, bool dbg)
-// {
-//     ITensor N, NId;
-//     MpoNS op2;
-//     std::vector< std::complex<double> > ccVal;
-//     std::pair< int, int > site_op2;
 
-//     // Shift site to unit cell
-//     if(dbg) std::cout << "OP1 -> ["<< site.first <<","<< site.second <<"] =>
-//     ["; site.first  = site.first % cd_f.sizeM; site.second = site.second %
-//     cd_f.sizeN; if(dbg) std::cout << site.first <<","<< site.second <<"] = "
-//         << cls.cToS[site] << std::endl;
-//     auto op1 = getTOT(o1, cls.cToS[site], 0);
-
-//     /*
-//      * Construct the "left" part tensor L
-//      *  _    __                __
-//      * |C|--|T |--I(T_u)'     |  |--I(T_u)
-//      *  |    |            ==> |  |
-//      * |T|--|O1|--I(XH)'  ==> |L |--I(Xh)
-//      *  |    |            ==> |  |
-//      * |C|--|T |--I(T_d)'     |__|--I(T_d)
-//      *
-//      */
-//     auto idOp = getTOT(MPO_Id, cls.cToS[site], 0);
-
-//     auto L = (cd_f.C_LU[cd_f.cToS[site]]
-//         *cd_f.T_L[cd_f.cToS[site]])
-//         *cd_f.C_LD[cd_f.cToS[site]];
-//     auto LId = L;
-//     L.noprime();
-//     LId.noprime();
-//     L = ((L * cd_f.T_U[cd_f.cToS[site]] )
-//         * op1.mpo[0] )
-//         * cd_f.T_D[cd_f.cToS[site]];
-//     LId = ((LId * cd_f.T_U[cd_f.cToS[site]] )
-//         * idOp.mpo[0] )
-//         * cd_f.T_D[cd_f.cToS[site]];
-//     L.noprime();
-//     LId.noprime();
-//     Print(L);
-//     Print(LId);
-
-//     /*
-//      * Contract L with "dist" copies of a column
-//      *
-//      * I(T_u)--|T|--I(T_u)'
-//      *          |
-//      *  I(Xh)--|X|--I(Xh)'
-//      *          |
-//      * I(T_d)--|T|--I(T_d)'
-//      *
-//      */
-//     for(int i=0;i<dist;i++) {
-//         // (1) compute correlation at current distance i
-//         site_op2 = site;
-//         site_op2.first = site_op2.first + 1;
-//         if(dbg) std::cout <<"Inserting OP2 T_U--X["<< site_op2.first <<
-//             ","<< site_op2.second <<"]";
-//         site_op2.first = site_op2.first % cd_f.sizeM;
-//         if(dbg) std::cout <<"=>["<< site_op2.first <<","<< site_op2.second
-//         <<"] = "
-//             << cls.cToS[site_op2] <<" --T_D"<< std::endl;
-//         op2 = getTOT(o2, cls.cToS[site_op2], 0);
-//         idOp = getTOT(MPO_Id, cls.cToS[site_op2], 0);
-
-//         N = ((L * cd_f.T_U[cd_f.cToS[site_op2]])
-//             * op2.mpo[0])
-//             * cd_f.T_D[cd_f.cToS[site_op2]];
-//         NId = ((LId * cd_f.T_U[cd_f.cToS[site_op2]])
-//             * idOp.mpo[0])
-//             * cd_f.T_D[cd_f.cToS[site_op2]];
-
-//         // normalize
-//         auto sqrtN = std::sqrt(norm(N));
-//         N   = N / sqrtN;
-//         NId = NId / sqrtN;
-
-//         // construct the right part
-
-//          * Construct the "right" part tensor R
-//          *          __    _                 __
-//          * I(T_u)--|T |--|C|       I(T_u)--|  |
-//          *          |     |   ==>          |  |
-//          *  I(Xh)--|O2|--|T|  ==>   I(Xh)--|R |
-//          *          |     |   ==>          |  |
-//          * I(T_d)--|T |--|C|       I(T_d)--|__|
-
-//         N = ((N * cd_f.C_RU[cd_f.cToS[site_op2]])
-//             * cd_f.T_R[cd_f.cToS[site_op2]])
-//             * cd_f.C_RD[cd_f.cToS[site_op2]];
-//         NId = ((NId * cd_f.C_RU[cd_f.cToS[site_op2]])
-//             * cd_f.T_R[cd_f.cToS[site_op2]])
-//             * cd_f.C_RD[cd_f.cToS[site_op2]];
-
-//         Print(N);
-//         Print(NId);
-
-//         // Assign value
-//         ccVal.push_back(sumelsC(N)/sumelsC(NId));
-
-//         // (2) Contract with single "transfer" matrix
-//         site.first = site.first + 1;
-//         if(dbg) std::cout <<"Inserting T_U--X["<< site.first <<
-//             ","<< site.second <<"]";
-//         site.first = site.first % cd_f.sizeM;
-//         if(dbg) std::cout <<"=>["<< site.first <<","<< site.second <<"] = "
-//             << cls.cToS[site] <<" --T_D"<< std::endl;
-
-//         idOp = getTOT(MPO_Id, cls.cToS[site], 0);
-
-//         L = ((L * cd_f.T_U[cd_f.cToS[site]] )
-//             * idOp.mpo[0] )
-//             * cd_f.T_D[cd_f.cToS[site]];
-//         LId = ((LId * cd_f.T_U[cd_f.cToS[site]])
-//             * idOp.mpo[0] )
-//             * cd_f.T_D[cd_f.cToS[site]];
-//         L.noprime();
-//         LId.noprime();
-//     }
-
-//     for(int i=0;i<ccVal.size();i++) {
-//         std::cout << ccVal[i].real() <<" "<< ccVal[i].imag() << std::endl;
-//     }
-
-//     return ccVal;
-// }
 
 double EVBuilder::eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG) const {
   return contract2x2Diag11(op2s, v1, DBG)/contract2x2Diag11(OP2S_Id, v1, DBG);
@@ -2827,16 +2699,7 @@ double EVBuilder::eval2x2op4s(OP_4S op4s, Vertex const& v1, bool DBG) const {
 
 //     auto X = ExpValBuilder::getTOT(MPO_Id, 0, env.i_Xh, env.i_Xv,
 //             false);
-//     /*
-//      * Construct the "Up" part tensor U
-//      *  _      __      _            ________________
-//      * |C|----|T |----|C|          |_______U________|
-//      *  |      |       |      ==>    |      |     |
-//      * |T|----|O1|----|T|     ==>  I(Tl)' I(Xv)'  I(Tr)'
-//      *  |      |       |      ==>
-//      * I(Tl)' I(Xv)'  I(Tr)'
-//      *
-//      */
+//     
 //     auto U   = env.C_lu*env.T_u*env.C_ru;
 //     U = U*env.T_l*op1*env.T_r;
 //     auto UId = env.C_lu*env.T_u*env.C_ru;
