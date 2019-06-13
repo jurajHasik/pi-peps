@@ -310,11 +310,115 @@ namespace itensor {
   }
   // ----- END Definition of model class --------------------------------
 
-  // ----- Definition of model base class and its particular instances --
-  J1J2Model_1x1_A::J1J2Model_1x1_A(double arg_J1, double arg_J2, double arg_del)
+// ----- Definition of model base class and its particular instances --
+  J1J2Model_2x1_AB::J1J2Model_2x1_AB(double arg_J1,
+                                         double arg_J2,
+                                         double arg_del)
     : J1(arg_J1), J2(arg_J2), del(arg_del) {}
 
-  void J1J2Model_1x1_A::setObservablesHeader(std::ofstream& output) {
+  void J1J2Model_2x1_AB::setObservablesHeader(std::ofstream& output) {
+    output << "STEP, "
+           << "SS AB (0,0)(1,0), "
+           << "SS BA (1,0)(2,0), "
+           << "SS AA (0,0)(0,1), "
+           << "SS BB (1,0)(1,1), "
+           << "Avg SS_NN, "
+           << "Avg SS_NNN, "
+           << "Avg mag=|S|, "
+           << "Energy" << std::endl;
+  }
+
+  void J1J2Model_2x1_AB::computeAndWriteObservables(EVBuilder const& ev,
+                                                      std::ofstream& output,
+                                                      Args& metaInf) {
+    auto lineNo = metaInf.getInt("lineNo", 0);
+
+    std::vector<double> evNN;
+    std::vector<double> evNNN;
+    std::vector<double> ev_sA(3, 0.0);
+    std::vector<double> ev_sB(3, 0.0);
+
+    bool compute_SS_NNN = (std::abs(J2) > 1.0e-15);
+
+    evNN.push_back(
+      ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0, 0), Vertex(1, 0)));  // AB
+    evNN.push_back(
+      ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1, 0), Vertex(2, 0)));  // BA
+    evNN.push_back(
+      ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(0, 0), Vertex(0, 1)));  // AA
+    evNN.push_back(
+      ev.eval2Smpo(EVBuilder::OP2S_SS, Vertex(1, 0), Vertex(1, 1)));  // BB
+
+    // compute energies NNN links
+    if (compute_SS_NNN) {
+      evNNN.push_back(ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(0, 0)));
+      evNNN.push_back(ev.eval2x2Diag11(EVBuilder::OP2S_SS, Vertex(1, 0)));
+
+      evNNN.push_back(ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(0, 0)));
+      evNNN.push_back(ev.eval2x2DiagN11(EVBuilder::OP2S_SS, Vertex(1, 0)));
+    }
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0, 0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0, 0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0, 0));
+
+    ev_sB[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(1, 0));
+    ev_sB[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(1, 0));
+    ev_sB[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(1, 0));
+
+    output << lineNo << " ";
+    // write individual NN SS terms and average over all non-eq links
+    double avgSS_NN = 0.;
+    for (unsigned int j = 0; j < evNN.size(); j++) {
+      output << " " << evNN[j];
+      avgSS_NN += evNN[j];
+    }
+    avgSS_NN = avgSS_NN / 4.0;
+    output << " " << avgSS_NN;
+
+    // write average NNN SS term over all non-eq NNN
+    double avgSS_NNN = 0.;
+    if (compute_SS_NNN) {
+      for (unsigned int j = 0; j < evNNN.size(); j++)
+        avgSS_NNN += evNNN[j];
+      avgSS_NNN = avgSS_NNN / 4.0;
+    }
+    output << " " << avgSS_NNN;
+
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = 0.5 * (std::sqrt(std::abs(ev_sA[0] * ev_sA[0] + ev_sA[1] * ev_sA[1])) +
+                        std::sqrt(std::abs(ev_sB[0] * ev_sB[0] + ev_sB[1] * ev_sB[1])));
+    output << " " << evMag_avg;
+
+    // write Energy
+    double energy = 2.0 * avgSS_NN * J1 + 2.0 * avgSS_NNN * J2;
+    output << " " << energy;
+
+    // return energy in metaInf
+    metaInf.add("energy", energy);
+
+    output << std::endl;
+  }
+
+  std::unique_ptr<Model> J1J2Model_2x1_AB::create(
+    nlohmann::json& json_model) {
+    double arg_J1 = json_model["J1"].get<double>();
+    double arg_J2 = json_model["J2"].get<double>();
+    double arg_del = 0.0;
+
+    return std::unique_ptr<Model>(
+      new J1J2Model_2x1_AB(arg_J1, arg_J2, arg_del));
+  }
+  // ----- END Definition of model class --------------------------------
+
+  // ----- Definition of model base class and its particular instances --
+  J1J2Model_1x1_A_ROT::J1J2Model_1x1_A_ROT(double arg_J1,
+                                         double arg_J2,
+                                         double arg_del)
+    : J1(arg_J1), J2(arg_J2), del(arg_del) {}
+
+  void J1J2Model_1x1_A_ROT::setObservablesHeader(std::ofstream& output) {
     output << "STEP, "
            << "SS AA (0,0)(1,0), "
            << "SS AA (0,0)(0,1), "
@@ -324,9 +428,9 @@ namespace itensor {
            << "Energy" << std::endl;
   }
 
-  void J1J2Model_1x1_A::computeAndWriteObservables(EVBuilder const& ev,
-                                                   std::ofstream& output,
-                                                   Args& metaInf) {
+  void J1J2Model_1x1_A_ROT::computeAndWriteObservables(EVBuilder const& ev,
+                                                      std::ofstream& output,
+                                                      Args& metaInf) {
     auto lineNo = metaInf.getInt("lineNo", 0);
 
     std::vector<double> evNN;
@@ -412,7 +516,117 @@ namespace itensor {
     output << std::endl;
   }
 
-  std::unique_ptr<Model> J1J2Model_1x1_A::create(nlohmann::json& json_model) {
+  std::unique_ptr<Model> J1J2Model_1x1_A_ROT::create(
+    nlohmann::json& json_model) {
+    double arg_J1 = json_model["J1"].get<double>();
+    double arg_J2 = json_model["J2"].get<double>();
+    double arg_del = 0.0;
+
+    return std::unique_ptr<Model>(
+      new J1J2Model_1x1_A_ROT(arg_J1, arg_J2, arg_del));
+  }
+  // ----- END Definition of model class --------------------------------
+
+ // ----- Definition of model base class and its particular instances --
+  J1J2Model_1x1_A::J1J2Model_1x1_A(double arg_J1,
+                                         double arg_J2,
+                                         double arg_del)
+    : J1(arg_J1), J2(arg_J2), del(arg_del) {}
+
+  void J1J2Model_1x1_A::setObservablesHeader(std::ofstream& output) {
+    output << "STEP, "
+           << "SS AA (0,0)(1,0), "
+           << "SS AA (0,0)(0,1), "
+           << "SS AA (0,0)(1,1), "
+           << "SS AA (0,1)(1,0), "
+           << "Avg mag=|S|, "
+           << "Energy" << std::endl;
+  }
+
+  void J1J2Model_1x1_A::computeAndWriteObservables(EVBuilder const& ev,
+                                                      std::ofstream& output,
+                                                      Args& metaInf) {
+    auto lineNo = metaInf.getInt("lineNo", 0);
+
+    std::vector<double> evNN;
+    std::vector<double> evNNN;
+    std::vector<double> ev_sA(3, 0.0);
+
+    bool compute_SS_NNN = (std::abs(J2) > 1.0e-15);
+
+    // construct nn S.S operator
+    Index s1 = Index("S1", 2, PHYS);
+    Index s2 = Index("S2", 2, PHYS);
+    Index s1p = prime(s1);
+    Index s2p = prime(s2);
+
+    ITensor hNN = ITensor(s1, s2, s1p, s2p);
+    hNN += (J1 + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2) +
+           J1 * 0.5 *
+             (SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2) +
+              SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2));
+
+    ITensor hNNN = ITensor(s1, s2, s1p, s2p);
+    hNNN += (J2 + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2) +
+          J2 * 0.5 *
+             (SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2) +
+              SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2));
+
+    // Perform SVD to split in half
+    auto nnSS = symmMPO2Sdecomp(hNN, s1, s2);
+    auto nnnSS = symmMPO2Sdecomp(hNNN, s1, s2);
+
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1, nnSS.H2), Vertex(0, 0),
+                                Vertex(1, 0)));  // A-2--0-A
+    evNN.push_back(ev.eval2Smpo(std::make_pair(nnSS.H1, nnSS.H2), Vertex(0, 0),
+                                Vertex(0, 1)));  // A-3--1-A
+
+    // compute energies NNN links
+    if (compute_SS_NNN) {
+      evNNN.push_back(ev.eval2x2Diag11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(0, 0)));
+      evNNN.push_back(ev.eval2x2DiagN11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(1, 0)));
+    }
+
+    ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0, 0));
+    ev_sA[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, Vertex(0, 0));
+    ev_sA[2] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_M, Vertex(0, 0));
+
+    output << lineNo << " ";
+    // write individual NN SS terms for all non-eq links
+    double avgSS_NN = 0.;
+    for (unsigned int j = 0; j < evNN.size(); j++) {
+      output << " " << evNN[j];
+      avgSS_NN += evNN[j];
+    }
+    avgSS_NN = avgSS_NN / 2.0;
+
+    // write individual NNN SS term for all non-eq NNN
+    double avgSS_NNN = 0.;
+    if (compute_SS_NNN) {
+      for (unsigned int j = 0; j < evNNN.size(); j++) {
+        output << " " << evNNN[j];
+        avgSS_NNN += evNNN[j];
+      }
+      avgSS_NNN = avgSS_NNN / 2.0;
+    }
+
+    // write magnetization
+    double evMag_avg = 0.;
+    evMag_avg = std::sqrt(std::abs(ev_sA[0] * ev_sA[0] + ev_sA[1] * ev_sA[2]));
+    output << " " << evMag_avg;
+
+    // write Energy
+    double energy = 2.0 * avgSS_NN + 2.0 * avgSS_NNN;
+    output << " " << energy;
+
+    // return energy in metaInf
+    metaInf.add("energy", energy);
+
+    output << std::endl;
+  }
+
+  std::unique_ptr<Model> J1J2Model_1x1_A::create(
+    nlohmann::json& json_model) {
     double arg_J1 = json_model["J1"].get<double>();
     double arg_J2 = json_model["J2"].get<double>();
     double arg_del = 0.0;

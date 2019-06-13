@@ -314,6 +314,15 @@ int main(int argc, char* argv[]) {
   analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN, 5);
 #endif
 
+  std::cout << "S(0,0).S(r,0)"<< std::endl;
+  auto ss_h = ev.corrf_SS(Vertex(0,0), CtmEnv::DIRECTION::RIGHT, 20);
+  for(int i=0; i<20; i++)
+    std::cout<< i <<" "<< ss_h[i].real() << std::endl;
+  std::cout << "S(0,0).S(0,r)"<< std::endl;
+  auto ss_v = ev.corrf_SS(Vertex(0,0), CtmEnv::DIRECTION::DOWN, 20);
+  for(int i=0; i<20; i++)
+    std::cout<< i <<" "<< ss_v[i].real() << std::endl;
+
   // FINISHED
   std::cout << "FINISHED" << std::endl;
 }

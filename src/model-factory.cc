@@ -15,6 +15,8 @@ ModelFactory::ModelFactory() {
   registerModel("AKLT_2X2_ABCD", &itensor::AKLTModel_2x2_ABCD::create);
   registerModel("AKLT_2X2_AB", &itensor::AKLTModel_2x2_AB::create);
   registerModel("J1J2_2X2_ABCD", &itensor::J1J2Model_2x2_ABCD::create);
+  registerModel("J1J2_2X1_AB", &itensor::J1J2Model_2x1_AB::create);
+  registerModel("J1J2_1X1_A_ROT", &itensor::J1J2Model_1x1_A_ROT::create);
   registerModel("J1J2_1X1_A", &itensor::J1J2Model_1x1_A::create);
   registerModel("LADDERS_2X2_ABCD", &itensor::LaddersModel_2x2_ABCD::create);
   registerModel("LADDERS_4X2_ABCD", &itensor::LaddersModel_2x2_ABCD::create);
