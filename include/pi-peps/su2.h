@@ -28,7 +28,8 @@ itensor::ITensor SU2_getSpinOp(SU2O su2o,
 
 itensor::ITensor SU2_getRotOp(itensor::Index const& s);
 
-itensor::ITensor SU2_applyRot(itensor::Index const& s, itensor::ITensor const& op);
+itensor::ITensor SU2_applyRot(itensor::Index const& s,
+                              itensor::ITensor const& op);
 
 double SU2_getCG(int j1, int j2, int j, int m1, int m2, int m);
 

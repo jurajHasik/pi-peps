@@ -179,15 +179,16 @@ class EVBuilder {
    */
   double eval2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG = false) const;
 
-  double eval2x2Diag11(std::pair<itensor::ITensor, itensor::ITensor> const& Op, Vertex const& v1, bool DBG = false) const;
+  double eval2x2Diag11(std::pair<itensor::ITensor, itensor::ITensor> const& Op,
+                       Vertex const& v1,
+                       bool DBG = false) const;
 
-  double contract2x2Diag11(OP_2S op2s,
-                                    Vertex const& v1,
-                                    bool DBG) const;
+  double contract2x2Diag11(OP_2S op2s, Vertex const& v1, bool DBG) const;
 
-  double contract2x2Diag11(std::pair<itensor::ITensor, itensor::ITensor> const& op,
-                           Vertex const& v1,
-                           bool DBG = false) const;
+  double contract2x2Diag11(
+    std::pair<itensor::ITensor, itensor::ITensor> const& op,
+    Vertex const& v1,
+    bool DBG = false) const;
 
   // double eval2x2Diag1N1(OP_2S op2s, Vertex const& v1,
   //     bool DBG = false) const;
@@ -211,15 +212,18 @@ class EVBuilder {
    */
   double eval2x2DiagN11(OP_2S op2s, Vertex const& v1, bool DBG = false) const;
 
-  double eval2x2DiagN11(std::pair<itensor::ITensor, itensor::ITensor> const& Op, Vertex const& v1, bool DBG = false) const;
+  double eval2x2DiagN11(std::pair<itensor::ITensor, itensor::ITensor> const& Op,
+                        Vertex const& v1,
+                        bool DBG = false) const;
 
   double contract2x2DiagN11(OP_2S op2s,
                             Vertex const& v1,
                             bool DBG = false) const;
 
-  double contract2x2DiagN11(std::pair<itensor::ITensor, itensor::ITensor> const& op,
-                           Vertex const& v1,
-                           bool DBG = false) const;
+  double contract2x2DiagN11(
+    std::pair<itensor::ITensor, itensor::ITensor> const& op,
+    Vertex const& v1,
+    bool DBG = false) const;
 
   double eval2x2op4s(OP_4S op4s, Vertex const& v1, bool DBG = false) const;
 
@@ -233,11 +237,13 @@ class EVBuilder {
   //     std::vector<std::string> tn, std::vector<int> pl, bool dbg = false)
   //     const;
 
-  std::vector< std::complex<double> > corrf_SS(Vertex const& v1,
-                CtmEnv::DIRECTION dir,
-                int dist,
-                std::vector<double> coefs = {1.0, 1.0, 1.0},
-                bool DBG = false) const;
+  std::vector<std::complex<double>> corrf_SS(Vertex const& v1,
+                                             CtmEnv::DIRECTION dir,
+                                             int dist,
+                                             std::vector<double> coefs = {1.0,
+                                                                          1.0,
+                                                                          1.0},
+                                             bool DBG = false) const;
 
   // std::vector< std::complex<double> > corrf_SS(Vertex const& v1,
   //               CtmEnv::DIRECTION dir,
@@ -259,10 +265,11 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
-  std::vector< std::complex<double> > expVal_1sO1sO_H(
-      Vertex const& v1,
-      int dist,
-      std::pair<MPO_1S, MPO_1S> const& Op, bool DBG = false) const;
+  std::vector<std::complex<double>> expVal_1sO1sO_H(
+    Vertex const& v1,
+    int dist,
+    std::pair<MPO_1S, MPO_1S> const& Op,
+    bool DBG = false) const;
 
   // Correlation function
   // Compute expectation value of two 1-site operators O1, O2
@@ -285,10 +292,11 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
-  std::vector< std::complex<double> > expVal_1sO1sO_V(
-      Vertex const& v1,
-      int dist,
-      std::pair<MPO_1S, MPO_1S> const& Op, bool DBG = false) const;
+  std::vector<std::complex<double>> expVal_1sO1sO_V(
+    Vertex const& v1,
+    int dist,
+    std::pair<MPO_1S, MPO_1S> const& Op,
+    bool DBG = false) const;
 
   // Correlation function
   // Compute expectation value of two 2-site operators O1, O2

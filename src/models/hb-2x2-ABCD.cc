@@ -485,8 +485,8 @@ namespace itensor {
 
   // ----- Definition of model base class and its particular instances --
   HeisenbergModel_1x1_A::HeisenbergModel_1x1_A(double arg_J,
-                                                 double arg_h,
-                                                 double arg_del)
+                                               double arg_h,
+                                               double arg_del)
     : J(arg_J), h(arg_h), del(arg_del) {}
 
   void HeisenbergModel_1x1_A::setObservablesHeader(std::ofstream& output) {
@@ -498,8 +498,8 @@ namespace itensor {
   }
 
   void HeisenbergModel_1x1_A::computeAndWriteObservables(EVBuilder const& ev,
-                                                          std::ofstream& output,
-                                                          Args& metaInf) {
+                                                         std::ofstream& output,
+                                                         Args& metaInf) {
     auto lineNo = metaInf.getInt("lineNo", 0);
 
     std::vector<double> evNN;
@@ -512,10 +512,13 @@ namespace itensor {
     Index s2p = prime(s2);
 
     ITensor h12 = ITensor(s1, s2, s1p, s2p);
-    h12 += (J + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_Z, s2)) +
+    h12 += (J + del) * SU2_getSpinOp(SU2_S_Z, s1) *
+             SU2_applyRot(s2, SU2_getSpinOp(SU2_S_Z, s2)) +
            J * 0.5 *
-             (SU2_getSpinOp(SU2_S_P, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_M, s2)) +
-              SU2_getSpinOp(SU2_S_M, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_P, s2)));
+             (SU2_getSpinOp(SU2_S_P, s1) *
+                SU2_applyRot(s2, SU2_getSpinOp(SU2_S_M, s2)) +
+              SU2_getSpinOp(SU2_S_M, s1) *
+                SU2_applyRot(s2, SU2_getSpinOp(SU2_S_P, s2)));
 
     // Perform SVD to split in half
     auto nnSS = symmMPO2Sdecomp(h12, s1, s2);
@@ -581,10 +584,11 @@ namespace itensor {
   //       getMPO2s_HB(arg_tau, arg_J, arg_h / 4.0, arg_del));
 
   //     pe->td.tgates = {
-  //       TrotterGate<MPO_2site>(Vertex(0, 0), {Shift(1, 0)}, &pe->td.gateMPO[0]),
-  //       TrotterGate<MPO_2site>(Vertex(1, 0), {Shift(1, 0)}, &pe->td.gateMPO[0]),
-  //       TrotterGate<MPO_2site>(Vertex(0, 0), {Shift(0, 1)}, &pe->td.gateMPO[0]),
-  //       TrotterGate<MPO_2site>(Vertex(1, 0), {Shift(0, 1)},
+  //       TrotterGate<MPO_2site>(Vertex(0, 0), {Shift(1, 0)},
+  //       &pe->td.gateMPO[0]), TrotterGate<MPO_2site>(Vertex(1, 0), {Shift(1,
+  //       0)}, &pe->td.gateMPO[0]), TrotterGate<MPO_2site>(Vertex(0, 0),
+  //       {Shift(0, 1)}, &pe->td.gateMPO[0]), TrotterGate<MPO_2site>(Vertex(1,
+  //       0), {Shift(0, 1)},
   //                              &pe->td.gateMPO[0])};
 
   //     std::cout << "HeisenbergModel_2x2_AB 2SITE ENGINE constructed"
@@ -593,8 +597,8 @@ namespace itensor {
   //       pe->td.symmetrize();
   //     return std::unique_ptr<Engine>(pe);
   //   } else {
-  //     std::cout << "Unsupported gate sequence: " << arg_fuGateSeq << std::endl;
-  //     exit(EXIT_FAILURE);
+  //     std::cout << "Unsupported gate sequence: " << arg_fuGateSeq <<
+  //     std::endl; exit(EXIT_FAILURE);
   //   }
 
   //   return nullptr;

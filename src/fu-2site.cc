@@ -384,7 +384,7 @@ Args fullUpdate_ALS2S_IT(MPO_2site const& mpo,
         if (std::abs(dM_elems.back()) < nval)
           nval = std::abs(dM_elems.back());
       }
-      
+
       if (msign < 0.0)
         for (auto& elem : dM_elems)
           elem = elem * (-1.0);

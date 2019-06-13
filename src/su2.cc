@@ -114,20 +114,21 @@ itensor::ITensor SU2_getRotOp(itensor::Index const& s) {
    *
    */
   auto R1 = itensor::ITensor(s, s1);
-  for(int i=1;i<=dimS;i++) {
-      R1.set(s(i), s1(dimS+1-i), pow(-1,i-1));
+  for (int i = 1; i <= dimS; i++) {
+    R1.set(s(i), s1(dimS + 1 - i), pow(-1, i - 1));
   }
- 
+
   return R1;
 }
 
-itensor::ITensor SU2_applyRot(itensor::Index const& s, itensor::ITensor const& op) {
+itensor::ITensor SU2_applyRot(itensor::Index const& s,
+                              itensor::ITensor const& op) {
   auto s1 = prime(s);
 
   auto res = prime(op);
   auto R1 = SU2_getRotOp(s);
-  auto R2 = (R1*delta(s,prime(s,3)))*delta(s1,prime(s,2));
-  res = (R1*res*R2)*delta(prime(s,3),s1);
+  auto R2 = (R1 * delta(s, prime(s, 3))) * delta(s1, prime(s, 2));
+  res = (R1 * res * R2) * delta(prime(s, 3), s1);
 
   return res;
 }

@@ -97,7 +97,7 @@ int main(int argc, char* argv[]) {
   int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
   CtmEnv::init_env_type arg_initEnvType(
     toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
-  bool envIsComplex = json_ctmrg_params.value("envIsComplex",false);
+  bool envIsComplex = json_ctmrg_params.value("envIsComplex", false);
   CtmEnv::isometry_type iso_type(
     toISOMETRY(json_ctmrg_params["isoType"].get<std::string>()));
   CtmEnv::normalization_type norm_type(

@@ -311,9 +311,7 @@ namespace itensor {
   // ----- END Definition of model class --------------------------------
 
   // ----- Definition of model base class and its particular instances --
-  J1J2Model_1x1_A::J1J2Model_1x1_A(double arg_J1,
-                                         double arg_J2,
-                                         double arg_del)
+  J1J2Model_1x1_A::J1J2Model_1x1_A(double arg_J1, double arg_J2, double arg_del)
     : J1(arg_J1), J2(arg_J2), del(arg_del) {}
 
   void J1J2Model_1x1_A::setObservablesHeader(std::ofstream& output) {
@@ -327,8 +325,8 @@ namespace itensor {
   }
 
   void J1J2Model_1x1_A::computeAndWriteObservables(EVBuilder const& ev,
-                                                      std::ofstream& output,
-                                                      Args& metaInf) {
+                                                   std::ofstream& output,
+                                                   Args& metaInf) {
     auto lineNo = metaInf.getInt("lineNo", 0);
 
     std::vector<double> evNN;
@@ -344,16 +342,20 @@ namespace itensor {
     Index s2p = prime(s2);
 
     ITensor hNN = ITensor(s1, s2, s1p, s2p);
-    hNN += (J1 + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_Z, s2)) +
+    hNN += (J1 + del) * SU2_getSpinOp(SU2_S_Z, s1) *
+             SU2_applyRot(s2, SU2_getSpinOp(SU2_S_Z, s2)) +
            J1 * 0.5 *
-             (SU2_getSpinOp(SU2_S_P, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_M, s2)) +
-              SU2_getSpinOp(SU2_S_M, s1) * SU2_applyRot(s2,SU2_getSpinOp(SU2_S_P, s2)));
+             (SU2_getSpinOp(SU2_S_P, s1) *
+                SU2_applyRot(s2, SU2_getSpinOp(SU2_S_M, s2)) +
+              SU2_getSpinOp(SU2_S_M, s1) *
+                SU2_applyRot(s2, SU2_getSpinOp(SU2_S_P, s2)));
 
     ITensor hNNN = ITensor(s1, s2, s1p, s2p);
-    hNNN += (J2 + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2) +
-          J2 * 0.5 *
-             (SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2) +
-              SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2));
+    hNNN +=
+      (J2 + del) * SU2_getSpinOp(SU2_S_Z, s1) * SU2_getSpinOp(SU2_S_Z, s2) +
+      J2 * 0.5 *
+        (SU2_getSpinOp(SU2_S_P, s1) * SU2_getSpinOp(SU2_S_M, s2) +
+         SU2_getSpinOp(SU2_S_M, s1) * SU2_getSpinOp(SU2_S_P, s2));
 
     // Perform SVD to split in half
     auto nnSS = symmMPO2Sdecomp(hNN, s1, s2);
@@ -366,8 +368,10 @@ namespace itensor {
 
     // compute energies NNN links
     if (compute_SS_NNN) {
-      evNNN.push_back(ev.eval2x2Diag11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(0, 0)));
-      evNNN.push_back(ev.eval2x2DiagN11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(1, 0)));
+      evNNN.push_back(
+        ev.eval2x2Diag11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(0, 0)));
+      evNNN.push_back(
+        ev.eval2x2DiagN11(std::make_pair(nnnSS.H1, nnnSS.H2), Vertex(1, 0)));
     }
 
     ev_sA[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, Vertex(0, 0));
@@ -408,14 +412,12 @@ namespace itensor {
     output << std::endl;
   }
 
-  std::unique_ptr<Model> J1J2Model_1x1_A::create(
-    nlohmann::json& json_model) {
+  std::unique_ptr<Model> J1J2Model_1x1_A::create(nlohmann::json& json_model) {
     double arg_J1 = json_model["J1"].get<double>();
     double arg_J2 = json_model["J2"].get<double>();
     double arg_del = 0.0;
 
-    return std::unique_ptr<Model>(
-      new J1J2Model_1x1_A(arg_J1, arg_J2, arg_del));
+    return std::unique_ptr<Model>(new J1J2Model_1x1_A(arg_J1, arg_J2, arg_del));
   }
   // ----- END Definition of model class --------------------------------
 
