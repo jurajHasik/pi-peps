@@ -4,31 +4,30 @@
 // namespace itensor {
 using namespace itensor;
 
-std::vector< std::complex<double> > EVBuilder::corrf_SS(Vertex const& v1,
-                CtmEnv::DIRECTION dir,
-                int dist,
-                std::vector<double> coefs,
-                bool DBG) const {
-
-  std::vector< std::complex<double> > szsz, spsm, smsp;
+std::vector<std::complex<double>> EVBuilder::corrf_SS(Vertex const& v1,
+                                                      CtmEnv::DIRECTION dir,
+                                                      int dist,
+                                                      std::vector<double> coefs,
+                                                      bool DBG) const {
+  std::vector<std::complex<double>> szsz, spsm, smsp;
   if (dir == CtmEnv::DIRECTION::RIGHT) {
-  	szsz = expVal_1sO1sO_H(v1, dist, std::make_pair(EVBuilder::MPO_S_Z, 
-    	EVBuilder::MPO_S_Z), DBG);
-  	spsm = expVal_1sO1sO_H(v1, dist, std::make_pair(EVBuilder::MPO_S_P, 
-    	EVBuilder::MPO_S_M), DBG);
-  	smsp = expVal_1sO1sO_H(v1, dist, std::make_pair(EVBuilder::MPO_S_M, 
-    	EVBuilder::MPO_S_P), DBG);
+    szsz = expVal_1sO1sO_H(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z), DBG);
+    spsm = expVal_1sO1sO_H(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_P, EVBuilder::MPO_S_M), DBG);
+    smsp = expVal_1sO1sO_H(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_M, EVBuilder::MPO_S_P), DBG);
   } else if (dir == CtmEnv::DIRECTION::DOWN) {
-  	szsz = expVal_1sO1sO_V(v1, dist, std::make_pair(EVBuilder::MPO_S_Z, 
-    	EVBuilder::MPO_S_Z), DBG);
-  	spsm = expVal_1sO1sO_V(v1, dist, std::make_pair(EVBuilder::MPO_S_P, 
-    	EVBuilder::MPO_S_M), DBG);
-  	smsp = expVal_1sO1sO_V(v1, dist, std::make_pair(EVBuilder::MPO_S_M, 
-    	EVBuilder::MPO_S_P), DBG);
+    szsz = expVal_1sO1sO_V(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_Z, EVBuilder::MPO_S_Z), DBG);
+    spsm = expVal_1sO1sO_V(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_P, EVBuilder::MPO_S_M), DBG);
+    smsp = expVal_1sO1sO_V(
+      v1, dist, std::make_pair(EVBuilder::MPO_S_M, EVBuilder::MPO_S_P), DBG);
   }
 
-  for (int i=0; i<dist; i++)
-    szsz[i] = coefs[2]*szsz[i] + 0.5*(spsm[i]+smsp[i]);
+  for (int i = 0; i < dist; i++)
+    szsz[i] = coefs[2] * szsz[i] + 0.5 * (spsm[i] + smsp[i]);
 
   return szsz;
 }
@@ -124,15 +123,15 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
   // 1) ##### Construct LEFT edge
   // ########################################################
   /*
-     * Construct the "left" part tensor L
-     *  _          __
-     * |C|--      |  |--I(T_u)
-     *  |     ==> |  |
-     * |T|--  ==> |L |--I(Xh)
-     *  |     ==> |  |
-     * |C|--'     |__|--I(T_d)
-     *
-     */
+   * Construct the "left" part tensor L
+   *  _          __
+   * |C|--      |  |--I(T_u)
+   *  |     ==> |  |
+   * |T|--  ==> |L |--I(Xh)
+   *  |     ==> |  |
+   * |C|--'     |__|--I(T_d)
+   *
+   */
   if (DBG)
     std::cout << "C_LU[" << v << " => " << vToId(v) << "]" << std::endl;
   tN = p_ctmEnv->C_LU.at(vToId(v));
@@ -149,15 +148,15 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
   // ###################################################### 2) ##### APPEND
   // COLUMNS #############################################################
   /*
-     * Contract L with "dist" copies of a column
-     *
-     * I(T_u)--|T|--I(T_u)'
-     *          |
-     *  I(Xh)--|X|--I(Xh)'
-     *          |
-     * I(T_d)--|T|--I(T_d)'
-     *
-     */
+   * Contract L with "dist" copies of a column
+   *
+   * I(T_u)--|T|--I(T_u)'
+   *          |
+   *  I(Xh)--|X|--I(Xh)'
+   *          |
+   * I(T_d)--|T|--I(T_d)'
+   *
+   */
   for (int col = 0; col <= dist; col++) {
     v = v1 + col * Shift(1, 0);
 
@@ -188,15 +187,13 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
     };
 
     auto tmp_cmb0 =
-      combiner(tmp_down, prime(tmp_down, p_cluster->BRAKET_OFFSET),
-               tmp_right, prime(tmp_right, p_cluster->BRAKET_OFFSET));
-    auto tmp_cmb1 =
-      combiner(p_cluster->AIc(v, DIRECTION::UP),
-               prime(p_cluster->AIc(v, DIRECTION::UP),
-                     p_cluster->BRAKET_OFFSET),
-               p_cluster->AIc(v, DIRECTION::LEFT),
-               prime(p_cluster->AIc(v, DIRECTION::LEFT),
-                     p_cluster->BRAKET_OFFSET));
+      combiner(tmp_down, prime(tmp_down, p_cluster->BRAKET_OFFSET), tmp_right,
+               prime(tmp_right, p_cluster->BRAKET_OFFSET));
+    auto tmp_cmb1 = combiner(
+      p_cluster->AIc(v, DIRECTION::UP),
+      prime(p_cluster->AIc(v, DIRECTION::UP), p_cluster->BRAKET_OFFSET),
+      p_cluster->AIc(v, DIRECTION::LEFT),
+      prime(p_cluster->AIc(v, DIRECTION::LEFT), p_cluster->BRAKET_OFFSET));
 
     tN *= tmp_cmb0;
     nN *= tmp_cmb0;
@@ -214,7 +211,7 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
       auto siteop = p_cluster->sites.at(vToId(v)) * op;
       siteop.noprime(PHYS);
       siteop *= dag(p_cluster->sites.at(vToId(v)))
-        .prime(AUXLINK, p_cluster->BRAKET_OFFSET);
+                  .prime(AUXLINK, p_cluster->BRAKET_OFFSET);
 
       tN *= siteop * tmp_cmb1;
     } else {
@@ -223,7 +220,7 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
       auto siteop = p_cluster->sites.at(vToId(v)) * op;
       siteop.noprime(PHYS);
       siteop *= dag(p_cluster->sites.at(vToId(v)))
-        .prime(AUXLINK, p_cluster->BRAKET_OFFSET);
+                  .prime(AUXLINK, p_cluster->BRAKET_OFFSET);
 
       LTdistR = tN * (siteop * tmp_cmb1);
       // tN *= getSiteBraKet(v);
