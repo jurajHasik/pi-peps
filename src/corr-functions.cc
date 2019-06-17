@@ -43,7 +43,6 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
   int dist,
   std::pair<MPO_1S, MPO_1S> const& Op,
   bool DBG) const {
-
   using DIRECTION = CtmEnv::DIRECTION;
   int const tmp_prime_offset = 10;
 
@@ -118,8 +117,8 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
   Vertex v = v1;
   ITensor tN, nN, LTdistR;
 
-  std::vector< std::complex<double> > ccVal;
-  
+  std::vector<std::complex<double>> ccVal;
+
   // 1) ##### Construct LEFT edge
   // ########################################################
   /*
