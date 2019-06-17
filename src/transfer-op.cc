@@ -541,6 +541,12 @@ namespace itensor {
     double bndr_var = sumels(bTTb) / sumels(bb) -
                       (sumels(bTb) / sumels(bb)) * (sumels(bTb) / sumels(bb));
 
+    if (sumels(bb) < 10e-4 || sumels(bTb) < 10e-4 || sumels(bTTb) < 10e-4) {
+      std::cout << "[analyzeBoundaryVariance] bb= " << sumels(bb)
+                << " bTb= " << sumels(bTb) << " bTTb= " << sumels(bTTb)
+                << std::endl;
+    }
+
     if (DBG)
       std::cout << "bTTb: " << sumels(bTTb) << " bTb: " << sumels(bTb)
                 << " bb: " << sumels(bb) << " bTTb/bb-(bTb/bb)^2: " << bndr_var
