@@ -152,17 +152,20 @@ int main(int argc, char* argv[]) {
   EVBuilder ev("default", *p_cls, ctmEnv);
   std::cout << ev;
 
+  ptr_model->setObservablesHeader(out_file_energy);
+
   std::vector<double> diag_minCornerSV(1, 0.);
+  int max_moves = 1;
   bool expValEnvConv = false;
   // PERFORM CTMRG
   for (int envI = 1; envI <= arg_maxEnvIter; envI++) {
     t_begin_int = std::chrono::steady_clock::now();
 
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT, max_moves);
     // ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT, max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT, max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT, max_moves);
 
     t_end_int = std::chrono::steady_clock::now();
     std::cout << "CTM STEP " << envI << " T: " << get_s(t_begin_int, t_end_int)
@@ -184,7 +187,17 @@ int main(int argc, char* argv[]) {
       t_end_int = std::chrono::steady_clock::now();
       std::cout << " || Var(boundary) in T: " << get_s(t_begin_int, t_end_int)
                 << " [sec] : " << e_curr[0] << " " << e_curr[1] << " "
+                << e_curr[2] << " " << e_curr[3];
+      out_file_diag << envI <<" "<< e_curr[0] << " " << e_curr[1] << " "
                 << e_curr[2] << " " << e_curr[3] << std::endl;
+
+      auto metaInf = Args("lineNo", envI);
+      t_begin_int = std::chrono::steady_clock::now();
+      ptr_model->computeAndWriteObservables(ev, out_file_energy, metaInf);
+      t_end_int = std::chrono::steady_clock::now();
+
+      std::cout << " || Observables in T: " << get_s(t_begin_int, t_end_int)
+                << " [sec] " << std::endl;
 
       // if the difference between energies along NN links is lower then
       // arg_envEps consider the environment converged
@@ -288,8 +301,7 @@ int main(int argc, char* argv[]) {
             << accT[11] << std::endl;
 
   // Compute final observables
-  ptr_model->setObservablesHeader(out_file_energy);
-  auto metaInf = Args("lineNo", 0);
+  auto metaInf = Args("lineNo", arg_maxEnvIter);
   t_begin_int = std::chrono::steady_clock::now();
   ptr_model->computeAndWriteObservables(ev, out_file_energy, metaInf);
   t_end_int = std::chrono::steady_clock::now();
