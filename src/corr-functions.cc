@@ -116,6 +116,7 @@ std::vector<std::complex<double>> EVBuilder::expVal_1sO1sO_H(
 
   Vertex v = v1;
   ITensor tN, nN, LTdistR;
+
   std::vector<std::complex<double>> ccVal;
 
   // 1) ##### Construct LEFT edge

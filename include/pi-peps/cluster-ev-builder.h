@@ -139,30 +139,6 @@ class EVBuilder {
                        Vertex const& v2,
                        bool DBG = false) const;
 
-  // double eval2Smpo_redDenMat2x1(OP_2S op2s, std::pair<int,int> s1,
-  // std::pair<int,int> s2,
-  //     bool DBG = false) const;
-
-  // itensor::ITensor redDenMat2x1(std::pair<int,int> s1, std::pair<int,int> s2,
-  //     bool DBG = false) const;
-
-  struct TransferOpVecProd_itensor {
-    CtmEnv::DIRECTION dir;
-    Vertex v_ref;
-    EVBuilder const& ev;
-
-    TransferOpVecProd_itensor(EVBuilder const& ev,
-                              Vertex const& v,
-                              CtmEnv::DIRECTION dir);
-
-    void operator()(itensor::ITensor& bT, bool DBG = false);
-  };
-
-  double analyzeBoundaryVariance(
-    Vertex const& v,
-    CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT,
-    bool dbg = false);
-
   /*
    * Evaluate 2 site operator along diagonal using corner construction
    * Diagonal is defined with respect to a position of O1 given by site s1,
@@ -189,12 +165,6 @@ class EVBuilder {
     std::pair<itensor::ITensor, itensor::ITensor> const& op,
     Vertex const& v1,
     bool DBG = false) const;
-
-  // double eval2x2Diag1N1(OP_2S op2s, Vertex const& v1,
-  //     bool DBG = false) const;
-
-  // double contract2x2Diag1N1(OP_2S op2s, Vertex const& v1,
-  //     bool DBG = false) const;
 
   /*
    * Evaluate 2 site operator along diagonal using corner construction
@@ -265,6 +235,7 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
+
   std::vector<std::complex<double>> expVal_1sO1sO_H(
     Vertex const& v1,
     int dist,
@@ -292,6 +263,7 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
+
   std::vector<std::complex<double>> expVal_1sO1sO_V(
     Vertex const& v1,
     int dist,
