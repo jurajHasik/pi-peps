@@ -10,6 +10,7 @@
 #include "pi-peps/model-factory.h"
 #include "pi-peps/mpo.h"
 #include "pi-peps/svdsolver-factory.h"
+#include "pi-peps/transfer-op.h"
 #include <algorithm>
 #include <chrono>
 #include <fstream>
@@ -358,13 +359,13 @@ int main(int argc, char* argv[]) {
       if (envI % 1 == 0) {
         t_begin_int = std::chrono::steady_clock::now();
         e_curr[0] =
-          ev.analyzeBoundaryVariance(Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
+          analyzeBoundaryVariance(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT);
         e_curr[1] =
-          ev.analyzeBoundaryVariance(Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
+          analyzeBoundaryVariance(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN);
         e_curr[2] =
-          ev.analyzeBoundaryVariance(Vertex(1, 1), CtmEnv::DIRECTION::RIGHT);
+          analyzeBoundaryVariance(ev, Vertex(1, 1), CtmEnv::DIRECTION::RIGHT);
         e_curr[3] =
-          ev.analyzeBoundaryVariance(Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
+          analyzeBoundaryVariance(ev, Vertex(1, 1), CtmEnv::DIRECTION::DOWN);
         t_end_int = std::chrono::steady_clock::now();
 
         std::cout << " || Var(boundary) in T: " << get_s(t_begin_int, t_end_int)
