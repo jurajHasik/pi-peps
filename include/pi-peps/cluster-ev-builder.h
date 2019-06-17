@@ -235,6 +235,7 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
+
   std::vector<std::complex<double>> expVal_1sO1sO_H(
     Vertex const& v1,
     int dist,
@@ -262,6 +263,7 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
+
   std::vector<std::complex<double>> expVal_1sO1sO_V(
     Vertex const& v1,
     int dist,

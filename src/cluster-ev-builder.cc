@@ -1684,6 +1684,7 @@ double EVBuilder::eval2x2op4s(OP_4S op4s, Vertex const& v1, bool DBG) const {
 //     auto X = ExpValBuilder::getTOT(MPO_Id, 0, env.i_Xh, env.i_Xv,
 //             false);
 //
+
 //     auto U   = env.C_lu*env.T_u*env.C_ru;
 //     U = U*env.T_l*op1*env.T_r;
 //     auto UId = env.C_lu*env.T_u*env.C_ru;
