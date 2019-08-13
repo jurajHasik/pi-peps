@@ -108,12 +108,13 @@ int main(int argc, char* argv[]) {
     }
 
     p_cls = p_readCluster(json_cluster_file);
+    p_cls->normalize();
     // initClusterSites(cls);
-    // initClusterWeights(cls);
+    initClusterWeights(*p_cls);
     setWeights(*p_cls, suWeightsInit);
     // setOnSiteTensorsFromFile(cls, inClusterFile);
   } else if (initBy == "FILE" and inClusterFile == "DEFAULT") {
-    throw std::runtime_error("No cluster input file  given for inClusterFile");
+    throw std::runtime_error("No cluster input file given for inClusterFile");
   } else {
     // one of the defined initialization procedures
     ClusterFactory cf = ClusterFactory();
@@ -222,7 +223,9 @@ int main(int argc, char* argv[]) {
 
           std::cout << lw.sId[0] << "-" << lw.dirs[0] << "--" << lw.dirs[1]
                     << "-" << lw.sId[1] << " ";
-          p_cls->weights.at(lw.wId).visit(printS);
+          auto W = p_cls->weights.at(lw.wId);
+          W *= 1.0/W.real(W.inds()[0](1),W.inds()[1](1));
+          W.visit(printS);
           std::cout << std::endl;
 
           lwIds.push_back(lw.wId);
@@ -261,7 +264,7 @@ int main(int argc, char* argv[]) {
           svd(tmpT, tmpL, S, tmpR,
               {"Minm", p_cls->AIc(lw.sId[0], lw.dirs[0]).m(), "Maxm",
                p_cls->AIc(lw.sId[0], lw.dirs[0]).m()});
-          // S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
+          S *= 1.0/S.real(S.inds()[0](1),S.inds()[1](1));
           S.visit(printS);
           std::cout << std::endl;
 

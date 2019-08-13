@@ -46,9 +46,20 @@ std::unique_ptr<Cluster> p_readCluster(nlohmann::json const& jsonCls) {
     p_cls->SI[siteIdEntry] = p_cls->siteIds.size() - 1;
   }
 
+  // check if aux_ind_seq is present, if so read it and pass it as an argument
+  // to readIndsAndTfromJSON
+  // find an entry
+  vector<int> aux_ind_seq;
+  if (jsonCls.find("aux_ind_seq") != jsonCls.end()) {
+    aux_ind_seq = jsonCls["aux_ind_seq"].get<vector<int>>();
+  } else {
+    aux_ind_seq = {0,1,2,3};
+  }
+  std::cout<<"aux_ind_seq "<< aux_ind_seq[0] << aux_ind_seq[1] << aux_ind_seq[2] << aux_ind_seq[3] << std::endl;
+
   for (const auto& siteEntry : jsonCls["sites"]) {
     auto id = siteEntry["siteId"].get<string>();
-    auto tmp = readIndsAndTfromJSON(siteEntry);
+    auto tmp = readIndsAndTfromJSON(siteEntry, aux_ind_seq);
 
     p_cls->mphys[id] = tmp.first[0];
     p_cls->caux[id] = std::vector<itensor::Index>(tmp.first.size() - 1);
@@ -170,8 +181,8 @@ pair<int, itensor::Index> readAuxIndex(nlohmann::json const& j) {
   return make_pair(dir, itensor::Index(name, auxDim, AUXLINK, dir));
 }
 
-itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset) {
-  auto result = readIndsAndTfromJSON(j, offset);
+itensor::ITensor readTfromJSON(nlohmann::json const& j, std::vector<int> aux_ind_seq, int offset) {
+  auto result = readIndsAndTfromJSON(j, aux_ind_seq, offset);
   return result.second;
 }
 
@@ -180,6 +191,7 @@ itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset) {
 // indices are auxiliary
 pair<vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
   nlohmann::json const& j,
+  std::vector<int> aux_ind_seq,
   int offset) {
   auto id = j["siteId"].get<string>();
 
@@ -235,11 +247,22 @@ pair<vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
 
     // ITensor indices start from 1, hence if input file indices start from
     // 0 use offset 1
+    // standard sequence of indices is assuming a following order
+    //   1
+    // 0 A 2
+    //   3
+    // instead aux_ind_seq can be used to reinterpret the sequence in the input file
+    //                aux_ind_seq[1]
+    // aux_ind_seq[0] A              aux_ind_seq[2]
+    //                aux_ind_seq[3]
+    //       0
+    // eg. 1 A 3 is given by aux_ind_seq = {1,0,3,2}
+    //       2 
     pI = offset + stoi(token[0]);
-    aI0 = offset + stoi(token[1]);
-    aI1 = offset + stoi(token[2]);
-    aI2 = offset + stoi(token[3]);
-    aI3 = offset + stoi(token[4]);
+    aI0 = offset + stoi(token[1+aux_ind_seq[0]]);
+    aI1 = offset + stoi(token[1+aux_ind_seq[1]]);
+    aI2 = offset + stoi(token[1+aux_ind_seq[2]]);
+    aI3 = offset + stoi(token[1+aux_ind_seq[3]]);
 
     t.set(ti[0](pI), ti[1](aI0), ti[2](aI1), ti[3](aI2), ti[4](aI3),
           complex<double>(stod(token[5]), stod(token[6])));

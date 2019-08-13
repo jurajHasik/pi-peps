@@ -63,8 +63,25 @@ void Cluster::normalize(std::string norm_type) {
 void initClusterWeights(Cluster& c, bool dbg) {
   if (c.siteToWeights.size() == 0) {
     std::cout << "[initClusterWeights]"
-              << " no weights stored for this cluster" << std::endl;
-    throw std::runtime_error("Invalid input");
+              << " no weights stored for this cluster." 
+              << " Creating new siteToWeight map" << std::endl;
+    // attempt to create siteToWeights map
+    // create unique set of weights, connecting all pairs of sites 
+    std::vector<LinkWeight> unique_lws;
+    std::map<int, Shift> dirToShift = {{2, Shift(1,0)}, {3, Shift(0,1)}};
+    for (const auto& sId : c.siteIds) {
+      auto v_ref = c.idToV.at(sId);
+      for (auto const& dir : {2,3}) {
+        auto v_shifted = v_ref + dirToShift.at(dir);
+        LinkWeight lw = {{sId, c.vertexToId(v_shifted)},{dir, (dir+2) % 4}, 
+          "L"+std::to_string(unique_lws.size())};
+        LinkWeight lw_reversed = {{c.vertexToId(v_shifted),sId},{(dir+2) % 4, dir}, 
+          "L"+std::to_string(unique_lws.size())};
+        unique_lws.push_back(lw);
+        c.siteToWeights[sId].push_back(lw);
+        c.siteToWeights[c.vertexToId(v_shifted)].push_back(lw_reversed);
+      }
+    }
   }
 
   // reset

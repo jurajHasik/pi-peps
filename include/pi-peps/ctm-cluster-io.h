@@ -67,11 +67,12 @@ std::pair<int, itensor::Index> readAuxIndex(nlohmann::json const& j);
 
 // itensor::ITensor readOnSiteT(nlohmann::json const& j, int offset = 1);
 
-itensor::ITensor readTfromJSON(nlohmann::json const& j, int offset = 1);
+itensor::ITensor readTfromJSON(nlohmann::json const& j, 
+  std::vector<int> aux_ind_seq = {0, 1, 2, 3}, int offset = 1);
 
 std::pair<std::vector<itensor::Index>, itensor::ITensor> readIndsAndTfromJSON(
   nlohmann::json const& j,
-  int offset = 1);
+  std::vector<int> aux_ind_seq = {0, 1, 2, 3}, int offset = 1);
 
 void setOnSiteTensorsFromFile(Cluster& cls,
                               std::string const& filename,

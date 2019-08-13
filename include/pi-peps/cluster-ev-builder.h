@@ -303,8 +303,11 @@ class EVBuilder {
    * Hence "dist" = 0, means adjacent sites
    *
    */
-  //  std::complex<double> expVal_2sOH2sOH_H(int dist,
-  //          Mpo2S const& op1, Mpo2S const& op2);
+   std::vector<std::complex<double>> expVal_2sOH2sOH_H(
+    Vertex const& v1,
+    int dist,
+    OP_2S op2s1, OP_2S op2s2,
+    bool DBG = false) const;
 
   MPO_3site get3Smpo(std::string mpo3s, bool DBG = false) const;
 

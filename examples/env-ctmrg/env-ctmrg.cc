@@ -7,6 +7,7 @@
 DISABLE_WARNINGS
 #include "itensor/all.h"
 ENABLE_WARNINGS
+#include "pi-peps/lattice.h"
 #include "pi-peps/cluster-ev-builder.h"
 #include "pi-peps/ctm-cluster-io.h"
 #include "pi-peps/ctm-cluster.h"
@@ -49,6 +50,7 @@ int main(int argc, char* argv[]) {
   // read CTMRG parameters
   auto json_ctmrg_params(jsonCls["ctmrg"]);
   int auxEnvDim = json_ctmrg_params["auxEnvDim"].get<int>();
+  auto ctm_max_moves = json_ctmrg_params.value("max_moves",-1);
   CtmEnv::init_env_type arg_initEnvType(
     toINIT_ENV(json_ctmrg_params["initEnvType"].get<std::string>()));
   CtmEnv::isometry_type iso_type(
@@ -100,6 +102,7 @@ int main(int argc, char* argv[]) {
   }
   p_cls->normalize();
   std::cout << *p_cls;
+  PrintData(p_cls->getSite(Vertex(0,0)));
   // ***** INITIALIZE CLUSTER DONE ******************************************
 
   // ***** INITIALIZE MODEL *************************************************
@@ -155,17 +158,15 @@ int main(int argc, char* argv[]) {
   ptr_model->setObservablesHeader(out_file_energy);
 
   std::vector<double> diag_minCornerSV(1, 0.);
-  int max_moves = 1;
   bool expValEnvConv = false;
   // PERFORM CTMRG
   for (int envI = 1; envI <= arg_maxEnvIter; envI++) {
     t_begin_int = std::chrono::steady_clock::now();
 
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT, max_moves);
-    // ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT, max_moves);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT, max_moves);
-    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT, max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::UP, iso_type, accT, ctm_max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::LEFT, iso_type, accT, ctm_max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::DOWN, iso_type, accT, ctm_max_moves);
+    ctmEnv.move_unidirectional(CtmEnv::DIRECTION::RIGHT, iso_type, accT, ctm_max_moves);
 
     t_end_int = std::chrono::steady_clock::now();
     std::cout << "CTM STEP " << envI << " T: " << get_s(t_begin_int, t_end_int)
@@ -334,6 +335,45 @@ int main(int argc, char* argv[]) {
   auto ss_v = ev.corrf_SS(Vertex(0,0), CtmEnv::DIRECTION::DOWN, 20);
   for(int i=0; i<20; i++)
     std::cout<< i <<" "<< ss_v[i].real() << std::endl;
+
+  std::cout << "[S(0,0).S(1,0)][S(2+dist,0).S(3+dist,0)]"<< std::endl;
+  auto dd_h = ev.expVal_2sOH2sOH_H(Vertex(0,0), 20, EVBuilder::OP2S_SS,
+    EVBuilder::OP2S_SS, true);
+  for(int i=0; i<20; i++)
+    std::cout<< i <<" "<< dd_h[i].real() << std::endl;
+
+  auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
+  std::cout << "BOND SPECTRA - START" << std::endl;
+  // loop over sites in the cluster and compute svd along "right" link
+  // and "down" link of the site
+  std::map<int, Shift> dirToShift = {{2, Shift(1,0)}, {3, Shift(0,1)}};
+  for (auto const& sId : p_cls->siteIds) {
+    auto v_ref = p_cls->idToV.at(sId);
+    auto s_ref = p_cls->getSiteRefc(v_ref);
+    for (auto const& dir : {2,3}) {
+      auto v_shifted = v_ref + dirToShift.at(dir);
+      auto s_shifted = p_cls->getSiteRefc(v_shifted);
+      // get indices over which the contraction will be performed
+      auto a_ref = p_cls->AIc(v_ref, dir);
+      auto a_shifted = p_cls->AIc(v_shifted, (dir+2) % 4); 
+    
+      // get all indices of site "s_ref" except index "a_ref"
+      std::vector<Index> inds_ref = {p_cls->mphys.at(sId)};
+      for (int i=0; i<4; i++) if (i!=dir) inds_ref.push_back(p_cls->AIc(v_ref,i));
+      
+      // perfrom SVD
+      ITensor tmpL(inds_ref), S, tmpR;
+      auto tmpT = s_ref * delta(a_ref, a_shifted) * prime(s_shifted,PHYS);
+      svd(tmpT, tmpL, S, tmpR, {"Minm", a_ref.m(), "Maxm", a_ref.m()});
+    
+      // normalize and print
+      S *= 1.0 / S.real(S.inds()[0](1), S.inds()[1](1));
+      std::cout << sId << "-" << dir << "--" << (dir+2)%4 << "-" << p_cls->vertexToId(v_shifted) << " ";
+      S.visit(printS);
+      std::cout << std::endl;
+    }
+  }
+  std::cout << "BOND SPECTRA - END" << std::endl;
 
   // FINISHED
   std::cout << "FINISHED" << std::endl;
