@@ -311,7 +311,7 @@ int main(int argc, char* argv[]) {
 
   // compute spin directions
   std::vector<double> svec(3, 0.0);
-  std::cout << "siteId sz sp sm" << std::endl;
+  std::cout <<std::endl<< "siteId sz sp sm" << std::endl;
   for (auto const& id : p_cls->siteIds) {
     svec[0] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_Z, p_cls->idToV.at(id));
     svec[1] = ev.eV_1sO_1sENV(EVBuilder::MPO_S_P, p_cls->idToV.at(id));
@@ -322,28 +322,29 @@ int main(int argc, char* argv[]) {
   }
 
 #ifdef PEPS_WITH_ARPACK
-  std::cout << "Transfer matrix spectrum analysis: " << std::endl;
+  std::cout << std::endl << "Transfer matrix spectrum analysis: HORIZONTAL" << std::endl;
   analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT, 5);
+  std::cout << std::endl << "Transfer matrix spectrum analysis: VERTICAL" << std::endl;
   analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN, 5);
 #endif
 
-  std::cout << "S(0,0).S(r,0)"<< std::endl;
+  std::cout << std::endl << "S(0,0).S(r,0)"<< std::endl;
   auto ss_h = ev.corrf_SS(Vertex(0,0), CtmEnv::DIRECTION::RIGHT, 20);
   for(int i=0; i<20; i++)
     std::cout<< i <<" "<< ss_h[i].real() << std::endl;
-  std::cout << "S(0,0).S(0,r)"<< std::endl;
+  std::cout << std::endl << "S(0,0).S(0,r)"<< std::endl;
   auto ss_v = ev.corrf_SS(Vertex(0,0), CtmEnv::DIRECTION::DOWN, 20);
   for(int i=0; i<20; i++)
     std::cout<< i <<" "<< ss_v[i].real() << std::endl;
 
-  std::cout << "[S(0,0).S(1,0)][S(2+dist,0).S(3+dist,0)]"<< std::endl;
+  std::cout << std::endl << "[S(0,0).S(1,0)][S(2+dist,0).S(3+dist,0)]"<< std::endl;
   auto dd_h = ev.expVal_2sOH2sOH_H(Vertex(0,0), 20, EVBuilder::OP2S_SS,
-    EVBuilder::OP2S_SS, true);
+    EVBuilder::OP2S_SS);
   for(int i=0; i<20; i++)
     std::cout<< i <<" "<< dd_h[i].real() << std::endl;
 
   auto printS = [](Real r) { std::cout << std::scientific << r << " "; };
-  std::cout << "BOND SPECTRA - START" << std::endl;
+  std::cout << std::endl << "BOND SPECTRA - START" << std::endl;
   // loop over sites in the cluster and compute svd along "right" link
   // and "down" link of the site
   std::map<int, Shift> dirToShift = {{2, Shift(1,0)}, {3, Shift(0,1)}};
