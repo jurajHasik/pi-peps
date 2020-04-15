@@ -10,6 +10,10 @@ option('openmp', type: 'boolean', value: true, description: 'enable openMP suppo
 option('mkl', type: 'boolean', value: true)
 option('mkl-dir', type: 'string', value: '')
 
+# lapack
+option('lapack', type: 'boolean', value: false)
+option('lapack-dir', type: 'string', value: '')
+
 # itensor
 option('itensor', type: 'boolean', value: true)
 option('itensor-dir', type: 'string', value: '')

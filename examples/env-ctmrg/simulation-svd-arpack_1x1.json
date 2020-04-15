@@ -1,26 +1,28 @@
 {
 	"cluster": {
-		"cluster": "DEFAULT",
+		"type": "DEFAULT",
 		"initBy": "FILE",
 		"physDim": 2,
 		"auxBondDim": 3,
-		"inClusterFile": "RVB_2x2_ABCD.in"
-	},
-	"initStateNoise": 0.0,
+		"inClusterFile": "RVB_1x1.in"
+       	},
+	"initStateNoise": 1.0e-16,
 	"outClusterFile": "output.in",
 
 	"model": {
-		"type": "J1J2_2X2_ABCD",
+		"type": "J1J2_1X1_A",
 		"J1": 1.0,
-		"J2": 0.5,
+		"J2": 0.55,
 		"del": 0.0
 	},
 
 	"ctmrg": {
-		"auxEnvDim": 28,
+		"auxEnvDim": 96,
 		"initEnvType": "INIT_ENV_ctmrg",
 		"isoType": "ISOMETRY_T3",
-		"env_SVD_METHOD": "gesdd",
+		"env_SVD_METHOD": "arpack",
+		"rsvd_oversampling": 20,
+		"rsvd_power": 2,
 		"isoPseudoInvCutoff": 1.0e-8,
 		"normType": "NORM_BLE",
 		"maxEnvIter": 50,

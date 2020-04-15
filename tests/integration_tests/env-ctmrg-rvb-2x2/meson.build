@@ -34,11 +34,13 @@ endforeach
 
 _prefix = meson.current_build_dir()
 test('env-ctmrg-rvb-2x2', 
-	compare, 
+	compare_ll, 
 	args:[
 		exe.full_path(), 
         	_prefix+'/'+'reference_output.in.energy.dat',
-		_prefix+'/'+'simulation-svd-itensor.json'
+	        _prefix+'/'+'reference_output.in.energy.dat',
+                '1.0e-4',	
+                _prefix+'/'+'simulation-svd-gesdd.json'
 	],
 	workdir: meson.current_build_dir(),
 	suite: ['integration']
