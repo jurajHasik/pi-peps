@@ -238,7 +238,7 @@ namespace itensor {
     std::copy(xData.data(), xData.data() + N, y);
   }
 
-  void analyzeTransferMatrix(EVBuilder const& ev,
+  std::vector<std::complex<double>> analyzeTransferMatrix(EVBuilder const& ev,
                              Vertex const& v,
                              CtmEnv::DIRECTION dir,
                              int num_eigs,
@@ -263,6 +263,7 @@ namespace itensor {
         std::cout << val / std::abs(eigv[0]) << std::endl;
       }
 
+      return eigv;
     } else {
       std::cout << "[EVBuilder::analyzeTransferMatrix] Unsupported option: "
                 << alg_type << std::endl;

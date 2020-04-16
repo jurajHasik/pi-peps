@@ -23,7 +23,7 @@ namespace itensor {
   };
 
   // ARPACK required
-  void analyzeTransferMatrix(EVBuilder const& ev,
+  std::vector<std::complex<double>> analyzeTransferMatrix(EVBuilder const& ev,
                              Vertex const& v,
                              CtmEnv::DIRECTION dir = CtmEnv::DIRECTION::RIGHT,
                              int num_eigs = 2,

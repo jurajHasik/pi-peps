@@ -55,6 +55,8 @@ int main(int argc, char* argv[]) {
   double arg_minTimestep = jsonCls.value("minTimestep", 1.0e-6);
   int arg_fuIter = jsonCls["fuIter"].get<int>();
   int arg_obsFreq = jsonCls["obsFreq"].get<int>();
+  int arg_topFreq = jsonCls.value("topFreq",-1);
+  int arg_topN = jsonCls.value("topN",4);
   bool arg_fuTrialInit = jsonCls.value("fuTrialInit", true);
   bool arg_fuDbg = jsonCls["fuDbg"].get<bool>();
   int arg_fuDbgLevel = jsonCls["fuDbgLevel"].get<int>();
@@ -486,6 +488,21 @@ int main(int argc, char* argv[]) {
     return diagData_ctm;
   };
 
+  auto printTopSpec = [&out_file_energy](std::string const& prefix, 
+                                         std::vector<std::complex<double>> const& s) {
+    out_file_energy << prefix << " TOP {\"re\": [";
+    for (int i=0; i<s.size(); i++) {
+      out_file_energy << s[i].real() / std::abs(s[0]);
+      if (i<s.size()-1) out_file_energy << ", ";
+    }
+    out_file_energy << "], \"im\": [";
+    for (int i=0; i<s.size(); i++) {
+      out_file_energy << s[i].imag() / std::abs(s[0]);
+      if (i<s.size()-1) out_file_energy << ", ";
+    }
+    out_file_energy << "]}" << std::endl;
+  };
+
   // ***** COMPUTING INITIAL ENVIRONMENT ************************************
   std::cout << "COMPUTING INITIAL ENVIRONMENT " << std::endl;
   diagData_ctm = computeEnvironment(arg_maxInitEnvIter, true);
@@ -602,6 +619,16 @@ int main(int argc, char* argv[]) {
       // ctmEnv.symmetrizeEnv();
       auto metaInf = Args("lineNo", fuI);
       ptr_model->computeAndWriteObservables(ev, out_file_energy, metaInf);
+
+      // compute transfer matrix spectrum 
+      if (fuI % arg_topFreq == 0 && arg_topFreq>0) {
+        std::cout << std::endl << "Transfer matrix spectrum analysis: HORIZONTAL" << std::endl;
+        auto topev_h = analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::RIGHT, arg_topN);
+        std::cout << std::endl << "Transfer matrix spectrum analysis: VERTICAL" << std::endl;
+        auto topev_v = analyzeTransferMatrix(ev, Vertex(0, 0), CtmEnv::DIRECTION::DOWN, arg_topN);
+        printTopSpec("TOP spectrum(T)[(0, 0),(1, 0)]", topev_h);
+        printTopSpec("TOP spectrum(T)[(0, 0),(0, 1)]", topev_v);
+      }
 
       // check energy, preserve the best_energy state obtained so far
       auto current_energy = metaInf.getReal("energy");
